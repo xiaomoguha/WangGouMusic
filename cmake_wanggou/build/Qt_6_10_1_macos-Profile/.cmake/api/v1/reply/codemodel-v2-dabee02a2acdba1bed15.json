@@ -1,0 +1,88 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-RelWithDebInfo-81b4eccaf0a6ce50efa6.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3
+					]
+				}
+			],
+			"name" : "RelWithDebInfo",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "cmake_wanggou",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "cmake_wanggou::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-cmake_wanggou-RelWithDebInfo-19691331945b7e08ae07.json",
+					"name" : "cmake_wanggou",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "cmake_wanggou_autogen::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-cmake_wanggou_autogen-RelWithDebInfo-74089ecfc5b301d2d646.json",
+					"name" : "cmake_wanggou_autogen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "cmake_wanggou_autogen_timestamp_deps::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-cmake_wanggou_autogen_timestamp_deps-RelWithDebInfo-abbcb8969aa493e3e022.json",
+					"name" : "cmake_wanggou_autogen_timestamp_deps",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "cmake_wanggou_qmlimportscan::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-cmake_wanggou_qmlimportscan-RelWithDebInfo-688bd00731af9adbc60a.json",
+					"name" : "cmake_wanggou_qmlimportscan",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/Users/xjt/QT_project/WangGouMusic_cmake/cmake_wanggou/build/Qt_6_10_1_macos-Profile",
+		"source" : "/Users/xjt/QT_project/WangGouMusic_cmake/cmake_wanggou"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 7
+	}
+}
