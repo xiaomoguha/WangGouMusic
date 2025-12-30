@@ -1,0 +1,29 @@
+<RCC>
+    <qresource prefix="/">
+        <file>main.qml</file>
+        <file>Src/Leftpage/Leftpage.qml</file>
+        <file>Src/Rightpage/Rightpage.qml</file>
+        <file>Src/Bottompage/Bottompage.qml</file>
+        <file>Src/Rightpage/MaxMin.qml</file>
+        <file>Src/Rightpage/LoginStatus.qml</file>
+        <file>Src/Rightpage/Search.qml</file>
+        <file>Src/Rightpage/RightTopPage.qml</file>
+        <file>Src/BasicConfig/BasicConfig.qml</file>
+        <file>Src/BasicConfig/qmldir</file>
+        <file>Src/ComponentPage/ComplexPage.qml</file>
+        <file>Src/ComponentPage/Danqv.qml</file>
+        <file>Src/ComponentPage/AlbumPage.qml</file>
+        <file>Src/ComponentPage/LyricPage.qml</file>
+        <file>Src/ComponentPage/SearchresultPage.qml</file>
+        <file>Src/ComponentPage/HomePage.qml</file>
+        <file>Src/ComponentPage/BlogPage.qml</file>
+        <file>Src/ComponentPage/musictogether.qml</file>
+        <file>Src/ComponentPage/MyfavoriteMusic.qml</file>
+        <file>Src/ComponentPage/RecentlyPlayed.qml</file>
+        <file>Src/ComponentPage/LocalMusic.qml</file>
+        <file>Src/ComponentPage/DesktopLyrics.qml</file>
+        <file>Src/ComponentPage/Add_room_window.qml</file>
+        <file>Src/ComponentPage/Togethermusicmain.qml</file>
+        <file>Src/PlayingPage/PlayingPage.qml</file>
+    </qresource>
+</RCC>

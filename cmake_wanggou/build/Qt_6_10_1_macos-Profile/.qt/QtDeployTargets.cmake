@@ -1,0 +1,2 @@
+set(__QT_DEPLOY_TARGET_cmake_wanggou_FILE /Users/xjt/QT_project/WangGouMusic_cmake/cmake_wanggou/build/Qt_6_10_1_macos-Profile/cmake_wanggou.app/Contents/MacOS/cmake_wanggou)
+set(__QT_DEPLOY_TARGET_cmake_wanggou_TYPE EXECUTABLE)

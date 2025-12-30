@@ -1,0 +1,40 @@
+file(REMOVE_RECURSE
+  "CMakeFiles/cmake_wanggou_autogen.dir/AutogenUsed.txt"
+  "CMakeFiles/cmake_wanggou_autogen.dir/ParseCache.txt"
+  "cmake_wanggou_autogen"
+  "CMakeFiles/cmake_wanggou.dir/CPPSrc/WebSocketClient.cpp.o"
+  "CMakeFiles/cmake_wanggou.dir/CPPSrc/WebSocketClient.cpp.o.d"
+  "CMakeFiles/cmake_wanggou.dir/CPPSrc/gethostsearch.cpp.o"
+  "CMakeFiles/cmake_wanggou.dir/CPPSrc/gethostsearch.cpp.o.d"
+  "CMakeFiles/cmake_wanggou.dir/CPPSrc/httpgetrequester.cpp.o"
+  "CMakeFiles/cmake_wanggou.dir/CPPSrc/httpgetrequester.cpp.o.d"
+  "CMakeFiles/cmake_wanggou.dir/CPPSrc/lyricparser.cpp.o"
+  "CMakeFiles/cmake_wanggou.dir/CPPSrc/lyricparser.cpp.o.d"
+  "CMakeFiles/cmake_wanggou.dir/CPPSrc/playlistmanager.cpp.o"
+  "CMakeFiles/cmake_wanggou.dir/CPPSrc/playlistmanager.cpp.o.d"
+  "CMakeFiles/cmake_wanggou.dir/CPPSrc/recommendation.cpp.o"
+  "CMakeFiles/cmake_wanggou.dir/CPPSrc/recommendation.cpp.o.d"
+  "CMakeFiles/cmake_wanggou.dir/CPPSrc/searchcomplex.cpp.o"
+  "CMakeFiles/cmake_wanggou.dir/CPPSrc/searchcomplex.cpp.o.d"
+  "CMakeFiles/cmake_wanggou.dir/CPPSrc/trayhandler.cpp.o"
+  "CMakeFiles/cmake_wanggou.dir/CPPSrc/trayhandler.cpp.o.d"
+  "CMakeFiles/cmake_wanggou.dir/cmake_wanggou_autogen/EWIEGA46WW/qrc_image.cpp.o"
+  "CMakeFiles/cmake_wanggou.dir/cmake_wanggou_autogen/EWIEGA46WW/qrc_image.cpp.o.d"
+  "CMakeFiles/cmake_wanggou.dir/cmake_wanggou_autogen/EWIEGA46WW/qrc_qml.cpp.o"
+  "CMakeFiles/cmake_wanggou.dir/cmake_wanggou_autogen/EWIEGA46WW/qrc_qml.cpp.o.d"
+  "CMakeFiles/cmake_wanggou.dir/cmake_wanggou_autogen/mocs_compilation.cpp.o"
+  "CMakeFiles/cmake_wanggou.dir/cmake_wanggou_autogen/mocs_compilation.cpp.o.d"
+  "CMakeFiles/cmake_wanggou.dir/main.mm.o"
+  "CMakeFiles/cmake_wanggou.dir/main.mm.o.d"
+  "cmake_wanggou.app/Contents/MacOS/cmake_wanggou"
+  "cmake_wanggou.pdb"
+  "cmake_wanggou_autogen/EWIEGA46WW/qrc_image.cpp"
+  "cmake_wanggou_autogen/EWIEGA46WW/qrc_qml.cpp"
+  "cmake_wanggou_autogen/mocs_compilation.cpp"
+  "cmake_wanggou_autogen/timestamp"
+)
+
+# Per-language clean rules from dependency scanning.
+foreach(lang CXX)
+  include(CMakeFiles/cmake_wanggou.dir/cmake_clean_${lang}.cmake OPTIONAL)
+endforeach()

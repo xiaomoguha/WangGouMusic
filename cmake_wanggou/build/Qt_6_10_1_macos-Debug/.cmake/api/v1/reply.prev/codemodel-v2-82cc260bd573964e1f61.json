@@ -1,0 +1,88 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-Debug-a249241260fcf4c1792f.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "cmake_wanggou",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "cmake_wanggou::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-cmake_wanggou-Debug-887639a59d18f1df3fd0.json",
+					"name" : "cmake_wanggou",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "cmake_wanggou_autogen::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-cmake_wanggou_autogen-Debug-a45d4c1a1ee04ddb3395.json",
+					"name" : "cmake_wanggou_autogen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "cmake_wanggou_autogen_timestamp_deps::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-cmake_wanggou_autogen_timestamp_deps-Debug-abbcb8969aa493e3e022.json",
+					"name" : "cmake_wanggou_autogen_timestamp_deps",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "cmake_wanggou_qmlimportscan::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-cmake_wanggou_qmlimportscan-Debug-360ac6e236af79ba34c0.json",
+					"name" : "cmake_wanggou_qmlimportscan",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/Users/xjt/QT_project/WangGouMusic_cmake/cmake_wanggou/build/Qt_6_10_1_macos-Debug",
+		"source" : "/Users/xjt/QT_project/WangGouMusic_cmake/cmake_wanggou"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 7
+	}
+}

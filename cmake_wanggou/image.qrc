@@ -1,0 +1,51 @@
+<RCC>
+    <qresource prefix="/img"/>
+    <qresource prefix="/">
+        <file>image/audio _line.png</file>
+        <file>image/close-circle_line.png</file>
+        <file>image/delete_line.png</file>
+        <file>image/fullscreen_line.png</file>
+        <file>image/fullscreen-exit_line.png</file>
+        <file>image/left_line.png</file>
+        <file>image/mail_line.png</file>
+        <file>image/minus_line.png</file>
+        <file>image/moon_line.png</file>
+        <file>image/search_line.png</file>
+        <file>image/setting_line.png</file>
+        <file>image/user_line.png</file>
+        <file>image/boke.png</file>
+        <file>image/sheqv.png</file>
+        <file>image/touxi.jpg</file>
+        <file>image/pinlun.png</file>
+        <file>image/nextplay.png</file>
+        <file>image/upplay.png</file>
+        <file>image/24gl-playlistHeart.png</file>
+        <file>image/shunxv.png</file>
+        <file>image/suiji.png</file>
+        <file>image/xunhuan.png</file>
+        <file>image/geci.png</file>
+        <file>image/jingyin.png</file>
+        <file>image/shenying.png</file>
+        <file>image/wyyicon.png</file>
+        <file>image/playnow.png</file>
+        <file>image/addplaylist.png</file>
+        <file>image/addlove.png</file>
+        <file>image/paused.png</file>
+        <file>image/play.png</file>
+        <file>image/wyymusic.ico</file>
+        <file>image/shuaxin.png</file>
+        <file>image/more.png</file>
+        <file>image/isplaying.gif</file>
+        <file>image/lock_close.png</file>
+        <file>image/lock_open.png</file>
+        <file>image/font_down.png</file>
+        <file>image/font_up.png</file>
+        <file>image/shoucang.png</file>
+        <file>image/zuijinbofang.png</file>
+        <file>image/jingxuan_xuanzhong.png</file>
+        <file>image/liebiao.png</file>
+        <file>image/yinle.png</file>
+        <file>image/caidan.png</file>
+        <file>image/xiazai.png</file>
+    </qresource>
+</RCC>
