@@ -1,9 +1,0 @@
--rootPath
-/Users/xjt/QT_project/WangGouMusic_cmake/cmake_wanggou
--cmake-output
--output-file
-/Users/xjt/QT_project/WangGouMusic_cmake/cmake_wanggou/build/Qt_6_10_1_macos-Profile/.qt/qml_imports/cmake_wanggou_conf.cmake
--importPath
-/Users/xjt/QT_project/WangGouMusic_cmake/cmake_wanggou/build/Qt_6_10_1_macos-Profile
--importPath
-/Users/xjt/Qt/6.10.1/macos/qml
