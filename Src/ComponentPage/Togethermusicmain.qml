@@ -6,7 +6,7 @@ Item {
     height: parent ? parent.height : 0
     Text {
         id:liebiaotext
-        text: qsTr("房间"+"1234"+"播放列表")
+        text: qsTr("房间"+ websocket?websocket.Roomid:"" +"播放列表")
         font.pixelSize: 24
         font.family: "黑体"
         color: "white"

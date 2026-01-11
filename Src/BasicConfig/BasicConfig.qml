@@ -8,6 +8,8 @@ QtObject {
     signal indexchange(int index)
     signal pushsearchsongPage(string pageUrl)
     signal searchKeywordchange
+    signal notice_error(string errormessages)
+    signal notice_success(string messages)
 
     property string searchKeyword: ""
 }

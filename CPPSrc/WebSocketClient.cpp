@@ -5,7 +5,7 @@
 #define WEB_SOCKET_SERVICE_PORT 3375
 
 WebSocketClient::WebSocketClient(PlaylistManager *playManager, QObject *parent)
-    : QObject{parent}, playmanager(playManager), m_webSocket(nullptr), m_serverUrl("ws://10.0.0.113:3375"), m_connectionState(Disconnected), m_autoReconnect(true), m_reconnectInterval(50)
+    : QObject{parent}, playmanager(playManager), m_webSocket(nullptr), m_serverUrl("ws://10.0.0.113:3375"), m_connectionState(Disconnected), m_autoReconnect(true), m_reconnectInterval(100)
       ,
       m_reconnectAttempts(0), m_maxReconnectAttempts(30) // 最大重连30次
       ,
@@ -109,14 +109,15 @@ QString WebSocketClient::url() const
     return m_serverUrl.toString();
 }
 
-void WebSocketClient::setUrl(const QString &url)
+void WebSocketClient::setUrl(const QString &roomid,const QString &userid)
 {
     int ischange = 0;
+    Roomid = roomid;
     QString web_service_url = QString("ws://%1:%2/?userid=%3&roomid=%4")
                                   .arg(WEB_SOCKET_SERVICE_IP)   // 替换 %1
                                   .arg(WEB_SOCKET_SERVICE_PORT) // 替换 %2
-                                  .arg("LIN")                   // 替换 %3
-                                  .arg(url);                    // 替换 %4
+                                  .arg(userid)                   // 替换 %3
+                                  .arg(roomid);                    // 替换 %4
     if (m_serverUrl.toString() != web_service_url)
     {
         // 如果已连接，先断开
@@ -133,6 +134,11 @@ void WebSocketClient::setUrl(const QString &url)
         initializeWebSocket();
         emit urlChanged(web_service_url);
     }
+}
+
+QString WebSocketClient::Getroomid() const
+{
+    return Roomid;
 }
 
 void WebSocketClient::sendJson(const QJsonObject &json)

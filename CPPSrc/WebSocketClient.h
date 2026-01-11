@@ -15,7 +15,8 @@ class WebSocketClient : public QObject
     Q_OBJECT
     // 暴露给 QML 的属性
     Q_PROPERTY(bool connected READ isConnected NOTIFY connectionStatusChanged)
-    Q_PROPERTY(QString url READ url WRITE setUrl NOTIFY urlChanged)
+    Q_PROPERTY(QString url READ url NOTIFY urlChanged)
+    Q_PROPERTY(QString Roomid READ Getroomid NOTIFY roomidChanged)
     Q_PROPERTY(ConnectionState connectionState READ connectionState NOTIFY connectionStateChanged)
 public:
     explicit WebSocketClient(PlaylistManager *playmanager, QObject *parent = nullptr);
@@ -37,7 +38,9 @@ public:
 
     // URL 相关
     QString url() const;
-    Q_INVOKABLE void setUrl(const QString &url);
+    Q_INVOKABLE void setUrl(const QString &roomid,const QString &userid);
+
+    QString Getroomid() const;
 
     // 配置
     Q_INVOKABLE void setAutoReconnect(bool enable);      // 设置自动重连
@@ -50,6 +53,7 @@ signals:
     void connectionStatusChanged(bool connected);  // 连接状态变化
     void connectionStateChanged(WebSocketClient::ConnectionState state); // 连接状态枚举变化
     void urlChanged(const QString &url);    // URL变化
+    void roomidChanged();
 
     // 数据相关
     void messageReceived(const QString &message);       // 收到文本消息
@@ -95,6 +99,7 @@ private:
     int m_reconnectInterval;          // 重连间隔(毫秒)
     int m_reconnectAttempts;          // 重连尝试次数
     int m_maxReconnectAttempts;       // 最大重连次数
+    QString Roomid;
 
     // 心跳机制
     QTimer *m_heartbeatTimer;         // 心跳定时器

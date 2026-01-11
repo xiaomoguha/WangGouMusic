@@ -5,6 +5,7 @@ import "./Src/Leftpage"
 import "./Src/Rightpage"
 import "./Src/Bottompage"
 import "./Src/PlayingPage"
+import "./Src/ToolWindow"
 import QtQuick.Controls
 
 ApplicationWindow {
@@ -16,7 +17,28 @@ ApplicationWindow {
     title: qsTr("WYYMUSIC")
     color: "transparent"
     flags: Qt.FramelessWindowHint | Qt.Window
-
+    NoteWindow{
+        id: loadingToast
+        Connections {
+            target: websocket  // 指定监听哪个C++对象
+            function onConnectionStateChanged(connectstate){
+                if(connectstate === 2)
+                {
+                    loadingToast.showSuccess("连接成功啦!",1000)
+                }
+                else if(connectstate === 1)
+                {
+                    loadingToast.showLoading("正在连接websocket服务器....")
+                }
+            }
+        }
+        Connections{
+            target: BasicConfig
+            function onNotice_error(errormessages){
+                loadingToast.showError(errormessages)
+            }
+        }
+    }
     // 当前是否展开歌词
     property bool lyricsOpened: false
 
