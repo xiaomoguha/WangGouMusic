@@ -25,5 +25,6 @@
         <file>Src/ComponentPage/Add_room_window.qml</file>
         <file>Src/ComponentPage/Togethermusicmain.qml</file>
         <file>Src/PlayingPage/PlayingPage.qml</file>
+        <file>Src/ToolWindow/NoteWindow.qml</file>
     </qresource>
 </RCC>

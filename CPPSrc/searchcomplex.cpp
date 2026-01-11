@@ -13,7 +13,7 @@ void SearchComplex::fetchComplexData(const QString &keyword)
         qWarning() << "Empty URL provided";
         return;
     }
-    QNetworkRequest request = QNetworkRequest(QUrl("http://47.112.6.94:3000/search?keywords="+keyword+"&page=1"));
+    QNetworkRequest request = QNetworkRequest(QUrl("https://xjt-togethertracks.top/api/search?keywords="+keyword+"&page=1"));
     m_manager.get(request);
 }
 
