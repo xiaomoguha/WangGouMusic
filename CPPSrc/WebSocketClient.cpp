@@ -7,7 +7,7 @@
 WebSocketClient::WebSocketClient(PlaylistManager *playManager, QObject *parent)
     : QObject{parent}, playmanager(playManager), m_webSocket(nullptr), m_serverUrl("ws://10.0.0.113:3375"), m_connectionState(Disconnected), m_autoReconnect(true), m_reconnectInterval(100)
       ,
-      m_reconnectAttempts(0), m_maxReconnectAttempts(30) // 最大重连30次
+      m_reconnectAttempts(0), m_maxReconnectAttempts(5) // 最大重连10次
       ,
       m_heartbeatTimer(nullptr), m_heartbeatInterval(30) // 30秒心跳
 {
@@ -201,8 +201,6 @@ void WebSocketClient::onConnected()
     m_reconnectAttempts = 0; // 重置重连次数
 
     emit connectionStateChanged(m_connectionState);
-    emit connectionStatusChanged(true);
-    emit connected();
     emit logMessage("WebSocket 连接成功");
     qDebug() << "WebSocket 连接成功";
 
@@ -224,7 +222,6 @@ void WebSocketClient::onDisconnected()
 
     emit connectionStateChanged(m_connectionState);
     emit connectionStatusChanged(false);
-    emit disconnected();
     emit logMessage("WebSocket 连接断开");
     qDebug() << "WebSocket 连接断开";
 
@@ -238,6 +235,12 @@ void WebSocketClient::onDisconnected()
     if (m_autoReconnect && m_reconnectAttempts < m_maxReconnectAttempts)
     {
         QTimer::singleShot(m_reconnectInterval, this, &WebSocketClient::tryReconnect);
+    }
+    else
+    {
+        //触发连接失败信号
+        emit connectFail();
+        return;
     }
 }
 

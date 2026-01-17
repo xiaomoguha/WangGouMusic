@@ -31,6 +31,9 @@ ApplicationWindow {
                     loadingToast.showLoading("正在连接websocket服务器....")
                 }
             }
+            function onConnectFail(){
+                loadingToast.showError("websocket 连接失败");
+            }
         }
         Connections{
             target: BasicConfig

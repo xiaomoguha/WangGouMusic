@@ -47,23 +47,15 @@ public:
     Q_INVOKABLE void setHeartbeatInterval(int seconds);  // 设置心跳间隔
 
 signals:
-    // 连接状态相关
-    void connected();                       // 连接成功
-    void disconnected();                    // 连接断开
     void connectionStatusChanged(bool connected);  // 连接状态变化
     void connectionStateChanged(WebSocketClient::ConnectionState state); // 连接状态枚举变化
     void urlChanged(const QString &url);    // URL变化
     void roomidChanged();
-
-    // 数据相关
+    void connectFail();
     void messageReceived(const QString &message);       // 收到文本消息
     void jsonReceived(const QJsonObject &json);         // 收到JSON消息
     void binaryReceived(const QByteArray &data);        // 收到二进制数据
-
-    // 错误处理
     void errorOccurred(const QString &error);          // 发生错误
-
-    // 日志（可选）
     void logMessage(const QString &log);               // 日志消息
 
 public slots:

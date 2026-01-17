@@ -137,10 +137,10 @@ Rectangle{
                     hoverEnabled: true
                     anchors.fill: parent
                     onEntered: {
-                        parent.layer.enabled = true
+                        parent.layer.enabled = false
                     }
                     onExited: {
-                        parent.layer.enabled = false
+                        parent.layer.enabled = true
                     }
                 }
             }
