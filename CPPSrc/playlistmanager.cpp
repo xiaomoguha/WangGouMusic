@@ -332,46 +332,6 @@ QList<SongInfo> PlaylistManager::convertToSongInfoList(const QVariantList &varia
     }
     return result;
 }
-void PlaylistManager::changeplaylistbyrecommandindex(int index, int songindex)
-{
-    switch (index)
-    {
-    case Recommendation::SelectedGoodSongs:
-        m_playlist = convertToSongInfoList(m_recommendation->SelectedGoodSongsitems);
-        break;
-    case Recommendation::Classicnostalgicgoldenoldies:
-        m_playlist = convertToSongInfoList(m_recommendation->Classicnostalgicgoldenoldiesitems);
-        break;
-    case Recommendation::SelectedPopularHits:
-        m_playlist = convertToSongInfoList(m_recommendation->SelectedPopularHitsitems);
-        break;
-    case Recommendation::Rareandexquisitemasterpieces:
-        m_playlist = convertToSongInfoList(m_recommendation->Rareandexquisitemasterpiecesitems);
-        break;
-    case Recommendation::Keepingupwiththelatesttrends:
-        m_playlist = convertToSongInfoList(m_recommendation->Keepingupwiththelatesttrendsitems);
-        break;
-    case Recommendation::ExclusiverecommendationforVIPsongs:
-        m_playlist = convertToSongInfoList(m_recommendation->ExclusiverecommendationforVIPsongsitems);
-        break;
-    case Recommendation::Man:
-        m_playlist = convertToSongInfoList(m_recommendation->Mansongsitems);
-        break;
-    default:
-        break;
-    }
-    emit playlistUpdated();
-    m_nowplaylistrange = index;
-    emit nowplaylistrangeChanged();
-    playSongbyindex(songindex);
-}
-
-void PlaylistManager::returnplaylistrange()
-{
-    m_nowplaylistrange = -1;
-    emit nowplaylistrangeChanged();
-}
-
 int PlaylistManager::currentIndex() const
 {
     return m_currentIndex;
@@ -391,6 +351,15 @@ QString PlaylistManager::currentsingername() const
     if (m_currentIndex >= 0 && m_currentIndex < m_playlist.size())
     {
         return (*m_curplaylist)[m_currentIndex].singername;
+    }
+    return "";
+}
+
+QString PlaylistManager::currentSongHash() const
+{
+    if (m_currentIndex >= 0 && m_currentIndex < m_playlist.size())
+    {
+        return (*m_curplaylist)[m_currentIndex].songhash;
     }
     return "";
 }
@@ -437,11 +406,6 @@ QList<SongInfo> PlaylistManager::togetherplaylist()
 int PlaylistManager::playlistcount() const
 {
     return m_playlist.size();
-}
-
-int PlaylistManager::getnowplaylistrange() const
-{
-    return m_nowplaylistrange;
 }
 
 QString PlaylistManager::getcurrlyric() const

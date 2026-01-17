@@ -49,6 +49,7 @@ enum playlist_type
 class PlaylistManager : public QObject
 {
     Q_OBJECT
+    Q_PROPERTY(QString currentSonghash READ currentSongHash NOTIFY currentSongChanged)
     Q_PROPERTY(int currentIndex READ currentIndex NOTIFY currentIndexChanged)
     Q_PROPERTY(QString currentTitle READ currentTitle NOTIFY currentSongChanged)
     Q_PROPERTY(QString currentsingername READ currentsingername NOTIFY currentSongChanged)
@@ -59,7 +60,6 @@ class PlaylistManager : public QObject
     Q_PROPERTY(QString duration READ durationstr NOTIFY durationChanged)
     Q_PROPERTY(QList<SongInfo> playlist READ playlist NOTIFY playlistUpdated)
     Q_PROPERTY(int playlistcount READ playlistcount NOTIFY playlistUpdated)
-    Q_PROPERTY(int nowplaylistrange READ getnowplaylistrange NOTIFY nowplaylistrangeChanged)
     Q_PROPERTY(QString currlyric READ getcurrlyric NOTIFY currlyricChanged)
     Q_PROPERTY(enum playlist_type type READ getplaylist_type NOTIFY playlist_typeChanged)
     Q_PROPERTY(QList<SongInfo> togetherplaylist READ togetherplaylist NOTIFY togetherplaylistUpdated)
@@ -76,12 +76,11 @@ public:
     Q_INVOKABLE void playstop();
     Q_INVOKABLE void addandplay(const QString &title, const QString &url,const QString &singername,const QString &union_cover,const QString &album_name,const QString &duration);
     Q_INVOKABLE void setposistion(float positionvalue);
-    Q_INVOKABLE void changeplaylistbyrecommandindex(int index,int songindex);
-    Q_INVOKABLE void returnplaylistrange();
 
     int currentIndex() const;
     QString currentTitle() const;
     QString currentsingername() const;
+    QString currentSongHash() const;
     int count() const;
     bool isPaused() const;
     QString union_cover() const;
@@ -106,7 +105,6 @@ signals:
     void currentSongChanged();
     void percentChanged();
     void durationChanged();
-    void nowplaylistrangeChanged();
     void currlyricChanged();
     void playlist_typeChanged();
     void togetherplaylistUpdated();
@@ -139,7 +137,6 @@ private:
     QString formatTime(qint64 milliseconds);
     Recommendation *m_recommendation = nullptr;  // 改为指针
     QList<SongInfo> convertToSongInfoList(const QVariantList &variantList);
-    int m_nowplaylistrange = -1;
     bool m_isRepairing = false; // 添加修复状态标志
     int m_repairCount = 0;      // 修复次数计数
     const int MAX_REPAIR_ATTEMPTS = 5; // 最大修复尝试次数
