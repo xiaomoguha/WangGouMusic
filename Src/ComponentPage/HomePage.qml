@@ -2,8 +2,8 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 
 Item {
-    width: parent.width
-    height: parent.height
+    width: parent?parent.width:0
+    height: parent?parent.height:0
 
     /* ===================== 区块配置数据 ===================== */
     property var sectionModel: [
