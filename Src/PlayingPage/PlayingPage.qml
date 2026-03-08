@@ -6,45 +6,57 @@ import Qt5Compat.GraphicalEffects
 Rectangle {
     id: lyricspage
     color: "#13131a"
-    radius: 20  // 设置圆角
-    clip: true  // 裁剪超出圆角的内容
+    radius: 20
 
     property string albumCover: playlistmanager ?(playlistmanager.union_cover === ""?"qrc:/image/touxi.jpg":playlistmanager.union_cover):"qrc:/image/touxi.jpg"
     property string songName: playlistmanager?(playlistmanager.currentTitle === ""?"默认歌曲":playlistmanager.currentTitle):"........"
     property string singerName: playlistmanager?(playlistmanager.currentsingername=== ""?"默认歌手":playlistmanager.currentsingername):"....."
 
 
-    // 背景图片（现在被圆角裁剪）
+    // 1. 原始图片
     Image {
-        id: bgImage
+        id: originalImage
         anchors.fill: parent
         source: albumCover
         fillMode: Image.PreserveAspectCrop
-        layer.enabled: true
-        layer.effect: OpacityMask {
-            maskSource: Rectangle {
-                width: bgImage.width
-                height: bgImage.height
-                radius: 20
-            }
-        }
+        visible: false  // 隐藏原图
     }
+
+    // 2. 先进行高斯模糊
     GaussianBlur {
-        id: blurEffect
-        anchors.fill: bgImage
-        source: bgImage
-        radius: 180
+        id: blurredImage
+        anchors.fill: parent
+        source: originalImage
+        radius: Math.min(parent.width, parent.height) * 0.4
         samples: 120
-        opacity: 1
+        transparentBorder: true  // 重要！
+        visible: false  // 隐藏模糊结果
     }
 
     // === 最终覆盖层 ===
     ColorOverlay {
-        anchors.fill: blurEffect
-        source: blurEffect
+        id:cover
+        anchors.fill: blurredImage
+        source: blurredImage
         color: Qt.rgba(0, 0, 0, 0.5)
         opacity: 1.0
+        visible: false
     }
+
+    // 3. 最后应用圆角裁剪
+    OpacityMask {
+        id:bgopmk
+        anchors.fill: parent
+        source: cover
+        maskSource: Rectangle {
+            width: originalImage.width
+            height: originalImage.height
+            radius: 20
+            visible: false
+        }
+    }
+
+
 
     MouseArea {
         id: eventBlocker
@@ -254,15 +266,16 @@ Rectangle {
         anchors.bottom: parent.bottom
         anchors.bottomMargin: 0.2*root.height
         anchors.topMargin: 160
+        clip: true
         width: 400
 
         model: playlistmanager?playlistmanager.m_lyrics:0
-        interactive: true
+        interactive: false   //是否可以手动滚动
         spacing: 16
 
         currentIndex: playlistmanager ? playlistmanager.lyricsindex : -1
 
-        highlightRangeMode: ListView.StrictlyEnforceRange
+        highlightRangeMode: ListView.ApplyRange
 
         preferredHighlightBegin: lyricList.height / 2
         preferredHighlightEnd: lyricList.height / 2
@@ -273,7 +286,7 @@ Rectangle {
             width: 400
             height: contentHeight > 0 ? contentHeight : 20 // 防止高度为0
             text: modelData.text
-            color: ListView.isCurrentItem ? "white" : "#AAAAAA"
+            color: ListView.isCurrentItem ? "#1B81FB" : "#dddddd"
             font.pixelSize: ListView.isCurrentItem ? 20 : 16
             horizontalAlignment: Text.AlignHCenter
             opacity: ListView.isCurrentItem ? 1.0 : 0.5

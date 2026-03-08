@@ -17,28 +17,25 @@ ApplicationWindow {
     title: qsTr("WYYMUSIC")
     color: "transparent"
     flags: Qt.FramelessWindowHint | Qt.Window
-    NoteWindow{
+    NoteWindow {
         id: loadingToast
         Connections {
             target: websocket  // 指定监听哪个C++对象
-            function onConnectionStateChanged(connectstate){
-                if(connectstate === 2)
-                {
-                    loadingToast.showSuccess("连接成功啦!",1000)
-                }
-                else if(connectstate === 1)
-                {
-                    loadingToast.showLoading("正在连接websocket服务器....")
+            function onConnectionStateChanged(connectstate) {
+                if (connectstate === 2) {
+                    loadingToast.showSuccess("连接成功啦!", 1000);
+                } else if (connectstate === 1) {
+                    loadingToast.showLoading("正在连接websocket服务器....");
                 }
             }
-            function onConnectFail(){
+            function onConnectFail() {
                 loadingToast.showError("websocket 连接失败");
             }
         }
-        Connections{
+        Connections {
             target: BasicConfig
-            function onNotice_error(errormessages){
-                loadingToast.showError(errormessages)
+            function onNotice_error(errormessages) {
+                loadingToast.showError(errormessages);
             }
         }
     }
@@ -196,7 +193,7 @@ ApplicationWindow {
 
         y: root.lyricsOpened ? 0 : root.height
 
-        z: 9999
+        z: 10
 
         Behavior on y {
             NumberAnimation {
@@ -205,5 +202,4 @@ ApplicationWindow {
             }
         }
     }
-
 }

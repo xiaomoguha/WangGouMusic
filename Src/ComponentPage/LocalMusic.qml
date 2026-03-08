@@ -214,7 +214,6 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             width:40
                             height: 40
-                            //fillMode: Image.PreserveAspectFit
                             source: modelData.union_cover
                         }
                         Column{
