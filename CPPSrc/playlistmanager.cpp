@@ -43,15 +43,14 @@ void PlaylistManager::addSong(const QString &title, const QString &songhash, con
     }
     (*m_curplaylist).append({title, songhash, "", singername, union_cover, album_name, duration, ""});
     showplaylist();
-    if(type == LOCAL)
+    if (type == LOCAL)
     {
         emit playlistUpdated();
     }
-    else if(type == TOGETHER)
+    else if (type == TOGETHER)
     {
         emit togetherplaylistUpdated();
     }
-
 }
 void PlaylistManager::removeSong(int index)
 {
@@ -75,8 +74,8 @@ void PlaylistManager::clearPlaylist()
     emit currentIndexChanged(-1);
 }
 
-//判断是否有缓存文件
-int PlaylistManager::is_have_cache(const SongInfo &song,const int index)
+// 判断是否有缓存文件
+int PlaylistManager::is_have_cache(const SongInfo &song, const int index)
 {
     QString cacheDir;
 #ifdef Q_OS_WIN
@@ -96,7 +95,7 @@ int PlaylistManager::is_have_cache(const SongInfo &song,const int index)
         }
         return 0;
     }
-    //先判断本地是否有歌曲缓存
+    // 先判断本地是否有歌曲缓存
     QString cacheFileName = song.title + "-" + song.singername + ".mp3";
     QString cacheFilePath = cacheDir + "/" + cacheFileName;
 
@@ -112,6 +111,8 @@ int PlaylistManager::is_have_cache(const SongInfo &song,const int index)
         player->play();
         m_isPaused = false;
         m_currentIndex = index;
+        // 提取专辑封面主色调
+        extractDominantColor(song.union_cover);
         emit currentIndexChanged(index);
         emit currentSongChanged();
         emit isPausedChanged();
@@ -141,8 +142,8 @@ void PlaylistManager::playSongbyindex(int index)
 {
     if (index >= 0 && index < (*m_curplaylist).size())
     {
-        //先判断是否可以用本地缓存播放
-        if(!is_have_cache((*m_curplaylist)[index],index))
+        // 先判断是否可以用本地缓存播放
+        if (!is_have_cache((*m_curplaylist)[index], index))
         {
             if ((*m_curplaylist)[index].url != "")
             {
@@ -189,7 +190,7 @@ void PlaylistManager::playSongbyindex(int index)
     }
     else
     {
-        qDebug()<<"索引出错！";
+        qDebug() << "索引出错！";
     }
 }
 // 根据hash值播放
@@ -199,8 +200,8 @@ void PlaylistManager::playSongbyhasg(const QString &songhash)
     {
         if ((*m_curplaylist)[index].songhash == songhash)
         {
-            //先判断是否可以用本地缓存播放
-            if(!is_have_cache((*m_curplaylist)[index],index))
+            // 先判断是否可以用本地缓存播放
+            if (!is_have_cache((*m_curplaylist)[index], index))
             {
                 // 没有url的时候再获取url，有的话直接播放
                 if ((*m_curplaylist)[index].url != "")
@@ -437,13 +438,12 @@ void PlaylistManager::changeplaylisttype(enum playlist_type changetype)
         type = TOGETHER;
         m_curplaylist = &m_togetherplaylist;
     }
-    else if(changetype == LOCAL)
+    else if (changetype == LOCAL)
     {
         type = LOCAL;
         m_curplaylist->clear();
         m_curplaylist = &m_playlist;
     }
-
 }
 
 float PlaylistManager::getpercent() const
@@ -491,6 +491,8 @@ void PlaylistManager::startPlayback(const SongInfo &song)
         player->setSource(QUrl::fromLocalFile(cacheFilePath));
         player->play();
         m_isPaused = false;
+        // 提取专辑封面主色调
+        extractDominantColor(song.union_cover);
         emit currentSongChanged();
         emit isPausedChanged();
         qDebug() << "正在播放:" << song.title << "(" << song.url << ")";
@@ -522,6 +524,8 @@ void PlaylistManager::startPlayback(const SongInfo &song)
             player->setSource(QUrl::fromLocalFile(cacheFilePath));
             player->play();
             m_isPaused = false;
+            // 提取专辑封面主色调
+            extractDominantColor(song.union_cover);
             emit currentSongChanged();
             emit isPausedChanged();
             qDebug() << "正在播放:" << song.title << "(" << song.url << ")";
@@ -741,4 +745,116 @@ QString PlaylistManager::formatTime(qint64 milliseconds)
         time = time.addMSecs(milliseconds);
         return time.toString("mm:ss");
     }
+}
+
+// 获取主色调
+QString PlaylistManager::dominantColor() const
+{
+    return m_dominantColor;
+}
+
+// 提取图片主色调
+void PlaylistManager::extractDominantColor(const QString &imageUrl)
+{
+    // 如果是本地资源或网络图片
+    if (imageUrl.startsWith("qrc:/"))
+    {
+        // 本地资源
+        QString path = imageUrl;
+        path.remove("qrc:");
+        QImage image(path);
+        if (!image.isNull())
+        {
+            QColor color = getAverageColor(image);
+            m_dominantColor = color.name(QColor::HexRgb).toUpper();
+            emit dominantColorChanged();
+        }
+    }
+    else if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://"))
+    {
+        // 网络图片 - 异步下载
+        QNetworkRequest request{QUrl(imageUrl)};
+        QNetworkReply *reply = m_networkManager.get(request);
+        connect(reply, &QNetworkReply::finished, this, [this, reply]()
+                {
+            if (reply->error() == QNetworkReply::NoError) {
+                QByteArray data = reply->readAll();
+                QImage image = QImage::fromData(data);
+                if (!image.isNull()) {
+                    QColor color = getAverageColor(image);
+                    m_dominantColor = color.name(QColor::HexRgb).toUpper();
+                    emit dominantColorChanged();
+                }
+            }
+            reply->deleteLater(); });
+    }
+    else
+    {
+        // 尝试作为本地文件路径
+        QImage image(imageUrl);
+        if (!image.isNull())
+        {
+            QColor color = getAverageColor(image);
+            m_dominantColor = color.name(QColor::HexRgb).toUpper();
+            emit dominantColorChanged();
+        }
+    }
+}
+
+// 计算图片的平均颜色
+QColor PlaylistManager::getAverageColor(const QImage &image)
+{
+    if (image.isNull())
+    {
+        return QColor("#FF6B6B");
+    }
+
+    // 缩小图片以加快处理速度
+    QImage smallImage = image.scaled(50, 50, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+
+    long totalR = 0, totalG = 0, totalB = 0;
+    int pixelCount = 0;
+
+    // 遍历所有像素
+    for (int y = 0; y < smallImage.height(); ++y)
+    {
+        for (int x = 0; x < smallImage.width(); ++x)
+        {
+            QColor color = smallImage.pixelColor(x, y);
+
+            // 忽略太暗或太亮的像素
+            int brightness = (color.red() + color.green() + color.blue()) / 3;
+            if (brightness > 20 && brightness < 235)
+            {
+                totalR += color.red();
+                totalG += color.green();
+                totalB += color.blue();
+                pixelCount++;
+            }
+        }
+    }
+
+    if (pixelCount == 0)
+    {
+        return QColor("#FF6B6B");
+    }
+
+    // 计算平均值
+    int avgR = totalR / pixelCount;
+    int avgG = totalG / pixelCount;
+    int avgB = totalB / pixelCount;
+
+    // 增加饱和度，使颜色更鲜艳
+    QColor avgColor(avgR, avgG, avgB);
+    int h, s, v;
+    avgColor.getHsv(&h, &s, &v);
+
+    // 提高饱和度和亮度
+    s = qMin(255, s + 50);
+    v = qMin(255, v + 30);
+
+    QColor finalColor;
+    finalColor.setHsv(h, s, v);
+
+    return finalColor;
 }

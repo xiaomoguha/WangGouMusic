@@ -1,7 +1,8 @@
 import QtQuick 2.15
 import Qt5Compat.GraphicalEffects
-Rectangle{
-    Row{
+
+Rectangle {
+    Row {
         spacing: 8
         anchors.left: parent.left
         anchors.verticalCenter: parent.verticalCenter
@@ -12,20 +13,20 @@ Rectangle{
             radius: width / 2
             clip: true
             Image {
-                id:avatarImage
+                id: avatarImage
                 anchors.fill: parent
                 property real currentRotation: 0
-                source: playlistmanager ?(playlistmanager.union_cover === ""?"qrc:/image/touxi.jpg":playlistmanager.union_cover):"qrc:/image/touxi.jpg"
+                source: playlistmanager ? (playlistmanager.union_cover === "" ? "qrc:/image/touxi.jpg" : playlistmanager.union_cover) : "qrc:/image/touxi.jpg"
                 rotation: currentRotation
                 layer.enabled: true
                 layer.effect: OpacityMask {
                     maskSource: Rectangle {
                         width: 60
                         height: 60
-                        radius: width/2
+                        radius: width / 2
                     }
                 }
-                NumberAnimation on currentRotation{
+                NumberAnimation on currentRotation {
                     id: rotationAnim
                     from: 0
                     to: 360
@@ -34,234 +35,309 @@ Rectangle{
                     running: false
                 }
                 // 根据 isPaused 启停动画
-                Connections
-                {
+                Connections {
                     target: playlistmanager
-                    function onIsPausedChanged()
-                    {
-                        if (!playlistmanager.isPaused)
-                        {
+                    function onIsPausedChanged() {
+                        if (!playlistmanager.isPaused) {
                             // 从当前角度重新开始动画
-                            rotationAnim.from = avatarImage.currentRotation % 360
-                            rotationAnim.to = rotationAnim.from + 360
-                            rotationAnim.start()
-                        }
-                        else
-                        {
-                            rotationAnim.stop()
+                            rotationAnim.from = avatarImage.currentRotation % 360;
+                            rotationAnim.to = rotationAnim.from + 360;
+                            rotationAnim.start();
+                        } else {
+                            rotationAnim.stop();
                         }
                     }
                 }
-                MouseArea{
+                MouseArea {
                     anchors.fill: parent
                     onClicked: {
-                        root.lyricsOpened = !root.lyricsOpened
+                        root.lyricsOpened = !root.lyricsOpened;
                     }
                 }
             }
         }
-        Column{
+        Column {
             anchors.verticalCenter: parent.verticalCenter
             spacing: 8
             Text {
                 id: songnameText
-                text: playlistmanager?(playlistmanager.currentTitle === ""?"默认歌曲":playlistmanager.currentTitle):"........"
+                text: playlistmanager ? (playlistmanager.currentTitle === "" ? "默认歌曲" : playlistmanager.currentTitle) : "........"
                 font.family: "黑体"
                 font.pixelSize: 16
-                color:"white"
+                color: "white"
                 elide: Text.ElideRight
                 width: 120
                 wrapMode: Text.NoWrap
-
             }
             Text {
                 id: singernameText
-                text: playlistmanager?(playlistmanager.currentsingername=== ""?"默认歌手":playlistmanager.currentsingername):"....."
+                text: playlistmanager ? (playlistmanager.currentsingername === "" ? "默认歌手" : playlistmanager.currentsingername) : "....."
                 font.family: "黑体"
                 font.pixelSize: 14
-                color:"#cdcdcd"
+                color: "#cdcdcd"
                 elide: Text.ElideRight
                 width: 120
                 wrapMode: Text.NoWrap
             }
         }
-        Item{
+        Item {
             width: 1
             height: 1
         }
-        Image {
+        // 评论按钮
+        Rectangle {
             id: pinlunicon
+            width: 32
+            height: 32
+            radius: 16
+            color: pinlunMouseArea.containsMouse ? "#30FFFFFF" : "transparent"
             anchors.verticalCenter: parent.verticalCenter
-            width: 22
-            height: 22
-            fillMode: Image.PreserveAspectCrop
-            source: "qrc:/image/pinlun.png"
-            layer.effect: ColorOverlay{
-                source:pinlunicon
-                color:"white"
-            }
-            MouseArea{
-                hoverEnabled: true
-                anchors.fill: parent
-                onEntered: {
-                    parent.layer.enabled = true
+
+            Image {
+                id: pinlunImg
+                anchors.centerIn: parent
+                source: "qrc:/image/pinlun.png"
+                width: 18
+                height: 18
+                fillMode: Image.PreserveAspectFit
+                layer.enabled: true
+                layer.effect: ColorOverlay {
+                    source: pinlunImg
+                    color: pinlunMouseArea.containsMouse ? "#4FC3F7" : "#FFFFFF"
                 }
-                onExited: {
-                    parent.layer.enabled = false
+            }
+
+            MouseArea {
+                id: pinlunMouseArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+            }
+
+            Behavior on color {
+                ColorAnimation {
+                    duration: 150
                 }
             }
         }
     }
-    Column{
+    Column {
         anchors.horizontalCenter: parent.horizontalCenter
         spacing: 1
-        Item{
+        Item {
             width: 1
             height: 15
         }
-        Row{
-            spacing: 25
+        Row {
+            spacing: 20
             anchors.horizontalCenter: parent.horizontalCenter
-            Image {
+
+            // 收藏按钮
+            Rectangle {
                 id: loveaddbutton
-                anchors.verticalCenter:playstoprect.verticalCenter
-                source: "qrc:/image/shoucang.png"
-                width: 25
-                height: 25
-                fillMode: Image.PreserveAspectCrop
-                layer.effect: ColorOverlay{
-                    source:loveaddbutton
-                    color:"white"
-                }
-                MouseArea{
-                    hoverEnabled: true
-                    anchors.fill: parent
-                    onEntered: {
-                        parent.layer.enabled = false
-                    }
-                    onExited: {
-                        parent.layer.enabled = true
-                    }
-                }
-            }
-            Image {
-                id: upplayicon
-                anchors.verticalCenter:playstoprect.verticalCenter
-                source: "qrc:/image/upplay.png"
-                width: 25
-                height: 25
-                fillMode: Image.PreserveAspectCrop
-                layer.effect: ColorOverlay{
-                    source:upplayicon
-                    color:"white"
-                }
-                MouseArea{
-                    hoverEnabled: true
-                    anchors.fill: parent
-                    onEntered: {
-                        parent.layer.enabled = true
-                    }
-                    onExited: {
-                        parent.layer.enabled = false
-                    }
-                    onClicked: {
-                        //上一曲
-                        playlistmanager.playPrevious()
-                    }
-                }
-            }
-            Rectangle{
-                id: playstoprect
-                width: 35
-                height: 35
-                color: "#fc3d49"
-                radius: width/2
+                width: 36
+                height: 36
+                radius: 18
+                color: loveaddMouseArea.containsMouse ? "#30FFFFFF" : "transparent"
+                anchors.verticalCenter: playstoprect.verticalCenter
+
                 Image {
-                    id: playstopicon
-                    anchors.fill: parent
-                    source: playlistmanager ? (playlistmanager.isPaused ? "qrc:/image/play.png" : "qrc:/image/paused.png") : "qrc:/image/play.png"
-                    fillMode: Image.PreserveAspectCrop
-                    scale: 0.6
-                    layer.effect: ColorOverlay{
-                        source:playstopicon
-                        color:"white"
+                    id: loveaddImg
+                    anchors.centerIn: parent
+                    source: "qrc:/image/shoucang.png"
+                    width: 20
+                    height: 20
+                    fillMode: Image.PreserveAspectFit
+                    layer.enabled: true
+                    layer.effect: ColorOverlay {
+                        source: loveaddImg
+                        color: loveaddMouseArea.containsMouse ? "#FF6B6B" : "#FFFFFF"
                     }
-                    MouseArea{
-                        hoverEnabled: true
-                        anchors.fill: parent
-                        onEntered: {
-                            parent.layer.enabled = true
-                        }
-                        onExited: {
-                            parent.layer.enabled = false
-                        }
-                        onClicked: {
-                            playlistmanager.playstop()
-                        }
+                }
+
+                MouseArea {
+                    id: loveaddMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                }
+
+                Behavior on color {
+                    ColorAnimation {
+                        duration: 150
                     }
                 }
             }
 
-            Image {
-                id: nextplayicon
-                anchors.verticalCenter:playstoprect.verticalCenter
-                source: "qrc:/image/nextplay.png"
-                width: 25
-                height: 25
-                fillMode: Image.PreserveAspectCrop
-                layer.effect: ColorOverlay{
-                    source:nextplayicon
-                    color:"white"
+            // 上一曲按钮
+            Rectangle {
+                id: upplayicon
+                width: 36
+                height: 36
+                radius: 18
+                color: upplayMouseArea.containsMouse ? "#30FFFFFF" : "transparent"
+                anchors.verticalCenter: playstoprect.verticalCenter
+
+                Image {
+                    id: upplayImg
+                    anchors.centerIn: parent
+                    source: "qrc:/image/upplay.png"
+                    width: 20
+                    height: 20
+                    fillMode: Image.PreserveAspectFit
+                    layer.enabled: true
+                    layer.effect: ColorOverlay {
+                        source: upplayImg
+                        color: "#FFFFFF"
+                    }
                 }
-                MouseArea{
-                    hoverEnabled: true
+
+                MouseArea {
+                    id: upplayMouseArea
                     anchors.fill: parent
-                    onEntered: {
-                        parent.layer.enabled = true
-                    }
-                    onExited: {
-                        parent.layer.enabled = false
-                    }
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        playlistmanager.playNext()
+                        playlistmanager.playPrevious();
+                    }
+                }
+
+                Behavior on color {
+                    ColorAnimation {
+                        duration: 150
                     }
                 }
             }
-            Image {
-                id: playlisticon
-                anchors.verticalCenter:playstoprect.verticalCenter
-                source: "qrc:/image/shunxv.png"
-                width: 25
-                height: 25
-                fillMode: Image.PreserveAspectCrop
-                layer.effect: ColorOverlay{
-                    source:playlisticon
-                    color:"white"
-                }
-                MouseArea{
-                    hoverEnabled: true
-                    anchors.fill: parent
-                    onEntered: {
-                        parent.layer.enabled = true
+
+            // 播放/暂停按钮
+            Rectangle {
+                id: playstoprect
+                width: 40
+                height: 40
+                color: "#FFFFFF"
+                radius: width / 2
+
+                Image {
+                    id: playstopicon
+                    anchors.centerIn: parent
+                    source: playlistmanager ? (playlistmanager.isPaused ? "qrc:/image/play.png" : "qrc:/image/paused.png") : "qrc:/image/play.png"
+                    width: 18
+                    height: 18
+                    fillMode: Image.PreserveAspectFit
+                    layer.enabled: true
+                    layer.effect: ColorOverlay {
+                        source: playstopicon
+                        color: "#333333"
                     }
-                    onExited: {
-                        parent.layer.enabled = false
+                }
+
+                MouseArea {
+                    id: playstopMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        playlistmanager.playstop();
+                    }
+                }
+
+                scale: playstopMouseArea.pressed ? 0.95 : 1.0
+                Behavior on scale {
+                    NumberAnimation {
+                        duration: 100
+                    }
+                }
+            }
+
+            // 下一曲按钮
+            Rectangle {
+                id: nextplayicon
+                width: 36
+                height: 36
+                radius: 18
+                color: nextplayMouseArea.containsMouse ? "#30FFFFFF" : "transparent"
+                anchors.verticalCenter: playstoprect.verticalCenter
+
+                Image {
+                    id: nextplayImg
+                    anchors.centerIn: parent
+                    source: "qrc:/image/nextplay.png"
+                    width: 20
+                    height: 20
+                    fillMode: Image.PreserveAspectFit
+                    layer.enabled: true
+                    layer.effect: ColorOverlay {
+                        source: nextplayImg
+                        color: "#FFFFFF"
+                    }
+                }
+
+                MouseArea {
+                    id: nextplayMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        playlistmanager.playNext();
+                    }
+                }
+
+                Behavior on color {
+                    ColorAnimation {
+                        duration: 150
+                    }
+                }
+            }
+
+            // 播放模式按钮
+            Rectangle {
+                id: playlisticon
+                width: 36
+                height: 36
+                radius: 18
+                color: playlistMouseArea.containsMouse ? "#30FFFFFF" : "transparent"
+                anchors.verticalCenter: playstoprect.verticalCenter
+
+                Image {
+                    id: playlistImg
+                    anchors.centerIn: parent
+                    source: "qrc:/image/shunxv.png"
+                    width: 20
+                    height: 20
+                    fillMode: Image.PreserveAspectFit
+                    layer.enabled: true
+                    layer.effect: ColorOverlay {
+                        source: playlistImg
+                        color: "#FFFFFF"
+                    }
+                }
+
+                MouseArea {
+                    id: playlistMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                }
+
+                Behavior on color {
+                    ColorAnimation {
+                        duration: 150
                     }
                 }
             }
         }
-        Row{
+        Row {
             spacing: 10
-            Text{
-                id:aplaytext
+            Text {
+                id: aplaytext
                 anchors.verticalCenter: progressSlideritem.verticalCenter
-                text: playlistmanager?playlistmanager.percentstr:"00:00"
+                text: playlistmanager ? playlistmanager.percentstr : "00:00"
                 font.family: "黑体"
                 font.pixelSize: 13
                 color: "#cdcdcd"
             }
-            Item{
-                id:progressSlideritem
+            Item {
+                id: progressSlideritem
                 width: 400
                 height: 30
                 // 鼠标交互区域
@@ -270,39 +346,39 @@ Rectangle{
                     hoverEnabled: true
 
                     onPressed: {
-                        progressSlider.dragging = true
-                        updateProgress(mouseX)
+                        progressSlider.dragging = true;
+                        updateProgress(mouseX);
                     }
 
                     onPositionChanged: {
                         if (pressed) {
-                            updateProgress(mouseX)
+                            updateProgress(mouseX);
                         }
                     }
 
                     onReleased: {
                         if (progressSlider.dragging) {
-                            commitProgress()  // 拖动结束时提交到后端
-                            progressSlider.dragging = false
+                            commitProgress();  // 拖动结束时提交到后端
+                            progressSlider.dragging = false;
                         }
                     }
 
                     onClicked: {  // 点击跳转（非拖动）
-                        updateProgress(mouseX)
-                        commitProgress()
+                        updateProgress(mouseX);
+                        commitProgress();
                     }
 
                     // 更新进度显示（不提交到后端）
                     function updateProgress(mouseX) {
-                        var newValue = Math.max(0, Math.min(1, mouseX / progressSlider.width))
-                        progressContentRect.tempWidth = progressSlider.width * newValue
+                        var newValue = Math.max(0, Math.min(1, mouseX / progressSlider.width));
+                        progressContentRect.tempWidth = progressSlider.width * newValue;
                     }
 
                     // 提交进度到后端
                     function commitProgress() {
-                        var newValue = progressContentRect.tempWidth / progressSlider.width
+                        var newValue = progressContentRect.tempWidth / progressSlider.width;
                         if (playlistmanager) {
-                            playlistmanager.setposistion(newValue)  // 调用C++方法
+                            playlistmanager.setposistion(newValue);  // 调用C++方法
                         }
                     }
                 }
@@ -311,7 +387,7 @@ Rectangle{
                     color: "#4d4d56"
                     height: 2
                     width: 400
-                    radius: height/2
+                    radius: height / 2
                     anchors.verticalCenter: parent.verticalCenter
                     property real value: playlistmanager ? playlistmanager.percent : 0.0  // 绑定后端进度（0~1）
                     property bool dragging: false       // 标记是否正在拖动
@@ -321,7 +397,7 @@ Rectangle{
                         anchors.left: parent.left
                         anchors.top: parent.top
                         anchors.bottom: parent.bottom
-                        radius: height/2
+                        radius: height / 2
                         color: "#b94d51"
                         width: progressSlider.dragging ? tempWidth : parent.width * progressSlider.value  // 拖动时用临时值，否则用后端值
                         property real tempWidth: 0  // 拖动时的临时宽度
@@ -333,7 +409,7 @@ Rectangle{
                         width: parent.height + 20 // 比滑块大一些
                         height: width
                         anchors.right: progressContentRect.right
-                        anchors.rightMargin: -width/2
+                        anchors.rightMargin: -width / 2
                         anchors.verticalCenter: progressContentRect.verticalCenter
 
                         // 点光源核心
@@ -341,7 +417,7 @@ Rectangle{
                             id: lightCore
                             width: parent.height * 0.4 // 核心尺寸
                             height: width
-                            radius: width/2
+                            radius: width / 2
                             color: "#ff8e9e"
                             anchors.centerIn: parent
 
@@ -349,9 +425,17 @@ Rectangle{
                             SequentialAnimation on scale {
                                 id: coreAnimation
                                 loops: Animation.Infinite
-                                running: playlistmanager ? (playlistmanager.isPaused ? false : true):false
-                                NumberAnimation { to: 1.2; duration: 800; easing.type: Easing.OutCubic }
-                                NumberAnimation { to: 1.0; duration: 1200; easing.type: Easing.InOutQuad }
+                                running: playlistmanager ? (playlistmanager.isPaused ? false : true) : false
+                                NumberAnimation {
+                                    to: 1.2
+                                    duration: 800
+                                    easing.type: Easing.OutCubic
+                                }
+                                NumberAnimation {
+                                    to: 1.0
+                                    duration: 1200
+                                    easing.type: Easing.InOutQuad
+                                }
                             }
                         }
 
@@ -359,7 +443,7 @@ Rectangle{
                         Rectangle {
                             id: lightHalo
                             anchors.fill: parent
-                            radius: width/2
+                            radius: width / 2
                             visible: false // 仅作为源使用
                         }
 
@@ -369,18 +453,35 @@ Rectangle{
                             anchors.fill: lightHalo
                             source: lightHalo
                             gradient: Gradient {
-                                GradientStop { position: 0.0; color: "#40ff8e9e" } // 中心颜色
-                                GradientStop { position: 0.7; color: "#20ff8e9e" } // 中间过渡
-                                GradientStop { position: 1.0; color: "#00ff8e9e" } // 边缘透明
+                                GradientStop {
+                                    position: 0.0
+                                    color: "#40ff8e9e"
+                                } // 中心颜色
+                                GradientStop {
+                                    position: 0.7
+                                    color: "#20ff8e9e"
+                                } // 中间过渡
+                                GradientStop {
+                                    position: 1.0
+                                    color: "#00ff8e9e"
+                                } // 边缘透明
                             }
 
                             // 光晕呼吸动画
                             SequentialAnimation on scale {
                                 id: haloAnimation
                                 loops: Animation.Infinite
-                                running: playlistmanager ? (playlistmanager.isPaused ? false : true):false
-                                NumberAnimation { to: 1.2; duration: 1000; easing.type: Easing.OutCubic }
-                                NumberAnimation { to: 1.0; duration: 1500; easing.type: Easing.InOutQuad }
+                                running: playlistmanager ? (playlistmanager.isPaused ? false : true) : false
+                                NumberAnimation {
+                                    to: 1.2
+                                    duration: 1000
+                                    easing.type: Easing.OutCubic
+                                }
+                                NumberAnimation {
+                                    to: 1.0
+                                    duration: 1500
+                                    easing.type: Easing.InOutQuad
+                                }
                             }
                         }
 
@@ -393,106 +494,143 @@ Rectangle{
                         }
                         // 点光源动画控制器
                         function toggleLightAnimation(running) {
-                            coreAnimation.running = running
-                            haloAnimation.running = running
+                            coreAnimation.running = running;
+                            haloAnimation.running = running;
                         }
                     }
                 }
             }
-            Text{
-                id:eplaytext
+            Text {
+                id: eplaytext
                 anchors.verticalCenter: progressSlideritem.verticalCenter
-                text: playlistmanager?playlistmanager.duration:"00:00"
+                text: playlistmanager ? playlistmanager.duration : "00:00"
                 font.family: "黑体"
                 font.pixelSize: 13
                 color: "#cdcdcd"
             }
         }
     }
-    Row{
+    Row {
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
         anchors.rightMargin: 40
-        spacing: 10
-        Image {
-            id: geciicon
-            source: "qrc:/image/geci.png"
-            width: 25
-            height: 25
-            scale: 1.2
-            fillMode: Image.PreserveAspectCrop
-            layer.effect: ColorOverlay{
-                source:geciicon
-                color:Qt.platform.os === "windows"?desktopLyricsWindow?(desktopLyricsWindow.visible?"#E74F50":"white"):"white":"white"
-            }
-            // 组件初始化完成后执行
-            Component.onCompleted: {
-                if(Qt.platform.os === "windows")
-                    layer.enabled = desktopLyricsWindow?desktopLyricsWindow.visible:false
-            }
-            MouseArea{
-                hoverEnabled: true
-                anchors.fill: parent
-                onEntered: {
-                    parent.layer.enabled = true
-                }
-                onExited: {
-                    if(Qt.platform.os === "windows")
-                    {
-                        if(!desktopLyricsWindow.visible)
-                        {
-                            parent.layer.enabled = false
-                        }
-                    }
+        spacing: 12
 
+        // 歌词按钮
+        Rectangle {
+            id: geciicon
+            width: 36
+            height: 36
+            radius: 18
+            color: geciMouseArea.containsMouse ? "#30FFFFFF" : "transparent"
+
+            Image {
+                id: geciImg
+                anchors.centerIn: parent
+                source: "qrc:/image/geci.png"
+                width: 20
+                height: 20
+                fillMode: Image.PreserveAspectFit
+                layer.enabled: true
+                layer.effect: ColorOverlay {
+                    source: geciImg
+                    color: Qt.platform.os === "windows" ? (desktopLyricsWindow ? (desktopLyricsWindow.visible ? "#FF6B6B" : "#FFFFFF") : "#FFFFFF") : "#FFFFFF"
                 }
+            }
+
+            Component.onCompleted: {
+                if (Qt.platform.os === "windows") {
+                    geciImg.layer.enabled = desktopLyricsWindow ? desktopLyricsWindow.visible : false;
+                }
+            }
+
+            MouseArea {
+                id: geciMouseArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                    if(Qt.platform.os ==="windows"&&desktopLyricsWindow)
-                    {
-                        desktopLyricsWindow.visible = !desktopLyricsWindow.visible
+                    if (Qt.platform.os === "windows" && desktopLyricsWindow) {
+                        desktopLyricsWindow.visible = !desktopLyricsWindow.visible;
                     }
                 }
             }
+
+            Behavior on color {
+                ColorAnimation {
+                    duration: 150
+                }
+            }
         }
-        Image {
+
+        // 音量按钮
+        Rectangle {
             id: shenyingicon
-            source: "qrc:/image/shenying.png"
-            width: 25
-            height: 25
-            fillMode: Image.PreserveAspectCrop
-            layer.effect: ColorOverlay{
-                source:shenyingicon
-                color:"white"
-            }
-            MouseArea{
-                hoverEnabled: true
-                anchors.fill: parent
-                onEntered: {
-                    parent.layer.enabled = true
+            width: 36
+            height: 36
+            radius: 18
+            color: shenyingMouseArea.containsMouse ? "#30FFFFFF" : "transparent"
+
+            Image {
+                id: shenyingImg
+                anchors.centerIn: parent
+                source: "qrc:/image/shenying.png"
+                width: 20
+                height: 20
+                fillMode: Image.PreserveAspectFit
+                layer.enabled: true
+                layer.effect: ColorOverlay {
+                    source: shenyingImg
+                    color: "#FFFFFF"
                 }
-                onExited: {
-                    parent.layer.enabled = false
+            }
+
+            MouseArea {
+                id: shenyingMouseArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+            }
+
+            Behavior on color {
+                ColorAnimation {
+                    duration: 150
                 }
             }
         }
-        Image {
+
+        // 播放列表按钮
+        Rectangle {
             id: liebiaoicon
-            source: "qrc:/image/24gl-playlistHeart.png"
-            width: 25
-            height: 25
-            fillMode: Image.PreserveAspectCrop
-            layer.effect: ColorOverlay{
-                source:liebiaoicon
-                color:"white"
-            }
-            MouseArea{
-                hoverEnabled: true
-                anchors.fill: parent
-                onEntered: {
-                    parent.layer.enabled = true
+            width: 36
+            height: 36
+            radius: 18
+            color: liebiaoMouseArea.containsMouse ? "#30FFFFFF" : "transparent"
+
+            Image {
+                id: liebiaoImg
+                anchors.centerIn: parent
+                source: "qrc:/image/liebiao.png"
+                width: 20
+                height: 20
+                fillMode: Image.PreserveAspectFit
+                layer.enabled: true
+                layer.effect: ColorOverlay {
+                    source: liebiaoImg
+                    color: "#FFFFFF"
                 }
-                onExited: {
-                    parent.layer.enabled = false
+            }
+
+            MouseArea {
+                id: liebiaoMouseArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+            }
+
+            Behavior on color {
+                ColorAnimation {
+                    duration: 150
                 }
             }
         }

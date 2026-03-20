@@ -3,25 +3,22 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
-Page{
+
+Page {
     background: Rectangle {
         color: "transparent"
     }
-    Connections
-    {
+    Connections {
         target: BasicConfig
-        function onSearchKeywordchange()
-        {
-            loadingOverlay.visible = true
-            complexsearch.fetchComplexData(BasicConfig.searchKeyword)
+        function onSearchKeywordchange() {
+            loadingOverlay.visible = true;
+            complexsearch.fetchComplexData(BasicConfig.searchKeyword);
         }
     }
-    Connections
-    {
+    Connections {
         target: complexsearch
-        function onLoadFinished()
-        {
-            loadingOverlay.visible = false
+        function onLoadFinished() {
+            loadingOverlay.visible = false;
         }
     }
     Rectangle {
@@ -31,7 +28,7 @@ Page{
         visible: false      // 默认隐藏
         z: 9999             // 确保在最上层
         BusyIndicator {
-            id:busycry
+            id: busycry
             anchors.top: parent.top
             anchors.topMargin: 30
             anchors.horizontalCenter: parent.horizontalCenter
@@ -87,7 +84,7 @@ Page{
     Flickable {
         id: flick
         anchors.fill: parent
-        anchors.leftMargin: 0.025*root.width
+        anchors.leftMargin: 0.025 * root.width
         clip: true
         contentWidth: listCol.width
         contentHeight: listCol.height
@@ -98,139 +95,210 @@ Page{
             Repeater {
                 model: complexsearch ? complexsearch.items : []
                 delegate: Rectangle {
+                    id: sosuoItem
                     width: listCol.width
                     height: sosuoindexrow.height + 25
                     radius: 5
-                    color: "transparent"
-                    MouseArea {
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        onEntered: {
-                            parent.color = "#212127"
-                            additemsrow.visible = true
-                        }
-                        onExited: {
-                            parent.color = "transparent"
-                            additemsrow.visible = false
-                        }
+                    color: sosuoHoverHandler.hovered ? "#212127" : "transparent"
+
+                    property bool showActions: sosuoHoverHandler.hovered
+
+                    HoverHandler {
+                        id: sosuoHoverHandler
                     }
                     Row {
-                        id:sosuoindexrow
+                        id: sosuoindexrow
                         anchors.left: parent.left
                         anchors.leftMargin: 20
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 15
                         Text {
-                            text: index + 1<=9?"0" + String(index+1):index +1
+                            text: index + 1 <= 9 ? "0" + String(index + 1) : index + 1
                             anchors.verticalCenter: parent.verticalCenter
-                            font.pixelSize: 16; color: "#a1a1a3"
+                            font.pixelSize: 16
+                            color: "#a1a1a3"
                         }
-                        Image{
+                        Image {
                             anchors.verticalCenter: parent.verticalCenter
-                            width:45
+                            width: 45
                             height: 45
                             source: modelData.union_cover
                         }
-                        Column{
+                        Column {
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: 5
                             Text {
                                 text: modelData.songname
-                                font.pixelSize: 13; color: "white"
+                                font.pixelSize: 13
+                                color: "white"
                                 elide: Text.ElideRight     // 超出部分显示省略号
-                                width: 0.19*root.width                 // 设置最大宽度，省略号才生效
+                                width: 0.19 * root.width                 // 设置最大宽度，省略号才生效
                                 wrapMode: Text.NoWrap      // 禁止换行
                             }
                             Text {
                                 text: modelData.singername
                                 elide: Text.ElideRight     // 超出部分显示省略号
-                                width: 0.19*root.width                  // 设置最大宽度，省略号才生效
+                                width: 0.19 * root.width                  // 设置最大宽度，省略号才生效
                                 wrapMode: Text.NoWrap      // 禁止换行
-                                font.pixelSize: 11; color: "white"
+                                font.pixelSize: 11
+                                color: "white"
                             }
                         }
                     }
-                    Row{
-                        id:additemsrow
-                        visible: false
-                        anchors.left: sosuoindexrow.right
-                        anchors.leftMargin: 5
+                    Row {
+                        id: additemsrow
+                        visible: showActions
+                        x: 0.28 * root.width
                         anchors.verticalCenter: parent.verticalCenter
-                        spacing: 10
-                        Image{
-                            id: playNowImage
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: 23
-                            height: 23
-                            fillMode: Image.PreserveAspectFit
-                            source: "qrc:/image/playnow.png"
-                            MouseArea{
-                                hoverEnabled: false
-                                anchors.fill: parent
+                        spacing: 8
+
+                        // 播放按钮
+                        Rectangle {
+                            id: playNowBtn
+                            width: 32
+                            height: 32
+                            radius: 16
+                            color: playNowHoverHandler.hovered ? "#30FFFFFF" : "transparent"
+
+                            Image {
+                                id: playNowIcon
+                                anchors.centerIn: parent
+                                source: "qrc:/image/playnow.png"
+                                width: 16
+                                height: 16
+                                fillMode: Image.PreserveAspectFit
+                                layer.enabled: true
+                                layer.effect: ColorOverlay {
+                                    source: playNowIcon
+                                    color: "#FFFFFF"
+                                }
+                            }
+
+                            HoverHandler {
+                                id: playNowHoverHandler
+                            }
+
+                            TapHandler {
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    //添加到列表并且立即播放
-                                    playlistmanager.addandplay(modelData.songname,modelData.songhash,modelData.singername,modelData.union_cover,modelData.album_name,modelData.duration)
+                                onTapped: {
+                                    playlistmanager.addandplay(modelData.songname, modelData.songhash, modelData.singername, modelData.union_cover, modelData.album_name, modelData.duration);
+                                }
+                            }
+
+                            Behavior on color {
+                                ColorAnimation {
+                                    duration: 150
                                 }
                             }
                         }
-                        Image{
-                            id: addPlaylistImage
-                            anchors.verticalCenter: parent.verticalCenter
-                            scale: 0.8
-                            width: 23
-                            height: 23
-                            fillMode: Image.PreserveAspectFit
-                            source: "qrc:/image/addplaylist.png"
-                            MouseArea{
-                                hoverEnabled: false
-                                anchors.fill: parent
+
+                        // 添加到播放列表按钮
+                        Rectangle {
+                            id: addPlaylistBtn
+                            width: 32
+                            height: 32
+                            radius: 16
+                            color: addPlaylistHoverHandler.hovered ? "#30FFFFFF" : "transparent"
+
+                            Image {
+                                id: addPlaylistIcon
+                                anchors.centerIn: parent
+                                source: "qrc:/image/addplaylist.png"
+                                width: 16
+                                height: 16
+                                fillMode: Image.PreserveAspectFit
+                                layer.enabled: true
+                                layer.effect: ColorOverlay {
+                                    source: addPlaylistIcon
+                                    color: "#FFFFFF"
+                                }
+                            }
+
+                            HoverHandler {
+                                id: addPlaylistHoverHandler
+                            }
+
+                            TapHandler {
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    //添加到列表
-                                    playlistmanager.addSong(modelData.songname,modelData.songhash,modelData.singername,modelData.union_cover,modelData.album_name,modelData.duration)
+                                onTapped: {
+                                    playlistmanager.addSong(modelData.songname, modelData.songhash, modelData.singername, modelData.union_cover, modelData.album_name, modelData.duration);
+                                }
+                            }
+
+                            Behavior on color {
+                                ColorAnimation {
+                                    duration: 150
                                 }
                             }
                         }
-                        Image{
-                            id: addloveImage
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: 23
-                            height: 23
-                            fillMode: Image.PreserveAspectFit
-                            source: "qrc:/image/addlove.png"
-                            MouseArea{
-                                hoverEnabled: false
-                                anchors.fill: parent
+
+                        // 添加到喜欢按钮
+                        Rectangle {
+                            id: addLoveBtn
+                            width: 32
+                            height: 32
+                            radius: 16
+                            color: addLoveHoverHandler.hovered ? "#30FFFFFF" : "transparent"
+
+                            Image {
+                                id: addLoveIcon
+                                anchors.centerIn: parent
+                                source: "qrc:/image/addlove.png"
+                                width: 16
+                                height: 16
+                                fillMode: Image.PreserveAspectFit
+                                layer.enabled: true
+                                layer.effect: ColorOverlay {
+                                    source: addLoveIcon
+                                    color: addLoveHoverHandler.hovered ? "#FF6B6B" : "#FFFFFF"
+                                }
+                            }
+
+                            HoverHandler {
+                                id: addLoveHoverHandler
+                            }
+
+                            TapHandler {
                                 cursorShape: Qt.PointingHandCursor
+                            }
+
+                            Behavior on color {
+                                ColorAnimation {
+                                    duration: 150
+                                }
                             }
                         }
                     }
                     Text {
                         id: albumText
-                        x:0.4*root.width
+                        x: showActions ? 0.48 * root.width : 0.4 * root.width
                         anchors.verticalCenter: parent.verticalCenter
                         elide: Text.ElideRight     // 超出部分显示省略号
-                        width: 0.28*root.width                 // 设置最大宽度，省略号才生效
+                        width: 0.28 * root.width                 // 设置最大宽度，省略号才生效
                         wrapMode: Text.NoWrap      // 禁止换行
                         text: modelData.album_name
                         font.pixelSize: 14
                         font.family: "黑体"
-                        color:"white"
+                        color: "white"
+
+                        Behavior on x {
+                            NumberAnimation {
+                                duration: 150
+                            }
+                        }
                     }
                     Text {
                         id: songlenText
                         anchors.right: parent.right
-                        anchors.rightMargin: 0.05*root.width
+                        anchors.rightMargin: 0.05 * root.width
                         anchors.verticalCenter: parent.verticalCenter
                         text: modelData.duration
                         font.pixelSize: 14
                         font.family: "黑体"
-                        color:"white"
+                        color: "white"
                     }
                 }
             }
         }
     }
 }
-

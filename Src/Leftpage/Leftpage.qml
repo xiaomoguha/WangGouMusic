@@ -1,55 +1,70 @@
 import QtQuick 2.15
+import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
 
 Rectangle {
     id: leftpageRectangle
     property int currentIndex: 0
+
     Connections {
         target: BasicConfig
         function onIndexchange(index) {
             leftpageRectangle.currentIndex = index;
         }
     }
+
+    // Logo 区域
     Item {
         id: title
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        anchors.topMargin: 30
-        height: wyyicon.height + 40
+        anchors.topMargin: 35
+        height: 50
+
         Row {
-            spacing: 10
+            spacing: 12
             anchors.centerIn: parent
-            Image {
-                id: wyyicon
-                anchors.verticalCenter: parent.verticalCenter
-                source: "qrc:/image/wyyicon.png"
-                smooth: true       // 启用高质量插值
-                mipmap: true       // 启用多级纹理过滤
-                layer.enabled: true // 强制硬件加速
-                width: 35
-                height: 35
-                fillMode: Image.PreserveAspectFit
+
+            Rectangle {
+                width: 40
+                height: 40
+                radius: 12
+                color: "#FF6B6B"
+
+                Image {
+                    id: wyyicon
+                    anchors.centerIn: parent
+                    source: "qrc:/image/wyyicon.png"
+                    width: 28
+                    height: 28
+                    fillMode: Image.PreserveAspectFit
+                    smooth: true
+                    mipmap: true
+                }
             }
+
             Text {
                 id: titletext
                 anchors.verticalCenter: parent.verticalCenter
                 text: qsTr("网狗音乐")
-                font.pixelSize: 22
+                font.pixelSize: 20
                 font.family: "黑体"
-                color: "#dddddd"
+                font.bold: true
+                color: "#FFFFFF"
             }
         }
     }
+
+    // 第一组导航
     Column {
         id: navColumn
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: title.bottom
-        anchors.topMargin: 50
-        spacing: 5
+        anchors.topMargin: 40
+        spacing: 4
 
-        // 导航数据
         property var navList: [
             {
                 icon: "qrc:/image/jingxuan_xuanzhong.png",
@@ -63,85 +78,89 @@ Rectangle {
             }
         ]
 
-        // 创建多个导航按钮
         Repeater {
             model: navColumn.navList.length
+
             delegate: Rectangle {
                 id: navItemRect
-                width: parent.width
-                height: 50
-                radius: 10
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.leftMargin: 20
-                anchors.rightMargin: 20
-                Binding {
-                    target: navItemRect
-                    property: "color"
-                    value: leftpageRectangle.currentIndex === index ? "#e74f50" : "transparent"
-                }
+                width: parent.width - 24
+                height: 44
+                radius: 12
+                anchors.horizontalCenter: parent.horizontalCenter
+                color: leftpageRectangle.currentIndex === index ? "#FF6B6B" : (navMouseArea.containsMouse ? "#2A2A35" : "transparent")
+
+                property bool isSelected: leftpageRectangle.currentIndex === index
+
                 Row {
-                    spacing: 10
+                    spacing: 12
+                    anchors.left: parent.left
+                    anchors.leftMargin: 16
                     anchors.verticalCenter: parent.verticalCenter
 
-                    Item {
-                        width: 10
-                        height: 1
-                    }
-
                     Image {
+                        id: navIcon
                         width: 20
                         height: 20
                         anchors.verticalCenter: parent.verticalCenter
                         fillMode: Image.PreserveAspectFit
                         source: navColumn.navList[index].icon
+                        layer.enabled: true
+                        layer.effect: ColorOverlay {
+                            source: navIcon
+                            color: navItemRect.isSelected ? "#FFFFFF" : "#AAAAAA"
+                        }
                     }
 
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
                         text: navColumn.navList[index].text
-                        font.pixelSize: 15
+                        font.pixelSize: 14
                         font.family: "黑体"
-                        color: "white"
+                        color: navItemRect.isSelected ? "#FFFFFF" : "#CCCCCC"
                     }
                 }
+
                 MouseArea {
+                    id: navMouseArea
                     anchors.fill: parent
                     hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         leftpageRectangle.currentIndex = index;
                         BasicConfig.pushPage(navColumn.navList[index].pageurl);
                     }
-                    onEntered: {
-                        if (leftpageRectangle.currentIndex !== index)
-                            parent.color = "#393943";
-                    }
-                    onExited: {
-                        if (leftpageRectangle.currentIndex !== index)
-                            parent.color = "transparent";
+                }
+
+                Behavior on color {
+                    ColorAnimation {
+                        duration: 150
                     }
                 }
             }
         }
     }
+
+    // 分隔线
     Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: navColumn.bottom
-        anchors.leftMargin: 20
-        anchors.rightMargin: 20
-        anchors.topMargin: 10
+        anchors.leftMargin: 24
+        anchors.rightMargin: 24
+        anchors.topMargin: 12
         height: 1
-        color: "#535C6B"
+        color: "#2A2A35"
     }
+
+    // 第二组导航
     Column {
         id: navColumn2
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: navColumn.bottom
-        anchors.topMargin: 40
-        spacing: 5
-        // 导航数据
+        anchors.topMargin: 20
+        spacing: 4
+
         property var navList: [
             {
                 icon: "qrc:/image/shoucang.png",
@@ -160,62 +179,62 @@ Rectangle {
             }
         ]
 
-        // 创建多个导航按钮
         Repeater {
             model: navColumn2.navList.length
+
             delegate: Rectangle {
                 id: navItemRect2
-                width: parent.width
-                height: 50
-                radius: 10
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.leftMargin: 20
-                anchors.rightMargin: 20
-                Binding {
-                    target: navItemRect2
-                    property: "color"
-                    value: leftpageRectangle.currentIndex - 3 === index ? "#e74f50" : "transparent"
-                }
+                width: parent.width - 24
+                height: 44
+                radius: 12
+                anchors.horizontalCenter: parent.horizontalCenter
+                color: leftpageRectangle.currentIndex - 3 === index ? "#FF6B6B" : (navMouseArea2.containsMouse ? "#2A2A35" : "transparent")
+
+                property bool isSelected: leftpageRectangle.currentIndex - 3 === index
+
                 Row {
-                    spacing: 10
+                    spacing: 12
+                    anchors.left: parent.left
+                    anchors.leftMargin: 16
                     anchors.verticalCenter: parent.verticalCenter
 
-                    Item {
-                        width: 10
-                        height: 1
-                    }
-
                     Image {
+                        id: navIcon2
                         width: 20
                         height: 20
                         anchors.verticalCenter: parent.verticalCenter
                         fillMode: Image.PreserveAspectFit
                         source: navColumn2.navList[index].icon
+                        layer.enabled: true
+                        layer.effect: ColorOverlay {
+                            source: navIcon2
+                            color: navItemRect2.isSelected ? "#FFFFFF" : "#AAAAAA"
+                        }
                     }
 
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
                         text: navColumn2.navList[index].text
-                        font.pixelSize: 15
+                        font.pixelSize: 14
                         font.family: "黑体"
-                        color: "white"
+                        color: navItemRect2.isSelected ? "#FFFFFF" : "#CCCCCC"
                     }
                 }
+
                 MouseArea {
+                    id: navMouseArea2
                     anchors.fill: parent
                     hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         leftpageRectangle.currentIndex = index + 3;
                         BasicConfig.pushPage(navColumn2.navList[index].pageurl);
                     }
-                    onEntered: {
-                        if (leftpageRectangle.currentIndex - 3 !== index)
-                            parent.color = "#393943";
-                    }
-                    onExited: {
-                        if (leftpageRectangle.currentIndex - 3 !== index)
-                            parent.color = "transparent";
+                }
+
+                Behavior on color {
+                    ColorAnimation {
+                        duration: 150
                     }
                 }
             }

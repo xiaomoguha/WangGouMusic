@@ -103,12 +103,14 @@ QString LyricParser::getLyricAtTime(qint64 positionMs)
     // 如果当前位置小于第一句歌词的时间，显示第一句
     if (positionMs < m_lyrics.first().time)
     {
+        curlyricindex = 0;
         return m_lyrics.first().text;
     }
 
     // 如果当前位置超过最后一句歌词的时间，显示最后一句
     if (positionMs >= m_lyrics.last().time)
     {
+        curlyricindex = m_lyrics.size() - 1;
         return m_lyrics.last().text;
     }
 

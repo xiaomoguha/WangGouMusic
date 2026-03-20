@@ -1,115 +1,163 @@
 import QtQuick 2.15
 import Qt5Compat.GraphicalEffects
+
 Row {
-    Image {
-        width:18
-        height: 18
-        id: userbuttom
-        fillMode: Image.PreserveAspectFit
-        source: "qrc:/image/user_line.png"
-        layer.effect: ColorOverlay{
-            source:userbuttom
-            color:"white"
-        }
-        MouseArea{
-            hoverEnabled: true
-            anchors.fill: parent
-            onEntered: {
-                parent.layer.enabled = true
+    spacing: 10
+
+    // 用户按钮
+    Rectangle {
+        width: 28
+        height: 28
+        radius: 14
+        color: userMouseArea.containsMouse ? "#30FFFFFF" : "transparent"
+
+        Image {
+            id: userbuttom
+            anchors.centerIn: parent
+            width: 14
+            height: 14
+            fillMode: Image.PreserveAspectFit
+            source: "qrc:/image/user_line.png"
+            layer.enabled: true
+            layer.effect: ColorOverlay {
+                source: userbuttom
+                color: "#FFFFFF"
             }
-            onExited: {
-                parent.layer.enabled = false
+        }
+
+        MouseArea {
+            id: userMouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+        }
+
+        Behavior on color {
+            ColorAnimation {
+                duration: 150
             }
         }
     }
+
     Text {
         text: "未登录"
         color: "#cdcdcd"
-        height: 18
+        height: 28
         verticalAlignment: Text.AlignVCenter
-        leftPadding: -10
         font {
             family: "黑体"
-            pixelSize: 16
+            pixelSize: 14
         }
     }
-    Image {
-        width:18
-        height: 18
-        id: mailbuttom
-        fillMode: Image.PreserveAspectFit
-        source: "qrc:/image/mail_line.png"
-        layer.effect: ColorOverlay{
-            source:mailbuttom
-            color:"white"
+
+    // 消息按钮
+    Rectangle {
+        width: 28
+        height: 28
+        radius: 14
+        color: mailMouseArea.containsMouse ? "#30FFFFFF" : "transparent"
+
+        Image {
+            id: mailbuttom
+            anchors.centerIn: parent
+            width: 14
+            height: 14
+            fillMode: Image.PreserveAspectFit
+            source: "qrc:/image/mail_line.png"
+            layer.enabled: true
+            layer.effect: ColorOverlay {
+                source: mailbuttom
+                color: "#FFFFFF"
+            }
         }
-        MouseArea{
-            hoverEnabled: true
+
+        MouseArea {
+            id: mailMouseArea
             anchors.fill: parent
-            onEntered: {
-                parent.layer.enabled = true
-            }
-            onExited: {
-                parent.layer.enabled = false
-            }
-        }
-    }
-    Image {
-        width:18
-        height: 18
-        id: settingbuttom
-        fillMode: Image.PreserveAspectFit
-        source: "qrc:/image/setting_line.png"
-        layer.effect: ColorOverlay{
-            source:settingbuttom
-            color:"white"
-        }
-        MouseArea{
             hoverEnabled: true
-            anchors.fill: parent
-            onEntered: {
-                parent.layer.enabled = true
-            }
-            onExited: {
-                parent.layer.enabled = false
+            cursorShape: Qt.PointingHandCursor
+        }
+
+        Behavior on color {
+            ColorAnimation {
+                duration: 150
             }
         }
     }
-    Image {
-        width:18
-        height: 18
-        id: moonbuttom
-        fillMode: Image.PreserveAspectFit
-        source: "qrc:/image/moon_line.png"
-        layer.effect: ColorOverlay{
-            source:moonbuttom
-            color:"white"
-        }
-        MouseArea{
-            hoverEnabled: true
-            anchors.fill: parent
-            onEntered: {
-                parent.layer.enabled = true
+
+    // 设置按钮
+    Rectangle {
+        width: 28
+        height: 28
+        radius: 14
+        color: settingMouseArea.containsMouse ? "#30FFFFFF" : "transparent"
+
+        Image {
+            id: settingbuttom
+            anchors.centerIn: parent
+            width: 14
+            height: 14
+            fillMode: Image.PreserveAspectFit
+            source: "qrc:/image/setting_line.png"
+            layer.enabled: true
+            layer.effect: ColorOverlay {
+                source: settingbuttom
+                color: "#FFFFFF"
             }
-            onExited: {
-                parent.layer.enabled = false
+        }
+
+        MouseArea {
+            id: settingMouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+        }
+
+        Behavior on color {
+            ColorAnimation {
+                duration: 150
             }
         }
     }
-    Rectangle{
-        width: 2
-        height: 18
-        id:split_line
-        color:"#535C6B"
-        MouseArea{
-            hoverEnabled: true
-            anchors.fill: parent
-            onEntered: {
-                parent.color = "white"
-            }
-            onExited: {
-                parent.color = "#535C6B"
+
+    // 主题按钮
+    Rectangle {
+        width: 28
+        height: 28
+        radius: 14
+        color: moonMouseArea.containsMouse ? "#30FFFFFF" : "transparent"
+
+        Image {
+            id: moonbuttom
+            anchors.centerIn: parent
+            width: 14
+            height: 14
+            fillMode: Image.PreserveAspectFit
+            source: "qrc:/image/moon_line.png"
+            layer.enabled: true
+            layer.effect: ColorOverlay {
+                source: moonbuttom
+                color: "#FFFFFF"
             }
         }
+
+        MouseArea {
+            id: moonMouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+        }
+
+        Behavior on color {
+            ColorAnimation {
+                duration: 150
+            }
+        }
+    }
+
+    Rectangle {
+        width: 1
+        height: 18
+        color: "#535C6B"
     }
 }
