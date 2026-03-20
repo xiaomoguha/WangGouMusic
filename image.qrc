@@ -1,5 +1,4 @@
 <RCC>
-    <qresource prefix="/img"/>
     <qresource prefix="/">
         <file>image/audio _line.png</file>
         <file>image/close-circle_line.png</file>

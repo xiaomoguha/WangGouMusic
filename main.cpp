@@ -32,6 +32,7 @@ int main(int argc, char *argv[])
 
     QApplication app(argc, argv);
     QQuickStyle::setStyle("Fusion");
+    app.setWindowIcon(QIcon(":/image/wyymusic.ico"));
 
     QQmlApplicationEngine engine;
     const QUrl url(QStringLiteral("qrc:/main.qml"));

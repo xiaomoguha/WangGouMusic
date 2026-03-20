@@ -38,7 +38,7 @@ Window {
     property point _dragPos: Qt.point(0,0)
 
     property color textColor: "white"
-    property int fontSize: 28
+    property int fontSize: 20
     property real panelOpacity: 0.9
     property bool locked: false
 
@@ -74,17 +74,20 @@ Window {
                 var screenRight = screenLeft + screen.width
                 var screenBottom = screenTop + screen.height
 
-                // 边界检查
-                if (newX < screenLeft) {
-                    newX = screenLeft
-                } else if (newX + desktopLyrics.width > screenRight) {
-                    newX = screenRight - desktopLyrics.width
+                // 允许窗口大部分超出屏幕，只保留最小可见区域（50px）
+                var minVisible = 50
+
+                // 边界检查 - 允许移动到边缘
+                if (newX > screenRight - minVisible) {
+                    newX = screenRight - minVisible
+                } else if (newX + desktopLyrics.width - minVisible < screenLeft) {
+                    newX = screenLeft - desktopLyrics.width + minVisible
                 }
 
-                if (newY < screenTop) {
-                    newY = screenTop
-                } else if (newY + desktopLyrics.height > screenBottom - taskbarHeight) {
-                    newY = screenBottom - desktopLyrics.height - taskbarHeight
+                if (newY > screenBottom - taskbarHeight - minVisible) {
+                    newY = screenBottom - taskbarHeight - minVisible
+                } else if (newY + desktopLyrics.height - minVisible < screenTop) {
+                    newY = screenTop - desktopLyrics.height + minVisible
                 }
 
                 // 应用新位置
@@ -103,21 +106,58 @@ Window {
         }
     }
 
-    // 背景板
-    Rectangle {
-        id: background
-        anchors.fill: parent
-        radius: 14
-        color: "#66000000"
-        border.color: "#88FFFFFF"
-        border.width: 1
-        opacity: 0
-        // 添加平滑过渡效果
-        Behavior on opacity {
-            NumberAnimation { duration: 200 }  // 200毫秒的淡入淡出效果
+    // 歌词容器 - 包含背景和歌词
+    Item {
+        id: lyricContainer
+        anchors.centerIn: parent
+        // 容器大小根据歌词实际渲染尺寸计算
+        width: lyricText.contentWidth + 40
+        height: lyricText.contentHeight + 30
+
+        // 背景板 - 填充容器
+        Rectangle {
+            id: background
+            anchors.fill: parent
+            radius: 14
+            color: "#66000000"
+            border.color: "#88FFFFFF"
+            border.width: 1
+            opacity: 0
+            // 添加平滑过渡效果
+            Behavior on opacity {
+                NumberAnimation { duration: 200 }
+            }
+        }
+
+        // 当前行歌词
+        Text {
+            id: lyricText
+            anchors.centerIn: parent
+            text: getLyricText()
+            font.pixelSize: fontSize
+            font.bold: true
+            color: textColor
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+            wrapMode: Text.WrapAnywhere
+            maximumLineCount: 2
+            // 限制最大宽度，超出会换行
+            width: Math.min(implicitWidth, 800)
+            style: Text.Outline
+            styleColor: "black"
+            
+            function getLyricText() {
+                try {
+                    return playlistmanager ? playlistmanager.currlyric : "网狗音乐"
+                } catch (e) {
+                    return "网狗音乐"
+                }
+            }
         }
     }
-    Row{
+
+    // 控制按钮栏
+    Row {
         anchors.top: parent.top
         anchors.topMargin: 5
         anchors.horizontalCenter: parent.horizontalCenter
@@ -126,14 +166,12 @@ Window {
             width: 18
             height: 18
             source: "qrc:/image/font_up.png"
-            visible: (!desktopLyrics.locked)&&(mousearea.containsMouse)
-            MouseArea
-            {
+            visible: (!desktopLyrics.locked) && (mousearea.containsMouse)
+            MouseArea {
                 anchors.fill: parent
                 onClicked: {
-                    if(desktopLyrics.fontSize < 40)
-                    {
-                        desktopLyrics.fontSize += 1;
+                    if (desktopLyrics.fontSize < 40) {
+                        desktopLyrics.fontSize += 1
                     }
                 }
             }
@@ -142,58 +180,28 @@ Window {
             width: 18
             height: 18
             source: "qrc:/image/font_down.png"
-            visible: (!desktopLyrics.locked)&&(mousearea.containsMouse)
-            MouseArea
-            {
+            visible: (!desktopLyrics.locked) && (mousearea.containsMouse)
+            MouseArea {
                 anchors.fill: parent
                 onClicked: {
-                    if(desktopLyrics.fontSize > 10)
-                    {
-                        desktopLyrics.fontSize -= 1;
+                    if (desktopLyrics.fontSize > 10) {
+                        desktopLyrics.fontSize -= 1
                     }
                 }
             }
         }
         Image {
+            id: lockImage
             width: 18
             height: 18
             source: "qrc:/image/lock_open.png"
-            MouseArea{
+            MouseArea {
                 anchors.fill: parent
                 onClicked: {
-                    if(desktopLyrics.locked)
-                    {
-                        desktopLyrics.locked = !(desktopLyrics.locked);
-                        parent.source = "qrc:/image/lock_open.png";
-                    }
-                    else
-                    {
-                        desktopLyrics.locked = !(desktopLyrics.locked);
-                        parent.source = "qrc:/image/lock_close.png";
-                    }
+                    desktopLyrics.locked = !desktopLyrics.locked
+                    lockImage.source = desktopLyrics.locked ? 
+                        "qrc:/image/lock_close.png" : "qrc:/image/lock_open.png"
                 }
-            }
-        }
-    }
-
-    // 当前行歌词
-    Text {
-        id: lyricText
-        anchors.centerIn: parent
-        text: getLyricText()
-        font.pixelSize: fontSize
-        font.bold: true
-        color: textColor
-        horizontalAlignment: Text.AlignHCenter
-        width: parent.width - 20
-        style: Text.Outline // 设置样式为描边
-        styleColor: "black" // 设置描边的颜色
-        function getLyricText() {
-            try {
-                return playlistmanager ? playlistmanager.currlyric : "网狗音乐"
-            } catch (e)
-            {
-                return "网狗音乐"
             }
         }
     }

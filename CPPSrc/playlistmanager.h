@@ -69,6 +69,7 @@ public:
     explicit PlaylistManager(Recommendation *recommendation,QObject *parent = nullptr);
     Q_INVOKABLE void addSong(const QString &title,const QString &songhash,const QString &singername,const QString &union_cover,const QString &album_name,const QString &duration);
     Q_INVOKABLE void removeSong(int index);
+    Q_INVOKABLE void clearPlaylist();
     Q_INVOKABLE void playSongbyhasg(const QString &songhash);
     Q_INVOKABLE void playSongbyindex(int index);
     Q_INVOKABLE void playNext();
