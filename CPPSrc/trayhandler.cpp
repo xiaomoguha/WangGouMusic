@@ -2,6 +2,10 @@
 #include <QAction>
 #include <QDebug>
 #include <QEvent>
+#include <QTimer>
+#include <QCoreApplication>
+#include <QGuiApplication>
+#include <QWindow>
 
 TrayHandler::TrayHandler(QQuickWindow *win, QApplication *app, const QIcon &icon,
                          QObject *parent)
@@ -47,6 +51,9 @@ TrayHandler::TrayHandler(QQuickWindow *win, QApplication *app, const QIcon &icon
 
 TrayHandler::~TrayHandler()
 {
+  // 先移除事件过滤器，避免在销毁过程中处理事件
+  if (m_app)
+    m_app->removeEventFilter(this);
   if (m_window)
     m_window->removeEventFilter(this);
 }
@@ -86,8 +93,32 @@ void TrayHandler::onShowRequested()
 void TrayHandler::onQuitRequested()
 {
   m_quitRequested = true;
+
+  // 先断开所有连接，避免信号触发
+  disconnect();
+
+  // 移除事件过滤器
+  if (m_app)
+    m_app->removeEventFilter(this);
   if (m_window)
-    m_window->close();
-  else
-    m_app->quit();
+    m_window->removeEventFilter(this);
+
+  // 隐藏托盘图标
+  if (m_tray)
+  {
+    m_tray->hide();
+    m_tray->setContextMenu(nullptr);
+  }
+
+  // 隐藏所有窗口（不调用 close，避免触发 QML 的 onClosing）
+  const auto windows = QGuiApplication::topLevelWindows();
+  for (QWindow *w : windows)
+  {
+    w->hide();
+  }
+
+  m_window = nullptr;
+
+  // 直接退出事件循环
+  QCoreApplication::exit(0);
 }

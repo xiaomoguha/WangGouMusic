@@ -47,12 +47,16 @@ ApplicationWindow {
         root.x = (Screen.width - root.width) / 2;
         root.y = (Screen.height - root.height) / 2;
         //获取热搜数据
-        hostSearch.fetchhostserachData("https://xjt-togethertracks.top/api/search/hot");
-        //启动时加载常用推荐列表：前3个 + 嫚姐专属(索引6)
-        for (let i = 0; i < 3; i++) {
-            recommendation.getdatabygetdatarange(i);
+        if (hostSearch) {
+            hostSearch.fetchhostserachData("https://xjt-togethertracks.top/api/search/hot");
         }
-        recommendation.getdatabygetdatarange(6);  // 嫚姐专属接口
+        //启动时加载常用推荐列表：前3个 + 嫚姐专属(索引6)
+        if (recommendation) {
+            for (let i = 0; i < 3; i++) {
+                recommendation.getdatabygetdatarange(i);
+            }
+            recommendation.getdatabygetdatarange(6);  // 嫚姐专属接口
+        }
     }
     // 延迟加载剩余推荐数据，减少启动内存压力
     Timer {
@@ -61,14 +65,17 @@ ApplicationWindow {
         running: true
         repeat: false
         onTriggered: {
-            for (let i = 3; i < 6; i++) {  // 只加载索引3-5
-                recommendation.getdatabygetdatarange(i);
+            if (recommendation) {
+                for (let i = 3; i < 6; i++) {  // 只加载索引3-5
+                    recommendation.getdatabygetdatarange(i);
+                }
             }
         }
     }
+    // 注意：关闭事件已被 TrayHandler 拦截，这里不会执行
+    // 真正退出时由 TrayHandler 处理关闭桌面歌词
     onClosing: {
-        if (desktopLyricsWindow)
-            desktopLyricsWindow.close();
+        close.accepted = false;  // 阻止默认关闭行为
     }
     MouseArea {
         anchors.fill: parent

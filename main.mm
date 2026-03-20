@@ -47,6 +47,22 @@ int main(int argc, char *argv[])
                          if (!obj && url == objUrl)
                              QCoreApplication::exit(-1); }, Qt::QueuedConnection);
 
+    // ---------------- 后端对象（必须在加载 QML 之前创建） ----------------
+    GetHostSearch hostSearch;
+    SearchComplex complexsearch;
+    Recommendation recommendation;
+    PlaylistManager playlistmanager(&recommendation);
+    WebSocketClient websocket(&playlistmanager);
+
+    // QML 全局注册
+    qRegisterMetaType<SongInfo>("SongInfo");
+    qRegisterMetaType<LyricLine>("LyricLine");
+    engine.rootContext()->setContextProperty("hostSearch", &hostSearch);
+    engine.rootContext()->setContextProperty("complexsearch", &complexsearch);
+    engine.rootContext()->setContextProperty("playlistmanager", &playlistmanager);
+    engine.rootContext()->setContextProperty("recommendation", &recommendation);
+    engine.rootContext()->setContextProperty("websocket", &websocket);
+
     // 加载 DesktopLyrics.qml 独立窗口（跨平台）
     QQmlComponent comp(&engine, QUrl("qrc:/Src/ComponentPage/DesktopLyrics.qml"));
     QObject *desktopLyricsObj = comp.create();
@@ -106,22 +122,6 @@ int main(int argc, char *argv[])
     // 把桌面歌词对象暴露给主窗口 QML
     engine.rootContext()->setContextProperty("desktopLyricsWindow", desktopLyricsObj);
 
-    // ---------------- 后端对象 ----------------
-    GetHostSearch hostSearch;
-    SearchComplex complexsearch;
-    Recommendation recommendation;
-    PlaylistManager playlistmanager(&recommendation);
-    WebSocketClient websocket(&playlistmanager);
-
-    // QML 全局注册
-    qRegisterMetaType<SongInfo>("SongInfo");
-    qRegisterMetaType<LyricLine>("LyricLine");
-    engine.rootContext()->setContextProperty("hostSearch", &hostSearch);
-    engine.rootContext()->setContextProperty("complexsearch", &complexsearch);
-    engine.rootContext()->setContextProperty("playlistmanager", &playlistmanager);
-    engine.rootContext()->setContextProperty("recommendation", &recommendation);
-    engine.rootContext()->setContextProperty("websocket", &websocket);
-
     // ---------------- 加载 QML ----------------
     engine.load(url);
     
@@ -143,7 +143,8 @@ int main(int argc, char *argv[])
     if (trayIcon.isNull())
         trayIcon = QIcon::fromTheme(QStringLiteral("application-exit"));
 
-    new TrayHandler(window, &app, trayIcon, &app);
+    // 在栈上创建 TrayHandler，确保正确的销毁顺序
+    TrayHandler trayHandler(window, &app, trayIcon, nullptr);
 
     return app.exec();
 }
