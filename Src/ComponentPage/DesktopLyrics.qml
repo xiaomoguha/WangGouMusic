@@ -7,18 +7,12 @@ Window {
     id: desktopLyrics
     objectName: "desktopLyrics"
     width: 700
-    height: 80
+    height: 140
     visible: true
     color: "transparent"
 
     // 根据锁定状态设置窗口标志
-    flags: {
-        var baseFlags = Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool;
-        if (locked) {
-            return baseFlags | Qt.WindowTransparentForInput;
-        }
-        return baseFlags;
-    }
+    flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool
 
     // 初始化位置
     x: (Screen.desktopAvailableWidth - width) / 2
@@ -43,12 +37,23 @@ Window {
     property real scale: 1.0
     property bool showControls: false
 
+    // 延迟隐藏定时器
+    Timer {
+        id: hideControlsTimer
+        interval: 300
+        onTriggered: {
+            if (!controlPanelHover.hovered) {
+                showControls = false;
+            }
+        }
+    }
+
     // 主容器
     Item {
         id: mainContainer
         anchors.fill: parent
 
-        // 歌词背景
+        // 歌词背景 - 固定在窗口中心
         Rectangle {
             id: background
             anchors.centerIn: parent
@@ -83,64 +88,77 @@ Window {
                     easing.type: Easing.OutCubic
                 }
             }
-        }
 
-        // 歌词文本
-        Row {
-            id: lyricRow
-            anchors.centerIn: parent
-            spacing: 20
+            // 歌词文本
+            Row {
+                id: lyricRow
+                anchors.centerIn: parent
+                spacing: 20
 
-            // 左侧音乐图标
-            Rectangle {
-                width: 36 * desktopLyrics.scale
-                height: 36 * desktopLyrics.scale
-                radius: 18 * desktopLyrics.scale
-                color: "#FF6B6B"
-                anchors.verticalCenter: parent.verticalCenter
+                // 左侧音乐图标
+                Rectangle {
+                    width: 36 * desktopLyrics.scale
+                    height: 36 * desktopLyrics.scale
+                    radius: 18 * desktopLyrics.scale
+                    color: "#FF6B6B"
+                    anchors.verticalCenter: parent.verticalCenter
 
-                Text {
-                    anchors.centerIn: parent
-                    text: "♪"
-                    font.pixelSize: 18 * desktopLyrics.scale
-                    color: "white"
-                    font.bold: true
+                    Text {
+                        anchors.centerIn: parent
+                        text: "♪"
+                        font.pixelSize: 18 * desktopLyrics.scale
+                        color: "white"
+                        font.bold: true
+                    }
                 }
-            }
 
-            // 歌词内容
-            Text {
-                id: lyricText
-                text: getLyricText()
-                font.pixelSize: fontSize * desktopLyrics.scale
-                font.bold: true
-                color: textColor
-                anchors.verticalCenter: parent.verticalCenter
-                style: Text.Outline
-                styleColor: "#40000000"
-                maximumLineCount: 1
-                elide: Text.ElideRight
-                width: Math.min(implicitWidth, 500)
+                // 歌词内容
+                Text {
+                    id: lyricText
+                    text: getLyricText()
+                    font.pixelSize: fontSize * desktopLyrics.scale
+                    font.bold: true
+                    color: textColor
+                    anchors.verticalCenter: parent.verticalCenter
+                    style: Text.Outline
+                    styleColor: "#40000000"
+                    maximumLineCount: 1
+                    elide: Text.ElideRight
+                    width: Math.min(implicitWidth, 500)
 
-                function getLyricText() {
-                    try {
-                        return playlistmanager ? playlistmanager.currlyric : "网狗音乐 - 等待播放";
-                    } catch (e) {
-                        return "网狗音乐";
+                    function getLyricText() {
+                        try {
+                            return playlistmanager ? playlistmanager.currlyric : "网狗音乐 - 等待播放";
+                        } catch (e) {
+                            return "网狗音乐";
+                        }
                     }
                 }
             }
         }
 
-        // 控制面板（鼠标悬停时显示）
+        // 控制面板（鼠标悬停时显示）- 固定在歌词上方
         Row {
             id: controlPanel
-            anchors.top: background.bottom
-            anchors.topMargin: 8
+            anchors.bottom: background.top
+            anchors.bottomMargin: 10
             anchors.horizontalCenter: parent.horizontalCenter
             spacing: 6
-            opacity: showControls && !locked ? 1 : 0
-            visible: opacity > 0
+            opacity: showControls ? 1 : 0
+            z: 100  // 确保在 MouseArea 上面
+
+            // 悬停检测 - 保持按钮可见
+            HoverHandler {
+                id: controlPanelHover
+                onHoveredChanged: {
+                    if (hovered) {
+                        hideControlsTimer.stop();
+                        showControls = true;
+                    } else {
+                        hideControlsTimer.restart();
+                    }
+                }
+            }
 
             Behavior on opacity {
                 NumberAnimation {
@@ -148,12 +166,13 @@ Window {
                 }
             }
 
-            // 缩小按钮
+            // 缩小按钮（未锁定时显示）
             Rectangle {
                 width: 32
                 height: 32
                 radius: 16
-                color: zoomOutHover.hovered ? "#40FFFFFF" : "#20FFFFFF"
+                color: zoomOutHandler.hovered ? "#40FFFFFF" : "#20FFFFFF"
+                visible: !locked
 
                 Text {
                     anchors.centerIn: parent
@@ -164,7 +183,7 @@ Window {
                 }
 
                 HoverHandler {
-                    id: zoomOutHover
+                    id: zoomOutHandler
                 }
                 TapHandler {
                     cursorShape: Qt.PointingHandCursor
@@ -176,12 +195,13 @@ Window {
                 }
             }
 
-            // 缩放显示
+            // 缩放显示（未锁定时显示）
             Rectangle {
                 width: 50
                 height: 32
                 radius: 16
                 color: "#20FFFFFF"
+                visible: !locked
 
                 Text {
                     anchors.centerIn: parent
@@ -192,12 +212,13 @@ Window {
                 }
             }
 
-            // 放大按钮
+            // 放大按钮（未锁定时显示）
             Rectangle {
                 width: 32
                 height: 32
                 radius: 16
-                color: zoomInHover.hovered ? "#40FFFFFF" : "#20FFFFFF"
+                color: zoomInHandler.hovered ? "#40FFFFFF" : "#20FFFFFF"
+                visible: !locked
 
                 Text {
                     anchors.centerIn: parent
@@ -208,7 +229,7 @@ Window {
                 }
 
                 HoverHandler {
-                    id: zoomInHover
+                    id: zoomInHandler
                 }
                 TapHandler {
                     cursorShape: Qt.PointingHandCursor
@@ -220,20 +241,22 @@ Window {
                 }
             }
 
-            // 分隔线
+            // 分隔线（未锁定时显示）
             Rectangle {
                 width: 1
                 height: 20
                 color: "#40FFFFFF"
                 anchors.verticalCenter: parent.verticalCenter
+                visible: !locked
             }
 
-            // 字体减小
+            // 字体减小（未锁定时显示）
             Rectangle {
                 width: 32
                 height: 32
                 radius: 16
-                color: fontDownHover.hovered ? "#40FFFFFF" : "#20FFFFFF"
+                color: fontDownHandler.hovered ? "#40FFFFFF" : "#20FFFFFF"
+                visible: !locked
 
                 Image {
                     id: fontDownIcon
@@ -250,7 +273,7 @@ Window {
                 }
 
                 HoverHandler {
-                    id: fontDownHover
+                    id: fontDownHandler
                 }
                 TapHandler {
                     cursorShape: Qt.PointingHandCursor
@@ -262,12 +285,13 @@ Window {
                 }
             }
 
-            // 字体增大
+            // 字体增大（未锁定时显示）
             Rectangle {
                 width: 32
                 height: 32
                 radius: 16
-                color: fontUpHover.hovered ? "#40FFFFFF" : "#20FFFFFF"
+                color: fontUpHandler.hovered ? "#40FFFFFF" : "#20FFFFFF"
+                visible: !locked
 
                 Image {
                     id: fontUpIcon
@@ -284,7 +308,7 @@ Window {
                 }
 
                 HoverHandler {
-                    id: fontUpHover
+                    id: fontUpHandler
                 }
                 TapHandler {
                     cursorShape: Qt.PointingHandCursor
@@ -296,37 +320,53 @@ Window {
                 }
             }
 
-            // 分隔线
+            // 分隔线（未锁定时显示）
             Rectangle {
                 width: 1
                 height: 20
                 color: "#40FFFFFF"
                 anchors.verticalCenter: parent.verticalCenter
+                visible: !locked
             }
 
-            // 锁定按钮
+            // 锁定/解锁按钮（始终显示）
             Rectangle {
-                width: 32
+                width: locked ? unlockText.width + 24 : 32
                 height: 32
                 radius: 16
-                color: desktopLyrics.locked ? "#FF6B6B" : (lockHover.hovered ? "#40FFFFFF" : "#20FFFFFF")
+                color: desktopLyrics.locked ? "#FF6B6B" : (lockHandler.hovered ? "#40FFFFFF" : "#20FFFFFF")
 
-                Image {
-                    id: lockIcon
+                Row {
+                    id: lockRow
                     anchors.centerIn: parent
-                    source: desktopLyrics.locked ? "qrc:/image/lock_close.png" : "qrc:/image/lock_open.png"
-                    width: 14
-                    height: 14
-                    fillMode: Image.PreserveAspectFit
-                    layer.enabled: true
-                    layer.effect: ColorOverlay {
-                        source: lockIcon
-                        color: "#FFFFFF"
+                    spacing: 4
+
+                    Image {
+                        id: lockIcon
+                        source: desktopLyrics.locked ? "qrc:/image/lock_close.png" : "qrc:/image/lock_open.png"
+                        width: 14
+                        height: 14
+                        fillMode: Image.PreserveAspectFit
+                        anchors.verticalCenter: parent.verticalCenter
+                        layer.enabled: true
+                        layer.effect: ColorOverlay {
+                            source: lockIcon
+                            color: "#FFFFFF"
+                        }
+                    }
+
+                    Text {
+                        id: unlockText
+                        text: "解锁"
+                        font.pixelSize: 12
+                        color: "white"
+                        visible: desktopLyrics.locked
+                        anchors.verticalCenter: parent.verticalCenter
                     }
                 }
 
                 HoverHandler {
-                    id: lockHover
+                    id: lockHandler
                 }
                 TapHandler {
                     cursorShape: Qt.PointingHandCursor
@@ -343,56 +383,22 @@ Window {
             }
         }
 
-        // 锁定状态指示器
-        Rectangle {
-            anchors.right: background.right
-            anchors.rightMargin: 10
-            anchors.top: background.top
-            anchors.topMargin: 10
-            width: lockedIndicatorRow.width + 12
-            height: 20
-            radius: 10
-            color: "#FF6B6B"
-            visible: locked
-            opacity: 0.9
-
-            Row {
-                id: lockedIndicatorRow
-                anchors.centerIn: parent
-                spacing: 4
-
-                Image {
-                    source: "qrc:/image/lock_close.png"
-                    width: 12
-                    height: 12
-                    fillMode: Image.PreserveAspectFit
-                    anchors.verticalCenter: parent.verticalCenter
-                    layer.enabled: true
-                    layer.effect: ColorOverlay {
-                        source: parent
-                        color: "#FFFFFF"
-                    }
-                }
-
-                Text {
-                    text: "已锁定"
-                    font.pixelSize: 10
-                    color: "white"
-                    anchors.verticalCenter: parent.verticalCenter
-                }
-            }
-        }
-
-        // 悬停检测区域
+        // 悬停检测区域（始终启用）
         HoverHandler {
-            id: mainHover
+            id: mainHoverHandler
             onHoveredChanged: {
-                showControls = hovered;
+                if (hovered) {
+                    hideControlsTimer.stop();
+                    showControls = true;
+                } else {
+                    hideControlsTimer.restart();
+                }
             }
         }
 
         // 拖动区域（未锁定时）
         MouseArea {
+            id: dragMouseArea
             anchors.fill: parent
             enabled: !locked
             acceptedButtons: Qt.LeftButton
@@ -460,7 +466,7 @@ Window {
             }
 
             Text {
-                text: locked ? "已锁定 - 鼠标可穿透" : "已解锁 - 可拖动调整"
+                text: locked ? "已锁定 - 悬停显示解锁按钮" : "已解锁 - 可拖动调整"
                 font.pixelSize: 13
                 color: "white"
                 anchors.verticalCenter: parent.verticalCenter

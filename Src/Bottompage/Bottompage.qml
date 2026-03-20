@@ -550,14 +550,12 @@ Rectangle {
                 layer.enabled: true
                 layer.effect: ColorOverlay {
                     source: geciImg
-                    color: Qt.platform.os === "windows" ? (desktopLyricsWindow ? (desktopLyricsWindow.visible ? "#FF6B6B" : "#FFFFFF") : "#FFFFFF") : "#FFFFFF"
+                    color: desktopLyricsWindow ? (desktopLyricsWindow.visible ? "#FF6B6B" : "#FFFFFF") : "#FFFFFF"
                 }
             }
 
             Component.onCompleted: {
-                if (Qt.platform.os === "windows") {
-                    geciImg.layer.enabled = desktopLyricsWindow ? desktopLyricsWindow.visible : false;
-                }
+                geciImg.layer.enabled = desktopLyricsWindow ? desktopLyricsWindow.visible : false;
             }
 
             MouseArea {
@@ -566,7 +564,7 @@ Rectangle {
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                    if (Qt.platform.os === "windows" && desktopLyricsWindow) {
+                    if (desktopLyricsWindow) {
                         desktopLyricsWindow.visible = !desktopLyricsWindow.visible;
                     }
                 }
