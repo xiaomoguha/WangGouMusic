@@ -1,0 +1,59 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/Desktop_Qt_6_10_1_MinGW_64_bit-Debug/cmake_wanggou.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                {
+                    "name": "PATH",
+                    "value": "E:/QT/6.10.1/mingw_64/bin;E:/QT/Tools/mingw1310_64/bin;${env:PATH}"
+                }
+            ],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "E:/QT/Tools/mingw1310_64/bin/gdb.exe",
+            "setupCommands": [
+                {
+                    "description": "为 gdb 启用整齐打印",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "CMake: build debug",
+            "visualizerFile": "c:\\Users\\lzx\\AppData\\Roaming\\Qoder\\User\\workspaceStorage\\23b8d41366e341da62784981cee584b6\\tonka3000.qtvsctools\\qt.natvis.xml"
+        },
+        {
+            "name": "Release",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/Desktop_Qt_6_10_1_MinGW_64_bit-Release/cmake_wanggou.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                {
+                    "name": "PATH",
+                    "value": "E:/QT/6.10.1/mingw_64/bin;E:/QT/Tools/mingw1310_64/bin;${env:PATH}"
+                }
+            ],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "E:/QT/Tools/mingw1310_64/bin/gdb.exe",
+            "setupCommands": [
+                {
+                    "description": "为 gdb 启用整齐打印",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "CMake: build release",
+            "visualizerFile": "c:\\Users\\lzx\\AppData\\Roaming\\Qoder\\User\\workspaceStorage\\23b8d41366e341da62784981cee584b6\\tonka3000.qtvsctools\\qt.natvis.xml"
+        }
+    ]
+}

@@ -189,11 +189,35 @@ Item {
                         anchors.left: titletext.right
                         anchors.leftMargin: 5
                         anchors.verticalCenter: titletext.verticalCenter
-                        color: "#7d7d7d"
+                        color: playAllMouseArea.containsMouse ? "#9d9d9d" : "#7d7d7d"
                         Image {
                             anchors.fill: parent
                             scale: 0.6
                             source: "qrc:/image/play.png"
+                        }
+                        MouseArea {
+                            id: playAllMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                // 清空当前播放列表
+                                playlistmanager.clearPlaylist()
+                                // 批量添加当前区块的所有歌曲
+                                for (var i = 0; i < songModel.length; i++) {
+                                    var song = songModel[i]
+                                    playlistmanager.addSong(
+                                        song.songname,
+                                        song.songhash,
+                                        song.singername,
+                                        song.union_cover,
+                                        song.album_name,
+                                        song.duration
+                                    )
+                                }
+                                // 播放第一首
+                                playlistmanager.playSongbyindex(0)
+                            }
                         }
                     }
                     Rectangle{

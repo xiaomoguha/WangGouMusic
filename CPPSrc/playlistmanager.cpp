@@ -67,6 +67,14 @@ void PlaylistManager::removeSong(int index)
     }
 }
 
+void PlaylistManager::clearPlaylist()
+{
+    (*m_curplaylist).clear();
+    m_currentIndex = -1;
+    emit playlistUpdated();
+    emit currentIndexChanged(-1);
+}
+
 //判断是否有缓存文件
 int PlaylistManager::is_have_cache(const SongInfo &song,const int index)
 {

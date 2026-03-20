@@ -1,0 +1,82 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "CMake: build debug",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${workspaceFolder}/build/Desktop_Qt_6_10_1_MinGW_64_bit-Debug"
+            ],
+            "options": {
+                "env": {
+                    "PATH": "E:/QT/6.10.1/mingw_64/bin;E:/QT/Tools/mingw1310_64/bin;${env:PATH}"
+                }
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "CMake: build release",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${workspaceFolder}/build/Desktop_Qt_6_10_1_MinGW_64_bit-Release"
+            ],
+            "options": {
+                "env": {
+                    "PATH": "E:/QT/6.10.1/mingw_64/bin;E:/QT/Tools/mingw1310_64/bin;${env:PATH}"
+                }
+            },
+            "group": "build",
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "CMake: configure debug",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-B",
+                "${workspaceFolder}/build/Desktop_Qt_6_10_1_MinGW_64_bit-Debug",
+                "-S",
+                "${workspaceFolder}",
+                "-G",
+                "Ninja",
+                "-DCMAKE_BUILD_TYPE=Debug",
+                "-DCMAKE_PREFIX_PATH=E:/QT/6.10.1/mingw_64"
+            ],
+            "options": {
+                "env": {
+                    "PATH": "E:/QT/6.10.1/mingw_64/bin;E:/QT/Tools/mingw1310_64/bin;${env:PATH}"
+                }
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "CMake: configure release",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-B",
+                "${workspaceFolder}/build/Desktop_Qt_6_10_1_MinGW_64_bit-Release",
+                "-S",
+                "${workspaceFolder}",
+                "-G",
+                "Ninja",
+                "-DCMAKE_BUILD_TYPE=Release",
+                "-DCMAKE_PREFIX_PATH=E:/QT/6.10.1/mingw_64"
+            ],
+            "options": {
+                "env": {
+                    "PATH": "E:/QT/6.10.1/mingw_64/bin;E:/QT/Tools/mingw1310_64/bin;${env:PATH}"
+                }
+            },
+            "problemMatcher": []
+        }
+    ]
+}

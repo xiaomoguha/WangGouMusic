@@ -24,6 +24,10 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         CPPSrc/gethostsearch.cpp CPPSrc/gethostsearch.h
         image.qrc
     )
+    # Windows 应用程序图标
+    if(WIN32)
+        target_sources(cmake_wanggou PRIVATE app.rc)
+    endif()
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET cmake_wanggou APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
 #                 ${CMAKE_CURRENT_SOURCE_DIR}/android)
