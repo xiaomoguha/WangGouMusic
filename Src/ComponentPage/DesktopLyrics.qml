@@ -18,24 +18,24 @@ Window {
 
     Component.onCompleted: {
         // 更精确地定位到状态栏上方
-        positionAboveTaskbar()
+        positionAboveTaskbar();
     }
 
     // 精确计算状态栏位置的方法
     function positionAboveTaskbar() {
         // 计算屏幕中心水平位置
-        var screenCenterX = Screen.desktopAvailableWidth / 2 - width / 2
+        var screenCenterX = Screen.desktopAvailableWidth / 2 - width / 2;
 
         // 计算状态栏上方的垂直位置
         // 使用Screen.height获取屏幕总高度，Screen.desktopAvailableHeight获取可用高度
-        var taskbarHeight = Screen.height - Screen.desktopAvailableHeight
+        var taskbarHeight = Screen.height - Screen.desktopAvailableHeight;
 
         // 设置窗口位置
-        x = screenCenterX
-        y = Screen.desktopAvailableHeight - height
+        x = screenCenterX;
+        y = Screen.desktopAvailableHeight - height;
     }
 
-    property point _dragPos: Qt.point(0,0)
+    property point _dragPos: Qt.point(0, 0)
 
     property color textColor: "white"
     property int fontSize: 20
@@ -44,65 +44,63 @@ Window {
 
     // 拖动
     MouseArea {
-        id:mousearea
+        id: mousearea
         anchors.fill: parent
         hoverEnabled: true
 
-        onPressed: function(mouse) {
-            if(!locked)
-            {
-                _dragPos = Qt.point(mouse.x, mouse.y)
-                cursorShape = Qt.ClosedHandCursor
+        onPressed: function (mouse) {
+            if (!locked) {
+                _dragPos = Qt.point(mouse.x, mouse.y);
+                cursorShape = Qt.ClosedHandCursor;
             }
         }
         onReleased: {
-            cursorShape = Qt.ArrowCursor
+            cursorShape = Qt.ArrowCursor;
         }
 
-        onPositionChanged: function(mouse) {
-            if((!locked)&&(mouse.buttons & Qt.LeftButton))
-            {
+        onPositionChanged: function (mouse) {
+            if ((!locked) && (mouse.buttons & Qt.LeftButton)) {
                 // 使用Screen.height获取屏幕总高度，Screen.desktopAvailableHeight获取可用高度
-                var taskbarHeight = Screen.height - Screen.desktopAvailableHeight
-                var newX = desktopLyrics.x + (mouse.x - _dragPos.x)
-                var newY = desktopLyrics.y + (mouse.y - _dragPos.y)
+                var taskbarHeight = Screen.height - Screen.desktopAvailableHeight;
+                var newX = desktopLyrics.x + (mouse.x - _dragPos.x);
+                var newY = desktopLyrics.y + (mouse.y - _dragPos.y);
 
                 // 获取屏幕边界
-                var screen = Screen
-                var screenLeft = screen.virtualX
-                var screenTop = screen.virtualY
-                var screenRight = screenLeft + screen.width
-                var screenBottom = screenTop + screen.height
+                var screen = Screen;
+                var screenLeft = screen.virtualX;
+                var screenTop = screen.virtualY;
+                var screenRight = screenLeft + screen.width;
+                var screenBottom = screenTop + screen.height;
 
                 // 允许窗口大部分超出屏幕，只保留最小可见区域（50px）
-                var minVisible = 50
+                var minVisible = 50;
 
                 // 边界检查 - 允许移动到边缘
                 if (newX > screenRight - minVisible) {
-                    newX = screenRight - minVisible
+                    newX = screenRight - minVisible;
                 } else if (newX + desktopLyrics.width - minVisible < screenLeft) {
-                    newX = screenLeft - desktopLyrics.width + minVisible
+                    newX = screenLeft - desktopLyrics.width + minVisible;
                 }
 
                 if (newY > screenBottom - taskbarHeight - minVisible) {
-                    newY = screenBottom - taskbarHeight - minVisible
+                    newY = screenBottom - taskbarHeight - minVisible;
                 } else if (newY + desktopLyrics.height - minVisible < screenTop) {
-                    newY = screenTop - desktopLyrics.height + minVisible
+                    newY = screenTop - desktopLyrics.height + minVisible;
                 }
 
                 // 应用新位置
-                desktopLyrics.x = newX
-                desktopLyrics.y = newY
+                desktopLyrics.x = newX;
+                desktopLyrics.y = newY;
             }
         }
         // 鼠标进入区域时触发
         onEntered: {
-            background.opacity = panelOpacity  // 显示背景
+            background.opacity = panelOpacity;  // 显示背景
         }
 
         // 鼠标离开区域时触发
         onExited: {
-            background.opacity = 0  // 隐藏背景（完全透明）
+            background.opacity = 0;  // 隐藏背景（完全透明）
         }
     }
 
@@ -125,7 +123,9 @@ Window {
             opacity: 0
             // 添加平滑过渡效果
             Behavior on opacity {
-                NumberAnimation { duration: 200 }
+                NumberAnimation {
+                    duration: 200
+                }
             }
         }
 
@@ -145,12 +145,12 @@ Window {
             width: Math.min(implicitWidth, 800)
             style: Text.Outline
             styleColor: "black"
-            
+
             function getLyricText() {
                 try {
-                    return playlistmanager ? playlistmanager.currlyric : "网狗音乐"
+                    return playlistmanager ? playlistmanager.currlyric : "网狗音乐";
                 } catch (e) {
-                    return "网狗音乐"
+                    return "网狗音乐";
                 }
             }
         }
@@ -159,48 +159,127 @@ Window {
     // 控制按钮栏
     Row {
         anchors.top: parent.top
-        anchors.topMargin: 5
+        anchors.topMargin: 8
         anchors.horizontalCenter: parent.horizontalCenter
-        spacing: 10
-        Image {
-            width: 18
-            height: 18
-            source: "qrc:/image/font_up.png"
+        spacing: 8
+
+        // 字体增大按钮
+        Rectangle {
+            width: 28
+            height: 28
+            radius: 14
+            color: fontUpMouseArea.containsMouse ? "#40FFFFFF" : "transparent"
             visible: (!desktopLyrics.locked) && (mousearea.containsMouse)
+
+            Image {
+                id: fontUpIcon
+                anchors.centerIn: parent
+                source: "qrc:/image/font_up.png"
+                width: 14
+                height: 14
+                fillMode: Image.PreserveAspectFit
+                layer.enabled: true
+                layer.effect: ColorOverlay {
+                    source: fontUpIcon
+                    color: "#FFFFFF"
+                }
+            }
+
             MouseArea {
+                id: fontUpMouseArea
                 anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
                 onClicked: {
                     if (desktopLyrics.fontSize < 40) {
-                        desktopLyrics.fontSize += 1
+                        desktopLyrics.fontSize += 1;
                     }
                 }
             }
+
+            Behavior on color {
+                ColorAnimation {
+                    duration: 150
+                }
+            }
         }
-        Image {
-            width: 18
-            height: 18
-            source: "qrc:/image/font_down.png"
+
+        // 字体减小按钮
+        Rectangle {
+            width: 28
+            height: 28
+            radius: 14
+            color: fontDownMouseArea.containsMouse ? "#40FFFFFF" : "transparent"
             visible: (!desktopLyrics.locked) && (mousearea.containsMouse)
+
+            Image {
+                id: fontDownIcon
+                anchors.centerIn: parent
+                source: "qrc:/image/font_down.png"
+                width: 14
+                height: 14
+                fillMode: Image.PreserveAspectFit
+                layer.enabled: true
+                layer.effect: ColorOverlay {
+                    source: fontDownIcon
+                    color: "#FFFFFF"
+                }
+            }
+
             MouseArea {
+                id: fontDownMouseArea
                 anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
                 onClicked: {
                     if (desktopLyrics.fontSize > 10) {
-                        desktopLyrics.fontSize -= 1
+                        desktopLyrics.fontSize -= 1;
                     }
                 }
             }
+
+            Behavior on color {
+                ColorAnimation {
+                    duration: 150
+                }
+            }
         }
-        Image {
-            id: lockImage
-            width: 18
-            height: 18
-            source: "qrc:/image/lock_open.png"
+
+        // 锁定按钮
+        Rectangle {
+            id: lockBtn
+            width: 28
+            height: 28
+            radius: 14
+            color: lockMouseArea.containsMouse ? "#40FFFFFF" : "transparent"
+
+            Image {
+                id: lockImage
+                anchors.centerIn: parent
+                source: desktopLyrics.locked ? "qrc:/image/lock_close.png" : "qrc:/image/lock_open.png"
+                width: 14
+                height: 14
+                fillMode: Image.PreserveAspectFit
+                layer.enabled: true
+                layer.effect: ColorOverlay {
+                    source: lockImage
+                    color: "#FFFFFF"
+                }
+            }
+
             MouseArea {
+                id: lockMouseArea
                 anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                    desktopLyrics.locked = !desktopLyrics.locked
-                    lockImage.source = desktopLyrics.locked ? 
-                        "qrc:/image/lock_close.png" : "qrc:/image/lock_open.png"
+                    desktopLyrics.locked = !desktopLyrics.locked;
+                }
+            }
+
+            Behavior on color {
+                ColorAnimation {
+                    duration: 150
                 }
             }
         }

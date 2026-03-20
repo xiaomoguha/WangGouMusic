@@ -1,89 +1,126 @@
 import QtQuick 2.15
 import Qt5Compat.GraphicalEffects
-Row{
-    //最小化
-    Image {
-        id: minbutton
-        width: 18
-        height: 18
-        fillMode: Image.PreserveAspectFit // 等比例缩放，保持完整
-        source: "qrc:/image/minus_line.png"
-        layer.effect: ColorOverlay{
-            source:minbutton
-            color:"white"
-        }
-        MouseArea{
-            hoverEnabled: true
-            anchors.fill: parent
-            onClicked: root.showMinimized()
-            onEntered: {
-                parent.layer.enabled = true
+
+Row {
+    spacing: 8
+
+    // 最小化按钮
+    Rectangle {
+        width: 28
+        height: 28
+        radius: 14
+        color: minMouseArea.containsMouse ? "#30FFFFFF" : "transparent"
+
+        Image {
+            id: minbutton
+            anchors.centerIn: parent
+            width: 14
+            height: 14
+            fillMode: Image.PreserveAspectFit
+            source: "qrc:/image/minus_line.png"
+            layer.enabled: true
+            layer.effect: ColorOverlay {
+                source: minbutton
+                color: "#FFFFFF"
             }
-            onExited: {
-                parent.layer.enabled = false
+        }
+
+        MouseArea {
+            id: minMouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.showMinimized()
+        }
+
+        Behavior on color {
+            ColorAnimation {
+                duration: 150
             }
         }
     }
-    //最大化
-    Image {
-        id: maxbottom
-        width: 18
-        height: 18
-        fillMode: Image.PreserveAspectFit
-        source: "qrc:/image/fullscreen_line.png"
-        layer.effect: ColorOverlay{
-            source:maxbottom
-            color:"white"
+
+    // 最大化按钮
+    Rectangle {
+        id: maxBtn
+        width: 28
+        height: 28
+        radius: 14
+        color: maxMouseArea.containsMouse ? "#30FFFFFF" : "transparent"
+
+        Image {
+            id: maxbottom
+            anchors.centerIn: parent
+            width: 14
+            height: 14
+            fillMode: Image.PreserveAspectFit
+            source: root.visibility === Window.Maximized ? "qrc:/image/fullscreen-exit_line.png" : "qrc:/image/fullscreen_line.png"
+            layer.enabled: true
+            layer.effect: ColorOverlay {
+                source: maxbottom
+                color: "#FFFFFF"
+            }
         }
-        MouseArea{
+
+        MouseArea {
+            id: maxMouseArea
             anchors.fill: parent
             hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
             onClicked: {
-                if (root.visibility === Window.Maximized)
-                {
-                    root.showNormal()
-                    parent.source = "qrc:/image/fullscreen_line.png"
-                    leftrect.radius = 20
-                    rightrect.radius = 20
-                    bottomrect.radius = 20
-                }
-                else
-                {
-                    root.showMaximized()
-                    parent.source = "qrc:/image/fullscreen-exit_line.png"
-                    leftrect.radius = 0
-                    rightrect.radius = 0
-                    bottomrect.radius = 0
+                if (root.visibility === Window.Maximized) {
+                    root.showNormal();
+                    leftrect.radius = 20;
+                    rightrect.radius = 20;
+                    bottomrect.radius = 20;
+                } else {
+                    root.showMaximized();
+                    leftrect.radius = 0;
+                    rightrect.radius = 0;
+                    bottomrect.radius = 0;
                 }
             }
-            onEntered: {
-                parent.layer.enabled = true
-            }
-            onExited: {
-                parent.layer.enabled = false
-            }
+        }
+
+        Behavior on color {
+            ColorAnimation {
+                duration: 150
             }
         }
-    //关闭
-    Image {
-        id: closebottom
-        width: 18
-        height: 18
-        fillMode: Image.PreserveAspectFit
-        source: "qrc:/image/close-circle_line.png"
-        layer.effect: ColorOverlay{
-            source:closebottom
-            color:"white"
+    }
+
+    // 关闭按钮
+    Rectangle {
+        width: 28
+        height: 28
+        radius: 14
+        color: closeMouseArea.containsMouse ? "#FF5252" : "transparent"
+
+        Image {
+            id: closebottom
+            anchors.centerIn: parent
+            width: 14
+            height: 14
+            fillMode: Image.PreserveAspectFit
+            source: "qrc:/image/close-circle_line.png"
+            layer.enabled: true
+            layer.effect: ColorOverlay {
+                source: closebottom
+                color: "#FFFFFF"
+            }
         }
-        MouseArea{
-            hoverEnabled: true
+
+        MouseArea {
+            id: closeMouseArea
             anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
             onClicked: root.close()
-            onEntered: {
-                parent.layer.enabled = true
-            }
-            onExited: {
-                parent.layer.enabled = false
+        }
+
+        Behavior on color {
+            ColorAnimation {
+                duration: 150
             }
         }
     }

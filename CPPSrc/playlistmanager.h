@@ -17,21 +17,23 @@
 #include <QFileInfo>
 #include <QStandardPaths>
 #include <QDir>
+#include <QImage>
+#include <QColor>
+#include <QNetworkRequest>
 #include "recommendation.h"
 struct SongInfo
 {
-    Q_GADGET  // 使结构体能被 Qt 元系统识别
-    Q_PROPERTY(QString title MEMBER title)
+Q_GADGET // 使结构体能被 Qt 元系统识别
+Q_PROPERTY(QString title MEMBER title)
     Q_PROPERTY(QString songhash MEMBER songhash)
-    Q_PROPERTY(QString url MEMBER url)
-    Q_PROPERTY(QString singername MEMBER singername)
-    Q_PROPERTY(QString union_cover MEMBER union_cover)
-    Q_PROPERTY(QString album_name MEMBER album_name)
-    Q_PROPERTY(QString duration MEMBER duration)
-    Q_PROPERTY(QString lyric MEMBER lyric)
+        Q_PROPERTY(QString url MEMBER url)
+            Q_PROPERTY(QString singername MEMBER singername)
+                Q_PROPERTY(QString union_cover MEMBER union_cover)
+                    Q_PROPERTY(QString album_name MEMBER album_name)
+                        Q_PROPERTY(QString duration MEMBER duration)
+                            Q_PROPERTY(QString lyric MEMBER lyric)
 
-public:
-    QString title;
+                                public : QString title;
     QString songhash;
     QString url;
     QString singername;
@@ -55,6 +57,7 @@ class PlaylistManager : public QObject
     Q_PROPERTY(QString currentsingername READ currentsingername NOTIFY currentSongChanged)
     Q_PROPERTY(bool isPaused READ isPaused NOTIFY isPausedChanged)
     Q_PROPERTY(QString union_cover READ union_cover NOTIFY currentSongChanged)
+    Q_PROPERTY(QString dominantColor READ dominantColor NOTIFY dominantColorChanged)
     Q_PROPERTY(float percent READ getpercent NOTIFY percentChanged)
     Q_PROPERTY(QString percentstr READ getpercentstr NOTIFY percentChanged)
     Q_PROPERTY(QString duration READ durationstr NOTIFY durationChanged)
@@ -66,8 +69,8 @@ class PlaylistManager : public QObject
     Q_PROPERTY(QVector<LyricLine> m_lyrics READ LyricLine_get NOTIFY parlyricsuc)
     Q_PROPERTY(qint64 lyricsindex READ lyricsindexget NOTIFY currlyricChanged)
 public:
-    explicit PlaylistManager(Recommendation *recommendation,QObject *parent = nullptr);
-    Q_INVOKABLE void addSong(const QString &title,const QString &songhash,const QString &singername,const QString &union_cover,const QString &album_name,const QString &duration);
+    explicit PlaylistManager(Recommendation *recommendation, QObject *parent = nullptr);
+    Q_INVOKABLE void addSong(const QString &title, const QString &songhash, const QString &singername, const QString &union_cover, const QString &album_name, const QString &duration);
     Q_INVOKABLE void removeSong(int index);
     Q_INVOKABLE void clearPlaylist();
     Q_INVOKABLE void playSongbyhasg(const QString &songhash);
@@ -75,7 +78,7 @@ public:
     Q_INVOKABLE void playNext();
     Q_INVOKABLE void playPrevious();
     Q_INVOKABLE void playstop();
-    Q_INVOKABLE void addandplay(const QString &title, const QString &url,const QString &singername,const QString &union_cover,const QString &album_name,const QString &duration);
+    Q_INVOKABLE void addandplay(const QString &title, const QString &url, const QString &singername, const QString &union_cover, const QString &album_name, const QString &duration);
     Q_INVOKABLE void setposistion(float positionvalue);
 
     int currentIndex() const;
@@ -85,6 +88,7 @@ public:
     int count() const;
     bool isPaused() const;
     QString union_cover() const;
+    QString dominantColor() const;
     float getpercent() const;
     QString getpercentstr() const;
     QString durationstr();
@@ -95,7 +99,7 @@ public:
     QString getcurrlyric() const;
     enum playlist_type getplaylist_type() const;
     void changeplaylisttype(enum playlist_type type);
-    int is_have_cache(const SongInfo &song,const int index);
+    int is_have_cache(const SongInfo &song, const int index);
     QVector<LyricLine> LyricLine_get() const;
 
 signals:
@@ -110,10 +114,10 @@ signals:
     void playlist_typeChanged();
     void togetherplaylistUpdated();
     void parlyricsuc();
+    void dominantColorChanged();
 
 public slots:
     void parselyricsuc();
-
 
 private:
     enum playlist_type type = LOCAL;
@@ -131,21 +135,23 @@ private:
     QNetworkAccessManager m_networkManager;
     void showplaylist();
     float m_percent = 0.0;
-    QString m_percentstr ="00:00";
+    QString m_percentstr = "00:00";
     QString m_duration = "00:00";
     void updatePlaybackProgress(qint64 position);
-    void handlePlayerError(QMediaPlayer::Error error, const QString &errorString) ;
+    void handlePlayerError(QMediaPlayer::Error error, const QString &errorString);
     QString formatTime(qint64 milliseconds);
-    Recommendation *m_recommendation = nullptr;  // 改为指针
+    Recommendation *m_recommendation = nullptr; // 改为指针
     QList<SongInfo> convertToSongInfoList(const QVariantList &variantList);
-    bool m_isRepairing = false; // 添加修复状态标志
-    int m_repairCount = 0;      // 修复次数计数
+    bool m_isRepairing = false;        // 添加修复状态标志
+    int m_repairCount = 0;             // 修复次数计数
     const int MAX_REPAIR_ATTEMPTS = 5; // 最大修复尝试次数
     void fetchLyricData(const QString &hash, std::function<void(QString)> callback);
     void fetchLyricContent(const QString &id, const QString &accesskey, std::function<void(QString)> callback);
     QString currlyric = "网狗音乐！";
+    QString m_dominantColor = "#FF6B6B";
+    void extractDominantColor(const QString &imageUrl);
+    QColor getAverageColor(const QImage &image);
 };
 Q_DECLARE_METATYPE(SongInfo)
-
 
 #endif // PLAYLISTMANAGER_H

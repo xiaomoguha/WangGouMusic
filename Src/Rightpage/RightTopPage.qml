@@ -1,28 +1,28 @@
 import QtQuick 2.15
 
 //上层状态栏
-Item{
+Item {
     //搜索、后退、语音按钮
-    Search{
+    Search {
         anchors.left: parent.left
-        anchors.leftMargin: 0.03*root.width
+        anchors.leftMargin: 0.03 * root.width
         anchors.verticalCenter: parent.verticalCenter
         spacing: 15
     }
 
-    Row{
+    Row {
         anchors.right: parent.right
-        anchors.rightMargin: 0.02*root.width
+        anchors.rightMargin: 0.02 * root.width
         anchors.verticalCenter: parent.verticalCenter
-        spacing: 30
+        spacing: 15
         //登录信息
-        LoginStatus{
+        LoginStatus {
             spacing: 15
             anchors.verticalCenter: parent.verticalCenter
         }
         //最大化最小化
-        MaxMin{
-            spacing: 15
+        MaxMin {
+            spacing: 8
             anchors.verticalCenter: parent.verticalCenter
         }
     }
