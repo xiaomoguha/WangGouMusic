@@ -12,7 +12,8 @@ Window {
     color: "transparent"
 
     // 根据锁定状态设置窗口标志
-    flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool
+    // 锁定时启用鼠标穿透，解锁按钮通过双击解锁
+    flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool | (locked ? Qt.WindowTransparentForInput : 0)
 
     // 初始化位置
     x: (Screen.desktopAvailableWidth - width) / 2
@@ -466,7 +467,7 @@ Window {
             }
 
             Text {
-                text: locked ? "已锁定 - 悬停显示解锁按钮" : "已解锁 - 可拖动调整"
+                text: locked ? "已锁定 - 打开主页面可解锁" : "已解锁 - 可拖动调整"
                 font.pixelSize: 13
                 color: "white"
                 anchors.verticalCenter: parent.verticalCenter

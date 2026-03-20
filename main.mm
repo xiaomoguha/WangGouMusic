@@ -5,8 +5,13 @@
 #include <QLoggingCategory>
 #include <QIcon>
 #include <QQmlComponent>
+#include <QTimer>
+#include <QQuickWindow>
 #ifdef Q_OS_WIN
 #include <windows.h>
+#endif
+#ifdef Q_OS_MAC
+#include <Cocoa/Cocoa.h>
 #endif
 
 #include "./CPPSrc/gethostsearch.h"
@@ -67,6 +72,35 @@ int main(int argc, char *argv[])
             LONG exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
             SetWindowLong(hwnd, GWL_EXSTYLE, exStyle | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE); });
 #endif
+
+#ifdef Q_OS_MAC
+        // macOS: 使用 Cocoa API 设置窗口层级
+        // 需要确保窗口已经创建
+        desktopLyricsWindow->requestActivate();
+        
+        // 获取 NSWindow (Qt 6 方式)
+        WId winId = desktopLyricsWindow->winId();
+        NSView *nsView = reinterpret_cast<NSView *>(winId);
+        NSWindow *nsWindow = [nsView window];
+        
+        if (nsWindow) {
+            // 使用更高的层级：Overlay 级别 (1024)
+            // 这个级别比普通窗口高很多，甚至超过 Dock
+            [nsWindow setLevel:1024];  // kCGOverlayWindowLevel
+            
+            // 确保窗口在所有工作空间可见
+            [nsWindow setCollectionBehavior:NSWindowCollectionBehaviorCanJoinAllSpaces |
+                                          NSWindowCollectionBehaviorStationary |
+                                          NSWindowCollectionBehaviorFullScreenAuxiliary];
+            
+            // 设置窗口失去焦点时不隐藏
+            [nsWindow setHidesOnDeactivate:NO];
+            
+            // 强制显示
+            [nsWindow orderFrontRegardless];
+            [nsWindow makeKeyAndOrderFront:nil];
+        }
+#endif
     }
 
     // 把桌面歌词对象暴露给主窗口 QML
@@ -90,22 +124,26 @@ int main(int argc, char *argv[])
 
     // ---------------- 加载 QML ----------------
     engine.load(url);
-#ifdef Q_OS_WIN
-    // 获取根窗口
-    QWindow *window = nullptr;
+    
+    // 获取根窗口 (ApplicationWindow 需要通过 QQuickWindow 获取)
+    QQuickWindow *window = nullptr;
     if (!engine.rootObjects().isEmpty())
     {
         QObject *rootObj = engine.rootObjects().first();
-        window = qobject_cast<QWindow *>(rootObj);
+        window = qobject_cast<QQuickWindow *>(rootObj);
     }
 
-    // ---------------- 托盘图标 ----------------
+    // ---------------- 托盘图标（跨平台） ----------------
+#ifdef Q_OS_MAC
+    // macOS 使用 PNG 格式图标
+    QIcon trayIcon(QStringLiteral(":/image/wyyicon.png"));
+#else
     QIcon trayIcon(QStringLiteral(":/image/wyymusic.ico"));
+#endif
     if (trayIcon.isNull())
         trayIcon = QIcon::fromTheme(QStringLiteral("application-exit"));
 
     new TrayHandler(window, &app, trayIcon, &app);
 
-#endif
     return app.exec();
 }

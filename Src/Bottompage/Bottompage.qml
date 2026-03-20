@@ -579,6 +579,48 @@ Rectangle {
             }
         }
 
+        // 解锁桌面歌词按钮（锁定时显示）
+        Rectangle {
+            id: unlockLyricsBtn
+            width: 36
+            height: 36
+            radius: 18
+            color: unlockMouseArea.containsMouse ? "#FF8080" : "#FF6B6B"
+            visible: desktopLyricsWindow && desktopLyricsWindow.locked && desktopLyricsWindow.visible
+
+            Image {
+                id: unlockIcon
+                anchors.centerIn: parent
+                source: "qrc:/image/lock_close.png"
+                width: 16
+                height: 16
+                fillMode: Image.PreserveAspectFit
+                layer.enabled: true
+                layer.effect: ColorOverlay {
+                    source: unlockIcon
+                    color: "#FFFFFF"
+                }
+            }
+
+            MouseArea {
+                id: unlockMouseArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    if (desktopLyricsWindow) {
+                        desktopLyricsWindow.locked = false;
+                    }
+                }
+            }
+
+            Behavior on color {
+                ColorAnimation {
+                    duration: 150
+                }
+            }
+        }
+
         // 音量按钮
         Rectangle {
             id: shenyingicon
