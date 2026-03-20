@@ -71,7 +71,7 @@ Window {
                 horizontalOffset: 0
                 verticalOffset: 4
                 radius: 16
-                samples: 32
+                samples: 16
                 color: "#40000000"
                 spread: 0.2
             }

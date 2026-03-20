@@ -2,9 +2,7 @@
 #include <QDebug>
 
 HttpGetRequester::HttpGetRequester(int timeoutMs, QObject *parent)
-    : QObject(parent)
-    , m_networkManager(new QNetworkAccessManager(this))
-    , m_timeoutTimer(new QTimer(this))
+    : QObject(parent), m_networkManager(new QNetworkAccessManager(this)), m_timeoutTimer(new QTimer(this))
 {
     // 设置单次触发定时器
     m_timeoutTimer->setSingleShot(true);
@@ -49,11 +47,11 @@ void HttpGetRequester::fetchData(const QString &url)
 
     // 连接信号槽
     connect(m_currentReply, &QNetworkReply::finished, this, &HttpGetRequester::handleFinished);
-    connect(m_currentReply, &QNetworkReply::errorOccurred, this, [this](QNetworkReply::NetworkError error) {
+    connect(m_currentReply, &QNetworkReply::errorOccurred, this, [this](QNetworkReply::NetworkError error)
+            {
         Q_UNUSED(error)
         emit requestFailed(m_currentReply->errorString());
-        cleanupReply();
-    });
+        cleanupReply(); });
 
     // 启动超时定时器
     m_timeoutTimer->start();
@@ -75,7 +73,8 @@ void HttpGetRequester::handleFinished()
 
 void HttpGetRequester::handleTimeout()
 {
-    if (m_currentReply) {
+    if (m_currentReply)
+    {
         emit requestTimeout();
         m_currentReply->abort(); // 中止请求
         cleanupReply();
@@ -84,7 +83,8 @@ void HttpGetRequester::handleTimeout()
 
 void HttpGetRequester::cleanupReply()
 {
-    if (m_currentReply) {
+    if (m_currentReply)
+    {
         m_currentReply->deleteLater();
         m_currentReply = nullptr;
     }

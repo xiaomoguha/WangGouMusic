@@ -55,7 +55,7 @@ void Recommendation::SelectedGoodSongsdata(const QByteArray &data)
         const QString songName = song["songname"].toString();
         const QString hash = song["hash"].toString();
         const QString album_name = song["album_name"].toString();
-        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}","1024");;
+        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}","300");;
         const double time_length_s = song["time_length"].toDouble();
         const QString time_length = secondsToMinutesSeconds((int)time_length_s);
 
@@ -104,7 +104,7 @@ void Recommendation::Classicnostalgicgoldenoldiesdata(const QByteArray &data)
         const QString songName = song["songname"].toString();
         const QString hash = song["hash"].toString();
         const QString album_name = song["album_name"].toString();
-        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}","1024");;
+        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}","300");;
         const double time_length_s = song["time_length"].toDouble();
         const QString time_length = secondsToMinutesSeconds((int)time_length_s);
 
@@ -153,7 +153,7 @@ void Recommendation::SelectedPopularHitsdata(const QByteArray &data)
         const QString songName = song["songname"].toString();
         const QString hash = song["hash"].toString();
         const QString album_name = song["album_name"].toString();
-        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}","1024");;
+        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}","300");;
         const double time_length_s = song["time_length"].toDouble();
         const QString time_length = secondsToMinutesSeconds((int)time_length_s);
 
@@ -202,7 +202,7 @@ void Recommendation::Rareandexquisitemasterpiecesdata(const QByteArray &data)
         const QString songName = song["songname"].toString();
         const QString hash = song["hash"].toString();
         const QString album_name = song["album_name"].toString();
-        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}","1024");;
+        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}","300");;
         const double time_length_s = song["time_length"].toDouble();
         const QString time_length = secondsToMinutesSeconds((int)time_length_s);
 
@@ -251,7 +251,7 @@ void Recommendation::Keepingupwiththelatesttrendsdata(const QByteArray &data)
         const QString songName = song["songname"].toString();
         const QString hash = song["hash"].toString();
         const QString album_name = song["album_name"].toString();
-        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}","1024");;
+        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}","300");;
         const double time_length_s = song["time_length"].toDouble();
         const QString time_length = secondsToMinutesSeconds((int)time_length_s);
 
@@ -300,7 +300,7 @@ void Recommendation::ExclusiverecommendationforVIPsongsdata(const QByteArray &da
         const QString songName = song["songname"].toString();
         const QString hash = song["hash"].toString();
         const QString album_name = song["album_name"].toString();
-        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}","1024");;
+        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}","300");;
         const double time_length_s = song["time_length"].toDouble();
         const QString time_length = secondsToMinutesSeconds((int)time_length_s);
 
@@ -349,7 +349,7 @@ void Recommendation::Manitemsongsdata(const QByteArray &data)
         const QString songName = song["OriSongName"].toString();
         const QString hash = (song["HQ"].toObject())["Hash"].toString();
         const QString album_name = song["AlbumName"].toString();
-        const QString sizable_cover = song["Image"].toString().replace("{size}","1024");;
+        const QString sizable_cover = song["Image"].toString().replace("{size}","300");;
         const int time_length_s = song["Duration"].toInt();
         const QString time_length = secondsToMinutesSeconds(time_length_s);
 
