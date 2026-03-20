@@ -48,9 +48,22 @@ ApplicationWindow {
         root.y = (Screen.height - root.height) / 2;
         //获取热搜数据
         hostSearch.fetchhostserachData("https://xjt-togethertracks.top/api/search/hot");
-        //获取推荐歌曲数据
-        for (let i = 0; i < 7; i++) {
+        //启动时加载常用推荐列表：前3个 + 嫚姐专属(索引6)
+        for (let i = 0; i < 3; i++) {
             recommendation.getdatabygetdatarange(i);
+        }
+        recommendation.getdatabygetdatarange(6);  // 嫚姐专属接口
+    }
+    // 延迟加载剩余推荐数据，减少启动内存压力
+    Timer {
+        id: delayedLoadTimer
+        interval: 3000  // 3秒后加载
+        running: true
+        repeat: false
+        onTriggered: {
+            for (let i = 3; i < 6; i++) {  // 只加载索引3-5
+                recommendation.getdatabygetdatarange(i);
+            }
         }
     }
     onClosing: {
@@ -185,15 +198,16 @@ ApplicationWindow {
             color: "#2d2d37"
         }
     }
-    PlayingPage {
-        id: lyricsPage
-
+    // 使用 Loader 延迟加载歌词页，减少启动内存
+    Loader {
+        id: lyricsPageLoader
         width: root.width
         height: root.height
-
         y: root.lyricsOpened ? 0 : root.height
-
         z: 10
+        // 首次打开后保持活跃
+        active: root.lyricsOpened || lyricsPageLoader.item !== null
+        source: "qrc:/Src/PlayingPage/PlayingPage.qml"
 
         Behavior on y {
             NumberAnimation {
@@ -202,4 +216,6 @@ ApplicationWindow {
             }
         }
     }
+    // 暴露歌词页给外部访问
+    property alias lyricsPage: lyricsPageLoader.item
 }

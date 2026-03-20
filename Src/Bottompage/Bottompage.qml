@@ -21,6 +21,8 @@ Rectangle {
                 asynchronous: true
                 cache: true
                 mipmap: true
+                sourceSize.width: 120
+                sourceSize.height: 120
                 layer.enabled: true
                 layer.effect: OpacityMask {
                     maskSource: Rectangle {

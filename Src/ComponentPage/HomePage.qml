@@ -73,6 +73,8 @@ Item {
                     asynchronous: true
                     cache: true
                     mipmap: true
+                    sourceSize.width: 100
+                    sourceSize.height: 100
                 }
 
                 Column {
@@ -236,7 +238,7 @@ Item {
                     anchors.rightMargin: 10
                     anchors.verticalCenter: parent.verticalCenter
                     visible: isPlaying
-                    playing: true
+                    playing: visible
                 }
 
                 HoverHandler {
@@ -391,7 +393,7 @@ Item {
                     cellWidth: width / 2 - 10
                     cellHeight: 60
                     interactive: false
-                    cacheBuffer: 200
+                    cacheBuffer: 100
                     model: displayCount
                     property int range: playRange
                     delegate: Item {

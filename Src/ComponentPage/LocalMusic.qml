@@ -215,7 +215,7 @@ Item {
                             width: 25
                             height: 25
                             source: "qrc:/image/isplaying.gif"
-                            playing: true  // 确保动画自动播放
+                            playing: visible  // 确保动画自动播放
                             visible: playlistmanager ? (playlistmanager.currentIndex === index) : false
                         }
 

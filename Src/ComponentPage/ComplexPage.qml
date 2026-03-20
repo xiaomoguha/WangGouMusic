@@ -126,6 +126,8 @@ Page {
                             asynchronous: true
                             cache: true
                             mipmap: true
+                            sourceSize.width: 90
+                            sourceSize.height: 90
                         }
                         Column {
                             anchors.verticalCenter: parent.verticalCenter

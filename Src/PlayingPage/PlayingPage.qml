@@ -23,6 +23,8 @@ Rectangle {
         asynchronous: true
         cache: true
         visible: false  // 隐藏原图
+        sourceSize.width: 600
+        sourceSize.height: 600
     }
 
     // 2. 先进行高斯模糊
@@ -617,7 +619,7 @@ Rectangle {
         anchors.topMargin: 160
         clip: true
         width: parent.width * 0.3
-        cacheBuffer: 300
+        cacheBuffer: 150
 
         model: playlistmanager ? playlistmanager.m_lyrics : 0
         interactive: false   //是否可以手动滚动

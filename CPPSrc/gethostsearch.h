@@ -21,11 +21,11 @@ signals:
     void hostsearchitemsChanged();
 
 private slots:
-    void onReplyFinished(QNetworkReply *reply);  // 处理网络响应
+    void onReplyFinished(QNetworkReply *reply); // 处理网络响应
 
 private:
-    QNetworkAccessManager m_manager;  // Qt内置网络请求管理器
-    QVariantList m_items;             // 提供给 QML 的模型数据
+    QNetworkAccessManager m_manager; // Qt内置网络请求管理器
+    QVariantList m_items;            // 提供给 QML 的模型数据
 };
 
 #endif // GETHOSTSEARCH_H

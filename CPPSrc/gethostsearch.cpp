@@ -1,6 +1,6 @@
 #include "gethostsearch.h"
 
-GetHostSearch::GetHostSearch(QObject *parent): QObject{parent}
+GetHostSearch::GetHostSearch(QObject *parent) : QObject{parent}
 {
     connect(&m_manager, &QNetworkAccessManager::finished,
             this, &GetHostSearch::onReplyFinished);
@@ -36,7 +36,7 @@ void GetHostSearch::onReplyFinished(QNetworkReply *reply)
     QJsonObject root = doc.object();
     // 提取基本字段
     int errorCode = root["errcode"].toInt();
-    if(errorCode!=0)
+    if (errorCode != 0)
     {
         qWarning() << "errorCode:" << errorCode;
         reply->deleteLater();
@@ -56,7 +56,7 @@ void GetHostSearch::onReplyFinished(QNetworkReply *reply)
         const QString keyword = keywordValue.toObject()["keyword"].toString();
         QVariantMap item;
         item["keyword"] = keyword;
-        m_items.append(item);  // 添加到 QVariantList
+        m_items.append(item); // 添加到 QVariantList
     }
     // 通知 QML 数据已更新
     emit hostsearchitemsChanged();
