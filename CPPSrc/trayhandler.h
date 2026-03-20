@@ -1,6 +1,7 @@
 #pragma once
 #include <QObject>
 #include <QWindow>
+#include <QQuickWindow>
 #include <QSystemTrayIcon>
 #include <QMenu>
 #include <QApplication>
@@ -10,7 +11,7 @@ class TrayHandler : public QObject
 {
     Q_OBJECT
 public:
-    TrayHandler(QWindow *win, QApplication *app, const QIcon &icon, QObject *parent = nullptr);
+    TrayHandler(QQuickWindow *win, QApplication *app, const QIcon &icon, QObject *parent = nullptr);
     ~TrayHandler() override;
 
 private slots:
@@ -21,7 +22,7 @@ protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
 
 private:
-    QWindow *m_window;
+    QQuickWindow *m_window;
     QApplication *m_app;
     QSystemTrayIcon *m_tray;
     QMenu *m_menu;

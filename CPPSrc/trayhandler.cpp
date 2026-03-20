@@ -3,7 +3,7 @@
 #include <QDebug>
 #include <QEvent>
 
-TrayHandler::TrayHandler(QWindow *win, QApplication *app, const QIcon &icon,
+TrayHandler::TrayHandler(QQuickWindow *win, QApplication *app, const QIcon &icon,
                          QObject *parent)
     : QObject(parent), m_window(win), m_app(app), m_quitRequested(false)
 {
@@ -39,6 +39,9 @@ TrayHandler::TrayHandler(QWindow *win, QApplication *app, const QIcon &icon,
   if (m_window)
     m_window->installEventFilter(this);
 
+  // 监听应用程序激活事件（macOS 点击 Dock 图标）
+  m_app->installEventFilter(this);
+
   m_tray->show();
 }
 
@@ -50,6 +53,7 @@ TrayHandler::~TrayHandler()
 
 bool TrayHandler::eventFilter(QObject *watched, QEvent *event)
 {
+  // 处理窗口关闭事件
   if (watched == m_window && event->type() == QEvent::Close)
   {
     if (m_quitRequested)
@@ -57,6 +61,16 @@ bool TrayHandler::eventFilter(QObject *watched, QEvent *event)
     m_window->hide();
     return true; // 阻止关闭
   }
+
+  // 处理应用程序激活事件（macOS 点击 Dock 图标）
+  if (event->type() == QEvent::ApplicationActivate)
+  {
+    if (m_window && !m_window->isVisible())
+    {
+      onShowRequested();
+    }
+  }
+
   return QObject::eventFilter(watched, event);
 }
 
