@@ -54,7 +54,7 @@ ApplicationWindow {
         }
     }
     onClosing: {
-        if (Qt.platform.os === "windows")
+        if (desktopLyricsWindow)
             desktopLyricsWindow.close();
     }
     MouseArea {

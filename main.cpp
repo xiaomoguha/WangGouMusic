@@ -41,8 +41,8 @@ int main(int argc, char *argv[])
                      {
                          if (!obj && url == objUrl)
                              QCoreApplication::exit(-1); }, Qt::QueuedConnection);
-#ifdef Q_OS_WIN
-    // 加载 DesktopLyrics.qml 独立窗口
+
+    // 加载 DesktopLyrics.qml 独立窗口（跨平台）
     QQmlComponent comp(&engine, QUrl("qrc:/Src/ComponentPage/DesktopLyrics.qml"));
     QObject *desktopLyricsObj = comp.create();
     QWindow *desktopLyricsWindow = qobject_cast<QWindow *>(desktopLyricsObj);
@@ -51,7 +51,8 @@ int main(int argc, char *argv[])
     {
         desktopLyricsWindow->show();
 
-        // 每次显示时设置置顶和鼠标不抢焦点
+#ifdef Q_OS_WIN
+        // Windows 特有：每次显示时设置置顶和鼠标不抢焦点
         QObject::connect(desktopLyricsWindow, &QWindow::visibleChanged, [desktopLyricsWindow]()
                          {
             if(!desktopLyricsWindow->isVisible()) return;
@@ -65,11 +66,12 @@ int main(int argc, char *argv[])
             // 不在任务栏，点击不激活主窗口
             LONG exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
             SetWindowLong(hwnd, GWL_EXSTYLE, exStyle | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE); });
+#endif
     }
 
     // 把桌面歌词对象暴露给主窗口 QML
     engine.rootContext()->setContextProperty("desktopLyricsWindow", desktopLyricsObj);
-#endif
+
     // ---------------- 后端对象 ----------------
     GetHostSearch hostSearch;
     SearchComplex complexsearch;
