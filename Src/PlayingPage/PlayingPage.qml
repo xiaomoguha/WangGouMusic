@@ -20,6 +20,8 @@ Rectangle {
         anchors.fill: parent
         source: albumCover
         fillMode: Image.PreserveAspectCrop
+        asynchronous: true
+        cache: true
         visible: false  // 隐藏原图
     }
 
@@ -473,6 +475,9 @@ Rectangle {
                     property real currentRotation: 0
                     source: albumCover
                     rotation: currentRotation
+                    asynchronous: true
+                    cache: true
+                    mipmap: true
                     layer.enabled: true
                     layer.effect: OpacityMask {
                         maskSource: Rectangle {
@@ -487,12 +492,25 @@ Rectangle {
                         to: 360
                         duration: 15000
                         loops: Animation.Infinite
-                        running: false
+                        running: !playlistmanager.isPaused && root.visible
                     }
                     Connections {
                         target: playlistmanager
                         function onIsPausedChanged() {
-                            if (!playlistmanager.isPaused) {
+                            if (!playlistmanager.isPaused && root.visible) {
+                                rotationAnim.from = avatarImage.currentRotation % 360;
+                                rotationAnim.to = rotationAnim.from + 360;
+                                rotationAnim.start();
+                            } else {
+                                rotationAnim.stop();
+                            }
+                        }
+                    }
+                    // 窗口可见性变化时控制动画
+                    Connections {
+                        target: root
+                        function onVisibleChanged() {
+                            if (!playlistmanager.isPaused && root.visible) {
                                 rotationAnim.from = avatarImage.currentRotation % 360;
                                 rotationAnim.to = rotationAnim.from + 360;
                                 rotationAnim.start();
@@ -599,6 +617,7 @@ Rectangle {
         anchors.topMargin: 160
         clip: true
         width: parent.width * 0.3
+        cacheBuffer: 300
 
         model: playlistmanager ? playlistmanager.m_lyrics : 0
         interactive: false   //是否可以手动滚动
