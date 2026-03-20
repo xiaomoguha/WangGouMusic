@@ -7,41 +7,60 @@ Item {
     height: parent ? parent.height : 0
 
     /* ===================== 区块配置数据 ===================== */
+    // 安全获取推荐数据，避免退出时访问已销毁的 C++ 对象
+    function getRecommendModel(getter) {
+        return recommendation ? getter() : [];
+    }
+
     property var sectionModel: [
         {
             title: "嫚姐专属接口，请立马V我50",
             range: 6,
-            model: recommendation.manitemsqml
+            model: getRecommendModel(function () {
+                return recommendation.manitemsqml;
+            })
         },
         {
             title: "精选好歌随心听",
             range: 0,
-            model: recommendation.SelectedGoodSongsitemsqml
+            model: getRecommendModel(function () {
+                return recommendation.SelectedGoodSongsitemsqml;
+            })
         },
         {
             title: "经典怀旧金曲",
             range: 1,
-            model: recommendation.Classicnostalgicgoldenoldiesitemsqml
+            model: getRecommendModel(function () {
+                return recommendation.Classicnostalgicgoldenoldiesitemsqml;
+            })
         },
         {
             title: "热门好歌精选",
             range: 2,
-            model: recommendation.SelectedPopularHitsitemsqml
+            model: getRecommendModel(function () {
+                return recommendation.SelectedPopularHitsitemsqml;
+            })
         },
         {
             title: "小众宝藏佳作",
             range: 3,
-            model: recommendation.Rareandexquisitemasterpiecesitemsqml
+            model: getRecommendModel(function () {
+                return recommendation.Rareandexquisitemasterpiecesitemsqml;
+            })
         },
         {
             title: "潮流尝鲜",
             range: 4,
-            model: recommendation.Keepingupwiththelatesttrendsitemsqml
+            model: getRecommendModel(function () {
+                return recommendation.Keepingupwiththelatesttrendsitemsqml;
+            })
         },
         {
             title: "VIP歌曲专属推荐",
             range: 5,
-            model: recommendation.ExclusiverecommendationforVIPsongsitemsqml
+            model: getRecommendModel(function () {
+                return recommendation.ExclusiverecommendationforVIPsongsitemsqml;
+            })
         }
     ]
 
@@ -370,7 +389,9 @@ Item {
                         TapHandler {
                             cursorShape: Qt.PointingHandCursor
                             onTapped: {
-                                recommendation.getdatabygetdatarange(playRange);
+                                if (recommendation) {
+                                    recommendation.getdatabygetdatarange(playRange);
+                                }
                             }
                         }
 
