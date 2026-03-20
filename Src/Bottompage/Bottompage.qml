@@ -18,6 +18,9 @@ Rectangle {
                 property real currentRotation: 0
                 source: playlistmanager ? (playlistmanager.union_cover === "" ? "qrc:/image/touxi.jpg" : playlistmanager.union_cover) : "qrc:/image/touxi.jpg"
                 rotation: currentRotation
+                asynchronous: true
+                cache: true
+                mipmap: true
                 layer.enabled: true
                 layer.effect: OpacityMask {
                     maskSource: Rectangle {
@@ -32,14 +35,27 @@ Rectangle {
                     to: 360
                     duration: 5000
                     loops: Animation.Infinite
-                    running: false
+                    running: playlistmanager && !playlistmanager.isPaused && root.visible
                 }
                 // 根据 isPaused 启停动画
                 Connections {
                     target: playlistmanager
                     function onIsPausedChanged() {
-                        if (!playlistmanager.isPaused) {
+                        if (!playlistmanager.isPaused && root.visible) {
                             // 从当前角度重新开始动画
+                            rotationAnim.from = avatarImage.currentRotation % 360;
+                            rotationAnim.to = rotationAnim.from + 360;
+                            rotationAnim.start();
+                        } else {
+                            rotationAnim.stop();
+                        }
+                    }
+                }
+                // 窗口可见性变化时控制动画
+                Connections {
+                    target: root
+                    function onVisibleChanged() {
+                        if (playlistmanager && !playlistmanager.isPaused && root.visible) {
                             rotationAnim.from = avatarImage.currentRotation % 360;
                             rotationAnim.to = rotationAnim.from + 360;
                             rotationAnim.start();

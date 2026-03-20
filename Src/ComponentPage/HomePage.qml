@@ -70,6 +70,9 @@ Item {
                     anchors.left: parent.left
                     anchors.leftMargin: 8
                     anchors.verticalCenter: parent.verticalCenter
+                    asynchronous: true
+                    cache: true
+                    mipmap: true
                 }
 
                 Column {
@@ -388,6 +391,7 @@ Item {
                     cellWidth: width / 2 - 10
                     cellHeight: 60
                     interactive: false
+                    cacheBuffer: 200
                     model: displayCount
                     property int range: playRange
                     delegate: Item {

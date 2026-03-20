@@ -123,6 +123,9 @@ Page {
                             width: 45
                             height: 45
                             source: modelData.union_cover
+                            asynchronous: true
+                            cache: true
+                            mipmap: true
                         }
                         Column {
                             anchors.verticalCenter: parent.verticalCenter
