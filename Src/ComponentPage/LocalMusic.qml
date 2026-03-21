@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick 2.15
 import QtQuick.Controls
 import Qt5Compat.GraphicalEffects
@@ -65,16 +66,19 @@ Item {
                     color: "white"
                 }
             }
-            MouseArea {
-                anchors.fill: parent
-                hoverEnabled: true
+            HoverHandler {
+                id: playAllHoverHandler
+            }
+            TapHandler {
                 cursorShape: Qt.PointingHandCursor
-                onEntered: {
-                    parent.color = "#FF5252";
+                onTapped: {
+                    // 播放全部
                 }
-                onExited: {
-                    parent.color = "#FF6B6B";
-                }
+            }
+            Binding {
+                target: playallbtn
+                property: "color"
+                value: playAllHoverHandler.hovered ? "#FF5252" : "#FF6B6B"
             }
         }
         // 刷新按钮
@@ -83,7 +87,7 @@ Item {
             width: 34
             height: 34
             radius: 17
-            color: refreshMouseArea.containsMouse ? "#30FFFFFF" : "transparent"
+            color: refreshHoverHandler.hovered ? "#30FFFFFF" : "transparent"
 
             Image {
                 id: refreshIcon
@@ -99,11 +103,14 @@ Item {
                 }
             }
 
-            MouseArea {
-                id: refreshMouseArea
-                anchors.fill: parent
-                hoverEnabled: true
+            HoverHandler {
+                id: refreshHoverHandler
+            }
+            TapHandler {
                 cursorShape: Qt.PointingHandCursor
+                onTapped: {
+                    // 刷新
+                }
             }
 
             Behavior on color {
@@ -178,23 +185,18 @@ Item {
             Repeater {
                 model: playlistmanager ? playlistmanager.playlist : 0
                 delegate: Rectangle {
+                    id: playlistItem
+                    required property int index
+                    required property var modelData
                     width: playlistcolumn.width
                     height: playlistrow.height + 25
                     radius: 5
-                    color: playlistmanager ? (playlistmanager.currentIndex === index ? "#212127" : "transparent") : "transparent"
-                    MouseArea {
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        onEntered: {
-                            parent.color = "#212127";
-                            playlistadditemsrow.visible = true;
-                        }
-                        onExited: {
-                            if (playlistmanager.currentIndex !== index) {
-                                parent.color = "transparent";
-                            }
-                            playlistadditemsrow.visible = false;
-                        }
+                    // 背景色：悬停时或当前播放项时显示
+                    color: (itemHoverHandler.hovered || (playlistmanager && playlistmanager.currentIndex === index)) ? "#212127" : "transparent"
+
+                    // 使用 HoverHandler 控制列表项悬停效果
+                    HoverHandler {
+                        id: itemHoverHandler
                     }
                     Row {
                         id: playlistrow
@@ -248,7 +250,8 @@ Item {
                     }
                     Row {
                         id: playlistadditemsrow
-                        visible: false
+                        // 悬停时显示按钮，但当前播放项不显示
+                        visible: itemHoverHandler.hovered && !(playlistmanager && playlistmanager.currentIndex === index)
                         anchors.left: playlistrow.right
                         anchors.leftMargin: 10
                         anchors.verticalCenter: parent.verticalCenter
@@ -260,7 +263,7 @@ Item {
                             width: 30
                             height: 30
                             radius: 15
-                            color: playNowMouseArea.containsMouse ? "#30FFFFFF" : "transparent"
+                            color: playNowHoverHandler.hovered ? "#30FFFFFF" : "transparent"
 
                             Image {
                                 id: playlistplayNowImage
@@ -272,16 +275,17 @@ Item {
                                 layer.enabled: true
                                 layer.effect: ColorOverlay {
                                     source: playlistplayNowImage
-                                    color: "#FFFFFF"
+                                    color: playNowHoverHandler.hovered ? "#4FC3F7" : "#FFFFFF"
                                 }
                             }
 
-                            MouseArea {
-                                id: playNowMouseArea
-                                anchors.fill: parent
-                                hoverEnabled: true
+                            HoverHandler {
+                                id: playNowHoverHandler
+                            }
+
+                            TapHandler {
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: {
+                                onTapped: {
                                     playlistmanager.playSongbyindex(index);
                                 }
                             }
@@ -299,7 +303,7 @@ Item {
                             width: 30
                             height: 30
                             radius: 15
-                            color: addloveMouseArea.containsMouse ? "#30FFFFFF" : "transparent"
+                            color: addLoveHoverHandler.hovered ? "#30FFFFFF" : "transparent"
 
                             Image {
                                 id: playlistaddloveImage
@@ -311,15 +315,19 @@ Item {
                                 layer.enabled: true
                                 layer.effect: ColorOverlay {
                                     source: playlistaddloveImage
-                                    color: addloveMouseArea.containsMouse ? "#FF6B6B" : "#FFFFFF"
+                                    color: addLoveHoverHandler.hovered ? "#FF6B6B" : "#FFFFFF"
                                 }
                             }
 
-                            MouseArea {
-                                id: addloveMouseArea
-                                anchors.fill: parent
-                                hoverEnabled: true
+                            HoverHandler {
+                                id: addLoveHoverHandler
+                            }
+
+                            TapHandler {
                                 cursorShape: Qt.PointingHandCursor
+                                onTapped: {
+                                    playlistmanager.addToFavoriteByIndex(index);
+                                }
                             }
 
                             Behavior on color {

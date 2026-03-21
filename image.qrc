@@ -12,8 +12,6 @@
         <file>image/search_line.png</file>
         <file>image/setting_line.png</file>
         <file>image/user_line.png</file>
-        <file>image/boke.png</file>
-        <file>image/sheqv.png</file>
         <file>image/touxi.jpg</file>
         <file>image/pinlun.png</file>
         <file>image/nextplay.png</file>
@@ -33,7 +31,6 @@
         <file>image/play.png</file>
         <file>image/wyymusic.ico</file>
         <file>image/shuaxin.png</file>
-        <file>image/more.png</file>
         <file>image/isplaying.gif</file>
         <file>image/lock_close.png</file>
         <file>image/lock_open.png</file>

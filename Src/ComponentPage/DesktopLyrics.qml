@@ -1,5 +1,5 @@
+pragma ComponentBehavior: Bound
 import QtQuick 2.15
-import QtQuick.Controls 2.15
 import QtQuick.Window 2.15
 import Qt5Compat.GraphicalEffects
 
@@ -44,7 +44,7 @@ Window {
         interval: 300
         onTriggered: {
             if (!controlPanelHover.hovered) {
-                showControls = false;
+                desktopLyrics.showControls = false;
             }
         }
     }
@@ -64,7 +64,7 @@ Window {
             color: "#CC000000"
             border.color: "#33FFFFFF"
             border.width: 1
-            opacity: showControls || !locked ? panelOpacity : 0.7
+            opacity: desktopLyrics.showControls || !desktopLyrics.locked ? desktopLyrics.panelOpacity : 0.7
 
             // 发光效果
             layer.enabled: true
@@ -117,9 +117,9 @@ Window {
                 Text {
                     id: lyricText
                     text: getLyricText()
-                    font.pixelSize: fontSize * desktopLyrics.scale
+                    font.pixelSize: desktopLyrics.fontSize * desktopLyrics.scale
                     font.bold: true
-                    color: textColor
+                    color: desktopLyrics.textColor
                     anchors.verticalCenter: parent.verticalCenter
                     style: Text.Outline
                     styleColor: "#40000000"
@@ -145,7 +145,7 @@ Window {
             anchors.bottomMargin: 10
             anchors.horizontalCenter: parent.horizontalCenter
             spacing: 6
-            opacity: showControls ? 1 : 0
+            opacity: desktopLyrics.showControls ? 1 : 0
             z: 100  // 确保在 MouseArea 上面
 
             // 悬停检测 - 保持按钮可见
@@ -154,7 +154,7 @@ Window {
                 onHoveredChanged: {
                     if (hovered) {
                         hideControlsTimer.stop();
-                        showControls = true;
+                        desktopLyrics.showControls = true;
                     } else {
                         hideControlsTimer.restart();
                     }
@@ -173,7 +173,7 @@ Window {
                 height: 32
                 radius: 16
                 color: zoomOutHandler.hovered ? "#40FFFFFF" : "#20FFFFFF"
-                visible: !locked
+                visible: !desktopLyrics.locked
 
                 Text {
                     anchors.centerIn: parent
@@ -202,7 +202,7 @@ Window {
                 height: 32
                 radius: 16
                 color: "#20FFFFFF"
-                visible: !locked
+                visible: !desktopLyrics.locked
 
                 Text {
                     anchors.centerIn: parent
@@ -219,7 +219,7 @@ Window {
                 height: 32
                 radius: 16
                 color: zoomInHandler.hovered ? "#40FFFFFF" : "#20FFFFFF"
-                visible: !locked
+                visible: !desktopLyrics.locked
 
                 Text {
                     anchors.centerIn: parent
@@ -248,7 +248,7 @@ Window {
                 height: 20
                 color: "#40FFFFFF"
                 anchors.verticalCenter: parent.verticalCenter
-                visible: !locked
+                visible: !desktopLyrics.locked
             }
 
             // 字体减小（未锁定时显示）
@@ -257,7 +257,7 @@ Window {
                 height: 32
                 radius: 16
                 color: fontDownHandler.hovered ? "#40FFFFFF" : "#20FFFFFF"
-                visible: !locked
+                visible: !desktopLyrics.locked
 
                 Image {
                     id: fontDownIcon
@@ -292,7 +292,7 @@ Window {
                 height: 32
                 radius: 16
                 color: fontUpHandler.hovered ? "#40FFFFFF" : "#20FFFFFF"
-                visible: !locked
+                visible: !desktopLyrics.locked
 
                 Image {
                     id: fontUpIcon
@@ -327,12 +327,12 @@ Window {
                 height: 20
                 color: "#40FFFFFF"
                 anchors.verticalCenter: parent.verticalCenter
-                visible: !locked
+                visible: !desktopLyrics.locked
             }
 
             // 锁定/解锁按钮（始终显示）
             Rectangle {
-                width: locked ? unlockText.width + 24 : 32
+                width: desktopLyrics.locked ? unlockText.width + 24 : 32
                 height: 32
                 radius: 16
                 color: desktopLyrics.locked ? "#FF6B6B" : (lockHandler.hovered ? "#40FFFFFF" : "#20FFFFFF")
@@ -390,7 +390,7 @@ Window {
             onHoveredChanged: {
                 if (hovered) {
                     hideControlsTimer.stop();
-                    showControls = true;
+                    desktopLyrics.showControls = true;
                 } else {
                     hideControlsTimer.restart();
                 }
@@ -401,21 +401,21 @@ Window {
         MouseArea {
             id: dragMouseArea
             anchors.fill: parent
-            enabled: !locked
+            enabled: !desktopLyrics.locked
             acceptedButtons: Qt.LeftButton
             hoverEnabled: true
 
             onPressed: function (mouse) {
-                _dragPos = Qt.point(mouse.x, mouse.y);
+                desktopLyrics._dragPos = Qt.point(mouse.x, mouse.y);
                 cursorShape = Qt.ClosedHandCursor;
             }
             onReleased: {
                 cursorShape = Qt.ArrowCursor;
             }
             onPositionChanged: function (mouse) {
-                if ((mouse.buttons & Qt.LeftButton) && !locked) {
-                    var newX = desktopLyrics.x + (mouse.x - _dragPos.x);
-                    var newY = desktopLyrics.y + (mouse.y - _dragPos.y);
+                if ((mouse.buttons & Qt.LeftButton) && !desktopLyrics.locked) {
+                    var newX = desktopLyrics.x + (mouse.x - desktopLyrics._dragPos.x);
+                    var newY = desktopLyrics.y + (mouse.y - desktopLyrics._dragPos.y);
 
                     // 边界检查
                     var minVisible = 50;
@@ -454,7 +454,7 @@ Window {
             spacing: 8
 
             Image {
-                source: locked ? "qrc:/image/lock_close.png" : "qrc:/image/lock_open.png"
+                source: desktopLyrics.locked ? "qrc:/image/lock_close.png" : "qrc:/image/lock_open.png"
                 width: 16
                 height: 16
                 fillMode: Image.PreserveAspectFit
@@ -467,7 +467,7 @@ Window {
             }
 
             Text {
-                text: locked ? "已锁定 - 打开主页面可解锁" : "已解锁 - 可拖动调整"
+                text: desktopLyrics.locked ? "已锁定 - 打开主页面可解锁" : "已解锁 - 可拖动调整"
                 font.pixelSize: 13
                 color: "white"
                 anchors.verticalCenter: parent.verticalCenter

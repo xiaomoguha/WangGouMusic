@@ -15,7 +15,6 @@
         <file>Src/ComponentPage/AlbumPage.qml</file>
         <file>Src/ComponentPage/LyricPage.qml</file>
         <file>Src/ComponentPage/SearchresultPage.qml</file>
-        <file>Src/ComponentPage/BlogPage.qml</file>
         <file>Src/ComponentPage/musictogether.qml</file>
         <file>Src/ComponentPage/MyfavoriteMusic.qml</file>
         <file>Src/ComponentPage/RecentlyPlayed.qml</file>

@@ -74,6 +74,8 @@ set_target_properties(cmake_wanggou PROPERTIES
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
     WIN32_EXECUTABLE TRUE
+    # 禁用 QML 编译器的 unqualified access 警告
+    QT_QML_SKIP_QMLCOMPILER_WARNINGS ON
 )
 
 include(GNUInstallDirs)
