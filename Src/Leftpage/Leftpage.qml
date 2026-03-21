@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick 2.15
 import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
@@ -83,6 +84,7 @@ Rectangle {
 
             delegate: Rectangle {
                 id: navItemRect
+                required property int index
                 width: parent.width - 24
                 height: 44
                 radius: 12
@@ -103,7 +105,7 @@ Rectangle {
                         height: 20
                         anchors.verticalCenter: parent.verticalCenter
                         fillMode: Image.PreserveAspectFit
-                        source: navColumn.navList[index].icon
+                        source: navColumn.navList[navItemRect.index].icon
                         layer.enabled: true
                         layer.effect: ColorOverlay {
                             source: navIcon
@@ -113,7 +115,7 @@ Rectangle {
 
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: navColumn.navList[index].text
+                        text: navColumn.navList[navItemRect.index].text
                         font.pixelSize: 14
                         font.family: "黑体"
                         color: navItemRect.isSelected ? "#FFFFFF" : "#CCCCCC"
@@ -126,8 +128,11 @@ Rectangle {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        leftpageRectangle.currentIndex = index;
-                        BasicConfig.pushPage(navColumn.navList[index].pageurl);
+                        // 已选中时不重复切换
+                        if (leftpageRectangle.currentIndex !== navItemRect.index) {
+                            leftpageRectangle.currentIndex = navItemRect.index;
+                            BasicConfig.pushPage(navColumn.navList[navItemRect.index].pageurl);
+                        }
                     }
                 }
 
@@ -184,6 +189,7 @@ Rectangle {
 
             delegate: Rectangle {
                 id: navItemRect2
+                required property int index
                 width: parent.width - 24
                 height: 44
                 radius: 12
@@ -204,7 +210,7 @@ Rectangle {
                         height: 20
                         anchors.verticalCenter: parent.verticalCenter
                         fillMode: Image.PreserveAspectFit
-                        source: navColumn2.navList[index].icon
+                        source: navColumn2.navList[navItemRect2.index].icon
                         layer.enabled: true
                         layer.effect: ColorOverlay {
                             source: navIcon2
@@ -214,7 +220,7 @@ Rectangle {
 
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: navColumn2.navList[index].text
+                        text: navColumn2.navList[navItemRect2.index].text
                         font.pixelSize: 14
                         font.family: "黑体"
                         color: navItemRect2.isSelected ? "#FFFFFF" : "#CCCCCC"
@@ -227,8 +233,11 @@ Rectangle {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        leftpageRectangle.currentIndex = index + 3;
-                        BasicConfig.pushPage(navColumn2.navList[index].pageurl);
+                        // 已选中时不重复切换
+                        if (leftpageRectangle.currentIndex !== navItemRect2.index + 3) {
+                            leftpageRectangle.currentIndex = navItemRect2.index + 3;
+                            BasicConfig.pushPage(navColumn2.navList[navItemRect2.index].pageurl);
+                        }
                     }
                 }
 

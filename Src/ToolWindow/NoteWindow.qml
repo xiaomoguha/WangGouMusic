@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 
@@ -39,7 +40,7 @@ Popup {
                 color: "transparent"
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.top: parent.top
-                anchors.topMargin: 0.3*parent.height
+                anchors.topMargin: 0.3 * parent.height
 
                 Rectangle {
                     width: 6
@@ -69,7 +70,6 @@ Popup {
                 verticalAlignment: Text.AlignVCenter
             }
         }
-
 
         // ====== 失败态：图标 + 文本同行 ======
         Row {
@@ -146,22 +146,22 @@ Popup {
     }
 
     function showLoading(msg) {
-        mode = "loading"
-        message = msg || "加载中..."
-        open()
+        mode = "loading";
+        message = msg || "加载中...";
+        open();
     }
 
     function showError(msg, timeoutMs) {
-        mode = "error"
-        message = msg || "加载失败"
-        autoCloseMs = timeoutMs || autoCloseMs
-        open()
+        mode = "error";
+        message = msg || "加载失败";
+        autoCloseMs = timeoutMs || autoCloseMs;
+        open();
     }
 
     function showSuccess(msg, timeoutMs) {
-        mode = "success"
-        message = msg || "加载失败"
-        autoCloseMs = timeoutMs || autoCloseMs
-        open()
+        mode = "success";
+        message = msg || "加载失败";
+        autoCloseMs = timeoutMs || autoCloseMs;
+        open();
     }
 }

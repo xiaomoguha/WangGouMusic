@@ -1,22 +1,24 @@
+pragma ComponentBehavior: Bound
 import QtQuick 2.15
 import QtQuick.Controls
 import "../BasicConfig"
+
 Item {
     width: parent.width   // 使用显式宽度和高度，而不是锚点
     height: parent.height
 
-    Rectangle{
+    Rectangle {
         anchors.horizontalCenter: parent.horizontalCenter
-        y:0.15*parent.height
+        y: 0.15 * parent.height
         width: 500
         height: 300
         radius: 20
         color: "#393943"
-        Column{
+        Column {
             anchors.horizontalCenter: parent.horizontalCenter
-            height:parent.height
+            height: parent.height
             spacing: 20
-            Item{
+            Item {
                 width: 1
                 height: 20
             }
@@ -27,109 +29,132 @@ Item {
                 color: "white"
                 anchors.horizontalCenter: parent.horizontalCenter
             }
-            TextField{
-                id:roomidtextfield
+            TextField {
+                id: roomidtextfield
                 width: 350
                 height: 50
-                placeholderText:"输入要加入的房间号，若无该房间将新建一个房间"
+                placeholderText: "输入要加入的房间号，若无该房间将新建一个房间"
                 color: "white"
                 palette.placeholderText: "gray"
-                horizontalAlignment :TextInput.AlignHCenter
+                horizontalAlignment: TextInput.AlignHCenter
                 verticalAlignment: TextInput.AlignVCenter
                 font.pixelSize: 14
                 font.family: "黑体"
-                leftPadding:15
-                background: Rectangle{//外部矩形
+                leftPadding: 15
+                background: Rectangle {
+                    //外部矩形
                     anchors.fill: parent
-                    radius:20
-                    gradient: Gradient{
+                    radius: 20
+                    gradient: Gradient {
                         orientation: Gradient.Horizontal
-                        GradientStop{color: "#21283d";position: 0}
-                        GradientStop{color: "#382635";position: 1}
+                        GradientStop {
+                            color: "#21283d"
+                            position: 0
+                        }
+                        GradientStop {
+                            color: "#382635"
+                            position: 1
+                        }
                     }
-                    Rectangle{//内部矩形（套娃出边框渐变）
-                        id:ineer
+                    Rectangle//内部矩形（套娃出边框渐变）
+                    {
+                        id: ineer
                         anchors.fill: parent
                         anchors.margins: 1
                         radius: parent.radius - 1
                         property real gradientStopPos: 1
-                        gradient: Gradient{
+                        gradient: Gradient {
                             orientation: Gradient.Horizontal
-                            GradientStop{color: "#1a1d29";position: 0}
-                            GradientStop{color: "#241c26";position: ineer.gradientStopPos}
+                            GradientStop {
+                                color: "#1a1d29"
+                                position: 0
+                            }
+                            GradientStop {
+                                color: "#241c26"
+                                position: ineer.gradientStopPos
+                            }
                         }
                     }
                 }
-                Connections{
-                    target:BasicConfig
-                    function onBkanAreaClicked()
-                    {
-                        ineer.gradientStopPos = 1
+                Connections {
+                    target: BasicConfig
+                    function onBkanAreaClicked() {
+                        ineer.gradientStopPos = 1;
                     }
                 }
-                onPressed:
-                {
-                    ineer.gradientStopPos = 0
+                onPressed: {
+                    ineer.gradientStopPos = 0;
                 }
             }
-            TextField{
-                id:useridextfield
+            TextField {
+                id: useridextfield
                 width: 350
                 height: 50
-                placeholderText:"给自己取个昵称叭！"
+                placeholderText: "给自己取个昵称叭！"
                 color: "white"
                 palette.placeholderText: "gray"
-                horizontalAlignment :TextInput.AlignHCenter
+                horizontalAlignment: TextInput.AlignHCenter
                 verticalAlignment: TextInput.AlignVCenter
                 font.pixelSize: 14
                 font.family: "黑体"
-                leftPadding:15
-                background: Rectangle{//外部矩形
+                leftPadding: 15
+                background: Rectangle {
+                    //外部矩形
                     anchors.fill: parent
-                    radius:20
-                    gradient: Gradient{
+                    radius: 20
+                    gradient: Gradient {
                         orientation: Gradient.Horizontal
-                        GradientStop{color: "#21283d";position: 0}
-                        GradientStop{color: "#382635";position: 1}
+                        GradientStop {
+                            color: "#21283d"
+                            position: 0
+                        }
+                        GradientStop {
+                            color: "#382635"
+                            position: 1
+                        }
                     }
-                    Rectangle{//内部矩形（套娃出边框渐变）
-                        id:useridinner
+                    Rectangle//内部矩形（套娃出边框渐变）
+                    {
+                        id: useridinner
                         anchors.fill: parent
                         anchors.margins: 1
                         radius: parent.radius - 1
                         property real gradientStopPos: 1
-                        gradient: Gradient{
+                        gradient: Gradient {
                             orientation: Gradient.Horizontal
-                            GradientStop{color: "#1a1d29";position: 0}
-                            GradientStop{color: "#241c26";position: useridinner.gradientStopPos}
+                            GradientStop {
+                                color: "#1a1d29"
+                                position: 0
+                            }
+                            GradientStop {
+                                color: "#241c26"
+                                position: useridinner.gradientStopPos
+                            }
                         }
                     }
                 }
-                Connections{
-                    target:BasicConfig
-                    function onBkanAreaClicked()
-                    {
-                        useridinner.gradientStopPos = 1
+                Connections {
+                    target: BasicConfig
+                    function onBkanAreaClicked() {
+                        useridinner.gradientStopPos = 1;
                     }
                 }
-                onPressed:
-                {
-                    useridinner.gradientStopPos = 0
+                onPressed: {
+                    useridinner.gradientStopPos = 0;
                 }
             }
-            Rectangle{
+            Rectangle {
                 Connections {
                     target: websocket  // 指定监听哪个C++对象
                     function onUrlChanged(url_back) {
-                        if(url_back.includes("roomid=" + roomidtextfield.text))
-                        {
+                        if (url_back.includes("roomid=" + roomidtextfield.text)) {
                             console.log("url 更新成功！调用连接方法！");
                             websocket.connectToServer();
                         }
                     }
                 }
                 anchors.horizontalCenter: parent.horizontalCenter
-                width:180
+                width: 180
                 height: 50
                 color: "#dc3d49"
                 radius: 13
@@ -140,23 +165,22 @@ Item {
                     color: "white"
                     anchors.centerIn: parent
                 }
-                MouseArea{
+                MouseArea {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onEntered: {
-                        parent.color = "#e33742"
+                        parent.color = "#e33742";
                     }
                     onExited: {
-                        parent.color = "#dc3d49"
+                        parent.color = "#dc3d49";
                     }
                     onClicked: {
-                        if(roomidtextfield.text ===  "" || useridextfield.text === "")
-                        {
+                        if (roomidtextfield.text === "" || useridextfield.text === "") {
                             BasicConfig.notice_error("请输入完整信息喔～");
                             return;
                         }
-                        websocket.setUrl(roomidtextfield.text,useridextfield.text);
+                        websocket.setUrl(roomidtextfield.text, useridextfield.text);
                     }
                 }
             }
