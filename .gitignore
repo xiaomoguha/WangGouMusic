@@ -1,1 +1,4 @@
 build/
+.vscode/launch.json
+.qtcreator/CMakeLists.txt.user
+.DS_Store
