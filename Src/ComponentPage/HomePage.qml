@@ -286,8 +286,8 @@ Item {
             property int playRange: modelData.range
             property var songModel: modelData.model
             property bool isExpanded: false
-            property int displayCount: isExpanded ? songModel.length : Math.min(10, songModel.length)
-            property bool hasMore: songModel.length > 10
+            property int displayCount: isExpanded ? songModel.length : Math.min(6, songModel.length)
+            property bool hasMore: songModel.length > 6
 
             Column {
                 id: column
@@ -448,7 +448,7 @@ Item {
                         spacing: 6
 
                         Text {
-                            text: isExpanded ? "收起" : "展开更多 (" + (songModel.length - 10) + "首)"
+                            text: isExpanded ? "收起" : "展开更多 (" + (songModel.length - 6) + "首)"
                             color: "#AAAAAA"
                             font.pixelSize: 13
                             font.family: "黑体"
