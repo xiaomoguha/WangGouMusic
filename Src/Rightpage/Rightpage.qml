@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick 2.15
 import QtQuick.Controls
-import "../ComponentPage"
 import "../BasicConfig"
 
 Rectangle {

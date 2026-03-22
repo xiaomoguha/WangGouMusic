@@ -13,6 +13,10 @@ ApplicationWindow {
     objectName: "mainWindow"
     width: 1057
     height: 752
+    minimumWidth: 1057
+    minimumHeight: 752
+    maximumWidth: 1057
+    maximumHeight: 752
     visible: true
     title: qsTr("WYYMUSIC")
     color: "transparent"

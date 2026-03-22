@@ -21,6 +21,7 @@
 #include "./CPPSrc/recommendation.h"
 #include "./CPPSrc/trayhandler.h"
 #include "./CPPSrc/WebSocketClient.h"
+#include "./CPPSrc/lyricsconfigmanager.h"
 
 int main(int argc, char *argv[])
 {
@@ -53,6 +54,7 @@ int main(int argc, char *argv[])
     Recommendation recommendation;
     PlaylistManager playlistmanager(&recommendation);
     WebSocketClient websocket(&playlistmanager);
+    LyricsConfigManager lyricsConfig;
 
     // QML 全局注册
     qRegisterMetaType<SongInfo>("SongInfo");
@@ -62,6 +64,7 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("playlistmanager", &playlistmanager);
     engine.rootContext()->setContextProperty("recommendation", &recommendation);
     engine.rootContext()->setContextProperty("websocket", &websocket);
+    engine.rootContext()->setContextProperty("lyricsConfig", &lyricsConfig);
 
     // 加载 DesktopLyrics.qml 独立窗口（跨平台）
     QQmlComponent comp(&engine, QUrl("qrc:/Src/ComponentPage/DesktopLyrics.qml"));
