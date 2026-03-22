@@ -13,9 +13,10 @@ Window {
     property real scale: lyricsConfig ? lyricsConfig.scale : 1.0
     property int fontSize: lyricsConfig ? lyricsConfig.fontSize : 22
 
-    // 保存上一次的宽高，用于计算位置偏移
-    property int oldWidth: 0
-    property int oldHeight: 0
+    // 记录窗口中心点位置，用于歌词长度变化时保持居中
+    property real centerX: 0
+    property real centerY: 0
+    property bool isDragging: false  // 标记是否正在拖动
 
     // 窗口大小 - 根据歌词内容动态计算，留出控制面板空间
     width: background.width + (desktopLyrics.isVertical ? 70 : 20)  // 竖向左侧留控制面板空间
@@ -24,36 +25,26 @@ Window {
     visible: true
     color: "transparent"
 
-    // 窗口大小过渡动画
-    Behavior on width {
-        NumberAnimation {
-            duration: 300
-            easing.type: Easing.OutCubic
-        }
-    }
-    Behavior on height {
-        NumberAnimation {
-            duration: 300
-            easing.type: Easing.OutCubic
-        }
+    // 横向模式：x 位置绑定到中心点（拖动时禁用）
+    Binding {
+        target: desktopLyrics
+        property: "x"
+        value: centerX - width / 2
+        when: !desktopLyrics.isVertical && !isDragging
     }
 
-    // 横向模式：宽度变化时保持水平居中
-    onWidthChanged: {
-        if (!desktopLyrics.isVertical && oldWidth > 0) {
-            // 调整 x 坐标以保持中心点不变
-            desktopLyrics.x -= (width - oldWidth) / 2;
-        }
-        oldWidth = width;
+    // 竖向模式：y 位置绑定到中心点（拖动时禁用）
+    Binding {
+        target: desktopLyrics
+        property: "y"
+        value: centerY - height / 2
+        when: desktopLyrics.isVertical && !isDragging
     }
 
-    // 竖向模式：高度变化时保持垂直居中
-    onHeightChanged: {
-        if (desktopLyrics.isVertical && oldHeight > 0) {
-            // 调整 y 坐标以保持中心点不变
-            desktopLyrics.y -= (height - oldHeight) / 2;
-        }
-        oldHeight = height;
+    // 更新中心点的方法
+    function updateCenter() {
+        centerX = x + width / 2;
+        centerY = y + height / 2;
     }
 
     // 根据锁定状态设置窗口标志
@@ -93,6 +84,8 @@ Window {
                     desktopLyrics.y = Screen.desktopAvailableHeight - desktopLyrics.height - 50;
                 }
             }
+            // 初始化中心点
+            updateCenter();
         });
     }
 
@@ -174,20 +167,6 @@ Window {
             Behavior on opacity {
                 NumberAnimation {
                     duration: 200
-                }
-            }
-
-            Behavior on width {
-                NumberAnimation {
-                    duration: 300
-                    easing.type: Easing.OutCubic
-                }
-            }
-
-            Behavior on height {
-                NumberAnimation {
-                    duration: 300
-                    easing.type: Easing.OutCubic
                 }
             }
 
@@ -475,6 +454,8 @@ Window {
                             desktopLyrics.x = lyricsConfig ? lyricsConfig.horizontalX : (Screen.desktopAvailableWidth - desktopLyrics.width) / 2;
                             desktopLyrics.y = lyricsConfig ? lyricsConfig.horizontalY : (Screen.desktopAvailableHeight - desktopLyrics.height - 50);
                         }
+                        // 更新中心点
+                        updateCenter();
                     }
                 }
             }
@@ -698,6 +679,8 @@ Window {
                             desktopLyrics.x = lyricsConfig ? lyricsConfig.horizontalX : (Screen.desktopAvailableWidth - desktopLyrics.width) / 2;
                             desktopLyrics.y = lyricsConfig ? lyricsConfig.horizontalY : (Screen.desktopAvailableHeight - desktopLyrics.height - 50);
                         }
+                        // 更新中心点
+                        updateCenter();
                     }
                 }
             }
@@ -806,12 +789,15 @@ Window {
             z: 50
 
             onPressed: function (mouse) {
+                isDragging = true;
                 desktopLyrics._dragPos = Qt.point(mouse.x + background.x, mouse.y + background.y);
                 cursorShape = Qt.ClosedHandCursor;
             }
             onReleased: {
+                isDragging = false;
                 cursorShape = Qt.ArrowCursor;
-                // 拖动结束后保存位置
+                // 拖动结束后更新中心点并保存位置
+                updateCenter();
                 saveCurrentConfig();
             }
             onPositionChanged: function (mouse) {
