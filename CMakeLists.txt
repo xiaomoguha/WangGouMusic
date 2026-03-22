@@ -29,6 +29,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         qml.qrc
         CPPSrc/httpgetrequester.cpp CPPSrc/HttpGetRequester.h CPPSrc/lyricparser.cpp CPPSrc/lyricparser.h CPPSrc/playlistmanager.cpp CPPSrc/playlistmanager.h CPPSrc/recommendation.cpp CPPSrc/recommendation.h CPPSrc/searchcomplex.cpp CPPSrc/searchcomplex.h CPPSrc/trayhandler.cpp CPPSrc/trayhandler.h CPPSrc/WebSocketClient.cpp CPPSrc/WebSocketClient.h
         CPPSrc/gethostsearch.cpp CPPSrc/gethostsearch.h
+        CPPSrc/lyricsconfigmanager.cpp CPPSrc/lyricsconfigmanager.h
         image.qrc
     )
     # Windows 应用程序图标
