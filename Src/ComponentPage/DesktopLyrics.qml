@@ -49,7 +49,8 @@ Window {
 
     // 根据锁定状态设置窗口标志
     // 窗口大小跟随歌词内容，不需要 WindowTransparentForInput
-    flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool
+    // WindowDoesNotAcceptFocus: 点击时不获取焦点，避免激活主窗口
+    flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool | Qt.WindowDoesNotAcceptFocus
 
     // 初始化位置 - 从配置读取，延迟处理确保配置已加载
     Component.onCompleted: {
@@ -794,10 +795,10 @@ Window {
                 cursorShape = Qt.ClosedHandCursor;
             }
             onReleased: {
-                isDragging = false;
                 cursorShape = Qt.ArrowCursor;
-                // 拖动结束后更新中心点并保存位置
+                // 先更新中心点，再解除拖动状态，防止 Binding 弹回旧位置
                 updateCenter();
+                isDragging = false;
                 saveCurrentConfig();
             }
             onPositionChanged: function (mouse) {

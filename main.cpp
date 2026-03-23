@@ -10,9 +10,8 @@
 #ifdef Q_OS_WIN
 #include <windows.h>
 #endif
-#ifdef Q_OS_MAC
-#include <Cocoa/Cocoa.h>
-#endif
+
+#include "./CPPSrc/macoswindow.h"
 
 #include "./CPPSrc/gethostsearch.h"
 #include "./CPPSrc/searchcomplex.h"
@@ -94,31 +93,7 @@ int main(int argc, char *argv[])
 
 #ifdef Q_OS_MAC
         // macOS: 使用 Cocoa API 设置窗口层级
-        // 需要确保窗口已经创建
-        desktopLyricsWindow->requestActivate();
-        
-        // 获取 NSWindow (Qt 6 方式)
-        WId winId = desktopLyricsWindow->winId();
-        NSView *nsView = reinterpret_cast<NSView *>(winId);
-        NSWindow *nsWindow = [nsView window];
-        
-        if (nsWindow) {
-            // 使用更高的层级：Overlay 级别 (1024)
-            // 这个级别比普通窗口高很多，甚至超过 Dock
-            [nsWindow setLevel:1024];  // kCGOverlayWindowLevel
-            
-            // 确保窗口在所有工作空间可见
-            [nsWindow setCollectionBehavior:NSWindowCollectionBehaviorCanJoinAllSpaces |
-                                          NSWindowCollectionBehaviorStationary |
-                                          NSWindowCollectionBehaviorFullScreenAuxiliary];
-            
-            // 设置窗口失去焦点时不隐藏
-            [nsWindow setHidesOnDeactivate:NO];
-            
-            // 强制显示
-            [nsWindow orderFrontRegardless];
-            [nsWindow makeKeyAndOrderFront:nil];
-        }
+        setupMacOSDesktopLyricsWindow(desktopLyricsWindow);
 #endif
     }
 

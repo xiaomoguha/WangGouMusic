@@ -15,11 +15,11 @@ if(APPLE)
     set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
 endif()
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Quick Multimedia WebSockets Widgets QuickControls2)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Quick Multimedia WebSockets Widgets QuickControls2)
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Quick Multimedia WebSockets Widgets QuickControls2 Core5Compat)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Quick Multimedia WebSockets Widgets QuickControls2 Core5Compat)
 
 set(PROJECT_SOURCES
-    main.mm
+    main.cpp
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
@@ -35,6 +35,10 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     # Windows 应用程序图标
     if(WIN32)
         target_sources(cmake_wanggou PRIVATE app.rc)
+    endif()
+    # macOS Objective-C++ 源文件
+    if(APPLE)
+        target_sources(cmake_wanggou PRIVATE CPPSrc/macoswindow.mm CPPSrc/macoswindow.h)
     endif()
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET cmake_wanggou APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
@@ -55,7 +59,7 @@ else()
 endif()
 
 target_link_libraries(cmake_wanggou
-  PRIVATE Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Quick Qt${QT_VERSION_MAJOR}::Multimedia Qt${QT_VERSION_MAJOR}::WebSockets Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::QuickControls2)
+  PRIVATE Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Quick Qt${QT_VERSION_MAJOR}::Multimedia Qt${QT_VERSION_MAJOR}::WebSockets Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::QuickControls2 Qt${QT_VERSION_MAJOR}::Core5Compat)
 
 # macOS 链接 Cocoa 框架
 if(APPLE)
