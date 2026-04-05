@@ -15,8 +15,8 @@ if(APPLE)
     set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
 endif()
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Quick Multimedia WebSockets Widgets QuickControls2 Core5Compat)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Quick Multimedia WebSockets Widgets QuickControls2 Core5Compat)
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Quick Multimedia WebSockets Widgets QuickControls2 Core5Compat Network)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Quick Multimedia WebSockets Widgets QuickControls2 Core5Compat Network)
 
 set(PROJECT_SOURCES
     main.cpp
@@ -30,6 +30,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         CPPSrc/httpgetrequester.cpp CPPSrc/HttpGetRequester.h CPPSrc/lyricparser.cpp CPPSrc/lyricparser.h CPPSrc/playlistmanager.cpp CPPSrc/playlistmanager.h CPPSrc/recommendation.cpp CPPSrc/recommendation.h CPPSrc/searchcomplex.cpp CPPSrc/searchcomplex.h CPPSrc/trayhandler.cpp CPPSrc/trayhandler.h CPPSrc/WebSocketClient.cpp CPPSrc/WebSocketClient.h
         CPPSrc/gethostsearch.cpp CPPSrc/gethostsearch.h
         CPPSrc/lyricsconfigmanager.cpp CPPSrc/lyricsconfigmanager.h
+        CPPSrc/appupdater.cpp CPPSrc/appupdater.h
         image.qrc
     )
     # Windows 应用程序图标
@@ -59,7 +60,10 @@ else()
 endif()
 
 target_link_libraries(cmake_wanggou
-  PRIVATE Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Quick Qt${QT_VERSION_MAJOR}::Multimedia Qt${QT_VERSION_MAJOR}::WebSockets Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::QuickControls2 Qt${QT_VERSION_MAJOR}::Core5Compat)
+  PRIVATE Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Quick Qt${QT_VERSION_MAJOR}::Multimedia Qt${QT_VERSION_MAJOR}::WebSockets Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::QuickControls2 Qt${QT_VERSION_MAJOR}::Core5Compat Qt${QT_VERSION_MAJOR}::Network)
+
+# 将版本号注入 C++ 宏
+target_compile_definitions(cmake_wanggou PRIVATE APP_VERSION="${PROJECT_VERSION}")
 
 # macOS 链接 Cocoa 框架
 if(APPLE)

@@ -6,6 +6,7 @@ import "./Src/Rightpage"
 import "./Src/Bottompage"
 import "./Src/PlayingPage"
 import "./Src/ToolWindow"
+import "./Src/ComponentPage" as ComponentPage
 import QtQuick.Controls
 
 ApplicationWindow {
@@ -236,6 +237,34 @@ ApplicationWindow {
             target: BasicConfig
             function onSongAdded(songname) {
                 songAddedToast.show(songname);
+            }
+        }
+    }
+
+    // ── 自动更新弹窗 ──
+    ComponentPage.UpdateDialog {
+        id: updateDialog
+        updater: appUpdater
+    }
+
+    // 启动后延迟检查更新
+    Timer {
+        id: checkUpdateTimer
+        interval: 5000
+        running: true
+        repeat: false
+        onTriggered: {
+            if (appUpdater) {
+                appUpdater.checkForUpdate();
+            }
+        }
+    }
+
+    Connections {
+        target: appUpdater
+        function onCheckFinished(hasUpdate) {
+            if (hasUpdate) {
+                updateDialog.open();
             }
         }
     }
