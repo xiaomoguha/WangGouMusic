@@ -71,6 +71,7 @@ class PlaylistManager : public QObject
     Q_PROPERTY(int lyricCharIndex READ lyricCharIndexget NOTIFY currlyricChanged)
     Q_PROPERTY(float lyricCharProgress READ lyricCharProgressget NOTIFY currlyricChanged)
     Q_PROPERTY(QVariantList lyricChars READ lyricCharsget NOTIFY currlyricChanged)
+    Q_PROPERTY(int lyricCharCount READ lyricCharCountget NOTIFY currlyricChanged)
 public:
     explicit PlaylistManager(Recommendation *recommendation, QObject *parent = nullptr);
     Q_INVOKABLE void addSong(const QString &title, const QString &songhash, const QString &singername, const QString &union_cover, const QString &album_name, const QString &duration);
@@ -107,6 +108,7 @@ public:
     int lyricCharIndexget();
     float lyricCharProgressget();
     QVariantList lyricCharsget();
+    int lyricCharCountget();
 
 signals:
     void currentIndexChanged(int index);
@@ -158,6 +160,7 @@ private:
     int m_lyricCharIndex = -1;
     float m_lyricCharProgress = 0.0f;
     QVariantList m_lyricChars;
+    int m_lyricCharCount = 0;
     void extractDominantColor(const QString &imageUrl);
     QColor getAverageColor(const QImage &image);
 };

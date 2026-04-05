@@ -4,23 +4,22 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
-Recommendation::Recommendation(QObject *parent):
-    QObject{parent},
-    getSelectedGoodSongsdata(10000,this),  // 初始化并设置父对象
-    getClassicnostalgicgoldenoldiesdata(10000,this),
-    getSelectedPopularHitsdata(10000,this),
-    getRareandexquisitemasterpiecesdata(10000,this),
-    getKeepingupwiththelatesttrendsdata(10000,this),
-    getExclusiverecommendationforVIPsongsdata(10000,this),
-    getmansongsdata(10000,this)
+Recommendation::Recommendation(QObject *parent) : QObject{parent},
+                                                  getSelectedGoodSongsdata(10000, this), // 初始化并设置父对象
+                                                  getClassicnostalgicgoldenoldiesdata(10000, this),
+                                                  getSelectedPopularHitsdata(10000, this),
+                                                  getRareandexquisitemasterpiecesdata(10000, this),
+                                                  getKeepingupwiththelatesttrendsdata(10000, this),
+                                                  getExclusiverecommendationforVIPsongsdata(10000, this),
+                                                  getmansongsdata(10000, this)
 {
-    QObject::connect(&getSelectedGoodSongsdata, &HttpGetRequester::dataReceived,this,&Recommendation::SelectedGoodSongsdata);
-    QObject::connect(&getClassicnostalgicgoldenoldiesdata, &HttpGetRequester::dataReceived,this,&Recommendation::Classicnostalgicgoldenoldiesdata);
-    QObject::connect(&getSelectedPopularHitsdata, &HttpGetRequester::dataReceived,this,&Recommendation::SelectedPopularHitsdata);
-    QObject::connect(&getRareandexquisitemasterpiecesdata, &HttpGetRequester::dataReceived,this,&Recommendation::Rareandexquisitemasterpiecesdata);
-    QObject::connect(&getKeepingupwiththelatesttrendsdata, &HttpGetRequester::dataReceived,this,&Recommendation::Keepingupwiththelatesttrendsdata);
-    QObject::connect(&getExclusiverecommendationforVIPsongsdata, &HttpGetRequester::dataReceived,this,&Recommendation::ExclusiverecommendationforVIPsongsdata);
-    QObject::connect(&getmansongsdata, &HttpGetRequester::dataReceived,this,&Recommendation::Manitemsongsdata);
+    QObject::connect(&getSelectedGoodSongsdata, &HttpGetRequester::dataReceived, this, &Recommendation::SelectedGoodSongsdata);
+    QObject::connect(&getClassicnostalgicgoldenoldiesdata, &HttpGetRequester::dataReceived, this, &Recommendation::Classicnostalgicgoldenoldiesdata);
+    QObject::connect(&getSelectedPopularHitsdata, &HttpGetRequester::dataReceived, this, &Recommendation::SelectedPopularHitsdata);
+    QObject::connect(&getRareandexquisitemasterpiecesdata, &HttpGetRequester::dataReceived, this, &Recommendation::Rareandexquisitemasterpiecesdata);
+    QObject::connect(&getKeepingupwiththelatesttrendsdata, &HttpGetRequester::dataReceived, this, &Recommendation::Keepingupwiththelatesttrendsdata);
+    QObject::connect(&getExclusiverecommendationforVIPsongsdata, &HttpGetRequester::dataReceived, this, &Recommendation::ExclusiverecommendationforVIPsongsdata);
+    QObject::connect(&getmansongsdata, &HttpGetRequester::dataReceived, this, &Recommendation::Manitemsongsdata);
 }
 
 void Recommendation::SelectedGoodSongsdata(const QByteArray &data)
@@ -44,18 +43,19 @@ void Recommendation::SelectedGoodSongsdata(const QByteArray &data)
     QJsonObject dataObj = root["data"].toObject();
     SelectedGoodSongsitems.clear();
 
-
     // 解析歌曲列表
     const QJsonArray songs = dataObj["song_list"].toArray();
     for (const QJsonValue &songVal : songs)
     {
         QJsonObject song = songVal.toObject();
-        const QJsonArray singerinfo = song["singerinfo"].toArray();;
+        const QJsonArray singerinfo = song["singerinfo"].toArray();
+        ;
         const QString singername = (singerinfo[0])["name"].toString();
         const QString songName = song["songname"].toString();
         const QString hash = song["hash"].toString();
         const QString album_name = song["album_name"].toString();
-        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}","300");;
+        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}", "300");
+        ;
         const double time_length_s = song["time_length"].toDouble();
         const QString time_length = secondsToMinutesSeconds((int)time_length_s);
 
@@ -68,7 +68,6 @@ void Recommendation::SelectedGoodSongsdata(const QByteArray &data)
         item["union_cover"] = sizable_cover;
 
         SelectedGoodSongsitems.append(item);
-        //qDebug() << "歌曲:"<< songName << "歌名" << singername<<"专辑"<<album_name<<"hash"<<hash<<"歌曲长度"<<time_length<<"歌曲秒数"<<time_length_s<<"图片url:"<<sizable_cover;
     }
     emit SelectedGoodSongsChanged();
 }
@@ -93,18 +92,19 @@ void Recommendation::Classicnostalgicgoldenoldiesdata(const QByteArray &data)
     QJsonObject dataObj = root["data"].toObject();
     Classicnostalgicgoldenoldiesitems.clear();
 
-
     // 解析歌曲列表
     const QJsonArray songs = dataObj["song_list"].toArray();
     for (const QJsonValue &songVal : songs)
     {
         QJsonObject song = songVal.toObject();
-        const QJsonArray singerinfo = song["singerinfo"].toArray();;
+        const QJsonArray singerinfo = song["singerinfo"].toArray();
+        ;
         const QString singername = (singerinfo[0])["name"].toString();
         const QString songName = song["songname"].toString();
         const QString hash = song["hash"].toString();
         const QString album_name = song["album_name"].toString();
-        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}","300");;
+        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}", "300");
+        ;
         const double time_length_s = song["time_length"].toDouble();
         const QString time_length = secondsToMinutesSeconds((int)time_length_s);
 
@@ -117,7 +117,6 @@ void Recommendation::Classicnostalgicgoldenoldiesdata(const QByteArray &data)
         item["union_cover"] = sizable_cover;
 
         Classicnostalgicgoldenoldiesitems.append(item);
-        //qDebug() << "歌曲:"<< songName << "歌名" << singername<<"专辑"<<album_name<<"hash"<<hash<<"歌曲长度"<<time_length<<"歌曲秒数"<<time_length_s<<"图片url:"<<sizable_cover;
     }
     emit ClassicnostalgicgoldenoldiesChanged();
 }
@@ -142,18 +141,19 @@ void Recommendation::SelectedPopularHitsdata(const QByteArray &data)
     QJsonObject dataObj = root["data"].toObject();
     SelectedPopularHitsitems.clear();
 
-
     // 解析歌曲列表
     const QJsonArray songs = dataObj["song_list"].toArray();
     for (const QJsonValue &songVal : songs)
     {
         QJsonObject song = songVal.toObject();
-        const QJsonArray singerinfo = song["singerinfo"].toArray();;
+        const QJsonArray singerinfo = song["singerinfo"].toArray();
+        ;
         const QString singername = (singerinfo[0])["name"].toString();
         const QString songName = song["songname"].toString();
         const QString hash = song["hash"].toString();
         const QString album_name = song["album_name"].toString();
-        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}","300");;
+        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}", "300");
+        ;
         const double time_length_s = song["time_length"].toDouble();
         const QString time_length = secondsToMinutesSeconds((int)time_length_s);
 
@@ -166,7 +166,6 @@ void Recommendation::SelectedPopularHitsdata(const QByteArray &data)
         item["union_cover"] = sizable_cover;
 
         SelectedPopularHitsitems.append(item);
-        //qDebug() << "歌曲:"<< songName << "歌名" << singername<<"专辑"<<album_name<<"hash"<<hash<<"歌曲长度"<<time_length<<"歌曲秒数"<<time_length_s<<"图片url:"<<sizable_cover;
     }
     emit SelectedPopularHitsChanged();
 }
@@ -191,18 +190,19 @@ void Recommendation::Rareandexquisitemasterpiecesdata(const QByteArray &data)
     QJsonObject dataObj = root["data"].toObject();
     Rareandexquisitemasterpiecesitems.clear();
 
-
     // 解析歌曲列表
     const QJsonArray songs = dataObj["song_list"].toArray();
     for (const QJsonValue &songVal : songs)
     {
         QJsonObject song = songVal.toObject();
-        const QJsonArray singerinfo = song["singerinfo"].toArray();;
+        const QJsonArray singerinfo = song["singerinfo"].toArray();
+        ;
         const QString singername = (singerinfo[0])["name"].toString();
         const QString songName = song["songname"].toString();
         const QString hash = song["hash"].toString();
         const QString album_name = song["album_name"].toString();
-        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}","300");;
+        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}", "300");
+        ;
         const double time_length_s = song["time_length"].toDouble();
         const QString time_length = secondsToMinutesSeconds((int)time_length_s);
 
@@ -215,7 +215,7 @@ void Recommendation::Rareandexquisitemasterpiecesdata(const QByteArray &data)
         item["union_cover"] = sizable_cover;
 
         Rareandexquisitemasterpiecesitems.append(item);
-        //qDebug() << "歌曲:"<< songName << "歌名" << singername<<"专辑"<<album_name<<"hash"<<hash<<"歌曲长度"<<time_length<<"歌曲秒数"<<time_length_s<<"图片url:"<<sizable_cover;
+        // qDebug() << "歌曲:"<< songName << "歌名" << singername<<"专辑"<<album_name<<"hash"<<hash<<"歌曲长度"<<time_length<<"歌曲秒数"<<time_length_s<<"图片url:"<<sizable_cover;
     }
     emit RareandexquisitemasterpiecesChanged();
 }
@@ -240,18 +240,19 @@ void Recommendation::Keepingupwiththelatesttrendsdata(const QByteArray &data)
     QJsonObject dataObj = root["data"].toObject();
     Keepingupwiththelatesttrendsitems.clear();
 
-
     // 解析歌曲列表
     const QJsonArray songs = dataObj["song_list"].toArray();
     for (const QJsonValue &songVal : songs)
     {
         QJsonObject song = songVal.toObject();
-        const QJsonArray singerinfo = song["singerinfo"].toArray();;
+        const QJsonArray singerinfo = song["singerinfo"].toArray();
+        ;
         const QString singername = (singerinfo[0])["name"].toString();
         const QString songName = song["songname"].toString();
         const QString hash = song["hash"].toString();
         const QString album_name = song["album_name"].toString();
-        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}","300");;
+        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}", "300");
+        ;
         const double time_length_s = song["time_length"].toDouble();
         const QString time_length = secondsToMinutesSeconds((int)time_length_s);
 
@@ -264,7 +265,7 @@ void Recommendation::Keepingupwiththelatesttrendsdata(const QByteArray &data)
         item["union_cover"] = sizable_cover;
 
         Keepingupwiththelatesttrendsitems.append(item);
-        //qDebug() << "歌曲:"<< songName << "歌名" << singername<<"专辑"<<album_name<<"hash"<<hash<<"歌曲长度"<<time_length<<"歌曲秒数"<<time_length_s<<"图片url:"<<sizable_cover;
+        // qDebug() << "歌曲:"<< songName << "歌名" << singername<<"专辑"<<album_name<<"hash"<<hash<<"歌曲长度"<<time_length<<"歌曲秒数"<<time_length_s<<"图片url:"<<sizable_cover;
     }
     emit KeepingupwiththelatesttrendsChanged();
 }
@@ -289,18 +290,19 @@ void Recommendation::ExclusiverecommendationforVIPsongsdata(const QByteArray &da
     QJsonObject dataObj = root["data"].toObject();
     ExclusiverecommendationforVIPsongsitems.clear();
 
-
     // 解析歌曲列表
     const QJsonArray songs = dataObj["song_list"].toArray();
     for (const QJsonValue &songVal : songs)
     {
         QJsonObject song = songVal.toObject();
-        const QJsonArray singerinfo = song["singerinfo"].toArray();;
+        const QJsonArray singerinfo = song["singerinfo"].toArray();
+        ;
         const QString singername = (singerinfo[0])["name"].toString();
         const QString songName = song["songname"].toString();
         const QString hash = song["hash"].toString();
         const QString album_name = song["album_name"].toString();
-        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}","300");;
+        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}", "300");
+        ;
         const double time_length_s = song["time_length"].toDouble();
         const QString time_length = secondsToMinutesSeconds((int)time_length_s);
 
@@ -313,7 +315,7 @@ void Recommendation::ExclusiverecommendationforVIPsongsdata(const QByteArray &da
         item["union_cover"] = sizable_cover;
 
         ExclusiverecommendationforVIPsongsitems.append(item);
-        //qDebug() << "歌曲:"<< songName << "歌名" << singername<<"专辑"<<album_name<<"hash"<<hash<<"歌曲长度"<<time_length<<"歌曲秒数"<<time_length_s<<"图片url:"<<sizable_cover;
+        // qDebug() << "歌曲:"<< songName << "歌名" << singername<<"专辑"<<album_name<<"hash"<<hash<<"歌曲长度"<<time_length<<"歌曲秒数"<<time_length_s<<"图片url:"<<sizable_cover;
     }
     emit ExclusiverecommendationforVIPsongsChanged();
 }
@@ -339,7 +341,6 @@ void Recommendation::Manitemsongsdata(const QByteArray &data)
     QJsonObject dataObj = root["data"].toObject();
     Mansongsitems.clear();
 
-
     // 解析歌曲列表
     const QJsonArray songs = dataObj["lists"].toArray();
     for (const QJsonValue &songVal : songs)
@@ -349,7 +350,8 @@ void Recommendation::Manitemsongsdata(const QByteArray &data)
         const QString songName = song["OriSongName"].toString();
         const QString hash = (song["HQ"].toObject())["Hash"].toString();
         const QString album_name = song["AlbumName"].toString();
-        const QString sizable_cover = song["Image"].toString().replace("{size}","300");;
+        const QString sizable_cover = song["Image"].toString().replace("{size}", "300");
+        ;
         const int time_length_s = song["Duration"].toInt();
         const QString time_length = secondsToMinutesSeconds(time_length_s);
 
@@ -362,7 +364,7 @@ void Recommendation::Manitemsongsdata(const QByteArray &data)
         item["union_cover"] = sizable_cover;
 
         Mansongsitems.append(item);
-        //qDebug() << "歌曲:"<< songName << "歌名" << singername<<"专辑"<<album_name<<"hash"<<hash<<"歌曲长度"<<time_length<<"歌曲秒数"<<time_length_s<<"图片url:"<<sizable_cover;
+        // qDebug() << "歌曲:"<< songName << "歌名" << singername<<"专辑"<<album_name<<"hash"<<hash<<"歌曲长度"<<time_length<<"歌曲秒数"<<time_length_s<<"图片url:"<<sizable_cover;
     }
     emit manChanged();
 }
@@ -433,7 +435,7 @@ QVariantList Recommendation::getmanitemsqml() const
 }
 QString Recommendation::secondsToMinutesSeconds(int totalSeconds)
 {
-    QTime time(0, 0); // 初始化为 00:00:00
+    QTime time(0, 0);                  // 初始化为 00:00:00
     time = time.addSecs(totalSeconds); // 添加秒数
-    return time.toString("mm:ss"); // 格式化为 "分钟:秒"
+    return time.toString("mm:ss");     // 格式化为 "分钟:秒"
 }
