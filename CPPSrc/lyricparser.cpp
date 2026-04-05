@@ -115,7 +115,9 @@ bool LyricParser::parseKRCLyrics(const QString &krcText)
 
     // KRC行格式: [开始时间,持续时间]<字偏移,字时长,0>字<字偏移,字时长,0>字...
     QRegularExpression lineRegex("\\[(\\d+),(\\d+)\\](.+)$");
-    QRegularExpression charRegex("<(\\d+),(\\d+),\\d+>([^{<]+)");
+    // 修复：使用非贪婪匹配，确保能正确捕获各种字符包括英文
+    // [^<]+ 确保至少匹配一个字符，避免空匹配
+    QRegularExpression charRegex("<(\\d+),(\\d+),\\d+>([^<]+)");
 
     for (const QString &line : lines)
     {
@@ -153,6 +155,15 @@ bool LyricParser::parseKRCLyrics(const QString &krcText)
             qint64 charStart = charMatch.captured(1).toLongLong();
             qint64 charDuration = charMatch.captured(2).toLongLong();
             QString charText = charMatch.captured(3);
+
+            // 跳过角色标记（如 "男："、"女："）- 注意：这会改变字符索引
+            // 如果需要保留角色标记在显示中，请注释掉这段代码
+            if (charText == "男：" || charText == "女：" ||
+                charText == "男:" || charText == "女:" ||
+                charText == "Rap:" || charText == "Rap：")
+            {
+                continue;
+            }
 
             LyricChar lc(charStart, charDuration, charText);
             chars.append(QVariant::fromValue(lc));
@@ -270,6 +281,13 @@ int LyricParser::getCharIndexAtTime(qint64 positionMs)
         return lastPassedCharIndex;
     }
 
+    // 如果在第一个字开始之前，返回 0（第一个字）
+    // 这确保在角色标记或空白时间段也能正确显示
+    if (!line.chars.isEmpty() && relativeTime < line.chars.first().value<LyricChar>().startTime)
+    {
+        return 0;
+    }
+
     return -1;
 }
 
@@ -319,6 +337,12 @@ float LyricParser::getCharProgressAtTime(qint64 positionMs)
     if (lastPassedCharIndex >= 0)
     {
         return 1.0f;
+    }
+
+    // 如果在第一个字开始之前，返回 0.0
+    if (!line.chars.isEmpty() && relativeTime < line.chars.first().value<LyricChar>().startTime)
+    {
+        return 0.0f;
     }
 
     return 0.0f;

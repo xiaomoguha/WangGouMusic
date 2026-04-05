@@ -672,7 +672,8 @@ Rectangle {
                         if (!isCurrentLine || charIdx < 0)
                             return 0;
                         // 计算已高亮字符比例 + 当前字符的部分进度
-                        var totalChars = (modelData.text || "").length;
+                        // 使用 charCount（时间标签数）而不是 text.length，因为英文歌词可能按单词分割
+                        var totalChars = modelData.charCount || (modelData.text || "").length;
                         if (totalChars === 0)
                             return 0;
                         return (charIdx + charProgress) / totalChars;

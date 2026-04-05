@@ -26,14 +26,16 @@ struct LyricLine
     Q_GADGET
     Q_PROPERTY(QString text MEMBER text)
     Q_PROPERTY(QVariantList chars MEMBER chars)
+    Q_PROPERTY(int charCount MEMBER charCount)
 public:
     qint64 time;        // 行开始时间（毫秒）
     qint64 duration;    // 行持续时间（毫秒）
     QString text;       // 完整歌词文本
     QVariantList chars; // 逐字信息列表
+    int charCount;      // 字符数（时间标签数，用于高亮计算）
 
     LyricLine(qint64 t = 0, qint64 dur = 0, const QString &txt = "", const QVariantList &c = QVariantList())
-        : time(t), duration(dur), text(txt), chars(c) {}
+        : time(t), duration(dur), text(txt), chars(c), charCount(c.size()) {}
 };
 Q_DECLARE_METATYPE(LyricLine)
 

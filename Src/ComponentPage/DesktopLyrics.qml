@@ -208,7 +208,8 @@ Window {
 
                     // 高亮比例
                     property real highlightRatio: {
-                        var totalChars = horizontalLyricContainer.lyricText.length;
+                        // 使用 lyricCharCount（时间标签数）而不是 text.length，因为英文歌词可能按单词分割
+                        var totalChars = playlistmanager ? (playlistmanager.lyricCharCount || horizontalLyricContainer.lyricText.length) : horizontalLyricContainer.lyricText.length;
                         if (totalChars === 0 || horizontalLyricContainer.charIndex < 0)
                             return 0;
                         return (horizontalLyricContainer.charIndex + horizontalLyricContainer.charProgress) / totalChars;
@@ -328,7 +329,8 @@ Window {
 
                     // 高亮比例
                     property real highlightRatio: {
-                        var totalChars = verticalTextContainer.lyricText.length;
+                        // 使用 lyricCharCount（时间标签数）而不是 text.length，因为英文歌词可能按单词分割
+                        var totalChars = playlistmanager ? (playlistmanager.lyricCharCount || verticalTextContainer.lyricText.length) : verticalTextContainer.lyricText.length;
                         if (totalChars === 0 || verticalTextContainer.charIndex < 0)
                             return 0;
                         return (verticalTextContainer.charIndex + verticalTextContainer.charProgress) / totalChars;

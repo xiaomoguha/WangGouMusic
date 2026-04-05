@@ -37,7 +37,6 @@ void PlaylistManager::addSong(const QString &title, const QString &songhash, con
     {
         if ((*m_curplaylist)[index].songhash == songhash)
         {
-            qDebug() << "歌曲已存在列表中，跳过添加";
             return;
         }
     }
@@ -437,6 +436,11 @@ QVariantList PlaylistManager::lyricCharsget()
     return m_lyricChars;
 }
 
+int PlaylistManager::lyricCharCountget()
+{
+    return m_lyricCharCount;
+}
+
 playlist_type PlaylistManager::getplaylist_type() const
 {
     return type;
@@ -703,6 +707,8 @@ void PlaylistManager::updatePlaybackProgress(qint64 position)
             currlyric = newlyric;
             m_lyricCharIndex = newCharIndex;
             m_lyricChars = newChars;
+            // 更新字符数（用于英文歌词高亮计算）
+            m_lyricCharCount = newChars.size();
             emit currlyricChanged();
         }
         else if (progressChanged)
