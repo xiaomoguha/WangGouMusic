@@ -15,16 +15,16 @@ public:
     explicit HttpGetRequester(int timeoutMs = 10000, QObject *parent = nullptr);
 
     // 设置请求超时时间
-    void setTimeout(int milliseconds);
+    Q_INVOKABLE void setTimeout(int milliseconds);
 
     // 异步GET请求方法
-    void fetchData(const QString &url);
+    Q_INVOKABLE void fetchData(const QString &url);
 
     // 设置自定义HTTP头
-    void setHeader(const QByteArray &name, const QByteArray &value);
+    Q_INVOKABLE void setHeader(const QByteArray &name, const QByteArray &value);
 
     // 清除所有自定义头
-    void clearHeaders();
+    Q_INVOKABLE void clearHeaders();
 
 signals:
     // 数据获取成功的信号

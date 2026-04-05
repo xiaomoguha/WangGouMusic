@@ -2,9 +2,57 @@ import QtQuick 2.15
 import QtQuick.Controls
 import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
+import NetworkRequest 1.0
 
 Row {
+    id: root
     spacing: 10
+
+    // 搜索建议请求器
+    HttpGetRequester {
+        id: suggestRequester
+        onDataReceived: function (data) {
+            try {
+                var json = JSON.parse(data);
+                if (json.status === 1 && json.data && json.data.length > 0) {
+                    suggestModel.clear();
+                    var records = json.data[0].RecordDatas;
+                    for (var i = 0; i < Math.min(records.length, 10); i++) {
+                        suggestModel.append({
+                            "hintInfo": records[i].HintInfo,
+                            "hot": records[i].Hot
+                        });
+                    }
+                }
+            } catch (e) {
+                console.log("解析搜索建议失败:", e);
+            }
+        }
+        onRequestFailed: function (error) {
+            console.log("搜索建议请求失败:", error);
+        }
+    }
+
+    // 防抖定时器
+    Timer {
+        id: debounceTimer
+        interval: 300
+        repeat: false
+        onTriggered: {
+            var keyword = searchTextField.text.trim();
+            if (keyword.length > 0) {
+                var encodedKeyword = encodeURIComponent(keyword);
+                suggestRequester.fetchData("https://xjt-togethertracks.top/api/search/suggest?keywords=" + encodedKeyword);
+            } else {
+                suggestModel.clear();
+            }
+        }
+    }
+
+    // 搜索建议数据模型
+    ListModel {
+        id: suggestModel
+    }
 
     // 返回按钮
     Rectangle {
@@ -89,6 +137,10 @@ Row {
                 background: Rectangle {
                     color: "transparent"
                 }
+                onTextChanged: {
+                    // 文本变化时触发防抖请求
+                    debounceTimer.restart();
+                }
                 onPressed: {
                     seachPop.open();
                 }
@@ -97,6 +149,7 @@ Row {
                     BasicConfig.pushsearchsongPage("qrc:/Src/ComponentPage/SearchresultPage.qml");
                     BasicConfig.indexchange(-1);
                     seachPop.close();
+                    suggestModel.clear();
                     var isExist = false;
                     for (var i = 0; i < searchsingmodel.count; i++) {
                         if (searchsingmodel.get(i).songName === text) {
@@ -157,11 +210,111 @@ Row {
                 spacing: 20
                 padding: 30
                 width: seachPop.width
+
+                // 搜索建议列表（输入文字时显示）
+                Column {
+                    id: suggestColumn
+                    width: parent.width - 60
+                    spacing: 5
+                    visible: suggestModel.count > 0
+
+                    Repeater {
+                        model: suggestModel
+                        delegate: Rectangle {
+                            width: suggestColumn.width
+                            height: 40
+                            radius: 8
+                            color: suggestMouseArea.containsMouse ? "#393943" : "transparent"
+
+                            Row {
+                                anchors.fill: parent
+                                anchors.leftMargin: 12
+                                anchors.rightMargin: 12
+                                spacing: 10
+
+                                // 搜索图标
+                                Image {
+                                    id: suggestIcon
+                                    source: "qrc:/image/search_line.png"
+                                    width: 16
+                                    height: 16
+                                    fillMode: Image.PreserveAspectFit
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    layer.enabled: true
+                                    layer.effect: ColorOverlay {
+                                        source: suggestIcon
+                                        color: "#888888"
+                                    }
+                                }
+
+                                // 高亮文本组件
+                                Text {
+                                    id: suggestText
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    textFormat: Text.RichText
+                                    font.pixelSize: 15
+                                    font.family: "黑体"
+                                    color: "#e0e0e0"
+                                    text: {
+                                        var keyword = searchTextField.text;
+                                        var hint = hintInfo || "";
+                                        if (keyword.length === 0)
+                                            return hint;
+                                        var idx = hint.toLowerCase().indexOf(keyword.toLowerCase());
+                                        if (idx >= 0) {
+                                            var before = hint.substring(0, idx);
+                                            var match = hint.substring(idx, idx + keyword.length);
+                                            var after = hint.substring(idx + keyword.length);
+                                            return before + '<font color="#FF6B6B">' + match + '</font>' + after;
+                                        }
+                                        return hint;
+                                    }
+                                }
+                            }
+
+                            MouseArea {
+                                id: suggestMouseArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    searchTextField.text = hintInfo;
+                                    BasicConfig.searchKeyword = hintInfo;
+                                    BasicConfig.pushsearchsongPage("qrc:/Src/ComponentPage/SearchresultPage.qml");
+                                    seachPop.close();
+                                    suggestModel.clear();
+                                    // 添加到搜索历史
+                                    var isExist = false;
+                                    for (var i = 0; i < searchsingmodel.count; i++) {
+                                        if (searchsingmodel.get(i).songName === hintInfo) {
+                                            isExist = true;
+                                            break;
+                                        }
+                                    }
+                                    if (!isExist) {
+                                        searchsingmodel.append({
+                                            "songName": hintInfo
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 分隔线（有搜索建议时显示）
+                Rectangle {
+                    width: parent.width - 60
+                    height: 1
+                    color: "#3A3A45"
+                    visible: suggestModel.count > 0 && searchsingmodel.count > 0
+                }
+
                 Item {
                     id: historyitem
                     width: parent.width - 60
                     height: Math.max(searchtext.implicitHeight, deleteicn.height)
-                    visible: searchsingmodel.count === 0 ? false : true
+                    visible: searchsingmodel.count > 0 && suggestModel.count === 0
                     Text {
                         id: searchtext
                         text: qsTr("搜索历史")
@@ -215,6 +368,7 @@ Row {
                     id: songflow
                     width: parent.width - 60
                     spacing: 10
+                    visible: suggestModel.count === 0
                     Repeater {
                         id: historyRep
                         model: searchsingmodel
@@ -271,15 +425,18 @@ Row {
                     font.family: "黑体"
                     font.pixelSize: 15
                     color: "#7f7f85"
+                    visible: suggestModel.count === 0
                 }
                 Rectangle {
                     width: parent.width
                     height: -35
+                    visible: suggestModel.count === 0
                 }
                 Column {
                     id: hostsearchColumn
                     spacing: 5
                     width: parent.width - 60
+                    visible: suggestModel.count === 0
                     Repeater {
                         model: hostSearch ? hostSearch.items : []
                         delegate: Rectangle {

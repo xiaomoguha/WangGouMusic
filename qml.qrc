@@ -24,6 +24,7 @@
         <file>Src/ComponentPage/Togethermusicmain.qml</file>
         <file>Src/PlayingPage/PlayingPage.qml</file>
         <file>Src/ToolWindow/NoteWindow.qml</file>
+        <file>Src/ToolWindow/SongAddedToast.qml</file>
         <file>Src/ComponentPage/HomePage.qml</file>
     </qresource>
 </RCC>
