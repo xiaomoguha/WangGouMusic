@@ -175,7 +175,7 @@ void PlaylistManager::playSongbyindex(int index)
                                if (!lyric.isEmpty())
                                {
                                    (*m_curplaylist)[index].lyric = lyric;
-                                   lyricParser.parseLyrics(lyric);
+                                   lyricParser.parseKRCLyrics(lyric);
                                }
                                else
                                {
@@ -184,7 +184,7 @@ void PlaylistManager::playSongbyindex(int index)
         }
         else
         {
-            lyricParser.parseLyrics((*m_curplaylist)[index].lyric);
+            lyricParser.parseKRCLyrics((*m_curplaylist)[index].lyric);
             qDebug() << "已有歌词";
         }
     }
@@ -235,7 +235,7 @@ void PlaylistManager::playSongbyhasg(const QString &songhash)
                                    if (!lyric.isEmpty())
                                    {
                                        (*m_curplaylist)[index].lyric = lyric;
-                                       lyricParser.parseLyrics(lyric);
+                                       lyricParser.parseKRCLyrics(lyric);
                                    }
                                    else
                                    {
@@ -245,7 +245,7 @@ void PlaylistManager::playSongbyhasg(const QString &songhash)
             else
             {
                 qDebug() << "已有歌词";
-                lyricParser.parseLyrics((*m_curplaylist)[index].lyric);
+                lyricParser.parseKRCLyrics((*m_curplaylist)[index].lyric);
             }
             return;
         }
@@ -420,6 +420,21 @@ int PlaylistManager::playlistcount() const
 QString PlaylistManager::getcurrlyric() const
 {
     return currlyric;
+}
+
+int PlaylistManager::lyricCharIndexget()
+{
+    return m_lyricCharIndex;
+}
+
+float PlaylistManager::lyricCharProgressget()
+{
+    return m_lyricCharProgress;
+}
+
+QVariantList PlaylistManager::lyricCharsget()
+{
+    return m_lyricChars;
 }
 
 playlist_type PlaylistManager::getplaylist_type() const
@@ -624,7 +639,7 @@ void PlaylistManager::fetchLyricData(const QString &hash, std::function<void(QSt
 void PlaylistManager::fetchLyricContent(const QString &id, const QString &accesskey, std::function<void(QString)> callback)
 {
     // 构建歌词内容请求URL
-    QString urlStr = QString("https://xjt-togethertracks.top/api/lyric?id=%1&accesskey=%2&fmt=lrc&decode=true").arg(id).arg(accesskey);
+    QString urlStr = QString("https://xjt-togethertracks.top/api/lyric?id=%1&accesskey=%2&fmt=krc&decode=true").arg(id).arg(accesskey);
 
     QUrl contentUrl(urlStr);
     QNetworkRequest request;
@@ -675,9 +690,24 @@ void PlaylistManager::updatePlaybackProgress(qint64 position)
         emit percentChanged();
         // 更新歌词
         QString newlyric = lyricParser.getLyricAtTime(position);
-        if (newlyric != currlyric)
+        int newCharIndex = lyricParser.getCharIndexAtTime(position);
+        float newCharProgress = lyricParser.getCharProgressAtTime(position);
+        QVariantList newChars = lyricParser.getCurrentChars(position);
+
+        // 始终更新进度（用于平滑动画）
+        bool progressChanged = qAbs(newCharProgress - m_lyricCharProgress) > 0.001f;
+        m_lyricCharProgress = newCharProgress;
+
+        if (newlyric != currlyric || newCharIndex != m_lyricCharIndex)
         {
             currlyric = newlyric;
+            m_lyricCharIndex = newCharIndex;
+            m_lyricChars = newChars;
+            emit currlyricChanged();
+        }
+        else if (progressChanged)
+        {
+            // 即使索引没变，进度变化也需要通知
             emit currlyricChanged();
         }
     }

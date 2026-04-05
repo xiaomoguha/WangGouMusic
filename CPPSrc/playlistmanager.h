@@ -68,6 +68,9 @@ class PlaylistManager : public QObject
     Q_PROPERTY(QList<SongInfo> togetherplaylist READ togetherplaylist NOTIFY togetherplaylistUpdated)
     Q_PROPERTY(QVector<LyricLine> m_lyrics READ LyricLine_get NOTIFY parlyricsuc)
     Q_PROPERTY(qint64 lyricsindex READ lyricsindexget NOTIFY currlyricChanged)
+    Q_PROPERTY(int lyricCharIndex READ lyricCharIndexget NOTIFY currlyricChanged)
+    Q_PROPERTY(float lyricCharProgress READ lyricCharProgressget NOTIFY currlyricChanged)
+    Q_PROPERTY(QVariantList lyricChars READ lyricCharsget NOTIFY currlyricChanged)
 public:
     explicit PlaylistManager(Recommendation *recommendation, QObject *parent = nullptr);
     Q_INVOKABLE void addSong(const QString &title, const QString &songhash, const QString &singername, const QString &union_cover, const QString &album_name, const QString &duration);
@@ -101,6 +104,9 @@ public:
     void changeplaylisttype(enum playlist_type type);
     int is_have_cache(const SongInfo &song, const int index);
     QVector<LyricLine> LyricLine_get() const;
+    int lyricCharIndexget();
+    float lyricCharProgressget();
+    QVariantList lyricCharsget();
 
 signals:
     void currentIndexChanged(int index);
@@ -149,6 +155,9 @@ private:
     void fetchLyricContent(const QString &id, const QString &accesskey, std::function<void(QString)> callback);
     QString currlyric = "网狗音乐！";
     QString m_dominantColor = "#FF6B6B";
+    int m_lyricCharIndex = -1;
+    float m_lyricCharProgress = 0.0f;
+    QVariantList m_lyricChars;
     void extractDominantColor(const QString &imageUrl);
     QColor getAverageColor(const QImage &image);
 };

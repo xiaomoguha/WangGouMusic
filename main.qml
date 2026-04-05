@@ -99,14 +99,11 @@ ApplicationWindow {
                 dragged = true;
                 if (root.visibility === Window.Maximized) {
                     root.showNormal();
-                    root.y = mouse.y - 20;
                     leftrect.radius = 20;
                     rightrect.radius = 20;
                     bottomrect.radius = 20;
                 }
-                Qt.callLater(() => {
-                    root.startSystemMove();
-                });
+                root.startSystemMove();
             }
         }
         onReleased: mouse => {

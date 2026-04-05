@@ -345,9 +345,23 @@ Rectangle {
                     property real value: playlistmanager ? playlistmanager.percent : 0.0
                     property bool dragging: false
 
+                    // 悬停高亮边框
+                    border.width: progressMouseArea.containsMouse ? 1 : 0
+                    border.color: "#80FF6B6B"
+                    Behavior on border.width {
+                        NumberAnimation {
+                            duration: 150
+                        }
+                    }
+
                     MouseArea {
                         id: progressMouseArea
                         anchors.fill: parent
+                        // 扩大悬停检测范围
+                        anchors.leftMargin: -8
+                        anchors.rightMargin: -8
+                        anchors.topMargin: -12
+                        anchors.bottomMargin: -12
                         hoverEnabled: true
 
                         onPressed: {
