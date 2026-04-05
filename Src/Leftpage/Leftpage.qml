@@ -249,4 +249,62 @@ Rectangle {
             }
         }
     }
+
+    // 检查更新按钮（底部）
+    Rectangle {
+        id: updateBtn
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 12
+        anchors.bottomMargin: 32
+        height: 40
+        radius: 10
+        color: updateMouseArea.containsMouse ? "#2A2A35" : "transparent"
+
+        Row {
+            spacing: 8
+            anchors.centerIn: parent
+
+            Text {
+                text: "\u21BB"
+                color: "#888899"
+                font.pixelSize: 16
+                anchors.verticalCenter: parent.verticalCenter
+            }
+
+            Text {
+                text: "检查更新"
+                color: "#888899"
+                font.pixelSize: 13
+                font.family: "黑体"
+                anchors.verticalCenter: parent.verticalCenter
+            }
+
+            Text {
+                text: appUpdater ? "v" + appUpdater.currentVersion : ""
+                color: "#555566"
+                font.pixelSize: 11
+                anchors.verticalCenter: parent.verticalCenter
+            }
+        }
+
+        MouseArea {
+            id: updateMouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+                if (appUpdater) {
+                    appUpdater.checkForUpdate();
+                }
+            }
+        }
+
+        Behavior on color {
+            ColorAnimation {
+                duration: 150
+            }
+        }
+    }
 }

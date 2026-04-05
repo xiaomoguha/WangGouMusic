@@ -21,6 +21,7 @@
 #include "./CPPSrc/trayhandler.h"
 #include "./CPPSrc/WebSocketClient.h"
 #include "./CPPSrc/lyricsconfigmanager.h"
+#include "./CPPSrc/appupdater.h"
 
 // 注册 HttpGetRequester 为 QML 类型
 #include <QQmlEngine>
@@ -68,6 +69,7 @@ int main(int argc, char *argv[])
     PlaylistManager playlistmanager(&recommendation);
     WebSocketClient websocket(&playlistmanager);
     LyricsConfigManager lyricsConfig;
+    AppUpdater appUpdater;
 
     // QML 全局注册
     qRegisterMetaType<SongInfo>("SongInfo");
@@ -78,6 +80,7 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("recommendation", &recommendation);
     engine.rootContext()->setContextProperty("websocket", &websocket);
     engine.rootContext()->setContextProperty("lyricsConfig", &lyricsConfig);
+    engine.rootContext()->setContextProperty("appUpdater", &appUpdater);
 
     // 加载 DesktopLyrics.qml 独立窗口（跨平台）
     QQmlComponent comp(&engine, QUrl("qrc:/Src/ComponentPage/DesktopLyrics.qml"));

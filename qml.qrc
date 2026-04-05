@@ -26,5 +26,6 @@
         <file>Src/ToolWindow/NoteWindow.qml</file>
         <file>Src/ToolWindow/SongAddedToast.qml</file>
         <file>Src/ComponentPage/HomePage.qml</file>
+        <file>Src/ComponentPage/UpdateDialog.qml</file>
     </qresource>
 </RCC>
