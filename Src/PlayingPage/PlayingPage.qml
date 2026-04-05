@@ -77,14 +77,11 @@ Rectangle {
                 dragged = true;
                 if (root.visibility === Window.Maximized) {
                     root.showNormal();
-                    root.y = mouse.y - 20;
                     leftrect.radius = 20;
                     rightrect.radius = 20;
                     bottomrect.radius = 20;
                 }
-                Qt.callLater(() => {
-                    root.startSystemMove();
-                });
+                root.startSystemMove();
             }
         }
         onReleased: mouse => {
@@ -621,39 +618,77 @@ Rectangle {
 
         model: playlistmanager ? playlistmanager.m_lyrics : 0
         interactive: false   //是否可以手动滚动
-        spacing: 16
+        spacing: 8
 
         currentIndex: playlistmanager ? playlistmanager.lyricsindex : -1
 
+        highlightFollowsCurrentItem: true
         highlightRangeMode: ListView.ApplyRange
-
-        preferredHighlightBegin: lyricList.height / 2
-        preferredHighlightEnd: lyricList.height / 2
-
-        snapMode: ListView.SnapToItem
+        preferredHighlightBegin: lyricList.height * 0.4
+        preferredHighlightEnd: lyricList.height * 0.6
 
         // 滚动动画配置
         highlightMoveDuration: 400      // 动画持续时间（毫秒），值越大越慢
         highlightMoveVelocity: -1       // -1 表示使用 duration 控制；设置正值则按速度控制
 
-        delegate: Text {
+        delegate: Item {
             width: lyricList.width
-            height: contentHeight > 0 ? contentHeight : 20 // 防止高度为0
-            text: modelData.text
-            color: ListView.isCurrentItem ? dominantColor : "#dddddd"
-            font.pixelSize: ListView.isCurrentItem ? 20 : 16
-            font.bold: ListView.isCurrentItem
-            horizontalAlignment: Text.AlignHCenter
-            opacity: ListView.isCurrentItem ? 1.0 : 0.5
-            Behavior on color {
-                ColorAnimation {
-                    duration: 300
+            height: lineText.contentHeight + 8
+
+            property bool isCurrentLine: ListView.isCurrentItem
+            property bool isPastLine: index < lyricList.currentIndex && lyricList.currentIndex >= 0
+            property int charIdx: playlistmanager ? playlistmanager.lyricCharIndex : -1
+            property real charProgress: playlistmanager ? playlistmanager.lyricCharProgress : 0.0
+
+            // 歌词文本容器
+            Item {
+                anchors.centerIn: parent
+                width: lineText.width
+                height: lineText.height
+
+                // 底层：完整灰色歌词
+                Text {
+                    id: lineText
+                    anchors.centerIn: parent
+                    text: modelData.text || ""
+                    textFormat: Text.PlainText
+                    font.pixelSize: isCurrentLine ? 20 : 16
+                    font.bold: isCurrentLine
+                    font.family: "黑体"
+                    color: "#dddddd"
+                    opacity: isCurrentLine ? 1.0 : 0.7
                 }
-            }
-            Behavior on font.pixelSize {
-                NumberAnimation {
-                    duration: 300
-                    easing.type: Easing.OutCubic
+
+                // 高亮层：带裁剪的渐变高亮（从左到右）
+                Item {
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: highlightText.width * highlightRatio
+                    height: parent.height
+                    clip: true
+                    visible: isCurrentLine && charIdx >= 0
+
+                    property real highlightRatio: {
+                        if (!isCurrentLine || charIdx < 0)
+                            return 0;
+                        // 计算已高亮字符比例 + 当前字符的部分进度
+                        var totalChars = (modelData.text || "").length;
+                        if (totalChars === 0)
+                            return 0;
+                        return (charIdx + charProgress) / totalChars;
+                    }
+
+                    Text {
+                        id: highlightText
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: modelData.text || ""
+                        textFormat: Text.PlainText
+                        font.pixelSize: isCurrentLine ? 20 : 16
+                        font.bold: isCurrentLine
+                        font.family: "黑体"
+                        color: dominantColor
+                    }
                 }
             }
         }
@@ -822,6 +857,15 @@ Rectangle {
                     property real value: playlistmanager ? playlistmanager.percent : 0.0
                     property bool dragging: false
 
+                    // 悬停高亮边框
+                    border.width: progressMouseArea.containsMouse ? 1 : 0
+                    border.color: "#80FFFFFF"
+                    Behavior on border.width {
+                        NumberAnimation {
+                            duration: 150
+                        }
+                    }
+
                     // 已播放部分
                     Rectangle {
                         id: progressFill
@@ -848,6 +892,11 @@ Rectangle {
                     MouseArea {
                         id: progressMouseArea
                         anchors.fill: parent
+                        // 扩大悬停检测范围
+                        anchors.leftMargin: -8
+                        anchors.rightMargin: -8
+                        anchors.topMargin: -12
+                        anchors.bottomMargin: -12
                         hoverEnabled: true
 
                         onPressed: {

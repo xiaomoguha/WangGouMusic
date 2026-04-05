@@ -13,39 +13,12 @@ Window {
     property real scale: lyricsConfig ? lyricsConfig.scale : 1.0
     property int fontSize: lyricsConfig ? lyricsConfig.fontSize : 22
 
-    // 记录窗口中心点位置，用于歌词长度变化时保持居中
-    property real centerX: 0
-    property real centerY: 0
-    property bool isDragging: false  // 标记是否正在拖动
-
     // 窗口大小 - 根据歌词内容动态计算，留出控制面板空间
     width: background.width + (desktopLyrics.isVertical ? 70 : 20)  // 竖向左侧留控制面板空间
     height: background.height + (desktopLyrics.isVertical ? 20 : 70)  // 横向上方留控制面板空间
 
     visible: true
     color: "transparent"
-
-    // 横向模式：x 位置绑定到中心点（拖动时禁用）
-    Binding {
-        target: desktopLyrics
-        property: "x"
-        value: centerX - width / 2
-        when: !desktopLyrics.isVertical && !isDragging
-    }
-
-    // 竖向模式：y 位置绑定到中心点（拖动时禁用）
-    Binding {
-        target: desktopLyrics
-        property: "y"
-        value: centerY - height / 2
-        when: desktopLyrics.isVertical && !isDragging
-    }
-
-    // 更新中心点的方法
-    function updateCenter() {
-        centerX = x + width / 2;
-        centerY = y + height / 2;
-    }
 
     // 根据锁定状态设置窗口标志
     // 窗口大小跟随歌词内容，不需要 WindowTransparentForInput
@@ -85,8 +58,6 @@ Window {
                     desktopLyrics.y = Screen.desktopAvailableHeight - desktopLyrics.height - 50;
                 }
             }
-            // 初始化中心点
-            updateCenter();
         });
     }
 
@@ -146,8 +117,8 @@ Window {
             anchors.centerIn: parent
             // 横向：宽度根据歌词内容 + 边距，最大屏幕80%
             // 竖向：宽度根据字体大小（旋转后的英文需要更大宽度），高度根据歌词行数，最大屏幕80%
-            width: desktopLyrics.isVertical ? (desktopLyrics.fontSize * desktopLyrics.scale + 30) : Math.min(lyricTextHorizontal.implicitWidth + 70, Screen.desktopAvailableWidth * 0.8)
-            height: desktopLyrics.isVertical ? Math.min(verticalTextColumn.height + 60, Screen.desktopAvailableHeight * 0.8) : (50 * desktopLyrics.scale)
+            width: desktopLyrics.isVertical ? (desktopLyrics.fontSize * desktopLyrics.scale + 30) : Math.min(horizontalLyricContainer.width + 70, Screen.desktopAvailableWidth * 0.8)
+            height: desktopLyrics.isVertical ? Math.min(verticalTextContainer.height + 60, Screen.desktopAvailableHeight * 0.8) : (50 * desktopLyrics.scale)
             radius: 25
             color: "#CC000000"
             border.color: "#33FFFFFF"
@@ -203,26 +174,81 @@ Window {
                     }
                 }
 
-                // 歌词内容
-                Text {
-                    id: lyricTextHorizontal
-                    text: getLyricText()
-                    font.pixelSize: desktopLyrics.fontSize * desktopLyrics.scale
-                    font.bold: true
-                    color: desktopLyrics.textColor
+                // 歌词内容容器
+                Item {
+                    id: horizontalLyricContainer
                     anchors.verticalCenter: parent.verticalCenter
-                    style: Text.Outline
-                    styleColor: "#40000000"
-                    maximumLineCount: 1
-                    elide: Text.ElideRight
                     // 横向模式：歌词宽度最大为屏幕宽度80%减去图标和边距
-                    width: Math.min(implicitWidth, Screen.desktopAvailableWidth * 0.8 - 36 * desktopLyrics.scale - 50)
+                    width: Math.min(bgTextHorizontal.implicitWidth, Screen.desktopAvailableWidth * 0.8 - 36 * desktopLyrics.scale - 50)
+                    height: bgTextHorizontal.implicitHeight
 
-                    function getLyricText() {
+                    property string lyricText: {
                         try {
-                            return playlistmanager ? playlistmanager.currlyric : "网狗音乐 - 等待播放";
+                            return playlistmanager ? (playlistmanager.currlyric || "网狗音乐") : "网狗音乐";
                         } catch (e) {
                             return "网狗音乐";
+                        }
+                    }
+
+                    property int charIndex: {
+                        try {
+                            return playlistmanager ? playlistmanager.lyricCharIndex : -1;
+                        } catch (e) {
+                            return -1;
+                        }
+                    }
+
+                    property real charProgress: {
+                        try {
+                            return playlistmanager ? (playlistmanager.lyricCharProgress || 0) : 0;
+                        } catch (e) {
+                            return 0;
+                        }
+                    }
+
+                    // 高亮比例
+                    property real highlightRatio: {
+                        var totalChars = horizontalLyricContainer.lyricText.length;
+                        if (totalChars === 0 || horizontalLyricContainer.charIndex < 0)
+                            return 0;
+                        return (horizontalLyricContainer.charIndex + horizontalLyricContainer.charProgress) / totalChars;
+                    }
+
+                    // 底层：完整白色文字
+                    Text {
+                        id: bgTextHorizontal
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: horizontalLyricContainer.lyricText
+                        font.pixelSize: desktopLyrics.fontSize * desktopLyrics.scale
+                        font.bold: true
+                        color: desktopLyrics.textColor
+                        style: Text.Outline
+                        styleColor: "#40000000"
+                        maximumLineCount: 1
+                        elide: Text.ElideRight
+                    }
+
+                    // 高亮层：从左到右刷过去
+                    Item {
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: hlTextHorizontal.width * horizontalLyricContainer.highlightRatio
+                        height: bgTextHorizontal.height
+                        clip: true
+                        visible: horizontalLyricContainer.highlightRatio > 0
+
+                        Text {
+                            id: hlTextHorizontal
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: horizontalLyricContainer.lyricText
+                            font.pixelSize: desktopLyrics.fontSize * desktopLyrics.scale
+                            font.bold: true
+                            color: "#FF6B6B"
+                            style: Text.Outline
+                            styleColor: "#40FF6B6B"
+                            maximumLineCount: 1
                         }
                     }
                 }
@@ -260,20 +286,19 @@ Window {
                     }
                 }
 
-                // 竖排歌词内容 - 每个字符单独一行
-                Column {
-                    id: verticalTextColumn
-                    spacing: 2
+                // 竖排歌词内容容器
+                Item {
+                    id: verticalTextContainer
                     anchors.horizontalCenter: parent.horizontalCenter
-                    // 限制高度，超出部分裁剪
-                    clip: true
+                    width: verticalBgColumn.width
+                    height: verticalBgColumn.height
 
                     property string lyricText: {
                         try {
-                            var text = playlistmanager ? playlistmanager.currlyric : "网狗音乐";
+                            var text = playlistmanager ? (playlistmanager.currlyric || "网狗音乐") : "网狗音乐";
                             // 计算最大可显示字符数（屏幕高度80%）
                             var maxHeight = Screen.desktopAvailableHeight * 0.8 - 60; // 减去图标和边距
-                            var charHeight = desktopLyrics.fontSize * desktopLyrics.scale + spacing;
+                            var charHeight = desktopLyrics.fontSize * desktopLyrics.scale + 2;
                             var maxChars = Math.floor(maxHeight / charHeight);
                             // 如果超出，保留前面的字符，最后加省略号
                             if (text.length > maxChars && maxChars > 3) {
@@ -285,29 +310,97 @@ Window {
                         }
                     }
 
-                    Repeater {
-                        model: verticalTextColumn.lyricText.length
+                    property int charIndex: {
+                        try {
+                            return playlistmanager ? playlistmanager.lyricCharIndex : -1;
+                        } catch (e) {
+                            return -1;
+                        }
+                    }
 
-                        Text {
-                            required property int index
-                            property string currentChar: verticalTextColumn.lyricText.charAt(index)
-                            // 检测是否是英文、数字或常见符号（ASCII字符）
-                            property bool isAscii: currentChar.charCodeAt(0) < 128 && currentChar !== ' '
+                    property real charProgress: {
+                        try {
+                            return playlistmanager ? (playlistmanager.lyricCharProgress || 0) : 0;
+                        } catch (e) {
+                            return 0;
+                        }
+                    }
 
-                            text: currentChar
-                            font.pixelSize: desktopLyrics.fontSize * desktopLyrics.scale
-                            font.bold: true
-                            color: desktopLyrics.textColor
-                            style: Text.Outline
-                            styleColor: "#40000000"
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                            // 英文和符号旋转90度显示，省空间
-                            rotation: isAscii ? 90 : 0
-                            // 固定宽度让字符居中
-                            width: desktopLyrics.fontSize * desktopLyrics.scale + 10
-                            height: isAscii ? font.pixelSize * 0.6 : font.pixelSize
-                            transformOrigin: Item.Center
+                    // 高亮比例
+                    property real highlightRatio: {
+                        var totalChars = verticalTextContainer.lyricText.length;
+                        if (totalChars === 0 || verticalTextContainer.charIndex < 0)
+                            return 0;
+                        return (verticalTextContainer.charIndex + verticalTextContainer.charProgress) / totalChars;
+                    }
+
+                    // 底层：完整灰色文字（整列）
+                    Column {
+                        id: verticalBgColumn
+                        spacing: 2
+                        anchors.centerIn: parent
+
+                        Repeater {
+                            model: verticalTextContainer.lyricText.length
+
+                            Text {
+                                required property int index
+                                property string currentChar: verticalTextContainer.lyricText.charAt(index)
+                                property bool isAscii: currentChar.charCodeAt(0) < 128 && currentChar !== ' '
+
+                                text: currentChar
+                                font.pixelSize: desktopLyrics.fontSize * desktopLyrics.scale
+                                font.bold: true
+                                color: desktopLyrics.textColor
+                                style: Text.Outline
+                                styleColor: "#40000000"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                rotation: isAscii ? 90 : 0
+                                transformOrigin: Item.Center
+                                width: desktopLyrics.fontSize * desktopLyrics.scale + 10
+                                height: isAscii ? font.pixelSize * 0.6 : font.pixelSize
+                            }
+                        }
+                    }
+
+                    // 高亮层：从上到下刷过去
+                    Item {
+                        anchors.top: parent.top
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: verticalBgColumn.width
+                        height: verticalBgColumn.height * verticalTextContainer.highlightRatio
+                        clip: true
+                        visible: verticalTextContainer.highlightRatio > 0
+
+                        Column {
+                            id: verticalHlColumn
+                            spacing: 2
+                            anchors.top: parent.top
+                            anchors.horizontalCenter: parent.horizontalCenter
+
+                            Repeater {
+                                model: verticalTextContainer.lyricText.length
+
+                                Text {
+                                    required property int index
+                                    property string currentChar: verticalTextContainer.lyricText.charAt(index)
+                                    property bool isAscii: currentChar.charCodeAt(0) < 128 && currentChar !== ' '
+
+                                    text: currentChar
+                                    font.pixelSize: desktopLyrics.fontSize * desktopLyrics.scale
+                                    font.bold: true
+                                    color: "#FF6B6B"
+                                    style: Text.Outline
+                                    styleColor: "#40FF6B6B"
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                    rotation: isAscii ? 90 : 0
+                                    transformOrigin: Item.Center
+                                    width: desktopLyrics.fontSize * desktopLyrics.scale + 10
+                                    height: isAscii ? font.pixelSize * 0.6 : font.pixelSize
+                                }
+                            }
                         }
                     }
                 }
@@ -455,8 +548,6 @@ Window {
                             desktopLyrics.x = lyricsConfig ? lyricsConfig.horizontalX : (Screen.desktopAvailableWidth - desktopLyrics.width) / 2;
                             desktopLyrics.y = lyricsConfig ? lyricsConfig.horizontalY : (Screen.desktopAvailableHeight - desktopLyrics.height - 50);
                         }
-                        // 更新中心点
-                        updateCenter();
                     }
                 }
             }
@@ -680,8 +771,6 @@ Window {
                             desktopLyrics.x = lyricsConfig ? lyricsConfig.horizontalX : (Screen.desktopAvailableWidth - desktopLyrics.width) / 2;
                             desktopLyrics.y = lyricsConfig ? lyricsConfig.horizontalY : (Screen.desktopAvailableHeight - desktopLyrics.height - 50);
                         }
-                        // 更新中心点
-                        updateCenter();
                     }
                 }
             }
@@ -790,15 +879,11 @@ Window {
             z: 50
 
             onPressed: function (mouse) {
-                isDragging = true;
                 desktopLyrics._dragPos = Qt.point(mouse.x + background.x, mouse.y + background.y);
                 cursorShape = Qt.ClosedHandCursor;
             }
             onReleased: {
                 cursorShape = Qt.ArrowCursor;
-                // 先更新中心点，再解除拖动状态，防止 Binding 弹回旧位置
-                updateCenter();
-                isDragging = false;
                 saveCurrentConfig();
             }
             onPositionChanged: function (mouse) {
