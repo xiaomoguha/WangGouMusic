@@ -7,6 +7,7 @@ Page {
     background: Rectangle {
         color: "transparent"
     }
+
     Connections {
         target: BasicConfig
         function onSearchKeywordchange() {
@@ -186,6 +187,7 @@ Page {
                                 cursorShape: Qt.PointingHandCursor
                                 onTapped: {
                                     playlistmanager.addandplay(modelData.songname, modelData.songhash, modelData.singername, modelData.union_cover, modelData.album_name, modelData.duration);
+                                    BasicConfig.emitSongAdded("正在播放: " + modelData.songname);
                                 }
                             }
 
@@ -226,6 +228,7 @@ Page {
                                 cursorShape: Qt.PointingHandCursor
                                 onTapped: {
                                     playlistmanager.addSong(modelData.songname, modelData.songhash, modelData.singername, modelData.union_cover, modelData.album_name, modelData.duration);
+                                    BasicConfig.emitSongAdded();
                                 }
                             }
 

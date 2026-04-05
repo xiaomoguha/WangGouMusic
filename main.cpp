@@ -22,6 +22,16 @@
 #include "./CPPSrc/WebSocketClient.h"
 #include "./CPPSrc/lyricsconfigmanager.h"
 
+// 注册 HttpGetRequester 为 QML 类型
+#include <QQmlEngine>
+
+class HttpGetRequesterHelper : public HttpGetRequester
+{
+    Q_OBJECT
+public:
+    HttpGetRequesterHelper(QObject *parent = nullptr) : HttpGetRequester(10000, parent) {}
+};
+
 int main(int argc, char *argv[])
 {
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
@@ -40,6 +50,10 @@ int main(int argc, char *argv[])
     app.setWindowIcon(QIcon(":/image/wyymusic.ico"));
 
     QQmlApplicationEngine engine;
+
+    // 注册 HttpGetRequester 为可实例化的 QML 类型
+    qmlRegisterType<HttpGetRequesterHelper>("NetworkRequest", 1, 0, "HttpGetRequester");
+
     const QUrl url(QStringLiteral("qrc:/main.qml"));
 
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated, &app, [url](QObject *obj, const QUrl &objUrl)
@@ -102,7 +116,7 @@ int main(int argc, char *argv[])
 
     // ---------------- 加载 QML ----------------
     engine.load(url);
-    
+
     // 获取根窗口 (ApplicationWindow 需要通过 QQuickWindow 获取)
     QQuickWindow *window = nullptr;
     if (!engine.rootObjects().isEmpty())
@@ -126,3 +140,5 @@ int main(int argc, char *argv[])
 
     return app.exec();
 }
+
+#include "main.moc"

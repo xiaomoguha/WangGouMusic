@@ -10,6 +10,12 @@ QtObject {
     signal searchKeywordchange
     signal notice_error(string errormessages)
     signal notice_success(string messages)
+    signal songAdded(string songname)
 
     property string searchKeyword: ""
+
+    // 便捷方法：发送歌曲添加成功提示
+    function emitSongAdded(songname) {
+        songAdded(songname || "已添加至播放列表");
+    }
 }

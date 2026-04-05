@@ -43,6 +43,7 @@ ApplicationWindow {
             }
         }
     }
+
     // 当前是否展开歌词
     property bool lyricsOpened: false
 
@@ -229,4 +230,16 @@ ApplicationWindow {
     }
     // 暴露歌词页给外部访问
     property alias lyricsPage: lyricsPageLoader.item
+
+    // 歌曲添加成功提示（放在最后确保在最上层）
+    SongAddedToast {
+        id: songAddedToast
+        anchors.centerIn: parent
+        Connections {
+            target: BasicConfig
+            function onSongAdded(songname) {
+                songAddedToast.show(songname);
+            }
+        }
+    }
 }

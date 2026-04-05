@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import Qt5Compat.GraphicalEffects
+import "../BasicConfig"
 
 Item {
     width: parent ? parent.width : 0
@@ -161,6 +162,7 @@ Item {
                                     playlistmanager.playSongbyindex(index);
                                 } else {
                                     playlistmanager.addandplay(songData.songname, songData.songhash, songData.singername, songData.union_cover, songData.album_name, songData.duration);
+                                    BasicConfig.emitSongAdded("正在播放: " + songData.songname);
                                 }
                                 manrow.visible = false;
                             }
@@ -202,6 +204,7 @@ Item {
                             cursorShape: Qt.PointingHandCursor
                             onTapped: {
                                 playlistmanager.addSong(songData.songname, songData.songhash, songData.singername, songData.union_cover, songData.album_name, songData.duration);
+                                BasicConfig.emitSongAdded();
                             }
                         }
 
@@ -348,6 +351,7 @@ Item {
                                 }
                                 // 播放第一首
                                 playlistmanager.playSongbyindex(0);
+                                BasicConfig.emitSongAdded("已播放: " + title);
                             }
                         }
 
