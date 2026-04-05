@@ -148,7 +148,6 @@ Item {
                     target: websocket  // 指定监听哪个C++对象
                     function onUrlChanged(url_back) {
                         if (url_back.includes("roomid=" + roomidtextfield.text)) {
-                            console.log("url 更新成功！调用连接方法！");
                             websocket.connectToServer();
                         }
                     }
