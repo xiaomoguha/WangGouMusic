@@ -14,6 +14,8 @@ Popup {
     // 外部需要绑定 appUpdater 对象
     required property QtObject updater
 
+    // 是否有新版本（由外部 open 时设置）
+    property bool hasUpdate: true
     // 当前状态: idle | downloading | downloaded | error
     property string state_: "idle"
     property string errorMsg: ""
@@ -70,15 +72,16 @@ Popup {
 
         // 标题
         Text {
-            text: "发现新版本"
+            text: updateDialog.hasUpdate ? "发现新版本" : "已是最新版本"
             color: "#FFFFFF"
             font.pixelSize: 18
             font.weight: Font.Bold
             anchors.horizontalCenter: parent.horizontalCenter
         }
 
-        // 版本信息
+        // 版本信息 —— 有更新时
         Row {
+            visible: updateDialog.hasUpdate
             anchors.horizontalCenter: parent.horizontalCenter
             spacing: 8
             Text {
@@ -87,7 +90,7 @@ Popup {
                 font.pixelSize: 13
             }
             Text {
-                text: "→"
+                text: "\u2192"
                 color: "#FF6B6B"
                 font.pixelSize: 13
                 font.bold: true
@@ -97,6 +100,26 @@ Popup {
                 color: "#00C853"
                 font.pixelSize: 13
                 font.weight: Font.Bold
+            }
+        }
+
+        // 版本信息 —— 已是最新时
+        Column {
+            visible: !updateDialog.hasUpdate
+            anchors.horizontalCenter: parent.horizontalCenter
+            spacing: 6
+            Text {
+                text: updater ? "v" + updater.currentVersion : ""
+                color: "#00C853"
+                font.pixelSize: 14
+                font.weight: Font.Bold
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+            Text {
+                text: "当前版本更新内容"
+                color: "#888899"
+                font.pixelSize: 12
+                anchors.horizontalCenter: parent.horizontalCenter
             }
         }
 
@@ -176,11 +199,12 @@ Popup {
             anchors.horizontalCenter: parent.horizontalCenter
             spacing: 12
 
-            // 取消/关闭按钮
+            // 取消/关闭按钮（仅有更新时显示）
             Rectangle {
                 width: 100
                 height: 36
                 radius: 8
+                visible: updateDialog.hasUpdate
                 color: cancelHover.hovered ? "#30FFFFFF" : "#20FFFFFF"
                 Behavior on color {
                     ColorAnimation {
@@ -214,6 +238,8 @@ Popup {
                 height: 36
                 radius: 8
                 color: {
+                    if (!updateDialog.hasUpdate)
+                        return actionHover.hovered ? "#30FFFFFF" : "#20FFFFFF";
                     if (updateDialog.state_ === "downloading")
                         return "#555566";
                     return actionHover.hovered ? "#FF5252" : "#FF6B6B";
@@ -227,6 +253,8 @@ Popup {
                 Text {
                     anchors.centerIn: parent
                     text: {
+                        if (!updateDialog.hasUpdate)
+                            return "知道了";
                         switch (updateDialog.state_) {
                         case "downloading":
                             return "下载中...";
@@ -238,7 +266,7 @@ Popup {
                             return "立即更新";
                         }
                     }
-                    color: "white"
+                    color: updateDialog.hasUpdate ? "white" : "#B0B0CC"
                     font.pixelSize: 13
                     font.weight: Font.Medium
                 }
@@ -247,6 +275,10 @@ Popup {
                 }
                 TapHandler {
                     onTapped: {
+                        if (!updateDialog.hasUpdate) {
+                            updateDialog.close();
+                            return;
+                        }
                         if (!updater)
                             return;
                         if (updateDialog.state_ === "downloading")
