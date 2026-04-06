@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(cmake_wanggou VERSION 0.1 LANGUAGES CXX)
+project(cmake_wanggou VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
