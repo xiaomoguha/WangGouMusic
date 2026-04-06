@@ -93,6 +93,10 @@ Window {
     property color textColor: "white"
     property real panelOpacity: 0.85
     property bool showControls: false
+    // 按钮背景色（深色，在白色背景下更清晰）
+    property color btnBgNormal: "#CC333333"    // 默认：深灰80%透明度
+    property color btnBgHover: "#EE555555"    // 悬停：深灰93%透明度
+    property color btnBgActive: "#CCFF6B6B"   // 激活（如解锁）：主题色80%
 
     // 延迟隐藏定时器
     Timer {
@@ -444,7 +448,7 @@ Window {
                 width: 28 * desktopLyrics.scale
                 height: 28 * desktopLyrics.scale
                 radius: 14 * desktopLyrics.scale
-                color: zoomOutHandler.hovered ? "#40FFFFFF" : "#20FFFFFF"
+                color: zoomOutHandler.hovered ? btnBgHover : btnBgNormal
                 visible: !desktopLyrics.locked
 
                 Text {
@@ -474,7 +478,7 @@ Window {
                 width: 44 * desktopLyrics.scale
                 height: 28 * desktopLyrics.scale
                 radius: 14 * desktopLyrics.scale
-                color: "#20FFFFFF"
+                color: "#CC333333"
                 visible: !desktopLyrics.locked
 
                 Text {
@@ -491,7 +495,7 @@ Window {
                 width: 28 * desktopLyrics.scale
                 height: 28 * desktopLyrics.scale
                 radius: 14 * desktopLyrics.scale
-                color: zoomInHandler.hovered ? "#40FFFFFF" : "#20FFFFFF"
+                color: zoomInHandler.hovered ? btnBgHover : btnBgNormal
                 visible: !desktopLyrics.locked
 
                 Text {
@@ -521,7 +525,7 @@ Window {
                 width: 28 * desktopLyrics.scale
                 height: 28 * desktopLyrics.scale
                 radius: 14 * desktopLyrics.scale
-                color: rotateHandler.hovered ? "#40FFFFFF" : "#20FFFFFF"
+                color: rotateHandler.hovered ? btnBgHover : btnBgNormal
                 visible: !desktopLyrics.locked
 
                 Text {
@@ -568,7 +572,7 @@ Window {
                 width: 28 * desktopLyrics.scale
                 height: 28 * desktopLyrics.scale
                 radius: 14 * desktopLyrics.scale
-                color: lockHandler.hovered ? "#40FFFFFF" : "#20FFFFFF"
+                color: lockHandler.hovered ? btnBgHover : btnBgNormal
                 visible: !desktopLyrics.locked
 
                 Image {
@@ -608,7 +612,7 @@ Window {
                 width: 28 * desktopLyrics.scale
                 height: 28 * desktopLyrics.scale
                 radius: 14 * desktopLyrics.scale
-                color: unlockHandler.hovered ? "#40FF6B6B" : "#20FF6B6B"
+                color: unlockHandler.hovered ? btnBgActive : "#80333333"
                 visible: desktopLyrics.locked
 
                 Image {
@@ -667,7 +671,7 @@ Window {
                 width: 28 * desktopLyrics.scale
                 height: 28 * desktopLyrics.scale
                 radius: 14 * desktopLyrics.scale
-                color: zoomOutHandlerV.hovered ? "#40FFFFFF" : "#20FFFFFF"
+                color: zoomOutHandlerV.hovered ? btnBgHover : btnBgNormal
                 visible: !desktopLyrics.locked
 
                 Text {
@@ -697,7 +701,7 @@ Window {
                 width: 28 * desktopLyrics.scale
                 height: 28 * desktopLyrics.scale
                 radius: 14 * desktopLyrics.scale
-                color: "#20FFFFFF"
+                color: "#CC333333"
                 visible: !desktopLyrics.locked
 
                 Text {
@@ -714,7 +718,7 @@ Window {
                 width: 28 * desktopLyrics.scale
                 height: 28 * desktopLyrics.scale
                 radius: 14 * desktopLyrics.scale
-                color: zoomInHandlerV.hovered ? "#40FFFFFF" : "#20FFFFFF"
+                color: zoomInHandlerV.hovered ? btnBgHover : btnBgNormal
                 visible: !desktopLyrics.locked
 
                 Text {
@@ -744,7 +748,7 @@ Window {
                 width: 28 * desktopLyrics.scale
                 height: 28 * desktopLyrics.scale
                 radius: 14 * desktopLyrics.scale
-                color: rotateHandlerV.hovered ? "#40FFFFFF" : "#20FFFFFF"
+                color: rotateHandlerV.hovered ? btnBgHover : btnBgNormal
                 visible: !desktopLyrics.locked
 
                 Text {
@@ -782,7 +786,7 @@ Window {
                 width: 28 * desktopLyrics.scale
                 height: 28 * desktopLyrics.scale
                 radius: 14 * desktopLyrics.scale
-                color: lockHandlerV.hovered ? "#40FFFFFF" : "#20FFFFFF"
+                color: lockHandlerV.hovered ? btnBgHover : btnBgNormal
                 visible: !desktopLyrics.locked
 
                 Image {
@@ -822,7 +826,7 @@ Window {
                 width: 28 * desktopLyrics.scale
                 height: 28 * desktopLyrics.scale
                 radius: 14 * desktopLyrics.scale
-                color: unlockHandlerV.hovered ? "#40FF6B6B" : "#20FF6B6B"
+                color: unlockHandlerV.hovered ? btnBgActive : "#80333333"
                 visible: desktopLyrics.locked
 
                 Image {
