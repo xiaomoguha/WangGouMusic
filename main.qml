@@ -247,6 +247,9 @@ ApplicationWindow {
         updater: appUpdater
     }
 
+    // 是否为自动检查（启动时静默检查，无更新不弹窗）
+    property bool autoCheckUpdate: true
+
     // 启动后延迟检查更新
     Timer {
         id: checkUpdateTimer
@@ -255,6 +258,7 @@ ApplicationWindow {
         repeat: false
         onTriggered: {
             if (appUpdater) {
+                root.autoCheckUpdate = true;
                 appUpdater.checkForUpdate();
             }
         }
@@ -263,7 +267,10 @@ ApplicationWindow {
     Connections {
         target: appUpdater
         function onCheckFinished(hasUpdate) {
-            if (hasUpdate) {
+            // 自动检查：仅有更新时弹窗；手动检查：始终弹窗
+            if (hasUpdate || !root.autoCheckUpdate) {
+                updateDialog.hasUpdate = hasUpdate;
+                updateDialog.state_ = "idle";
                 updateDialog.open();
             }
         }

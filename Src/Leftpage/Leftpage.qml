@@ -296,6 +296,7 @@ Rectangle {
             cursorShape: Qt.PointingHandCursor
             onClicked: {
                 if (appUpdater) {
+                    root.autoCheckUpdate = false;
                     appUpdater.checkForUpdate();
                 }
             }
