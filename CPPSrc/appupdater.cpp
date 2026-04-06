@@ -18,7 +18,7 @@
 
 // 版本检测 API 地址，可根据实际后端修改
 static const QString CHECK_UPDATE_URL =
-    QStringLiteral("https://xjt-togethertracks.top/api/app/check-update");
+    QStringLiteral("https://xjt-togethertracks.top/api/app/checkupdate");
 
 AppUpdater::AppUpdater(QObject *parent)
     : QObject(parent), m_networkManager(new QNetworkAccessManager(this)), m_currentVersion(QStringLiteral(APP_VERSION)), m_checkUrl(CHECK_UPDATE_URL)
@@ -97,16 +97,10 @@ void AppUpdater::onCheckReplyFinished()
 
     QJsonObject obj = doc.object();
 
-    /*
-     * 期望的 JSON 格式:
-     * {
-     *   "latest_version": "0.2",
-     *   "download_url": "https://...setup.exe",
-     *   "release_notes": "修复了...",
-     *   "force_update": false,
-     *   "md5": "abc123..."
-     * }
-     */
+    // 兼容 { "code":0, "data": { ... } } 格式：如果有 data 字段则进入内层
+    if (obj.contains("data") && obj.value("data").isObject())
+        obj = obj.value("data").toObject();
+
     m_latestVersion = obj.value("latest_version").toString();
     m_downloadUrl = obj.value("download_url").toString();
     m_releaseNotes = obj.value("release_notes").toString();
