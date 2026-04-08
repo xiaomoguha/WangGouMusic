@@ -13,9 +13,9 @@ Window {
     property real scale: lyricsConfig ? lyricsConfig.scale : 1.0
     property int fontSize: lyricsConfig ? lyricsConfig.fontSize : 22
 
-    // 窗口大小 - 根据歌词内容动态计算，留出控制面板空间
-    width: background.width + (desktopLyrics.isVertical ? 70 : 20)  // 竖向左侧留控制面板空间
-    height: background.height + (desktopLyrics.isVertical ? 20 : 70)  // 横向上方留控制面板空间
+    // 窗口大小 - 保证最小能显示所有控制按钮，歌词居中
+    width: desktopLyrics.isVertical ? Math.max(background.width + 70, 44 * desktopLyrics.scale + 16) : Math.max(background.width + 20, controlPanelHorizontal.implicitWidth + 20)
+    height: desktopLyrics.isVertical ? Math.max(background.height + 20, controlPanelVertical.implicitHeight + 20) : Math.max(background.height + 70, 28 * desktopLyrics.scale + 16 + 8 * desktopLyrics.scale)
 
     visible: true
     color: "transparent"
@@ -91,19 +91,18 @@ Window {
 
     property point _dragPos: Qt.point(0, 0)
     property color textColor: "white"
-    property real panelOpacity: 0.85
     property bool showControls: false
     // 按钮背景色（深色，在白色背景下更清晰）
     property color btnBgNormal: "#CC333333"    // 默认：深灰80%透明度
     property color btnBgHover: "#EE555555"    // 悬停：深灰93%透明度
     property color btnBgActive: "#CCFF6B6B"   // 激活（如解锁）：主题色80%
 
-    // 延迟隐藏定时器
+    // 延迟隐藏定时器（1.5秒，给用户足够时间点击解锁按钮）
     Timer {
         id: hideControlsTimer
-        interval: 300
+        interval: 1500
         onTriggered: {
-            if (!controlPanelHover.hovered) {
+            if (!controlPanelHover.hovered && !controlPanelHoverV.hovered) {
                 desktopLyrics.showControls = false;
             }
         }
@@ -114,37 +113,15 @@ Window {
         id: mainContainer
         anchors.fill: parent
 
-        // 歌词背景
-        Rectangle {
+        // 歌词容器（无背景）
+        Item {
             id: background
             // 始终居中于窗口
             anchors.centerIn: parent
             // 横向：宽度根据歌词内容 + 边距，最大屏幕80%
             // 竖向：宽度根据字体大小（旋转后的英文需要更大宽度），高度根据歌词行数，最大屏幕80%
-            width: desktopLyrics.isVertical ? (desktopLyrics.fontSize * desktopLyrics.scale + 30) : Math.min(horizontalLyricContainer.width + 70, Screen.desktopAvailableWidth * 0.8)
-            height: desktopLyrics.isVertical ? Math.min(verticalTextContainer.height + 60, Screen.desktopAvailableHeight * 0.8) : (50 * desktopLyrics.scale)
-            radius: 25
-            color: "#CC000000"
-            border.color: "#33FFFFFF"
-            border.width: 1
-            opacity: desktopLyrics.showControls || !desktopLyrics.locked ? desktopLyrics.panelOpacity : 0.7
-
-            // 发光效果
-            layer.enabled: true
-            layer.effect: DropShadow {
-                horizontalOffset: 0
-                verticalOffset: 4
-                radius: 16
-                samples: 16
-                color: "#40000000"
-                spread: 0.2
-            }
-
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: 200
-                }
-            }
+            width: desktopLyrics.isVertical ? (desktopLyrics.fontSize * desktopLyrics.scale + 30) : Math.min(horizontalLyricContainer.width + 30, Screen.desktopAvailableWidth * 0.8)
+            height: desktopLyrics.isVertical ? Math.min(verticalTextContainer.height + 30, Screen.desktopAvailableHeight * 0.8) : (50 * desktopLyrics.scale)
 
             // 横向歌词文本
             Row {
@@ -161,29 +138,11 @@ Window {
                     }
                 }
 
-                // 左侧音乐图标
-                Rectangle {
-                    width: 36 * desktopLyrics.scale
-                    height: 36 * desktopLyrics.scale
-                    radius: 18 * desktopLyrics.scale
-                    color: "#FF6B6B"
-                    anchors.verticalCenter: parent.verticalCenter
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "♪"
-                        font.pixelSize: 18 * desktopLyrics.scale
-                        color: "white"
-                        font.bold: true
-                    }
-                }
-
                 // 歌词内容容器
                 Item {
                     id: horizontalLyricContainer
                     anchors.verticalCenter: parent.verticalCenter
-                    // 横向模式：歌词宽度最大为屏幕宽度80%减去图标和边距
-                    width: Math.min(bgTextHorizontal.implicitWidth, Screen.desktopAvailableWidth * 0.8 - 36 * desktopLyrics.scale - 50)
+                    width: Math.min(bgTextHorizontal.implicitWidth, Screen.desktopAvailableWidth * 0.8 - 30)
                     height: bgTextHorizontal.implicitHeight
 
                     property string lyricText: {
@@ -274,23 +233,6 @@ Window {
                     }
                 }
 
-                // 顶部音乐图标
-                Rectangle {
-                    width: 36 * desktopLyrics.scale
-                    height: 36 * desktopLyrics.scale
-                    radius: 18 * desktopLyrics.scale
-                    color: "#FF6B6B"
-                    anchors.horizontalCenter: parent.horizontalCenter
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "♪"
-                        font.pixelSize: 18 * desktopLyrics.scale
-                        color: "white"
-                        font.bold: true
-                    }
-                }
-
                 // 竖排歌词内容容器
                 Item {
                     id: verticalTextContainer
@@ -302,7 +244,7 @@ Window {
                         try {
                             var text = playlistmanager ? (playlistmanager.currlyric || "网狗音乐") : "网狗音乐";
                             // 计算最大可显示字符数（屏幕高度80%）
-                            var maxHeight = Screen.desktopAvailableHeight * 0.8 - 60; // 减去图标和边距
+                            var maxHeight = Screen.desktopAvailableHeight * 0.8 - 30;
                             var charHeight = desktopLyrics.fontSize * desktopLyrics.scale + 2;
                             var maxChars = Math.floor(maxHeight / charHeight);
                             // 如果超出，保留前面的字符，最后加省略号
@@ -422,7 +364,7 @@ Window {
             spacing: 5 * desktopLyrics.scale
             // 锁定时显示解锁按钮，未锁定时悬停显示所有按钮
             visible: !desktopLyrics.isVertical
-            opacity: desktopLyrics.locked || desktopLyrics.showControls ? 1 : 0
+            opacity: desktopLyrics.showControls ? 1 : 0
             z: 100
 
             HoverHandler {
@@ -558,7 +500,55 @@ Window {
                 }
             }
 
-            // 分隔线（未锁定时显示）
+            // 播放/暂停按钮（未锁定时显示）
+            Rectangle {
+                width: 28 * desktopLyrics.scale
+                height: 28 * desktopLyrics.scale
+                radius: 14 * desktopLyrics.scale
+                color: playPauseDlHandler.hovered ? btnBgHover : btnBgNormal
+                visible: !desktopLyrics.locked
+
+                Image {
+                    id: playPauseDlIcon
+                    anchors.centerIn: parent
+                    source: {
+                        try {
+                            return playlistmanager ? (playlistmanager.isPaused ? "qrc:/image/play.png" : "qrc:/image/paused.png") : "qrc:/image/play.png";
+                        } catch (e) {
+                            return "qrc:/image/play.png";
+                        }
+                    }
+                    width: 12 * desktopLyrics.scale
+                    height: 12 * desktopLyrics.scale
+                    fillMode: Image.PreserveAspectFit
+                    layer.enabled: true
+                    layer.effect: ColorOverlay {
+                        source: playPauseDlIcon
+                        color: "#FFFFFF"
+                    }
+                }
+
+                HoverHandler {
+                    id: playPauseDlHandler
+                }
+                TapHandler {
+                    cursorShape: Qt.PointingHandCursor
+                    onTapped: {
+                        try {
+                            if (playlistmanager)
+                                playlistmanager.playstop();
+                        } catch (e) {}
+                    }
+                }
+
+                Behavior on color {
+                    ColorAnimation {
+                        duration: 150
+                    }
+                }
+            }
+
+            // 分隔线
             Rectangle {
                 width: 1
                 height: 18 * desktopLyrics.scale
@@ -655,10 +645,22 @@ Window {
             anchors.leftMargin: 8 * desktopLyrics.scale
             anchors.verticalCenter: background.verticalCenter
             spacing: 5 * desktopLyrics.scale
-            // 锁定时显示解锁按钮，未锁定时悬停显示所有按钮
+            // 悬停显示控制按钮（含解锁按钮）
             visible: desktopLyrics.isVertical
-            opacity: desktopLyrics.locked || desktopLyrics.showControls ? 1 : 0
+            opacity: desktopLyrics.showControls ? 1 : 0
             z: 100
+
+            HoverHandler {
+                id: controlPanelHoverV
+                onHoveredChanged: {
+                    if (hovered) {
+                        hideControlsTimer.stop();
+                        desktopLyrics.showControls = true;
+                    } else {
+                        hideControlsTimer.restart();
+                    }
+                }
+            }
 
             Behavior on opacity {
                 NumberAnimation {
@@ -777,6 +779,54 @@ Window {
                             desktopLyrics.x = lyricsConfig ? lyricsConfig.horizontalX : (Screen.desktopAvailableWidth - desktopLyrics.width) / 2;
                             desktopLyrics.y = lyricsConfig ? lyricsConfig.horizontalY : (Screen.desktopAvailableHeight - desktopLyrics.height - 50);
                         }
+                    }
+                }
+            }
+
+            // 播放/暂停按钮（未锁定时显示）
+            Rectangle {
+                width: 28 * desktopLyrics.scale
+                height: 28 * desktopLyrics.scale
+                radius: 14 * desktopLyrics.scale
+                color: playPauseDlVHandler.hovered ? btnBgHover : btnBgNormal
+                visible: !desktopLyrics.locked
+
+                Image {
+                    id: playPauseDlVIcon
+                    anchors.centerIn: parent
+                    source: {
+                        try {
+                            return playlistmanager ? (playlistmanager.isPaused ? "qrc:/image/play.png" : "qrc:/image/paused.png") : "qrc:/image/play.png";
+                        } catch (e) {
+                            return "qrc:/image/play.png";
+                        }
+                    }
+                    width: 12 * desktopLyrics.scale
+                    height: 12 * desktopLyrics.scale
+                    fillMode: Image.PreserveAspectFit
+                    layer.enabled: true
+                    layer.effect: ColorOverlay {
+                        source: playPauseDlVIcon
+                        color: "#FFFFFF"
+                    }
+                }
+
+                HoverHandler {
+                    id: playPauseDlVHandler
+                }
+                TapHandler {
+                    cursorShape: Qt.PointingHandCursor
+                    onTapped: {
+                        try {
+                            if (playlistmanager)
+                                playlistmanager.playstop();
+                        } catch (e) {}
+                    }
+                }
+
+                Behavior on color {
+                    ColorAnimation {
+                        duration: 150
                     }
                 }
             }
