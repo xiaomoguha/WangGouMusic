@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import "../BasicConfig"
 
 Popup {
     id: updateDialog
@@ -55,13 +56,13 @@ Popup {
 
     background: Rectangle {
         radius: 16
-        color: "#1E1E2A"
-        border.color: "#30FFFFFF"
+        color: AppTheme.bgOverlay
+        border.color: AppTheme.dialogBorder
         border.width: 1
     }
 
     Overlay.modal: Rectangle {
-        color: "#80000000"
+        color: AppTheme.dialogOverlay
     }
 
     Column {
@@ -73,7 +74,7 @@ Popup {
         // 标题
         Text {
             text: updateDialog.hasUpdate ? "发现新版本" : "已是最新版本"
-            color: "#FFFFFF"
+            color: AppTheme.textPrimary
             font.pixelSize: 18
             font.weight: Font.Bold
             anchors.horizontalCenter: parent.horizontalCenter
@@ -86,18 +87,18 @@ Popup {
             spacing: 8
             Text {
                 text: updater ? updater.currentVersion : ""
-                color: "#888899"
+                color: AppTheme.textMuted
                 font.pixelSize: 13
             }
             Text {
                 text: "\u2192"
-                color: "#FF6B6B"
+                color: AppTheme.accent
                 font.pixelSize: 13
                 font.bold: true
             }
             Text {
                 text: updater ? updater.latestVersion : ""
-                color: "#00C853"
+                color: AppTheme.successColor
                 font.pixelSize: 13
                 font.weight: Font.Bold
             }
@@ -110,14 +111,14 @@ Popup {
             spacing: 6
             Text {
                 text: updater ? "v" + updater.currentVersion : ""
-                color: "#00C853"
+                color: AppTheme.successColor
                 font.pixelSize: 14
                 font.weight: Font.Bold
                 anchors.horizontalCenter: parent.horizontalCenter
             }
             Text {
                 text: "当前版本更新内容"
-                color: "#888899"
+                color: AppTheme.textMuted
                 font.pixelSize: 12
                 anchors.horizontalCenter: parent.horizontalCenter
             }
@@ -128,7 +129,7 @@ Popup {
             width: parent.width
             height: Math.min(notesText.implicitHeight + 16, 120)
             radius: 8
-            color: "#15FFFFFF"
+            color: AppTheme.iconButtonHover
             clip: true
 
             Flickable {
@@ -141,7 +142,7 @@ Popup {
                     id: notesText
                     width: parent.width
                     text: updater ? updater.releaseNotes : ""
-                    color: "#B0B0CC"
+                    color: AppTheme.textSecondary
                     font.pixelSize: 12
                     wrapMode: Text.Wrap
                     lineHeight: 1.4
@@ -159,13 +160,13 @@ Popup {
                 width: parent.width
                 height: 6
                 radius: 3
-                color: "#252535"
+                color: AppTheme.progressTrack
 
                 Rectangle {
                     width: parent.width * (updater ? updater.downloadProgress : 0)
                     height: parent.height
                     radius: parent.radius
-                    color: "#FF6B6B"
+                    color: AppTheme.accent
                     Behavior on width {
                         NumberAnimation {
                             duration: 200
@@ -177,7 +178,7 @@ Popup {
 
             Text {
                 text: updater ? Math.round(updater.downloadProgress * 100) + "%" : "0%"
-                color: "#888899"
+                color: AppTheme.textMuted
                 font.pixelSize: 11
                 anchors.horizontalCenter: parent.horizontalCenter
             }
@@ -187,7 +188,7 @@ Popup {
         Text {
             visible: updateDialog.state_ === "error"
             text: updateDialog.errorMsg
-            color: "#FF4D4F"
+            color: AppTheme.errorColor
             font.pixelSize: 12
             wrapMode: Text.Wrap
             width: parent.width
@@ -205,7 +206,7 @@ Popup {
                 height: 36
                 radius: 8
                 visible: updateDialog.hasUpdate
-                color: cancelHover.hovered ? "#30FFFFFF" : "#20FFFFFF"
+                color: AppTheme.iconButtonHover
                 Behavior on color {
                     ColorAnimation {
                         duration: 150
@@ -215,7 +216,7 @@ Popup {
                 Text {
                     anchors.centerIn: parent
                     text: updateDialog.state_ === "downloading" ? "取消" : "稍后再说"
-                    color: "#B0B0CC"
+                    color: AppTheme.textSecondary
                     font.pixelSize: 13
                 }
                 HoverHandler {
@@ -239,10 +240,10 @@ Popup {
                 radius: 8
                 color: {
                     if (!updateDialog.hasUpdate)
-                        return actionHover.hovered ? "#30FFFFFF" : "#20FFFFFF";
+                        return AppTheme.iconButtonHover;
                     if (updateDialog.state_ === "downloading")
-                        return "#555566";
-                    return actionHover.hovered ? "#FF5252" : "#FF6B6B";
+                        return AppTheme.textMuted;
+                    return actionHover.hovered ? AppTheme.accentHover : AppTheme.accent;
                 }
                 Behavior on color {
                     ColorAnimation {
@@ -266,7 +267,7 @@ Popup {
                             return "立即更新";
                         }
                     }
-                    color: updateDialog.hasUpdate ? "white" : "#B0B0CC"
+                    color: updateDialog.hasUpdate ? "white" : AppTheme.textSecondary
                     font.pixelSize: 13
                     font.weight: Font.Medium
                 }

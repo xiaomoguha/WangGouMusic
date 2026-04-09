@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick 2.15
 import QtQuick.Window 2.15
 import Qt5Compat.GraphicalEffects
+import "../BasicConfig"
 
 Window {
     id: desktopLyrics
@@ -16,6 +17,24 @@ Window {
     // 窗口大小 - 保证最小能显示所有控制按钮，歌词居中
     width: desktopLyrics.isVertical ? Math.max(background.width + 70, 44 * desktopLyrics.scale + 16) : Math.max(background.width + 20, controlPanelHorizontal.implicitWidth + 20)
     height: desktopLyrics.isVertical ? Math.max(background.height + 20, controlPanelVertical.implicitHeight + 20) : Math.max(background.height + 70, 28 * desktopLyrics.scale + 16 + 8 * desktopLyrics.scale)
+
+    // 歌词内容变化时保持中心位置不变
+    property real _prevWidth: width
+    property real _prevHeight: height
+    onWidthChanged: {
+        if (_prevWidth > 0) {
+            var delta = width - _prevWidth;
+            desktopLyrics.x -= delta / 2;
+        }
+        _prevWidth = width;
+    }
+    onHeightChanged: {
+        if (_prevHeight > 0) {
+            var delta = height - _prevHeight;
+            desktopLyrics.y -= delta / 2;
+        }
+        _prevHeight = height;
+    }
 
     visible: true
     color: "transparent"
@@ -95,7 +114,7 @@ Window {
     // 按钮背景色（深色，在白色背景下更清晰）
     property color btnBgNormal: "#CC333333"    // 默认：深灰80%透明度
     property color btnBgHover: "#EE555555"    // 悬停：深灰93%透明度
-    property color btnBgActive: "#CCFF6B6B"   // 激活（如解锁）：主题色80%
+    property color btnBgActive: Qt.rgba(AppTheme.accent.r, AppTheme.accent.g, AppTheme.accent.b, 0.8)   // 激活（如解锁）：主题色80%
 
     // 延迟隐藏定时器（1.5秒，给用户足够时间点击解锁按钮）
     Timer {
@@ -209,9 +228,9 @@ Window {
                             text: horizontalLyricContainer.lyricText
                             font.pixelSize: desktopLyrics.fontSize * desktopLyrics.scale
                             font.bold: true
-                            color: "#FF6B6B"
+                            color: AppTheme.accent
                             style: Text.Outline
-                            styleColor: "#40FF6B6B"
+                            styleColor: AppTheme.accentGlow
                             maximumLineCount: 1
                         }
                     }
@@ -338,9 +357,9 @@ Window {
                                     text: currentChar
                                     font.pixelSize: desktopLyrics.fontSize * desktopLyrics.scale
                                     font.bold: true
-                                    color: "#FF6B6B"
+                                    color: AppTheme.accent
                                     style: Text.Outline
-                                    styleColor: "#40FF6B6B"
+                                    styleColor: AppTheme.accentGlow
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                     rotation: isAscii ? 90 : 0

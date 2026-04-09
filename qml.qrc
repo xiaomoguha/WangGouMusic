@@ -9,6 +9,7 @@
         <file>Src/Rightpage/Search.qml</file>
         <file>Src/Rightpage/RightTopPage.qml</file>
         <file>Src/BasicConfig/BasicConfig.qml</file>
+        <file>Src/BasicConfig/AppTheme.qml</file>
         <file>Src/BasicConfig/qmldir</file>
         <file>Src/ComponentPage/ComplexPage.qml</file>
         <file>Src/ComponentPage/Danqv.qml</file>

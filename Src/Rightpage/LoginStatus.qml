@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import Qt5Compat.GraphicalEffects
+import "../BasicConfig"
 
 Row {
     spacing: 10
@@ -9,7 +10,7 @@ Row {
         width: 28
         height: 28
         radius: 14
-        color: userMouseArea.containsMouse ? "#30FFFFFF" : "transparent"
+        color: userMouseArea.containsMouse ? AppTheme.iconButtonHover : "transparent"
 
         Image {
             id: userbuttom
@@ -21,7 +22,7 @@ Row {
             layer.enabled: true
             layer.effect: ColorOverlay {
                 source: userbuttom
-                color: "#FFFFFF"
+                color: AppTheme.iconDefault
             }
         }
 
@@ -41,7 +42,7 @@ Row {
 
     Text {
         text: "未登录"
-        color: "#cdcdcd"
+        color: AppTheme.textSecondary
         height: 28
         verticalAlignment: Text.AlignVCenter
         font {
@@ -55,7 +56,7 @@ Row {
         width: 28
         height: 28
         radius: 14
-        color: mailMouseArea.containsMouse ? "#30FFFFFF" : "transparent"
+        color: mailMouseArea.containsMouse ? AppTheme.iconButtonHover : "transparent"
 
         Image {
             id: mailbuttom
@@ -67,7 +68,7 @@ Row {
             layer.enabled: true
             layer.effect: ColorOverlay {
                 source: mailbuttom
-                color: "#FFFFFF"
+                color: AppTheme.iconDefault
             }
         }
 
@@ -90,7 +91,7 @@ Row {
         width: 28
         height: 28
         radius: 14
-        color: settingMouseArea.containsMouse ? "#30FFFFFF" : "transparent"
+        color: settingMouseArea.containsMouse ? AppTheme.iconButtonHover : "transparent"
 
         Image {
             id: settingbuttom
@@ -102,7 +103,7 @@ Row {
             layer.enabled: true
             layer.effect: ColorOverlay {
                 source: settingbuttom
-                color: "#FFFFFF"
+                color: AppTheme.iconDefault
             }
         }
 
@@ -120,12 +121,12 @@ Row {
         }
     }
 
-    // 主题按钮
+    // 主题按钮（月亮/太阳切换）
     Rectangle {
         width: 28
         height: 28
         radius: 14
-        color: moonMouseArea.containsMouse ? "#30FFFFFF" : "transparent"
+        color: moonMouseArea.containsMouse ? AppTheme.iconButtonHover : "transparent"
 
         Image {
             id: moonbuttom
@@ -133,11 +134,11 @@ Row {
             width: 14
             height: 14
             fillMode: Image.PreserveAspectFit
-            source: "qrc:/image/moon_line.png"
+            source: AppTheme.isDark ? "qrc:/image/moon_line.png" : "qrc:/image/sun_line.png"
             layer.enabled: true
             layer.effect: ColorOverlay {
                 source: moonbuttom
-                color: "#FFFFFF"
+                color: AppTheme.iconDefault
             }
         }
 
@@ -146,6 +147,7 @@ Row {
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
+            onClicked: AppTheme.toggleTheme()
         }
 
         Behavior on color {
@@ -153,11 +155,5 @@ Row {
                 duration: 150
             }
         }
-    }
-
-    Rectangle {
-        width: 1
-        height: 18
-        color: "#535C6B"
     }
 }

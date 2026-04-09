@@ -54,54 +54,15 @@ Row {
         id: suggestModel
     }
 
-    // 返回按钮
-    Rectangle {
-        id: backforword
-        width: 32
-        height: 32
-        radius: 16
-        color: backMouseArea.containsMouse ? "#30FFFFFF" : "transparent"
-
-        Image {
-            id: leftline
-            anchors.centerIn: parent
-            source: "qrc:/image/left_line.png"
-            width: 16
-            height: 16
-            fillMode: Image.PreserveAspectFit
-            layer.enabled: true
-            layer.effect: ColorOverlay {
-                source: leftline
-                color: "#FFFFFF"
-            }
-        }
-
-        MouseArea {
-            id: backMouseArea
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: {
-                BasicConfig.popPage();
-            }
-        }
-
-        Behavior on color {
-            ColorAnimation {
-                duration: 150
-            }
-        }
-    }
-
     // 搜索框
     Rectangle {
         id: searchContainer
         width: 260
         height: 36
         radius: 18
-        color: "#2A2A35"
+        color: AppTheme.bgInput
         border.width: 1
-        border.color: searchTextField.activeFocus ? "#FF6B6B" : "#3A3A45"
+        border.color: searchTextField.activeFocus ? AppTheme.borderFocus : AppTheme.borderDefault
 
         Row {
             anchors.fill: parent
@@ -120,7 +81,7 @@ Row {
                 layer.enabled: true
                 layer.effect: ColorOverlay {
                     source: searchicon
-                    color: "#888888"
+                    color: AppTheme.iconSearch
                 }
             }
 
@@ -129,8 +90,8 @@ Row {
                 width: parent.width - searchicon.width - parent.spacing
                 height: parent.height
                 placeholderText: "搜索歌曲、歌手"
-                color: "#FFFFFF"
-                palette.placeholderText: "#666666"
+                color: AppTheme.textPrimary
+                palette.placeholderText: AppTheme.textPlaceholder
                 verticalAlignment: TextInput.AlignVCenter
                 font.pixelSize: 14
                 font.family: "黑体"
@@ -185,8 +146,9 @@ Row {
         height: 500
         y: searchTextField.height + 10
         background: Rectangle {
-            color: "#2d2d37"
-            border.width: 0
+            color: AppTheme.bgSearchPopup
+            border.width: 1
+            border.color: AppTheme.borderDefault
             radius: 10
         }
         contentItem: Flickable {
@@ -202,7 +164,7 @@ Row {
                     visible: parent.active
                     width: 10
                     radius: 4
-                    color: "#42424b"
+                    color: AppTheme.scrollbarColor
                 }
             }
             Column {
@@ -224,7 +186,7 @@ Row {
                             width: suggestColumn.width
                             height: 40
                             radius: 8
-                            color: suggestMouseArea.containsMouse ? "#393943" : "transparent"
+                            color: suggestMouseArea.containsMouse ? AppTheme.bgSuggestionHover : "transparent"
 
                             Row {
                                 anchors.fill: parent
@@ -243,7 +205,7 @@ Row {
                                     layer.enabled: true
                                     layer.effect: ColorOverlay {
                                         source: suggestIcon
-                                        color: "#888888"
+                                        color: AppTheme.iconSearch
                                     }
                                 }
 
@@ -254,7 +216,7 @@ Row {
                                     textFormat: Text.RichText
                                     font.pixelSize: 15
                                     font.family: "黑体"
-                                    color: "#e0e0e0"
+                                    color: AppTheme.textPrimary
                                     text: {
                                         var keyword = searchTextField.text;
                                         var hint = hintInfo || "";
@@ -265,7 +227,7 @@ Row {
                                             var before = hint.substring(0, idx);
                                             var match = hint.substring(idx, idx + keyword.length);
                                             var after = hint.substring(idx + keyword.length);
-                                            return before + '<font color="#FF6B6B">' + match + '</font>' + after;
+                                            return before + '<font color="' + AppTheme.accent.toString() + '">' + match + '</font>' + after;
                                         }
                                         return hint;
                                     }
@@ -306,7 +268,7 @@ Row {
                 Rectangle {
                     width: parent.width - 60
                     height: 1
-                    color: "#3A3A45"
+                    color: AppTheme.borderDefault
                     visible: suggestModel.count > 0 && searchsingmodel.count > 0
                 }
 
@@ -319,7 +281,7 @@ Row {
                         id: searchtext
                         text: qsTr("搜索历史")
                         anchors.verticalCenter: parent.verticalCenter
-                        color: "#7f7f85"
+                        color: AppTheme.textSearchKeyword
                         font.family: "黑体"
                         font.pixelSize: 15
                     }
@@ -329,7 +291,7 @@ Row {
                         width: 26
                         height: 26
                         radius: 13
-                        color: deleteMouseArea.containsMouse ? "#30FFFFFF" : "transparent"
+                        color: deleteMouseArea.containsMouse ? AppTheme.iconButtonHover : "transparent"
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
 
@@ -343,7 +305,7 @@ Row {
                             layer.enabled: true
                             layer.effect: ColorOverlay {
                                 source: deleteicn
-                                color: "#FFFFFF"
+                                color: AppTheme.iconDefault
                             }
                         }
 
@@ -377,8 +339,8 @@ Row {
                             width: datalabel.implicitWidth + 20
                             height: 40
                             border.width: 1
-                            border.color: "#45454e"
-                            color: "#2d2d37"
+                            border.color: AppTheme.borderDefault
+                            color: AppTheme.bgSearchPopup
                             radius: 15
                             visible: index < (historyRep.showall ? 10 : 7)
                             Label {
@@ -387,20 +349,20 @@ Row {
                                 rotation: historyRep.showall ? (index === 9 ? -90 : 0) : (index === 6 ? 90 : 0)
                                 font.pixelSize: 16
                                 anchors.centerIn: parent
-                                color: "#ddd"
+                                color: AppTheme.textSecondary
                                 font.family: "黑体"
                             }
                             MouseArea {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 onEntered: {
-                                    datalabel.color = "white";
-                                    parent.color = "#393943";
+                                    datalabel.color = AppTheme.textPrimary;
+                                    parent.color = AppTheme.bgHistoryTagHover;
                                     cursorShape = Qt.PointingHandCursor;
                                 }
                                 onExited: {
-                                    datalabel.color = "#ddd";
-                                    parent.color = "#2d2d37";
+                                    datalabel.color = AppTheme.textSecondary;
+                                    parent.color = AppTheme.bgHistoryTag;
                                     cursorShape = Qt.ArrowCursor;
                                 }
                                 onClicked: {
@@ -424,7 +386,7 @@ Row {
                     text: "热搜榜"
                     font.family: "黑体"
                     font.pixelSize: 15
-                    color: "#7f7f85"
+                    color: AppTheme.textSearchKeyword
                     visible: suggestModel.count === 0
                 }
                 Rectangle {
@@ -452,7 +414,7 @@ Row {
                                 anchors.verticalCenter: parent.verticalCenter
                                 font.pixelSize: 16
                                 font.family: "黑体"
-                                color: index < 3 ? "#eb4d44" : "#818187"
+                                color: index < 3 ? AppTheme.textHotIndex : AppTheme.textNormalIndex
                                 text: String(index + 1)
                             }
                             Label {
@@ -462,18 +424,18 @@ Row {
                                 anchors.verticalCenter: parent.verticalCenter
                                 font.pixelSize: 16
                                 font.family: "黑体"
-                                color: "#818187"
+                                color: AppTheme.textNormalIndex
                                 text: modelData.keyword
                             }
                             MouseArea {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 onEntered: {
-                                    parent.color = "#393943";
+                                    parent.color = AppTheme.bgSuggestionHover;
                                     cursorShape = Qt.PointingHandCursor;
                                 }
                                 onExited: {
-                                    parent.color = "#2d2d37";
+                                    parent.color = AppTheme.bgSearchPopup;
                                     cursorShape = Qt.ArrowCursor;
                                 }
                                 onClicked: {

@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import "../BasicConfig"
 
 Popup {
     id: toast
@@ -54,9 +55,9 @@ Popup {
     // ── 遮罩层 ──
     background: Rectangle {
         radius: 16
-        color: "#1E1E2A"
+        color: AppTheme.bgOverlay
         // 顶部微光边框
-        border.color: "#30FFFFFF"
+        border.color: AppTheme.dialogBorder
         border.width: 1
         // 柔和阴影
         layer.enabled: true
@@ -65,7 +66,7 @@ Popup {
             anchors.margins: -1
             radius: parent.radius + 1
             color: "transparent"
-            border.color: "#15FF6B6B"
+            border.color: AppTheme.dialogAccentBorder
             border.width: 1
         }
     }
@@ -95,7 +96,7 @@ Popup {
                         radius: 16
                         color: "transparent"
                         border.width: 2.5
-                        border.color: "#252535"
+                        border.color: AppTheme.progressTrack
                         anchors.centerIn: parent
                     }
                     // 旋转弧
@@ -106,7 +107,7 @@ Popup {
                         radius: 16
                         color: "transparent"
                         border.width: 2.5
-                        border.color: "#FF6B6B"
+                        border.color: AppTheme.accent
                         anchors.centerIn: parent
                         clip: true
                         RotationAnimator on rotation {
@@ -120,7 +121,7 @@ Popup {
                         Rectangle {
                             width: parent.width / 2
                             height: parent.height
-                            color: "#1E1E2A"
+                            color: AppTheme.bgOverlay
                             anchors.right: parent.right
                             visible: true
                         }
@@ -130,7 +131,7 @@ Popup {
                         width: 5
                         height: 5
                         radius: 2.5
-                        color: "#FF6B6B"
+                        color: AppTheme.accent
                         anchors.centerIn: parent
                         opacity: 0.6
                         SequentialAnimation on opacity {
@@ -159,12 +160,12 @@ Popup {
                 height: 36
                 radius: 18
                 color: "#30FF4D4F"
-                border.color: "#FF4D4F"
+                border.color: AppTheme.errorColor
                 border.width: 1.5
                 Text {
                     anchors.centerIn: parent
                     text: "✕"
-                    color: "#FF4D4F"
+                    color: AppTheme.errorColor
                     font.pixelSize: 16
                     font.bold: true
                 }
@@ -178,12 +179,12 @@ Popup {
                 height: 36
                 radius: 18
                 color: "#2500C853"
-                border.color: "#00C853"
+                border.color: AppTheme.successColor
                 border.width: 1.5
                 Text {
                     anchors.centerIn: parent
                     text: "✓"
-                    color: "#00C853"
+                    color: AppTheme.successColor
                     font.pixelSize: 18
                     font.bold: true
                 }
@@ -201,7 +202,7 @@ Popup {
         // ====== 提示文字 ======
         Text {
             text: toast.message
-            color: "#D0D0DD"
+            color: AppTheme.textSecondary
             font.pixelSize: 14
             font.weight: Font.Medium
             wrapMode: Text.Wrap
@@ -217,7 +218,7 @@ Popup {
             height: 32
             radius: 8
             anchors.horizontalCenter: parent.horizontalCenter
-            color: confirmBtnHandler.hovered ? "#FF5252" : "#FF6B6B"
+            color: confirmBtnHandler.hovered ? AppTheme.accentHover : AppTheme.accent
             Behavior on color {
                 ColorAnimation {
                     duration: 150
@@ -245,13 +246,13 @@ Popup {
             width: parent.width - 60
             height: 2
             radius: 1
-            color: "#252535"
+            color: AppTheme.progressTrack
             anchors.horizontalCenter: parent.horizontalCenter
             Rectangle {
                 width: parent.width * 0.3
                 height: parent.height
                 radius: parent.radius
-                color: "#FF6B6B"
+                color: AppTheme.accent
                 // 左右来回移动
                 SequentialAnimation on x {
                     running: toast.visible && toast.mode === "loading"

@@ -1,5 +1,10 @@
 pragma ComponentBehavior: Bound
 import QtQuick 2.15
+import "../BasicConfig"
+
+
+
+
 
 Item {
     id: root
@@ -48,8 +53,8 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: 12
-        color: "#1E1E2A"
-        border.color: "#30FFFFFF"
+        color: AppTheme.bgOverlay
+        border.color: AppTheme.dialogBorder
         border.width: 1
     }
 
@@ -64,13 +69,13 @@ Item {
             height: 24
             radius: 12
             color: "#2500C853"
-            border.color: "#00C853"
+            border.color: AppTheme.successColor
             border.width: 1.5
 
             Text {
                 anchors.centerIn: parent
                 text: "✓"
-                color: "#00C853"
+                color: AppTheme.successColor
                 font.pixelSize: 14
                 font.bold: true
             }
@@ -80,7 +85,7 @@ Item {
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: root._message || "已添加至播放列表"
-            color: "#D0D0DD"
+            color: AppTheme.textSecondary
             font.pixelSize: 14
             font.weight: Font.Medium
         }

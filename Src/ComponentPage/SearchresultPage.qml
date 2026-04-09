@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import "../BasicConfig"
+
 Item {
     id: searchResultRoot
     width: parent ? parent.width : 0
@@ -21,16 +22,16 @@ Item {
             text: keyword
             font.pixelSize: 23
             font.family: "黑体"
-            color: "white"
+            color: AppTheme.textPrimary
             font.bold: true
         }
         Text {
-            anchors.bottom: searchkeywods.bottom
             id: tishitext
-            text: "的相关搜索如下，找到"+(complexsearch?complexsearch.total:0)+"首单曲"
+            anchors.bottom: searchkeywods.bottom
+            text: "的相关搜索如下，找到" + (complexsearch ? complexsearch.total : 0) + "首单曲"
             font.pixelSize: 14
             font.family: "黑体"
-            color: "#717176"
+            color: AppTheme.textSearchKeyword
             font.bold: true
         }
     }
@@ -56,21 +57,21 @@ Item {
                         text: modelData
                         font.pixelSize: 18
                         font.family: "黑体"
-                        color: index === stackView.currentIndex ? "white" : "#717176"
+                        color: index === stackView.currentIndex ? AppTheme.textPrimary : AppTheme.textSecondary
                     }
                     Rectangle {
                         anchors.horizontalCenter: parent.horizontalCenter
                         visible: index === stackView.currentIndex
                         width: 40
                         height: 2
-                        color: index === stackView.currentIndex ? "#e74f50" : "white"
+                        color: index === stackView.currentIndex ? AppTheme.accent : AppTheme.textSecondary
                     }
                 }
 
                 MouseArea {
                     anchors.fill: parent
                     onClicked: {
-                        stackView.currentIndex = index
+                        stackView.currentIndex = index;
                     }
                 }
             }

@@ -24,21 +24,21 @@ Rectangle {
         height: 50
 
         Row {
-            spacing: 12
+            spacing: 8
             anchors.centerIn: parent
 
             Rectangle {
-                width: 40
-                height: 40
+                width: 44
+                height: 44
                 radius: 12
-                color: "#FF6B6B"
+                color: "transparent"
 
                 Image {
                     id: wyyicon
                     anchors.centerIn: parent
                     source: "qrc:/image/wyyicon.png"
-                    width: 28
-                    height: 28
+                    width: 36
+                    height: 36
                     fillMode: Image.PreserveAspectFit
                     smooth: true
                     mipmap: true
@@ -52,7 +52,7 @@ Rectangle {
                 font.pixelSize: 20
                 font.family: "黑体"
                 font.bold: true
-                color: "#FFFFFF"
+                color: AppTheme.textPrimary
             }
         }
     }
@@ -89,7 +89,7 @@ Rectangle {
                 height: 44
                 radius: 12
                 anchors.horizontalCenter: parent.horizontalCenter
-                color: leftpageRectangle.currentIndex === index ? "#FF6B6B" : (navMouseArea.containsMouse ? "#2A2A35" : "transparent")
+                color: leftpageRectangle.currentIndex === index ? AppTheme.accent : (navMouseArea.containsMouse ? AppTheme.bgNavHover : AppTheme.bgSidebar)
 
                 property bool isSelected: leftpageRectangle.currentIndex === index
 
@@ -109,7 +109,7 @@ Rectangle {
                         layer.enabled: true
                         layer.effect: ColorOverlay {
                             source: navIcon
-                            color: navItemRect.isSelected ? "#FFFFFF" : "#AAAAAA"
+                            color: navItemRect.isSelected ? AppTheme.iconActive : AppTheme.iconNav
                         }
                     }
 
@@ -118,7 +118,7 @@ Rectangle {
                         text: navColumn.navList[navItemRect.index].text
                         font.pixelSize: 14
                         font.family: "黑体"
-                        color: navItemRect.isSelected ? "#FFFFFF" : "#CCCCCC"
+                        color: navItemRect.isSelected ? AppTheme.textPrimary : AppTheme.textSecondary
                     }
                 }
 
@@ -141,6 +141,14 @@ Rectangle {
                         duration: 150
                     }
                 }
+
+                scale: navMouseArea.containsMouse && !isSelected ? 1.03 : 1.0
+                Behavior on scale {
+                    NumberAnimation {
+                        duration: 150
+                        easing.type: Easing.OutCubic
+                    }
+                }
             }
         }
     }
@@ -154,7 +162,13 @@ Rectangle {
         anchors.rightMargin: 24
         anchors.topMargin: 12
         height: 1
-        color: "#2A2A35"
+        color: AppTheme.borderSubtle
+
+        Behavior on color {
+            ColorAnimation {
+                duration: AppTheme.animThemeTransition
+            }
+        }
     }
 
     // 第二组导航
@@ -194,7 +208,7 @@ Rectangle {
                 height: 44
                 radius: 12
                 anchors.horizontalCenter: parent.horizontalCenter
-                color: leftpageRectangle.currentIndex - 3 === index ? "#FF6B6B" : (navMouseArea2.containsMouse ? "#2A2A35" : "transparent")
+                color: leftpageRectangle.currentIndex - 3 === index ? AppTheme.accent : (navMouseArea2.containsMouse ? AppTheme.bgNavHover : AppTheme.bgSidebar)
 
                 property bool isSelected: leftpageRectangle.currentIndex - 3 === index
 
@@ -214,7 +228,7 @@ Rectangle {
                         layer.enabled: true
                         layer.effect: ColorOverlay {
                             source: navIcon2
-                            color: navItemRect2.isSelected ? "#FFFFFF" : "#AAAAAA"
+                            color: navItemRect2.isSelected ? AppTheme.iconActive : AppTheme.iconNav
                         }
                     }
 
@@ -223,7 +237,7 @@ Rectangle {
                         text: navColumn2.navList[navItemRect2.index].text
                         font.pixelSize: 14
                         font.family: "黑体"
-                        color: navItemRect2.isSelected ? "#FFFFFF" : "#CCCCCC"
+                        color: navItemRect2.isSelected ? AppTheme.textPrimary : AppTheme.textSecondary
                     }
                 }
 
@@ -246,6 +260,14 @@ Rectangle {
                         duration: 150
                     }
                 }
+
+                scale: navMouseArea2.containsMouse && !isSelected ? 1.03 : 1.0
+                Behavior on scale {
+                    NumberAnimation {
+                        duration: 150
+                        easing.type: Easing.OutCubic
+                    }
+                }
             }
         }
     }
@@ -260,7 +282,7 @@ Rectangle {
         anchors.bottomMargin: 32
         height: 40
         radius: 10
-        color: updateMouseArea.containsMouse ? "#2A2A35" : "transparent"
+        color: updateMouseArea.containsMouse ? AppTheme.bgNavHover : AppTheme.bgSidebar
 
         Row {
             spacing: 8
@@ -268,14 +290,14 @@ Rectangle {
 
             Text {
                 text: "\u21BB"
-                color: "#888899"
+                color: AppTheme.textMuted
                 font.pixelSize: 16
                 anchors.verticalCenter: parent.verticalCenter
             }
 
             Text {
                 text: "检查更新"
-                color: "#888899"
+                color: AppTheme.textMuted
                 font.pixelSize: 13
                 font.family: "黑体"
                 anchors.verticalCenter: parent.verticalCenter
@@ -283,7 +305,7 @@ Rectangle {
 
             Text {
                 text: appUpdater ? "v" + appUpdater.currentVersion : ""
-                color: "#555566"
+                color: AppTheme.textDim
                 font.pixelSize: 11
                 anchors.verticalCenter: parent.verticalCenter
             }

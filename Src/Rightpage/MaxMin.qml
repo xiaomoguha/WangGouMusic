@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import Qt5Compat.GraphicalEffects
+import "../BasicConfig"
 
 Row {
     spacing: 8
@@ -9,7 +10,7 @@ Row {
         width: 28
         height: 28
         radius: 14
-        color: minMouseArea.containsMouse ? "#30FFFFFF" : "transparent"
+        color: minMouseArea.containsMouse ? AppTheme.iconButtonHover : "transparent"
 
         Image {
             id: minbutton
@@ -21,7 +22,7 @@ Row {
             layer.enabled: true
             layer.effect: ColorOverlay {
                 source: minbutton
-                color: "#FFFFFF"
+                color: AppTheme.iconDefault
             }
         }
 
@@ -46,7 +47,7 @@ Row {
         width: 28
         height: 28
         radius: 14
-        color: maxMouseArea.containsMouse ? "#30FFFFFF" : "transparent"
+        color: maxMouseArea.containsMouse ? AppTheme.iconButtonHover : "transparent"
 
         Image {
             id: maxbottom
@@ -58,7 +59,7 @@ Row {
             layer.enabled: true
             layer.effect: ColorOverlay {
                 source: maxbottom
-                color: "#FFFFFF"
+                color: AppTheme.iconDefault
             }
         }
 
@@ -94,7 +95,7 @@ Row {
         width: 28
         height: 28
         radius: 14
-        color: closeMouseArea.containsMouse ? "#FF5252" : "transparent"
+        color: closeMouseArea.containsMouse ? AppTheme.accentHover : "transparent"
 
         Image {
             id: closebottom
@@ -106,7 +107,7 @@ Row {
             layer.enabled: true
             layer.effect: ColorOverlay {
                 source: closebottom
-                color: "#FFFFFF"
+                color: AppTheme.iconDefault
             }
         }
 
