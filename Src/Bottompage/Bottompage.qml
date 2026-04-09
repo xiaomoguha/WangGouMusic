@@ -40,16 +40,16 @@ Rectangle {
     // 主内容区域 - 横向布局
     Row {
         anchors.fill: parent
-        anchors.leftMargin: 20
+        anchors.leftMargin: 35
         anchors.rightMargin: 20
-        spacing: 15
+        spacing: 8
 
         // ========== 左侧：歌曲信息 ==========
         Row {
             id: leftSection
             width: 180
             height: parent.height
-            spacing: 12
+            spacing: 5
 
             // 专辑封面（旋转动画）
             Rectangle {
@@ -171,149 +171,292 @@ Rectangle {
                 }
             }
         }
-
-        // ========== 中间：播放控制（横向排列）==========
-        Row {
+        Item {
+            width: -1
             height: parent.height
-            spacing: 16
+        }
+
+        // ========== 中间：播放控制（歌词/按钮切换）==========
+        Item {
+            id: lyricsControlContainer
+            width: 200  // 扩大宽度，让歌词区域更靠近左侧歌曲信息
+            height: parent.height
             anchors.verticalCenter: parent.verticalCenter
 
-            // 上一曲
-            Rectangle {
-                id: prevBtn
-                width: 36
-                height: 36
-                radius: 18
-                color: prevHandler.hovered ? AppTheme.iconButtonHover : "transparent"
-                anchors.verticalCenter: parent.verticalCenter
+            // 是否显示控制按钮：暂停时始终显示，播放时根据悬停状态
+            property bool isPaused: playlistmanager ? playlistmanager.isPaused : false
+            readonly property bool showControls: isPaused || containerHovered
+            property bool containerHovered: false
 
-                Image {
-                    id: prevIcon
-                    anchors.centerIn: parent
-                    source: "qrc:/image/upplay.png"
-                    width: 20
-                    height: 20
-                    fillMode: Image.PreserveAspectFit
-                    layer.enabled: true
-                    layer.effect: ColorOverlay {
-                        source: prevIcon
-                        color: AppTheme.iconDefault
-                    }
-                }
-
-                HoverHandler {
-                    id: prevHandler
-                }
-                TapHandler {
-                    cursorShape: Qt.PointingHandCursor
-                    onTapped: playlistmanager.playPrevious()
-                }
-
-                scale: prevHandler.hovered ? 1.1 : 1.0
-                Behavior on scale {
-                    NumberAnimation { duration: 100; easing.type: Easing.OutCubic }
-                }
-                Behavior on color {
-                    ColorAnimation {
-                        duration: 150
+            // 延迟隐藏定时器（仅播放状态使用）
+            Timer {
+                id: hideControlsDelay
+                interval: 1500
+                onTriggered: {
+                    if (!lyricsControlContainer.isPaused) {
+                        lyricsControlContainer.containerHovered = false;
                     }
                 }
             }
 
-            // 播放/暂停（主按钮）
-            Rectangle {
-                id: playPauseBtn
-                width: 48
-                height: 48
-                radius: 24
-                color: playPauseHandler.hovered ? AppTheme.accentHover : AppTheme.accent
-                anchors.verticalCenter: parent.verticalCenter
+            // 鼠标区域（覆盖整个按钮区域）
+            MouseArea {
+                id: lyricsContainerMouseArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
 
-                // 发光效果
-                Rectangle {
-                    anchors.centerIn: parent
-                    width: parent.width + 6
-                    height: parent.height + 6
-                    radius: (parent.width + 6) / 2
-                    color: "transparent"
-                    border.width: 2
-                    border.color: AppTheme.accentGlow
+                onEntered: {
+                    hideControlsDelay.stop();
+                    lyricsControlContainer.containerHovered = true;
+                }
+                onExited: {
+                    hideControlsDelay.stop();
+                    // 暂停状态立即重置，播放状态延迟重置
+                    if (lyricsControlContainer.isPaused) {
+                        lyricsControlContainer.containerHovered = false;
+                    } else {
+                        hideControlsDelay.restart();
+                    }
+                }
+            }
+
+            HoverHandler {
+                id: lyricsContainerHover
+            }
+
+            // ===== 歌词滚动层（默认显示） =====
+            Item {
+                id: lyricsScrollLayer
+                anchors.centerIn: parent
+                width: parent.width
+                height: parent.height
+                opacity: lyricsControlContainer.showControls ? 0 : 1.0
+
+                property string lyricText: playlistmanager ? (playlistmanager.currlyric || "网狗音乐") : "网狗音乐"
+                property int charIndex: playlistmanager ? playlistmanager.lyricCharIndex : -1
+                property real charProgress: playlistmanager ? playlistmanager.lyricCharProgress : 0.0
+
+                // 高亮比例
+                property real highlightRatio: {
+                    var totalChars = playlistmanager ? (playlistmanager.lyricCharCount || lyricText.length) : lyricText.length;
+                    if (totalChars === 0 || charIndex < 0)
+                        return 0;
+                    return (charIndex + charProgress) / totalChars;
                 }
 
-                Image {
-                    id: playPauseIcon
-                    anchors.centerIn: parent
-                    source: playlistmanager ? (playlistmanager.isPaused ? "qrc:/image/play.png" : "qrc:/image/paused.png") : "qrc:/image/play.png"
-                    width: 22
-                    height: 22
-                    fillMode: Image.PreserveAspectFit
-                    layer.enabled: true
-                    layer.effect: ColorOverlay {
-                        source: playPauseIcon
-                        color: AppTheme.iconDefault
+                // 歌词内容容器（左对齐，与桌面歌词一致）
+                Item {
+                    id: lyricsContainer
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: lyricsScrollLayer.width - 20
+                    height: 24
+                    clip: true  // 裁剪超出部分
+
+                    // 底层：完整灰色文字（左对齐）
+                    Text {
+                        id: bgText
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: lyricsScrollLayer.lyricText
+                        font.pixelSize: 14
+                        font.bold: true
+                        font.family: "黑体"
+                        color: AppTheme.textMuted
+                        maximumLineCount: 1
+                    }
+
+                    // 高亮层：从左到右刷过去（与桌面歌词一致）
+                    Item {
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: hlText.width * lyricsScrollLayer.highlightRatio
+                        height: bgText.height
+                        clip: true
+                        visible: lyricsScrollLayer.highlightRatio > 0
+
+                        Text {
+                            id: hlText
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: lyricsScrollLayer.lyricText
+                            font.pixelSize: 14
+                            font.bold: true
+                            font.family: "黑体"
+                            color: AppTheme.accent
+                            maximumLineCount: 1
+                        }
                     }
                 }
 
-                HoverHandler {
-                    id: playPauseHandler
-                }
-                TapHandler {
-                    cursorShape: Qt.PointingHandCursor
-                    onTapped: playlistmanager.playstop()
-                }
-
-                scale: playPauseHandler.hovered ? 1.05 : 1.0
-                Behavior on scale {
+                Behavior on opacity {
                     NumberAnimation {
-                        duration: 100
-                    }
-                }
-                Behavior on color {
-                    ColorAnimation {
-                        duration: 150
+                        duration: 300
+                        easing.type: Easing.OutCubic
                     }
                 }
             }
 
-            // 下一曲
-            Rectangle {
-                id: nextBtn
-                width: 36
-                height: 36
-                radius: 18
-                color: nextHandler.hovered ? AppTheme.iconButtonHover : "transparent"
+            // ===== 控制按钮层（悬停显示，按钮在歌词区域左侧中间） =====
+            Row {
+                id: controlButtonsLayer
+                anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
+                spacing: 16
+                opacity: lyricsControlContainer.showControls ? 1.0 : 0.0
+                visible: opacity > 0
 
-                Image {
-                    id: nextIcon
-                    anchors.centerIn: parent
-                    source: "qrc:/image/nextplay.png"
-                    width: 20
-                    height: 20
-                    fillMode: Image.PreserveAspectFit
-                    layer.enabled: true
-                    layer.effect: ColorOverlay {
-                        source: nextIcon
-                        color: AppTheme.iconDefault
+                // 上一曲
+                Rectangle {
+                    id: prevBtn
+                    width: 36
+                    height: 36
+                    radius: 18
+                    color: prevHandler.hovered ? AppTheme.iconButtonHover : "transparent"
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    Image {
+                        id: prevIcon
+                        anchors.centerIn: parent
+                        source: "qrc:/image/upplay.png"
+                        width: 20
+                        height: 20
+                        fillMode: Image.PreserveAspectFit
+                        layer.enabled: true
+                        layer.effect: ColorOverlay {
+                            source: prevIcon
+                            color: AppTheme.iconDefault
+                        }
+                    }
+
+                    HoverHandler {
+                        id: prevHandler
+                    }
+                    TapHandler {
+                        cursorShape: Qt.PointingHandCursor
+                        onTapped: playlistmanager.playPrevious()
+                    }
+
+                    scale: prevHandler.hovered ? 1.1 : 1.0
+                    Behavior on scale {
+                        NumberAnimation {
+                            duration: 100
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+                    Behavior on color {
+                        ColorAnimation {
+                            duration: 150
+                        }
                     }
                 }
 
-                HoverHandler {
-                    id: nextHandler
-                }
-                TapHandler {
-                    cursorShape: Qt.PointingHandCursor
-                    onTapped: playlistmanager.playNext()
+                // 播放/暂停（主按钮）
+                Rectangle {
+                    id: playPauseBtn
+                    width: 48
+                    height: 48
+                    radius: 24
+                    color: playPauseHandler.hovered ? AppTheme.accentHover : AppTheme.accent
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    // 发光效果
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: parent.width + 6
+                        height: parent.height + 6
+                        radius: (parent.width + 6) / 2
+                        color: "transparent"
+                        border.width: 2
+                        border.color: AppTheme.accentGlow
+                    }
+
+                    Image {
+                        id: playPauseIcon
+                        anchors.centerIn: parent
+                        source: playlistmanager ? (playlistmanager.isPaused ? "qrc:/image/play.png" : "qrc:/image/paused.png") : "qrc:/image/play.png"
+                        width: 22
+                        height: 22
+                        fillMode: Image.PreserveAspectFit
+                        layer.enabled: true
+                        layer.effect: ColorOverlay {
+                            source: playPauseIcon
+                            color: AppTheme.iconDefault
+                        }
+                    }
+
+                    HoverHandler {
+                        id: playPauseHandler
+                    }
+                    TapHandler {
+                        cursorShape: Qt.PointingHandCursor
+                        onTapped: playlistmanager.playstop()
+                    }
+
+                    scale: playPauseHandler.hovered ? 1.05 : 1.0
+                    Behavior on scale {
+                        NumberAnimation {
+                            duration: 100
+                        }
+                    }
+                    Behavior on color {
+                        ColorAnimation {
+                            duration: 150
+                        }
+                    }
                 }
 
-                scale: nextHandler.hovered ? 1.1 : 1.0
-                Behavior on scale {
-                    NumberAnimation { duration: 100; easing.type: Easing.OutCubic }
-                }
-                Behavior on color {
-                    ColorAnimation {
-                        duration: 150
+                // 下一曲
+                Rectangle {
+                    id: nextBtn
+                    width: 36
+                    height: 36
+                    radius: 18
+                    color: nextHandler.hovered ? AppTheme.iconButtonHover : "transparent"
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    Image {
+                        id: nextIcon
+                        anchors.centerIn: parent
+                        source: "qrc:/image/nextplay.png"
+                        width: 20
+                        height: 20
+                        fillMode: Image.PreserveAspectFit
+                        layer.enabled: true
+                        layer.effect: ColorOverlay {
+                            source: nextIcon
+                            color: AppTheme.iconDefault
+                        }
                     }
+
+                    HoverHandler {
+                        id: nextHandler
+                    }
+                    TapHandler {
+                        cursorShape: Qt.PointingHandCursor
+                        onTapped: playlistmanager.playNext()
+                    }
+
+                    scale: nextHandler.hovered ? 1.1 : 1.0
+                    Behavior on scale {
+                        NumberAnimation {
+                            duration: 100
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+                    Behavior on color {
+                        ColorAnimation {
+                            duration: 150
+                        }
+                    }
+                }
+            }
+
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: 300
+                    easing.type: Easing.OutCubic
                 }
             }
         }
@@ -340,7 +483,7 @@ Rectangle {
                 id: progressContainer
                 height: parent.height
                 // 进度条宽度 = 总宽度 - 左侧(180) - 中间控制(152) - 右侧(120) - 边距(40) - spacing(45) - 时间文字(约80)
-                width: Math.max(100, controlBar.width - 180 - 152 - 120 - 40 - 45 - 80)
+                width: 0.35 * root.width
 
                 // 进度条
                 Rectangle {
