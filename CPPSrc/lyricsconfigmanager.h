@@ -27,6 +27,7 @@ class LyricsConfigManager : public QObject
     Q_PROPERTY(bool isVertical READ isVertical WRITE setIsVertical NOTIFY configChanged)
     Q_PROPERTY(qreal scale READ scale WRITE setScale NOTIFY configChanged)
     Q_PROPERTY(int fontSize READ fontSize WRITE setFontSize NOTIFY configChanged)
+    Q_PROPERTY(bool isDark READ isDark WRITE setIsDark NOTIFY configChanged)
 
 public:
     explicit LyricsConfigManager(QObject *parent = nullptr);
@@ -49,6 +50,7 @@ public:
     bool isVertical() const { return m_isVertical; }
     qreal scale() const { return m_scale; }
     int fontSize() const { return m_fontSize; }
+    bool isDark() const { return m_isDark; }
 
     // 横向模式 setters
     void setHorizontalX(int value);
@@ -67,6 +69,7 @@ public:
     void setIsVertical(bool value);
     void setScale(qreal value);
     void setFontSize(int value);
+    void setIsDark(bool value);
 
     Q_INVOKABLE void saveConfig();
     Q_INVOKABLE void loadConfig();
@@ -94,6 +97,7 @@ private:
     bool m_isVertical = false;
     qreal m_scale = 1.0;
     int m_fontSize = 22;
+    bool m_isDark = false;
 
     // 屏幕尺寸缓存
     int m_screenWidth = 1920;

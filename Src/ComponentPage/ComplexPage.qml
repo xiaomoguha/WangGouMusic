@@ -24,61 +24,91 @@ Page {
     Rectangle {
         id: loadingOverlay
         anchors.fill: parent
-        color: "#13131a"    // 半透明黑色背景（看起来是灰色）
-        visible: false      // 默认隐藏
-        z: 9999             // 确保在最上层
-        BusyIndicator {
-            id: busycry
-            anchors.top: parent.top
+        color: AppTheme.bgLoadingOverlay
+        visible: false
+        z: 9999
+
+        Column {
+            anchors.fill: parent
             anchors.topMargin: 30
-            anchors.horizontalCenter: parent.horizontalCenter
-            running: loadingOverlay.visible
+            anchors.leftMargin: 20
+            anchors.rightMargin: 20
+            spacing: 12
 
-            // 设置颜色为白色
-            contentItem: Item {
-                implicitWidth: 30
-                implicitHeight: 30
+            Repeater {
+                model: 6
 
-                RotationAnimator on rotation {
-                    from: 0
-                    to: 360
-                    duration: 1000
-                    loops: Animation.Infinite
-                    running: parent.visible
-                }
+                delegate: Rectangle {
+                    width: loadingOverlay.width - 40
+                    height: 60
+                    radius: 8
+                    color: AppTheme.bgCard
+                    clip: true
 
-                Repeater {
-                    model: 8  // 默认有 8 个小圆点
-                    delegate: Rectangle {
-                        x: parent.width / 2 - width / 2
-                        y: 2  // 调整位置
-                        width: 3
-                        height: 3
-                        radius: width / 2
-                        color: "white"  // 设置为白色
-                        transform: [
-                            Translate {
-                                y: -Math.min(parent.width, parent.height) * 0.4
-                            },
-                            Rotation {
-                                angle: index * 45  // 8 个点，每个间隔 45 度
-                                origin.x: width / 2
-                                origin.y: Math.min(parent.width, parent.height) * 0.4
+                    Row {
+                        anchors.fill: parent
+                        anchors.margins: 10
+                        spacing: 12
+
+                        // 骨架封面占位
+                        Rectangle {
+                            width: 40
+                            height: 40
+                            radius: 6
+                            color: AppTheme.progressTrack
+                        }
+
+                        Column {
+                            spacing: 8
+                            anchors.verticalCenter: parent.verticalCenter
+
+                            // 骨架标题占位
+                            Rectangle {
+                                width: 120 + index * 20
+                                height: 12
+                                radius: 4
+                                color: AppTheme.progressTrack
                             }
-                        ]
+                            // 骨架副标题占位
+                            Rectangle {
+                                width: 80 + index * 15
+                                height: 10
+                                radius: 4
+                                color: AppTheme.progressTrack
+                            }
+                        }
+                    }
+
+                    // Shimmer 动画覆盖层
+                    Rectangle {
+                        anchors.fill: parent
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: 0.0; color: "transparent" }
+                            GradientStop { position: 0.4; color: "transparent" }
+                            GradientStop { position: 0.5; color: AppTheme.isDark ? "#15FFFFFF" : "#10FF8A80" }
+                            GradientStop { position: 0.6; color: "transparent" }
+                            GradientStop { position: 1.0; color: "transparent" }
+                        }
+
+                        NumberAnimation on x {
+                            from: -parent.width
+                            to: parent.width
+                            duration: 1500
+                            loops: Animation.Infinite
+                            running: loadingOverlay.visible
+                        }
                     }
                 }
             }
-        }
-        Text {
-            anchors {
-                top: busycry.bottom
-                topMargin: 20
-                horizontalCenter: parent.horizontalCenter
+
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: "正在搜索..."
+                color: AppTheme.textMuted
+                font.pixelSize: 13
+                font.family: "黑体"
             }
-            text: "加载中..."
-            color: "white"
-            font.pixelSize: 10
         }
     }
     Flickable {
@@ -99,7 +129,19 @@ Page {
                     width: listCol.width
                     height: sosuoindexrow.height + 25
                     radius: 5
-                    color: sosuoHoverHandler.hovered ? "#212127" : "transparent"
+                    color: sosuoHoverHandler.hovered ? AppTheme.bgCardHover : "transparent"
+
+                    // Entrance animation - fade in
+                    opacity: 0
+                    Component.onCompleted: entranceAnim.start()
+                    NumberAnimation on opacity {
+                        id: entranceAnim
+                        from: 0
+                        to: 1
+                        duration: 350
+                        easing.type: Easing.OutCubic
+                    }
+
 
                     property bool showActions: sosuoHoverHandler.hovered
 
@@ -116,7 +158,7 @@ Page {
                             text: index + 1 <= 9 ? "0" + String(index + 1) : index + 1
                             anchors.verticalCenter: parent.verticalCenter
                             font.pixelSize: 16
-                            color: "#a1a1a3"
+                            color: AppTheme.textMuted
                         }
                         Image {
                             anchors.verticalCenter: parent.verticalCenter
@@ -135,7 +177,7 @@ Page {
                             Text {
                                 text: modelData.songname
                                 font.pixelSize: 13
-                                color: "white"
+                                color: AppTheme.textPrimary
                                 elide: Text.ElideRight     // 超出部分显示省略号
                                 width: 0.19 * root.width                 // 设置最大宽度，省略号才生效
                                 wrapMode: Text.NoWrap      // 禁止换行
@@ -146,7 +188,7 @@ Page {
                                 width: 0.19 * root.width                  // 设置最大宽度，省略号才生效
                                 wrapMode: Text.NoWrap      // 禁止换行
                                 font.pixelSize: 11
-                                color: "white"
+                                color: AppTheme.textMuted
                             }
                         }
                     }
@@ -163,7 +205,7 @@ Page {
                             width: 32
                             height: 32
                             radius: 16
-                            color: playNowHoverHandler.hovered ? "#30FFFFFF" : "transparent"
+                            color: playNowHoverHandler.hovered ? AppTheme.iconButtonHover : "transparent"
 
                             Image {
                                 id: playNowIcon
@@ -175,7 +217,7 @@ Page {
                                 layer.enabled: true
                                 layer.effect: ColorOverlay {
                                     source: playNowIcon
-                                    color: "#FFFFFF"
+                                    color: AppTheme.iconDefault
                                 }
                             }
 
@@ -204,7 +246,7 @@ Page {
                             width: 32
                             height: 32
                             radius: 16
-                            color: addPlaylistHoverHandler.hovered ? "#30FFFFFF" : "transparent"
+                            color: addPlaylistHoverHandler.hovered ? AppTheme.iconButtonHover : "transparent"
 
                             Image {
                                 id: addPlaylistIcon
@@ -216,7 +258,7 @@ Page {
                                 layer.enabled: true
                                 layer.effect: ColorOverlay {
                                     source: addPlaylistIcon
-                                    color: "#FFFFFF"
+                                    color: AppTheme.iconDefault
                                 }
                             }
 
@@ -245,7 +287,7 @@ Page {
                             width: 32
                             height: 32
                             radius: 16
-                            color: addLoveHoverHandler.hovered ? "#30FFFFFF" : "transparent"
+                            color: addLoveHoverHandler.hovered ? AppTheme.iconButtonHover : "transparent"
 
                             Image {
                                 id: addLoveIcon
@@ -257,7 +299,7 @@ Page {
                                 layer.enabled: true
                                 layer.effect: ColorOverlay {
                                     source: addLoveIcon
-                                    color: addLoveHoverHandler.hovered ? "#FF6B6B" : "#FFFFFF"
+                                    color: addLoveHoverHandler.hovered ? AppTheme.accent : AppTheme.iconDefault
                                 }
                             }
 
@@ -286,7 +328,7 @@ Page {
                         text: modelData.album_name
                         font.pixelSize: 14
                         font.family: "黑体"
-                        color: "white"
+                        color: AppTheme.textMuted
 
                         Behavior on x {
                             NumberAnimation {
@@ -302,7 +344,7 @@ Page {
                         text: modelData.duration
                         font.pixelSize: 14
                         font.family: "黑体"
-                        color: "white"
+                        color: AppTheme.textMuted
                     }
                 }
             }

@@ -1,9 +1,10 @@
 import QtQuick 2.15
 import Qt5Compat.GraphicalEffects
+import "../BasicConfig"
 
 Rectangle {
     id: controlBar
-    color: "#1a1a24"
+    color: AppTheme.bgBottomBarInner
 
     // 顶部渐变分隔线
     Rectangle {
@@ -19,15 +20,15 @@ Rectangle {
             }
             GradientStop {
                 position: 0.3
-                color: "#30FF6B6B"
+                color: AppTheme.accentDim
             }
             GradientStop {
                 position: 0.5
-                color: "#50FF6B6B"
+                color: AppTheme.accentGlow
             }
             GradientStop {
                 position: 0.7
-                color: "#30FF6B6B"
+                color: AppTheme.accentDim
             }
             GradientStop {
                 position: 1.0
@@ -67,7 +68,7 @@ Rectangle {
                     radius: (parent.width + 4) / 2
                     color: "transparent"
                     border.width: 2
-                    border.color: playlistmanager && !playlistmanager.isPaused ? "#40FF6B6B" : "transparent"
+                    border.color: playlistmanager && !playlistmanager.isPaused ? AppTheme.accentGlow : "transparent"
                     Behavior on border.color {
                         ColorAnimation {
                             duration: 300
@@ -152,7 +153,7 @@ Rectangle {
                     font.family: "黑体"
                     font.pixelSize: 14
                     font.bold: true
-                    color: "#FFFFFF"
+                    color: AppTheme.textPrimary
                     elide: Text.ElideRight
                     width: parent.width
                     wrapMode: Text.NoWrap
@@ -163,7 +164,7 @@ Rectangle {
                     text: playlistmanager ? (playlistmanager.currentsingername === "" ? "默认歌手" : playlistmanager.currentsingername) : "....."
                     font.family: "黑体"
                     font.pixelSize: 12
-                    color: "#888899"
+                    color: AppTheme.textMuted
                     elide: Text.ElideRight
                     width: parent.width
                     wrapMode: Text.NoWrap
@@ -183,7 +184,7 @@ Rectangle {
                 width: 36
                 height: 36
                 radius: 18
-                color: prevHandler.hovered ? "#25FFFFFF" : "transparent"
+                color: prevHandler.hovered ? AppTheme.iconButtonHover : "transparent"
                 anchors.verticalCenter: parent.verticalCenter
 
                 Image {
@@ -196,7 +197,7 @@ Rectangle {
                     layer.enabled: true
                     layer.effect: ColorOverlay {
                         source: prevIcon
-                        color: "#FFFFFF"
+                        color: AppTheme.iconDefault
                     }
                 }
 
@@ -208,6 +209,10 @@ Rectangle {
                     onTapped: playlistmanager.playPrevious()
                 }
 
+                scale: prevHandler.hovered ? 1.1 : 1.0
+                Behavior on scale {
+                    NumberAnimation { duration: 100; easing.type: Easing.OutCubic }
+                }
                 Behavior on color {
                     ColorAnimation {
                         duration: 150
@@ -221,7 +226,7 @@ Rectangle {
                 width: 48
                 height: 48
                 radius: 24
-                color: playPauseHandler.hovered ? "#FF5252" : "#FF6B6B"
+                color: playPauseHandler.hovered ? AppTheme.accentHover : AppTheme.accent
                 anchors.verticalCenter: parent.verticalCenter
 
                 // 发光效果
@@ -232,7 +237,7 @@ Rectangle {
                     radius: (parent.width + 6) / 2
                     color: "transparent"
                     border.width: 2
-                    border.color: "#40FF6B6B"
+                    border.color: AppTheme.accentGlow
                 }
 
                 Image {
@@ -245,7 +250,7 @@ Rectangle {
                     layer.enabled: true
                     layer.effect: ColorOverlay {
                         source: playPauseIcon
-                        color: "#FFFFFF"
+                        color: AppTheme.iconDefault
                     }
                 }
 
@@ -276,7 +281,7 @@ Rectangle {
                 width: 36
                 height: 36
                 radius: 18
-                color: nextHandler.hovered ? "#25FFFFFF" : "transparent"
+                color: nextHandler.hovered ? AppTheme.iconButtonHover : "transparent"
                 anchors.verticalCenter: parent.verticalCenter
 
                 Image {
@@ -289,7 +294,7 @@ Rectangle {
                     layer.enabled: true
                     layer.effect: ColorOverlay {
                         source: nextIcon
-                        color: "#FFFFFF"
+                        color: AppTheme.iconDefault
                     }
                 }
 
@@ -301,6 +306,10 @@ Rectangle {
                     onTapped: playlistmanager.playNext()
                 }
 
+                scale: nextHandler.hovered ? 1.1 : 1.0
+                Behavior on scale {
+                    NumberAnimation { duration: 100; easing.type: Easing.OutCubic }
+                }
                 Behavior on color {
                     ColorAnimation {
                         duration: 150
@@ -322,7 +331,7 @@ Rectangle {
                 text: playlistmanager ? playlistmanager.percentstr : "00:00"
                 font.family: "黑体"
                 font.pixelSize: 12
-                color: "#666677"
+                color: AppTheme.textDim
                 anchors.verticalCenter: parent.verticalCenter
             }
 
@@ -338,17 +347,28 @@ Rectangle {
                     id: progressSlider
                     anchors.centerIn: parent
                     width: parent.width
-                    height: 4
-                    radius: 2
-                    color: "#2A2A35"
+                    height: progressMouseArea.containsMouse ? 6 : 4
+                    radius: height / 2
+                    color: AppTheme.progressTrack
 
                     property real value: playlistmanager ? playlistmanager.percent : 0.0
                     property bool dragging: false
 
                     // 悬停高亮边框
                     border.width: progressMouseArea.containsMouse ? 1 : 0
-                    border.color: "#80FF6B6B"
+                    border.color: AppTheme.accentGlow
                     Behavior on border.width {
+                        NumberAnimation {
+                            duration: 150
+                        }
+                    }
+                    Behavior on height {
+                        NumberAnimation {
+                            duration: 150
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+                    Behavior on radius {
                         NumberAnimation {
                             duration: 150
                         }
@@ -405,10 +425,38 @@ Rectangle {
                         anchors.left: parent.left
                         anchors.top: parent.top
                         anchors.bottom: parent.bottom
-                        radius: 2
-                        color: "#FF6B6B"
+                        radius: parent.radius
+                        color: AppTheme.accent
                         width: progressSlider.dragging ? tempWidth : parent.width * progressSlider.value
                         property real tempWidth: 0
+
+                        // 播放时脉冲发光效果
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: parent.radius
+                            color: "transparent"
+                            border.width: 1
+                            border.color: AppTheme.accentGlow
+                            visible: playlistmanager && !playlistmanager.isPaused
+                            opacity: 0
+
+                            SequentialAnimation on opacity {
+                                running: playlistmanager && !playlistmanager.isPaused
+                                loops: Animation.Infinite
+                                NumberAnimation {
+                                    from: 0.3
+                                    to: 0.8
+                                    duration: 1200
+                                    easing.type: Easing.InOutSine
+                                }
+                                NumberAnimation {
+                                    from: 0.8
+                                    to: 0.3
+                                    duration: 1200
+                                    easing.type: Easing.InOutSine
+                                }
+                            }
+                        }
                     }
 
                     // 播放指示点
@@ -417,17 +465,35 @@ Rectangle {
                         width: 12
                         height: 12
                         radius: 6
-                        color: "#FFFFFF"
+                        color: AppTheme.progressDot
                         anchors.verticalCenter: parent.verticalCenter
                         x: progressFill.width - width / 2
 
-                        // 发光效果
+                        // 发光效果 - 播放时脉冲
                         Rectangle {
                             anchors.centerIn: parent
                             width: 18
                             height: 18
                             radius: 9
-                            color: "#30FF6B6B"
+                            color: AppTheme.accentGlow
+                            visible: playlistmanager && !playlistmanager.isPaused
+
+                            SequentialAnimation on scale {
+                                running: playlistmanager && !playlistmanager.isPaused
+                                loops: Animation.Infinite
+                                NumberAnimation {
+                                    from: 0.8
+                                    to: 1.3
+                                    duration: 1000
+                                    easing.type: Easing.InOutSine
+                                }
+                                NumberAnimation {
+                                    from: 1.3
+                                    to: 0.8
+                                    duration: 1000
+                                    easing.type: Easing.InOutSine
+                                }
+                            }
                         }
 
                         scale: progressMouseArea.containsMouse ? 1.2 : 1.0
@@ -446,7 +512,7 @@ Rectangle {
                 text: playlistmanager ? playlistmanager.duration : "00:00"
                 font.family: "黑体"
                 font.pixelSize: 12
-                color: "#666677"
+                color: AppTheme.textDim
                 anchors.verticalCenter: parent.verticalCenter
             }
         }
@@ -466,7 +532,7 @@ Rectangle {
                 width: 32
                 height: 32
                 radius: 16
-                color: playlistBtnHandler.hovered ? "#25FFFFFF" : "transparent"
+                color: playlistBtnHandler.hovered ? AppTheme.iconButtonHover : "transparent"
                 anchors.verticalCenter: parent.verticalCenter
 
                 Image {
@@ -479,7 +545,7 @@ Rectangle {
                     layer.enabled: true
                     layer.effect: ColorOverlay {
                         source: playlistIcon
-                        color: playlistBtnHandler.hovered ? "#FFFFFF" : "#AAAABB"
+                        color: playlistBtnHandler.hovered ? AppTheme.iconHover : AppTheme.textMuted
                     }
                 }
 
@@ -503,7 +569,7 @@ Rectangle {
                 width: 32
                 height: 32
                 radius: 16
-                color: volumeBtnHandler.hovered ? "#25FFFFFF" : "transparent"
+                color: volumeBtnHandler.hovered ? AppTheme.iconButtonHover : "transparent"
                 anchors.verticalCenter: parent.verticalCenter
 
                 Image {
@@ -516,7 +582,7 @@ Rectangle {
                     layer.enabled: true
                     layer.effect: ColorOverlay {
                         source: volumeIcon
-                        color: volumeBtnHandler.hovered ? "#FFFFFF" : "#AAAABB"
+                        color: volumeBtnHandler.hovered ? AppTheme.iconHover : AppTheme.textMuted
                     }
                 }
 
@@ -540,7 +606,7 @@ Rectangle {
                 width: 32
                 height: 32
                 radius: 16
-                color: lyricsBtnHandler.hovered ? "#25FFFFFF" : "transparent"
+                color: lyricsBtnHandler.hovered ? AppTheme.iconButtonHover : "transparent"
                 anchors.verticalCenter: parent.verticalCenter
 
                 Image {
@@ -553,7 +619,7 @@ Rectangle {
                     layer.enabled: true
                     layer.effect: ColorOverlay {
                         source: lyricsIcon
-                        color: desktopLyricsWindow && desktopLyricsWindow.visible ? "#FF6B6B" : (lyricsBtnHandler.hovered ? "#FFFFFF" : "#AAAABB")
+                        color: desktopLyricsWindow && desktopLyricsWindow.visible ? AppTheme.accent : (lyricsBtnHandler.hovered ? AppTheme.iconHover : AppTheme.textMuted)
                     }
                 }
 

@@ -4,6 +4,7 @@ import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
 
 Item {
+    objectName: "HomePage"
     width: parent ? parent.width : 0
     height: parent ? parent.height : 0
 
@@ -74,13 +75,15 @@ Item {
             width: parent ? parent.width : 0
             height: 60
 
+            // 歌曲项不需要单独的入场动画，StackView 的 pushEnter 已提供页面级过渡
+
             property var songData: modelData
             readonly property bool isPlaying: playlistmanager && playlistmanager.currentSonghash === songData.songhash
 
             Rectangle {
                 anchors.fill: parent
                 radius: 8
-                color: (mouse.hovered || isPlaying) ? "#27272e" : "transparent"
+                color: (mouse.hovered || isPlaying) ? AppTheme.bgCard : "transparent"
 
                 Image {
                     id: cover
@@ -111,7 +114,7 @@ Item {
                         width: parent.width
                         elide: Text.ElideRight
                         font.pixelSize: 13
-                        color: isPlaying ? "#e74f50" : "white"
+                        color: isPlaying ? AppTheme.accentPlaying : AppTheme.textPrimary
                     }
 
                     Text {
@@ -119,7 +122,7 @@ Item {
                         width: parent.width
                         elide: Text.ElideRight
                         font.pixelSize: 11
-                        color: isPlaying ? "#e74f50" : "white"
+                        color: isPlaying ? AppTheme.accentPlaying : AppTheme.textMuted
                     }
                 }
                 Row {
@@ -135,7 +138,7 @@ Item {
                         width: 28
                         height: 28
                         radius: 14
-                        color: playNowHoverHandler.hovered ? "#30FFFFFF" : "transparent"
+                        color: playNowHoverHandler.hovered ? AppTheme.iconButtonHover : "transparent"
 
                         Image {
                             id: playNowIcon
@@ -147,7 +150,7 @@ Item {
                             layer.enabled: true
                             layer.effect: ColorOverlay {
                                 source: playNowIcon
-                                color: "#FFFFFF"
+                                color: AppTheme.iconDefault
                             }
                         }
 
@@ -180,7 +183,7 @@ Item {
                         width: 28
                         height: 28
                         radius: 14
-                        color: addListHoverHandler.hovered ? "#30FFFFFF" : "transparent"
+                        color: addListHoverHandler.hovered ? AppTheme.iconButtonHover : "transparent"
 
                         Image {
                             id: addListIcon
@@ -188,11 +191,12 @@ Item {
                             source: "qrc:/image/addplaylist.png"
                             width: 15
                             height: 15
+                            scale: 0.8
                             fillMode: Image.PreserveAspectFit
                             layer.enabled: true
                             layer.effect: ColorOverlay {
                                 source: addListIcon
-                                color: "#FFFFFF"
+                                color: AppTheme.iconDefault
                             }
                         }
 
@@ -220,7 +224,7 @@ Item {
                         width: 28
                         height: 28
                         radius: 14
-                        color: addLoveHoverHandler.hovered ? "#30FFFFFF" : "transparent"
+                        color: addLoveHoverHandler.hovered ? AppTheme.iconButtonHover : "transparent"
 
                         Image {
                             id: addloveImage
@@ -232,7 +236,7 @@ Item {
                             layer.enabled: true
                             layer.effect: ColorOverlay {
                                 source: addloveImage
-                                color: addLoveHoverHandler.hovered ? "#FF6B6B" : "#FFFFFF"
+                                color: addLoveHoverHandler.hovered ? AppTheme.accent : AppTheme.iconDefault
                             }
                         }
 
@@ -310,7 +314,7 @@ Item {
                         text: title
                         font.family: "黑体"
                         font.pixelSize: 18
-                        color: "white"
+                        color: AppTheme.textPrimary
                     }
                     Rectangle {
                         width: 22
@@ -319,7 +323,7 @@ Item {
                         anchors.left: titletext.right
                         anchors.leftMargin: 8
                         anchors.verticalCenter: titletext.verticalCenter
-                        color: playAllHoverHandler.hovered ? "#FF6B6B" : "#4A4A5A"
+                        color: playAllHoverHandler.hovered ? AppTheme.accent : AppTheme.bgNavHover
 
                         Image {
                             id: playAllIcon
@@ -331,7 +335,7 @@ Item {
                             layer.enabled: true
                             layer.effect: ColorOverlay {
                                 source: playAllIcon
-                                color: "#FFFFFF"
+                                color: AppTheme.iconDefault
                             }
                         }
 
@@ -368,7 +372,7 @@ Item {
                         width: 32
                         height: 32
                         radius: 16
-                        color: refreshHoverHandler.hovered ? "#30FFFFFF" : "transparent"
+                        color: refreshHoverHandler.hovered ? AppTheme.iconButtonHover : "transparent"
                         anchors.right: parent.right
                         anchors.verticalCenter: titletext.verticalCenter
 
@@ -382,7 +386,7 @@ Item {
                             layer.enabled: true
                             layer.effect: ColorOverlay {
                                 source: refreshIcon
-                                color: "#FFFFFF"
+                                color: AppTheme.iconDefault
                             }
                         }
 
@@ -444,7 +448,7 @@ Item {
                     width: parent.width * 0.9
                     height: 36
                     anchors.horizontalCenter: parent.horizontalCenter
-                    color: expandHoverHandler.hovered ? "#3A3A45" : "#2A2A35"
+                    color: expandHoverHandler.hovered ? AppTheme.bgExpandBtnHover : AppTheme.bgExpandBtn
                     radius: 8
 
                     Row {
@@ -453,7 +457,7 @@ Item {
 
                         Text {
                             text: isExpanded ? "收起" : "展开更多 (" + (songModel.length - 6) + "首)"
-                            color: "#AAAAAA"
+                            color: AppTheme.textMuted
                             font.pixelSize: 13
                             font.family: "黑体"
                             anchors.verticalCenter: parent.verticalCenter
@@ -470,7 +474,7 @@ Item {
                             layer.enabled: true
                             layer.effect: ColorOverlay {
                                 source: expandIcon
-                                color: "#AAAAAA"
+                                color: AppTheme.textMuted
                             }
 
                             Behavior on rotation {
@@ -517,7 +521,7 @@ Item {
                 visible: parent.active
                 width: 10
                 radius: 4
-                color: "#42424b"
+                color: AppTheme.scrollbarColor
             }
         }
 

@@ -119,7 +119,7 @@ ApplicationWindow {
         width: 200
         anchors.top: parent.top
         anchors.bottom: bottomrect.top
-        color: "#1a1a21"
+        color: AppTheme.bgSidebar
         radius: 20
         clip: true
         // 盖住其他角
@@ -129,7 +129,12 @@ ApplicationWindow {
             anchors.right: parent.right
             width: 20
             height: 20
-            color: "#1a1a21"
+            color: AppTheme.bgSidebar
+            Behavior on color {
+                ColorAnimation {
+                    duration: AppTheme.animThemeTransition
+                }
+            }
         }
         Rectangle {
             // 左下角遮挡
@@ -137,7 +142,12 @@ ApplicationWindow {
             anchors.bottom: parent.bottom
             width: 20
             height: 20
-            color: "#1a1a21"
+            color: AppTheme.bgSidebar
+            Behavior on color {
+                ColorAnimation {
+                    duration: AppTheme.animThemeTransition
+                }
+            }
         }
         Rectangle {
             // 右下角遮挡
@@ -145,7 +155,17 @@ ApplicationWindow {
             anchors.bottom: parent.bottom
             width: 20
             height: 20
-            color: "#1a1a21"
+            color: AppTheme.bgSidebar
+            Behavior on color {
+                ColorAnimation {
+                    duration: AppTheme.animThemeTransition
+                }
+            }
+        }
+        Behavior on color {
+            ColorAnimation {
+                duration: AppTheme.animThemeTransition
+            }
         }
     }
     Rightpage {
@@ -154,7 +174,7 @@ ApplicationWindow {
         anchors.top: parent.top
         anchors.right: parent.right
         anchors.bottom: bottomrect.top
-        color: "#13131a"
+        color: AppTheme.bgContent
         radius: 20
         clip: true
         Rectangle {
@@ -163,7 +183,12 @@ ApplicationWindow {
             anchors.bottom: parent.bottom
             width: 20
             height: 20
-            color: "#13131a"
+            color: AppTheme.bgContent
+            Behavior on color {
+                ColorAnimation {
+                    duration: AppTheme.animThemeTransition
+                }
+            }
         }
         Rectangle {
             // 右下角遮挡
@@ -171,7 +196,12 @@ ApplicationWindow {
             anchors.bottom: parent.bottom
             width: 20
             height: 20
-            color: "#13131a"
+            color: AppTheme.bgContent
+            Behavior on color {
+                ColorAnimation {
+                    duration: AppTheme.animThemeTransition
+                }
+            }
         }
         Rectangle {
             // 左上角角遮挡
@@ -179,7 +209,17 @@ ApplicationWindow {
             anchors.top: parent.top
             width: 20
             height: 20
-            color: "#13131a"
+            color: AppTheme.bgContent
+            Behavior on color {
+                ColorAnimation {
+                    duration: AppTheme.animThemeTransition
+                }
+            }
+        }
+        Behavior on color {
+            ColorAnimation {
+                duration: AppTheme.animThemeTransition
+            }
         }
     }
     Bottompage {
@@ -188,7 +228,7 @@ ApplicationWindow {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        color: "#2d2d37"
+        color: AppTheme.bgBottomBar
         radius: 20
         clip: true
         Rectangle {
@@ -197,7 +237,12 @@ ApplicationWindow {
             anchors.top: parent.top
             width: 20
             height: 20
-            color: "#2d2d37"
+            color: AppTheme.bgBottomBar
+            Behavior on color {
+                ColorAnimation {
+                    duration: AppTheme.animThemeTransition
+                }
+            }
         }
         Rectangle {
             // 右上角遮挡
@@ -205,7 +250,17 @@ ApplicationWindow {
             anchors.right: parent.right
             width: 20
             height: 20
-            color: "#2d2d37"
+            color: AppTheme.bgBottomBar
+            Behavior on color {
+                ColorAnimation {
+                    duration: AppTheme.animThemeTransition
+                }
+            }
+        }
+        Behavior on color {
+            ColorAnimation {
+                duration: AppTheme.animThemeTransition
+            }
         }
     }
     // 使用 Loader 延迟加载歌词页，减少启动内存

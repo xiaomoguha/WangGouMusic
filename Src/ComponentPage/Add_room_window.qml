@@ -13,7 +13,7 @@ Item {
         width: 500
         height: 300
         radius: 20
-        color: "#393943"
+        color: AppTheme.bgRoomCard
         Column {
             anchors.horizontalCenter: parent.horizontalCenter
             height: parent.height
@@ -26,7 +26,7 @@ Item {
                 text: qsTr("加入房间，一起嗨歌吧！")
                 font.pixelSize: 20
                 font.family: "黑体"
-                color: "white"
+                color: AppTheme.textPrimary
                 anchors.horizontalCenter: parent.horizontalCenter
             }
             TextField {
@@ -34,8 +34,8 @@ Item {
                 width: 350
                 height: 50
                 placeholderText: "输入要加入的房间号，若无该房间将新建一个房间"
-                color: "white"
-                palette.placeholderText: "gray"
+                color: AppTheme.textPrimary
+                palette.placeholderText: AppTheme.textPlaceholder
                 horizontalAlignment: TextInput.AlignHCenter
                 verticalAlignment: TextInput.AlignVCenter
                 font.pixelSize: 14
@@ -48,11 +48,11 @@ Item {
                     gradient: Gradient {
                         orientation: Gradient.Horizontal
                         GradientStop {
-                            color: "#21283d"
+                            color: AppTheme.roomOuterStart
                             position: 0
                         }
                         GradientStop {
-                            color: "#382635"
+                            color: AppTheme.roomOuterEnd
                             position: 1
                         }
                     }
@@ -66,11 +66,11 @@ Item {
                         gradient: Gradient {
                             orientation: Gradient.Horizontal
                             GradientStop {
-                                color: "#1a1d29"
+                                color: AppTheme.roomInnerStart
                                 position: 0
                             }
                             GradientStop {
-                                color: "#241c26"
+                                color: AppTheme.roomInnerEnd
                                 position: ineer.gradientStopPos
                             }
                         }
@@ -91,8 +91,8 @@ Item {
                 width: 350
                 height: 50
                 placeholderText: "给自己取个昵称叭！"
-                color: "white"
-                palette.placeholderText: "gray"
+                color: AppTheme.textPrimary
+                palette.placeholderText: AppTheme.textPlaceholder
                 horizontalAlignment: TextInput.AlignHCenter
                 verticalAlignment: TextInput.AlignVCenter
                 font.pixelSize: 14
@@ -105,11 +105,11 @@ Item {
                     gradient: Gradient {
                         orientation: Gradient.Horizontal
                         GradientStop {
-                            color: "#21283d"
+                            color: AppTheme.roomOuterStart
                             position: 0
                         }
                         GradientStop {
-                            color: "#382635"
+                            color: AppTheme.roomOuterEnd
                             position: 1
                         }
                     }
@@ -123,11 +123,11 @@ Item {
                         gradient: Gradient {
                             orientation: Gradient.Horizontal
                             GradientStop {
-                                color: "#1a1d29"
+                                color: AppTheme.roomInnerStart
                                 position: 0
                             }
                             GradientStop {
-                                color: "#241c26"
+                                color: AppTheme.roomInnerEnd
                                 position: useridinner.gradientStopPos
                             }
                         }
@@ -155,13 +155,13 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: 180
                 height: 50
-                color: "#dc3d49"
+                color: AppTheme.accent
                 radius: 13
                 Text {
                     text: qsTr("开始一起听！")
                     font.pixelSize: 16
                     font.family: "黑体"
-                    color: "white"
+                    color: AppTheme.textPrimary
                     anchors.centerIn: parent
                 }
                 MouseArea {
@@ -169,10 +169,10 @@ Item {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onEntered: {
-                        parent.color = "#e33742";
+                        parent.color = AppTheme.accentHover;
                     }
                     onExited: {
-                        parent.color = "#dc3d49";
+                        parent.color = AppTheme.accent;
                     }
                     onClicked: {
                         if (roomidtextfield.text === "" || useridextfield.text === "") {

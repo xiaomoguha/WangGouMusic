@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick 2.15
 import QtQuick.Controls
 import Qt5Compat.GraphicalEffects
+import "../BasicConfig"
 
 Item {
     objectName: "LocalMusic"
@@ -13,7 +14,7 @@ Item {
         text: qsTr("播放列表")
         font.pixelSize: 24
         font.family: "黑体"
-        color: "white"
+        color: AppTheme.textPrimary
         font.weight: Font.Bold
         anchors.left: parent.left
         anchors.leftMargin: 0.03 * root.width
@@ -24,7 +25,7 @@ Item {
         text: "共" + (playlistmanager ? playlistmanager.playlistcount : 0) + "首"
         font.pixelSize: 13
         font.family: "黑体"
-        color: "#6d6d71"
+        color: AppTheme.textDim
         anchors.left: liebiaotext.right
         anchors.leftMargin: 10
         anchors.bottom: liebiaotext.bottom
@@ -40,7 +41,7 @@ Item {
             width: 100
             height: 35
             radius: 17
-            color: "#FF6B6B"
+            color: AppTheme.accent
             Row {
                 anchors.centerIn: parent
                 spacing: 5
@@ -63,7 +64,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     font.family: "黑体"
                     font.pixelSize: 14
-                    color: "white"
+                    color: AppTheme.textPrimary
                 }
             }
             HoverHandler {
@@ -78,7 +79,7 @@ Item {
             Binding {
                 target: playallbtn
                 property: "color"
-                value: playAllHoverHandler.hovered ? "#FF5252" : "#FF6B6B"
+                value: playAllHoverHandler.hovered ? AppTheme.accentHover : AppTheme.accent
             }
         }
         // 刷新按钮
@@ -87,7 +88,7 @@ Item {
             width: 34
             height: 34
             radius: 17
-            color: refreshHoverHandler.hovered ? "#30FFFFFF" : "transparent"
+            color: refreshHoverHandler.hovered ? AppTheme.iconButtonHover : "transparent"
 
             Image {
                 id: refreshIcon
@@ -129,9 +130,9 @@ Item {
         width: 200
         height: 34
         radius: 17
-        color: "#2A2A35"
+        color: AppTheme.bgInput
         border.width: 1
-        border.color: "#3A3A45"
+        border.color: AppTheme.borderDefault
 
         Row {
             anchors.fill: parent
@@ -149,7 +150,7 @@ Item {
                 layer.enabled: true
                 layer.effect: ColorOverlay {
                     source: searchico
-                    color: "#888888"
+                    color: AppTheme.iconSearch
                 }
             }
 
@@ -192,7 +193,7 @@ Item {
                     height: playlistrow.height + 25
                     radius: 5
                     // 背景色：悬停时或当前播放项时显示
-                    color: (itemHoverHandler.hovered || (playlistmanager && playlistmanager.currentIndex === index)) ? "#212127" : "transparent"
+                    color: (itemHoverHandler.hovered || (playlistmanager && playlistmanager.currentIndex === index)) ? AppTheme.bgCardHover : "transparent"
 
                     // 使用 HoverHandler 控制列表项悬停效果
                     HoverHandler {
@@ -209,7 +210,7 @@ Item {
                             text: index + 1 <= 9 ? "0" + String(index + 1) : index + 1
                             anchors.verticalCenter: parent.verticalCenter
                             font.pixelSize: 16
-                            color: "#a1a1a3"
+                            color: AppTheme.textMuted
                             visible: playlistmanager ? (playlistmanager.currentIndex === index ? false : true) : true
                         }
                         AnimatedImage {
@@ -233,7 +234,7 @@ Item {
                             Text {
                                 text: modelData.title
                                 font.pixelSize: 13
-                                color: playlistmanager ? (playlistmanager.currentIndex === index ? "#ff3a3a" : "white") : "white"
+                                color: playlistmanager ? (playlistmanager.currentIndex === index ? AppTheme.accentPlaying : AppTheme.textPrimary) : AppTheme.textPrimary
                                 elide: Text.ElideRight
                                 width: 0.19 * root.width
                                 wrapMode: Text.NoWrap
@@ -244,7 +245,7 @@ Item {
                                 width: 0.19 * root.width
                                 wrapMode: Text.NoWrap
                                 font.pixelSize: 11
-                                color: playlistmanager ? (playlistmanager.currentIndex === index ? "#ff3a3a" : "white") : "white"
+                                color: playlistmanager ? (playlistmanager.currentIndex === index ? AppTheme.accentPlaying : AppTheme.textMuted) : AppTheme.textMuted
                             }
                         }
                     }
@@ -263,7 +264,7 @@ Item {
                             width: 30
                             height: 30
                             radius: 15
-                            color: playNowHoverHandler.hovered ? "#30FFFFFF" : "transparent"
+                            color: playNowHoverHandler.hovered ? AppTheme.iconButtonHover : "transparent"
 
                             Image {
                                 id: playlistplayNowImage
@@ -303,7 +304,7 @@ Item {
                             width: 30
                             height: 30
                             radius: 15
-                            color: addLoveHoverHandler.hovered ? "#30FFFFFF" : "transparent"
+                            color: addLoveHoverHandler.hovered ? AppTheme.iconButtonHover : "transparent"
 
                             Image {
                                 id: playlistaddloveImage
@@ -315,7 +316,7 @@ Item {
                                 layer.enabled: true
                                 layer.effect: ColorOverlay {
                                     source: playlistaddloveImage
-                                    color: addLoveHoverHandler.hovered ? "#FF6B6B" : "#FFFFFF"
+                                    color: addLoveHoverHandler.hovered ? AppTheme.accent : "#FFFFFF"
                                 }
                             }
 
@@ -347,7 +348,7 @@ Item {
                         text: modelData.album_name
                         font.pixelSize: 14
                         font.family: "黑体"
-                        color: "white"
+                        color: AppTheme.textPrimary
                     }
                     Text {
                         id: playlistsonglenText
@@ -357,7 +358,7 @@ Item {
                         text: modelData.duration
                         font.pixelSize: 14
                         font.family: "黑体"
-                        color: "white"
+                        color: AppTheme.textMuted
                     }
                 }
             }

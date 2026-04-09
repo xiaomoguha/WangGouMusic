@@ -1,4 +1,5 @@
 import QtQuick 2.15
+import "../BasicConfig"
 
 Item {
     objectName: "MyfavoriteMusic"
@@ -12,6 +13,6 @@ Item {
         text: qsTr("我最喜欢的音乐（未完成)")
         font.family: "黑体"
         font.pixelSize: 20
-        color: "white"
+        color: AppTheme.textPrimary
     }
 }
