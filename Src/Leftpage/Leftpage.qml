@@ -183,8 +183,8 @@ Rectangle {
         property var navList: [
             {
                 icon: "qrc:/image/shoucang.png",
-                text: "收藏",
-                pageurl: "qrc:/Src/ComponentPage/MyfavoriteMusic.qml"
+                text: "我的歌单",
+                pageurl: "qrc:/Src/ComponentPage/UserPlaylistPage.qml"
             },
             {
                 icon: "qrc:/image/liebiao.png",

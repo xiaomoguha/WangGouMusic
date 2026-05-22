@@ -22,6 +22,8 @@
 #include "./CPPSrc/WebSocketClient.h"
 #include "./CPPSrc/lyricsconfigmanager.h"
 #include "./CPPSrc/appupdater.h"
+#include "./CPPSrc/usermanager.h"
+#include "./CPPSrc/NowPlayingMediaController.h"
 
 // 注册 HttpGetRequester 为 QML 类型
 #include <QQmlEngine>
@@ -67,7 +69,9 @@ int main(int argc, char *argv[])
     SearchComplex complexsearch;
     Recommendation recommendation;
     PlaylistManager playlistmanager(&recommendation);
-    WebSocketClient websocket(&playlistmanager);
+    UserManager userManager;
+    WebSocketClient websocket(&playlistmanager, &userManager);
+    NowPlayingMediaController mediaController(&playlistmanager);
     LyricsConfigManager lyricsConfig;
     AppUpdater appUpdater;
 
@@ -81,6 +85,7 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("websocket", &websocket);
     engine.rootContext()->setContextProperty("lyricsConfig", &lyricsConfig);
     engine.rootContext()->setContextProperty("appUpdater", &appUpdater);
+    engine.rootContext()->setContextProperty("userManager", &userManager);
 
     // 加载 DesktopLyrics.qml 独立窗口（跨平台）
     QQmlComponent comp(&engine, QUrl("qrc:/Src/ComponentPage/DesktopLyrics.qml"));
@@ -140,6 +145,16 @@ int main(int argc, char *argv[])
 
     // 在栈上创建 TrayHandler，确保正确的销毁顺序
     TrayHandler trayHandler(window, &app, trayIcon, nullptr);
+
+    // 退出时保存播放状态
+    QObject::connect(&app, &QApplication::aboutToQuit, &playlistmanager, [&playlistmanager]() {
+        playlistmanager.savePlaylistToCache();
+    });
+
+    // 恢复上次播放状态（延迟执行，等 QML 加载完成）
+    QTimer::singleShot(500, &playlistmanager, [&playlistmanager]() {
+        playlistmanager.restoreLastPlayback();
+    });
 
     return app.exec();
 }

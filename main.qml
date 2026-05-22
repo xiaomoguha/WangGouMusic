@@ -56,32 +56,40 @@ ApplicationWindow {
         if (hostSearch) {
             hostSearch.fetchhostserachData("https://xjt-togethertracks.top/api/search/hot");
         }
-        //启动时加载常用推荐列表：前3个 + 嫚姐专属(索引6)
+        //启动时加载推荐数据（仅首次，后续由 C++ 缓存）
         if (recommendation) {
-            for (let i = 0; i < 3; i++) {
-                recommendation.getdatabygetdatarange(i);
-            }
-            recommendation.getdatabygetdatarange(6);  // 嫚姐专属接口
-        }
-    }
-    // 延迟加载剩余推荐数据，减少启动内存压力
-    Timer {
-        id: delayedLoadTimer
-        interval: 3000  // 3秒后加载
-        running: true
-        repeat: false
-        onTriggered: {
-            if (recommendation) {
-                for (let i = 3; i < 6; i++) {  // 只加载索引3-5
-                    recommendation.getdatabygetdatarange(i);
-                }
-            }
+            if (recommendation.topSongsQml.length === 0)
+                recommendation.fetchTopSongs()
+            if (recommendation.topPlaylistsQml.length === 0)
+                recommendation.fetchTopPlaylists()
         }
     }
     // 注意：关闭事件已被 TrayHandler 拦截，这里不会执行
     // 真正退出时由 TrayHandler 处理关闭桌面歌词
     onClosing: {
         close.accepted = false;  // 阻止默认关闭行为
+    }
+
+    // ── 启动时刷新用户 token ──
+    Connections {
+        target: userManager
+        function onTokenRefreshResult(success) {
+            if (!success) {
+                // token 过期或无效，弹出登录页
+                loginPopup.open()
+            }
+        }
+    }
+    Timer {
+        id: tokenRefreshTimer
+        interval: 1500
+        running: true
+        repeat: false
+        onTriggered: {
+            if (userManager && userManager.isLoggedIn) {
+                userManager.refreshToken()
+            }
+        }
     }
     MouseArea {
         anchors.fill: parent
@@ -294,6 +302,11 @@ ApplicationWindow {
                 songAddedToast.show(songname);
             }
         }
+    }
+
+    // ── 登录弹窗 ──
+    ComponentPage.LoginPage {
+        id: loginPopup
     }
 
     // ── 自动更新弹窗 ──

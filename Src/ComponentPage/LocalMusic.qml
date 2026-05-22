@@ -22,7 +22,7 @@ Item {
         anchors.top: parent.top
     }
     Text {
-        text: "共" + (playlistmanager ? playlistmanager.playlistcount : 0) + "首"
+        text: "共" + (playlistmanager ? (playlistmanager.type === 1 ? playlistmanager.togetherplaylist.length : playlistmanager.playlistcount) : 0) + "首"
         font.pixelSize: 13
         font.family: "黑体"
         color: AppTheme.textDim
@@ -184,7 +184,7 @@ Item {
             width: playlistflick.width
             spacing: 10
             Repeater {
-                model: playlistmanager ? playlistmanager.playlist : 0
+                model: playlistmanager ? (playlistmanager.type === 1 ? playlistmanager.togetherplaylist : playlistmanager.playlist) : 0
                 delegate: Rectangle {
                     id: playlistItem
                     required property int index
@@ -328,6 +328,55 @@ Item {
                                 cursorShape: Qt.PointingHandCursor
                                 onTapped: {
                                     playlistmanager.addToFavoriteByIndex(index);
+                                }
+                            }
+
+                            Behavior on color {
+                                ColorAnimation {
+                                    duration: 150
+                                }
+                            }
+                        }
+
+                        // 一起听按钮
+                        Rectangle {
+                            id: playlistaddTogetherBtn
+                            width: 30
+                            height: 30
+                            radius: 15
+                            color: addTogetherHover.hovered ? AppTheme.iconButtonHover : "transparent"
+                            visible: websocket && websocket.connected
+
+                            Image {
+                                id: togetherIcon
+                                anchors.centerIn: parent
+                                source: "qrc:/image/yinle.png"
+                                width: 16
+                                height: 16
+                                fillMode: Image.PreserveAspectFit
+                                layer.enabled: true
+                                layer.effect: ColorOverlay {
+                                    source: togetherIcon
+                                    color: addTogetherHover.hovered ? AppTheme.accent : "#FFFFFF"
+                                }
+                            }
+
+                            HoverHandler {
+                                id: addTogetherHover
+                            }
+
+                            TapHandler {
+                                cursorShape: Qt.PointingHandCursor
+                                onTapped: {
+                                    websocket.addSongToTogether(
+                                        modelData.title,
+                                        modelData.songhash,
+                                        modelData.singername,
+                                        modelData.album_name,
+                                        modelData.duration,
+                                        modelData.union_cover
+                                    );
+                                    BasicConfig.notice_success("已添加到一起听");
                                 }
                             }
 

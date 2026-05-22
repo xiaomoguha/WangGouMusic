@@ -1,441 +1,187 @@
 #include "recommendation.h"
-#include <QDebug>
-#include <QJsonParseError>
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
-Recommendation::Recommendation(QObject *parent) : QObject{parent},
-                                                  getSelectedGoodSongsdata(10000, this), // 初始化并设置父对象
-                                                  getClassicnostalgicgoldenoldiesdata(10000, this),
-                                                  getSelectedPopularHitsdata(10000, this),
-                                                  getRareandexquisitemasterpiecesdata(10000, this),
-                                                  getKeepingupwiththelatesttrendsdata(10000, this),
-                                                  getExclusiverecommendationforVIPsongsdata(10000, this),
-                                                  getmansongsdata(10000, this)
+#include <QJsonParseError>
+#include <QDebug>
+#include <QTime>
+#include <QRandomGenerator>
+
+Recommendation::Recommendation(QObject *parent)
+    : QObject(parent)
+    , m_topSongsRequester(10000, this)
+    , m_topPlaylistsRequester(10000, this)
+    , m_playlistTracksRequester(10000, this)
 {
-    QObject::connect(&getSelectedGoodSongsdata, &HttpGetRequester::dataReceived, this, &Recommendation::SelectedGoodSongsdata);
-    QObject::connect(&getClassicnostalgicgoldenoldiesdata, &HttpGetRequester::dataReceived, this, &Recommendation::Classicnostalgicgoldenoldiesdata);
-    QObject::connect(&getSelectedPopularHitsdata, &HttpGetRequester::dataReceived, this, &Recommendation::SelectedPopularHitsdata);
-    QObject::connect(&getRareandexquisitemasterpiecesdata, &HttpGetRequester::dataReceived, this, &Recommendation::Rareandexquisitemasterpiecesdata);
-    QObject::connect(&getKeepingupwiththelatesttrendsdata, &HttpGetRequester::dataReceived, this, &Recommendation::Keepingupwiththelatesttrendsdata);
-    QObject::connect(&getExclusiverecommendationforVIPsongsdata, &HttpGetRequester::dataReceived, this, &Recommendation::ExclusiverecommendationforVIPsongsdata);
-    QObject::connect(&getmansongsdata, &HttpGetRequester::dataReceived, this, &Recommendation::Manitemsongsdata);
+    connect(&m_topSongsRequester, &HttpGetRequester::dataReceived, this, &Recommendation::onTopSongsData);
+    connect(&m_topPlaylistsRequester, &HttpGetRequester::dataReceived, this, &Recommendation::onTopPlaylistsData);
+    connect(&m_playlistTracksRequester, &HttpGetRequester::dataReceived, this, &Recommendation::onPlaylistTracksData);
 }
 
-void Recommendation::SelectedGoodSongsdata(const QByteArray &data)
+void Recommendation::fetchTopSongs()
 {
-    QJsonParseError error;
-    QJsonDocument doc = QJsonDocument::fromJson(data, &error);
-
-    if (error.error != QJsonParseError::NoError)
-    {
-        qWarning() << "JSON parse error:" << error.errorString();
-        return;
-    }
-
-    if (!doc.isObject())
-    {
-        qWarning() << "Not a JSON object";
-        return;
-    }
-
-    QJsonObject root = doc.object();
-    QJsonObject dataObj = root["data"].toObject();
-    SelectedGoodSongsitems.clear();
-
-    // 解析歌曲列表
-    const QJsonArray songs = dataObj["song_list"].toArray();
-    for (const QJsonValue &songVal : songs)
-    {
-        QJsonObject song = songVal.toObject();
-        const QJsonArray singerinfo = song["singerinfo"].toArray();
-        ;
-        const QString singername = (singerinfo[0])["name"].toString();
-        const QString songName = song["songname"].toString();
-        const QString hash = song["hash"].toString();
-        const QString album_name = song["album_name"].toString();
-        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}", "300");
-        ;
-        const double time_length_s = song["time_length"].toDouble();
-        const QString time_length = secondsToMinutesSeconds((int)time_length_s);
-
-        QVariantMap item;
-        item["songname"] = songName;
-        item["singername"] = singername;
-        item["duration"] = time_length;
-        item["album_name"] = album_name;
-        item["songhash"] = hash;
-        item["union_cover"] = sizable_cover;
-
-        SelectedGoodSongsitems.append(item);
-    }
-    emit SelectedGoodSongsChanged();
+    m_topSongsRequester.fetchData("https://xjt-togethertracks.top/api/top/song");
 }
-void Recommendation::Classicnostalgicgoldenoldiesdata(const QByteArray &data)
+
+void Recommendation::fetchTopPlaylists()
+{
+    m_topPlaylistsRequester.fetchData("https://xjt-togethertracks.top/api/top/playlist?pagesize=6");
+}
+
+void Recommendation::refreshTopPlaylists()
+{
+    QStringList categories = {"0", "587", "583", "20", "577", "12", "35"};
+    QString categoryId = categories[QRandomGenerator::global()->bounded(categories.size())];
+    QString url = QString("https://xjt-togethertracks.top/api/top/playlist?pagesize=6&category_id=%1").arg(categoryId);
+    m_topPlaylistsRequester.fetchData(url);
+    qDebug() << "刷新歌单，分类 ID:" << categoryId;
+}
+
+void Recommendation::onTopSongsData(const QByteArray &data)
 {
     QJsonParseError error;
     QJsonDocument doc = QJsonDocument::fromJson(data, &error);
-
-    if (error.error != QJsonParseError::NoError)
-    {
-        qWarning() << "JSON parse error:" << error.errorString();
+    if (error.error != QJsonParseError::NoError || !doc.isObject()) {
+        qWarning() << "Top songs JSON parse error:" << error.errorString();
         return;
     }
 
-    if (!doc.isObject())
-    {
-        qWarning() << "Not a JSON object";
-        return;
-    }
+    QJsonArray songs = doc.object()["data"].toArray();
+    m_topSongs.clear();
 
-    QJsonObject root = doc.object();
-    QJsonObject dataObj = root["data"].toObject();
-    Classicnostalgicgoldenoldiesitems.clear();
+    for (const QJsonValue &val : songs) {
+        QJsonObject s = val.toObject();
+        QString hash = s["hash"].toString();
+        QString songname = s["songname"].toString();
+        QString albumName = s["album_name"].toString();
 
-    // 解析歌曲列表
-    const QJsonArray songs = dataObj["song_list"].toArray();
-    for (const QJsonValue &songVal : songs)
-    {
-        QJsonObject song = songVal.toObject();
-        const QJsonArray singerinfo = song["singerinfo"].toArray();
-        ;
-        const QString singername = (singerinfo[0])["name"].toString();
-        const QString songName = song["songname"].toString();
-        const QString hash = song["hash"].toString();
-        const QString album_name = song["album_name"].toString();
-        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}", "300");
-        ;
-        const double time_length_s = song["time_length"].toDouble();
-        const QString time_length = secondsToMinutesSeconds((int)time_length_s);
+        // authors 数组拼接歌手名
+        QJsonArray authors = s["authors"].toArray();
+        QStringList names;
+        for (const QJsonValue &a : authors)
+            names << a.toObject()["author_name"].toString();
+        QString singername = names.join(", ");
+
+        QString cover = s["trans_param"].toObject()["union_cover"].toString();
+        cover.replace("{size}", "400");
+
+        int durationMs = s["timelength_128"].toInt();
+        QString duration = secondsToMinutesSeconds(durationMs / 1000);
 
         QVariantMap item;
-        item["songname"] = songName;
+        item["songname"] = songname;
         item["singername"] = singername;
-        item["duration"] = time_length;
-        item["album_name"] = album_name;
         item["songhash"] = hash;
-        item["union_cover"] = sizable_cover;
-
-        Classicnostalgicgoldenoldiesitems.append(item);
+        item["union_cover"] = cover;
+        item["album_name"] = albumName;
+        item["duration"] = duration;
+        m_topSongs.append(item);
     }
-    emit ClassicnostalgicgoldenoldiesChanged();
+    emit topSongsChanged();
+    qDebug() << "热门推荐加载完成，共" << m_topSongs.size() << "首";
 }
-void Recommendation::SelectedPopularHitsdata(const QByteArray &data)
+
+void Recommendation::onTopPlaylistsData(const QByteArray &data)
 {
     QJsonParseError error;
     QJsonDocument doc = QJsonDocument::fromJson(data, &error);
-
-    if (error.error != QJsonParseError::NoError)
-    {
-        qWarning() << "JSON parse error:" << error.errorString();
+    if (error.error != QJsonParseError::NoError || !doc.isObject()) {
+        qWarning() << "Top playlists JSON parse error:" << error.errorString();
         return;
     }
 
-    if (!doc.isObject())
-    {
-        qWarning() << "Not a JSON object";
-        return;
-    }
+    QJsonArray list = doc.object()["data"].toObject()["special_list"].toArray();
+    m_topPlaylists.clear();
 
-    QJsonObject root = doc.object();
-    QJsonObject dataObj = root["data"].toObject();
-    SelectedPopularHitsitems.clear();
+    for (const QJsonValue &val : list) {
+        QJsonObject pl = val.toObject();
+        QString imgurl = pl["imgurl"].toString();
+        imgurl.replace("{size}", "400");
 
-    // 解析歌曲列表
-    const QJsonArray songs = dataObj["song_list"].toArray();
-    for (const QJsonValue &songVal : songs)
-    {
-        QJsonObject song = songVal.toObject();
-        const QJsonArray singerinfo = song["singerinfo"].toArray();
-        ;
-        const QString singername = (singerinfo[0])["name"].toString();
-        const QString songName = song["songname"].toString();
-        const QString hash = song["hash"].toString();
-        const QString album_name = song["album_name"].toString();
-        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}", "300");
-        ;
-        const double time_length_s = song["time_length"].toDouble();
-        const QString time_length = secondsToMinutesSeconds((int)time_length_s);
+        // 拼接标签
+        QJsonArray tags = pl["tags"].toArray();
+        QStringList tagNames;
+        for (const QJsonValue &t : tags)
+            tagNames << t.toObject()["tag_name"].toString();
 
         QVariantMap item;
-        item["songname"] = songName;
-        item["singername"] = singername;
-        item["duration"] = time_length;
-        item["album_name"] = album_name;
-        item["songhash"] = hash;
-        item["union_cover"] = sizable_cover;
-
-        SelectedPopularHitsitems.append(item);
+        item["specialname"] = pl["specialname"].toString();
+        item["imgurl"] = imgurl;
+        item["intro"] = pl["intro"].toString();
+        item["play_count"] = pl["play_count"].toInt();
+        item["global_collection_id"] = pl["global_collection_id"].toString();
+        item["specialid"] = pl["specialid"].toInt();
+        item["tags"] = tagNames.join(" / ");
+        m_topPlaylists.append(item);
     }
-    emit SelectedPopularHitsChanged();
+    emit topPlaylistsChanged();
+    qDebug() << "精选歌单加载完成，共" << m_topPlaylists.size() << "个";
 }
-void Recommendation::Rareandexquisitemasterpiecesdata(const QByteArray &data)
+
+QVariantList Recommendation::getTopSongsQml() const { return m_topSongs; }
+QVariantList Recommendation::getTopPlaylistsQml() const { return m_topPlaylists; }
+QVariantList Recommendation::getPlaylistTracksQml() const { return m_playlistTracks; }
+
+void Recommendation::fetchPlaylistTracks(const QString &globalCollectionId)
+{
+    QString url = QString("https://xjt-togethertracks.top/api/playlist/track/all?id=%1&pagesize=50").arg(globalCollectionId);
+    m_playlistTracksRequester.fetchData(url);
+}
+
+void Recommendation::onPlaylistTracksData(const QByteArray &data)
 {
     QJsonParseError error;
     QJsonDocument doc = QJsonDocument::fromJson(data, &error);
-
-    if (error.error != QJsonParseError::NoError)
-    {
-        qWarning() << "JSON parse error:" << error.errorString();
+    if (error.error != QJsonParseError::NoError || !doc.isObject()) {
+        qWarning() << "Playlist tracks JSON parse error:" << error.errorString();
         return;
     }
 
-    if (!doc.isObject())
-    {
-        qWarning() << "Not a JSON object";
-        return;
-    }
+    QJsonArray songs = doc.object()["data"].toObject()["songs"].toArray();
+    m_playlistTracks.clear();
 
-    QJsonObject root = doc.object();
-    QJsonObject dataObj = root["data"].toObject();
-    Rareandexquisitemasterpiecesitems.clear();
+    for (const QJsonValue &val : songs) {
+        QJsonObject s = val.toObject();
+        QString hash = s["hash"].toString();
+        QString name = s["name"].toString();
 
-    // 解析歌曲列表
-    const QJsonArray songs = dataObj["song_list"].toArray();
-    for (const QJsonValue &songVal : songs)
-    {
-        QJsonObject song = songVal.toObject();
-        const QJsonArray singerinfo = song["singerinfo"].toArray();
-        ;
-        const QString singername = (singerinfo[0])["name"].toString();
-        const QString songName = song["songname"].toString();
-        const QString hash = song["hash"].toString();
-        const QString album_name = song["album_name"].toString();
-        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}", "300");
-        ;
-        const double time_length_s = song["time_length"].toDouble();
-        const QString time_length = secondsToMinutesSeconds((int)time_length_s);
+        // name 格式通常为 "歌手 - 歌名"
+        QStringList parts = name.split(" - ");
+        QString songname = parts.size() > 1 ? parts.mid(1).join(" - ") : name;
+        QString singername = parts.size() > 1 ? parts[0] : QString();
+
+        // 优先从 singerinfo 取歌手名
+        QJsonArray singerinfo = s["singerinfo"].toArray();
+        if (!singerinfo.isEmpty()) {
+            QStringList singers;
+            for (const QJsonValue &si : singerinfo)
+                singers << si.toObject()["name"].toString();
+            singername = singers.join(", ");
+        }
+
+        QString cover = s["trans_param"].toObject()["union_cover"].toString();
+        if (cover.isEmpty()) cover = s["cover"].toString();
+        cover.replace("{size}", "400");
+
+        int durationSec = s["timelen"].toInt(0) / 1000;
+        QString albumName = s["albuminfo"].toObject()["name"].toString();
 
         QVariantMap item;
-        item["songname"] = songName;
+        item["songname"] = songname;
         item["singername"] = singername;
-        item["duration"] = time_length;
-        item["album_name"] = album_name;
         item["songhash"] = hash;
-        item["union_cover"] = sizable_cover;
-
-        Rareandexquisitemasterpiecesitems.append(item);
-        // qDebug() << "歌曲:"<< songName << "歌名" << singername<<"专辑"<<album_name<<"hash"<<hash<<"歌曲长度"<<time_length<<"歌曲秒数"<<time_length_s<<"图片url:"<<sizable_cover;
+        item["union_cover"] = cover;
+        item["album_name"] = albumName;
+        item["duration"] = secondsToMinutesSeconds(durationSec);
+        m_playlistTracks.append(item);
     }
-    emit RareandexquisitemasterpiecesChanged();
-}
-void Recommendation::Keepingupwiththelatesttrendsdata(const QByteArray &data)
-{
-    QJsonParseError error;
-    QJsonDocument doc = QJsonDocument::fromJson(data, &error);
-
-    if (error.error != QJsonParseError::NoError)
-    {
-        qWarning() << "JSON parse error:" << error.errorString();
-        return;
-    }
-
-    if (!doc.isObject())
-    {
-        qWarning() << "Not a JSON object";
-        return;
-    }
-
-    QJsonObject root = doc.object();
-    QJsonObject dataObj = root["data"].toObject();
-    Keepingupwiththelatesttrendsitems.clear();
-
-    // 解析歌曲列表
-    const QJsonArray songs = dataObj["song_list"].toArray();
-    for (const QJsonValue &songVal : songs)
-    {
-        QJsonObject song = songVal.toObject();
-        const QJsonArray singerinfo = song["singerinfo"].toArray();
-        ;
-        const QString singername = (singerinfo[0])["name"].toString();
-        const QString songName = song["songname"].toString();
-        const QString hash = song["hash"].toString();
-        const QString album_name = song["album_name"].toString();
-        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}", "300");
-        ;
-        const double time_length_s = song["time_length"].toDouble();
-        const QString time_length = secondsToMinutesSeconds((int)time_length_s);
-
-        QVariantMap item;
-        item["songname"] = songName;
-        item["singername"] = singername;
-        item["duration"] = time_length;
-        item["album_name"] = album_name;
-        item["songhash"] = hash;
-        item["union_cover"] = sizable_cover;
-
-        Keepingupwiththelatesttrendsitems.append(item);
-        // qDebug() << "歌曲:"<< songName << "歌名" << singername<<"专辑"<<album_name<<"hash"<<hash<<"歌曲长度"<<time_length<<"歌曲秒数"<<time_length_s<<"图片url:"<<sizable_cover;
-    }
-    emit KeepingupwiththelatesttrendsChanged();
-}
-void Recommendation::ExclusiverecommendationforVIPsongsdata(const QByteArray &data)
-{
-    QJsonParseError error;
-    QJsonDocument doc = QJsonDocument::fromJson(data, &error);
-
-    if (error.error != QJsonParseError::NoError)
-    {
-        qWarning() << "JSON parse error:" << error.errorString();
-        return;
-    }
-
-    if (!doc.isObject())
-    {
-        qWarning() << "Not a JSON object";
-        return;
-    }
-
-    QJsonObject root = doc.object();
-    QJsonObject dataObj = root["data"].toObject();
-    ExclusiverecommendationforVIPsongsitems.clear();
-
-    // 解析歌曲列表
-    const QJsonArray songs = dataObj["song_list"].toArray();
-    for (const QJsonValue &songVal : songs)
-    {
-        QJsonObject song = songVal.toObject();
-        const QJsonArray singerinfo = song["singerinfo"].toArray();
-        ;
-        const QString singername = (singerinfo[0])["name"].toString();
-        const QString songName = song["songname"].toString();
-        const QString hash = song["hash"].toString();
-        const QString album_name = song["album_name"].toString();
-        const QString sizable_cover = song["sizable_cover"].toString().replace("{size}", "300");
-        ;
-        const double time_length_s = song["time_length"].toDouble();
-        const QString time_length = secondsToMinutesSeconds((int)time_length_s);
-
-        QVariantMap item;
-        item["songname"] = songName;
-        item["singername"] = singername;
-        item["duration"] = time_length;
-        item["album_name"] = album_name;
-        item["songhash"] = hash;
-        item["union_cover"] = sizable_cover;
-
-        ExclusiverecommendationforVIPsongsitems.append(item);
-        // qDebug() << "歌曲:"<< songName << "歌名" << singername<<"专辑"<<album_name<<"hash"<<hash<<"歌曲长度"<<time_length<<"歌曲秒数"<<time_length_s<<"图片url:"<<sizable_cover;
-    }
-    emit ExclusiverecommendationforVIPsongsChanged();
+    emit playlistTracksChanged();
+    qDebug() << "歌单曲目加载完成，共" << m_playlistTracks.size() << "首";
 }
 
-void Recommendation::Manitemsongsdata(const QByteArray &data)
-{
-    QJsonParseError error;
-    QJsonDocument doc = QJsonDocument::fromJson(data, &error);
-
-    if (error.error != QJsonParseError::NoError)
-    {
-        qWarning() << "JSON parse error:" << error.errorString();
-        return;
-    }
-
-    if (!doc.isObject())
-    {
-        qWarning() << "Not a JSON object";
-        return;
-    }
-
-    QJsonObject root = doc.object();
-    QJsonObject dataObj = root["data"].toObject();
-    Mansongsitems.clear();
-
-    // 解析歌曲列表
-    const QJsonArray songs = dataObj["lists"].toArray();
-    for (const QJsonValue &songVal : songs)
-    {
-        QJsonObject song = songVal.toObject();
-        const QString singername = song["SingerName"].toString();
-        const QString songName = song["OriSongName"].toString();
-        const QString hash = (song["HQ"].toObject())["Hash"].toString();
-        const QString album_name = song["AlbumName"].toString();
-        const QString sizable_cover = song["Image"].toString().replace("{size}", "300");
-        ;
-        const int time_length_s = song["Duration"].toInt();
-        const QString time_length = secondsToMinutesSeconds(time_length_s);
-
-        QVariantMap item;
-        item["songname"] = songName;
-        item["singername"] = singername;
-        item["duration"] = time_length;
-        item["album_name"] = album_name;
-        item["songhash"] = hash;
-        item["union_cover"] = sizable_cover;
-
-        Mansongsitems.append(item);
-        // qDebug() << "歌曲:"<< songName << "歌名" << singername<<"专辑"<<album_name<<"hash"<<hash<<"歌曲长度"<<time_length<<"歌曲秒数"<<time_length_s<<"图片url:"<<sizable_cover;
-    }
-    emit manChanged();
-}
-
-void Recommendation::getdatabygetdatarange(int getdatarange)
-{
-    switch (getdatarange)
-    {
-    case SelectedGoodSongs:
-        getSelectedGoodSongsdata.fetchData("https://xjt-togethertracks.top/api/top/card?card_id=1");
-        break;
-    case Classicnostalgicgoldenoldies:
-        getClassicnostalgicgoldenoldiesdata.fetchData("https://xjt-togethertracks.top/api/top/card?card_id=2");
-        break;
-    case SelectedPopularHits:
-        getSelectedPopularHitsdata.fetchData("https://xjt-togethertracks.top/api/top/card?card_id=3");
-        break;
-    case Rareandexquisitemasterpieces:
-        getRareandexquisitemasterpiecesdata.fetchData("https://xjt-togethertracks.top/api/top/card?card_id=4");
-        break;
-    case Keepingupwiththelatesttrends:
-        getKeepingupwiththelatesttrendsdata.fetchData("https://xjt-togethertracks.top/api/top/card?card_id=5");
-        break;
-    case ExclusiverecommendationforVIPsongs:
-        getExclusiverecommendationforVIPsongsdata.fetchData("https://xjt-togethertracks.top/api/top/card?card_id=6");
-        break;
-    case Man:
-        getmansongsdata.fetchData("https://xjt-togethertracks.top/api/searchtwo");
-        break;
-    default:
-        break;
-    }
-}
-
-QVariantList Recommendation::getSelectedGoodSongsitemsqml() const
-{
-    return SelectedGoodSongsitems;
-}
-
-QVariantList Recommendation::getClassicnostalgicgoldenoldiesitemsqml() const
-{
-    return Classicnostalgicgoldenoldiesitems;
-}
-
-QVariantList Recommendation::getSelectedPopularHitsitemsqml() const
-{
-    return SelectedPopularHitsitems;
-}
-
-QVariantList Recommendation::getRareandexquisitemasterpiecesitemsqml() const
-{
-    return Rareandexquisitemasterpiecesitems;
-}
-
-QVariantList Recommendation::getKeepingupwiththelatesttrendsitemsqml() const
-{
-    return Keepingupwiththelatesttrendsitems;
-}
-
-QVariantList Recommendation::getExclusiverecommendationforVIPsongsitemsqml() const
-{
-    return ExclusiverecommendationforVIPsongsitems;
-}
-
-QVariantList Recommendation::getmanitemsqml() const
-{
-    return Mansongsitems;
-}
 QString Recommendation::secondsToMinutesSeconds(int totalSeconds)
 {
-    QTime time(0, 0);                  // 初始化为 00:00:00
-    time = time.addSecs(totalSeconds); // 添加秒数
-    return time.toString("mm:ss");     // 格式化为 "分钟:秒"
+    QTime time(0, 0);
+    time = time.addSecs(totalSeconds);
+    return time.toString("mm:ss");
 }

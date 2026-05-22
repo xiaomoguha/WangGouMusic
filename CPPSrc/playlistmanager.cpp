@@ -4,26 +4,38 @@ PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent
 {
     player->setAudioOutput(audioOutput);
     audioOutput->setVolume(1.0);
+    loadPlaylistFromCache();
     // lyricParser();
     //  连接 mediaStatusChanged 信号
     QObject::connect(player, &QMediaPlayer::mediaStatusChanged, this, [this](QMediaPlayer::MediaStatus status)
                      {
         if (status == QMediaPlayer::EndOfMedia)
         {
-
-            // 停止播放器，防止文件句柄未释放
-            player->stop();
-            player->setSource(QUrl());
-
             m_isPaused = true;
             emit isPausedChanged();
-            this->playNext();
+            if (type == LOCAL)
+            {
+                this->playNext();
+            }
+            else
+            {
+                // TOGETHER 模式下由服务器控制切歌，不自动播放下一首
+                player->stop();
+                player->setSource(QUrl());
+            }
         }
         else if (status == QMediaPlayer::LoadedMedia)
         {
             qint64 totalDuration = player->duration();
             m_duration = formatTime(totalDuration);
             emit durationChanged();
+            // TOGETHER 模式下，歌曲加载完成后 seek 到目标进度
+            if (type == TOGETHER && m_togetherSeekPercent > 0)
+            {
+                qint64 targetPos = static_cast<qint64>(m_togetherSeekPercent * totalDuration);
+                player->setPosition(targetPos);
+                m_togetherSeekPercent = 0;
+            }
         } });
     // 连接播放进度变化信号
     connect(player, &QMediaPlayer::positionChanged, this, &PlaylistManager::updatePlaybackProgress);
@@ -44,6 +56,7 @@ void PlaylistManager::addSong(const QString &title, const QString &songhash, con
     showplaylist();
     if (type == LOCAL)
     {
+        savePlaylistToCache();
         emit playlistUpdated();
     }
     else if (type == TOGETHER)
@@ -51,11 +64,28 @@ void PlaylistManager::addSong(const QString &title, const QString &songhash, con
         emit togetherplaylistUpdated();
     }
 }
+
+void PlaylistManager::addSongNext(const QString &title, const QString &songhash, const QString &singername, const QString &union_cover, const QString &album_name, const QString &duration)
+{
+    for (int i = 0; i < m_playlist.size(); i++) {
+        if (m_playlist[i].songhash == songhash)
+            return;
+    }
+    SongInfo song = {title, songhash, "", singername, union_cover, album_name, duration, ""};
+    int insertIndex = m_currentIndex + 1;
+    if (insertIndex >= m_playlist.size())
+        m_playlist.append(song);
+    else
+        m_playlist.insert(insertIndex, song);
+    savePlaylistToCache();
+    emit playlistUpdated();
+}
 void PlaylistManager::removeSong(int index)
 {
     if (index >= 0 && index < (*m_curplaylist).size())
     {
         (*m_curplaylist).removeAt(index);
+        if (type == LOCAL) savePlaylistToCache();
         emit playlistUpdated();
         if (index == m_currentIndex)
         {
@@ -69,31 +99,42 @@ void PlaylistManager::clearPlaylist()
 {
     (*m_curplaylist).clear();
     m_currentIndex = -1;
+    if (type == LOCAL) savePlaylistToCache();
     emit playlistUpdated();
     emit currentIndexChanged(-1);
+}
+
+QString PlaylistManager::getCacheDir() const
+{
+#ifdef Q_OS_WIN
+    return "C:/网狗音乐缓存目录";
+#elif defined(Q_OS_MAC)
+    return QStandardPaths::writableLocation(QStandardPaths::DownloadLocation) + "/网狗音乐缓存目录";
+#else
+    return QStandardPaths::writableLocation(QStandardPaths::DownloadLocation) + "/网狗音乐缓存目录";
+#endif
+}
+
+void PlaylistManager::ensureCacheDir() const
+{
+    QDir dir(getCacheDir());
+    if (!dir.exists()) {
+        if (!dir.mkpath(".")) {
+            qCritical() << "无法创建缓存目录:" << getCacheDir();
+        }
+    }
+}
+
+QString PlaylistManager::getPlaylistCachePath() const
+{
+    return getCacheDir() + "/playlist_cache.json";
 }
 
 // 判断是否有缓存文件
 int PlaylistManager::is_have_cache(const SongInfo &song, const int index)
 {
-    QString cacheDir;
-#ifdef Q_OS_WIN
-    cacheDir = "C:/网狗音乐缓存目录";
-#elif defined(Q_OS_MAC)
-    // 获取用户下载目录
-    QString downloadsPath = QStandardPaths::writableLocation(QStandardPaths::DownloadLocation);
-    cacheDir = downloadsPath + "/网狗音乐缓存目录";
-#endif
-    // 确保目录存在
-    QDir dir(cacheDir);
-    if (!dir.exists())
-    {
-        if (!dir.mkpath("."))
-        {
-            qCritical() << "无法创建缓存目录:" << cacheDir;
-        }
-        return 0;
-    }
+    ensureCacheDir();
+    QString cacheDir = getCacheDir();
     // 先判断本地是否有歌曲缓存
     QString cacheFileName = song.title + "-" + song.singername + ".mp3";
     QString cacheFilePath = cacheDir + "/" + cacheFileName;
@@ -169,17 +210,26 @@ void PlaylistManager::playSongbyindex(int index)
         }
         if ((*m_curplaylist)[index].lyric == "")
         {
-            fetchLyricData((*m_curplaylist)[index].songhash, [this, index](const QString &lyric)
-                           {
-                               if (!lyric.isEmpty())
+            // 先尝试从本地缓存加载歌词
+            QString cachedLyric = loadLyricFromCache((*m_curplaylist)[index].songhash);
+            if (!cachedLyric.isEmpty()) {
+                (*m_curplaylist)[index].lyric = cachedLyric;
+                lyricParser.parseKRCLyrics(cachedLyric);
+                qDebug() << "从本地缓存加载歌词";
+            } else {
+                fetchLyricData((*m_curplaylist)[index].songhash, [this, index](const QString &lyric)
                                {
-                                   (*m_curplaylist)[index].lyric = lyric;
-                                   lyricParser.parseKRCLyrics(lyric);
-                               }
-                               else
-                               {
-                                   qWarning() << "获取lyric失败";
-                               } });
+                                   if (!lyric.isEmpty())
+                                   {
+                                       (*m_curplaylist)[index].lyric = lyric;
+                                       saveLyricToCache((*m_curplaylist)[index].songhash, lyric);
+                                       lyricParser.parseKRCLyrics(lyric);
+                                   }
+                                   else
+                                   {
+                                       qWarning() << "获取lyric失败";
+                                   } });
+            }
         }
         else
         {
@@ -229,17 +279,26 @@ void PlaylistManager::playSongbyhasg(const QString &songhash)
             }
             if ((*m_curplaylist)[index].lyric == "")
             {
-                fetchLyricData(songhash, [this, index](const QString &lyric)
-                               {
-                                   if (!lyric.isEmpty())
+                // 先尝试从本地缓存加载歌词
+                QString cachedLyric = loadLyricFromCache(songhash);
+                if (!cachedLyric.isEmpty()) {
+                    (*m_curplaylist)[index].lyric = cachedLyric;
+                    lyricParser.parseKRCLyrics(cachedLyric);
+                    qDebug() << "从本地缓存加载歌词";
+                } else {
+                    fetchLyricData(songhash, [this, index, songhash](const QString &lyric)
                                    {
-                                       (*m_curplaylist)[index].lyric = lyric;
-                                       lyricParser.parseKRCLyrics(lyric);
-                                   }
-                                   else
-                                   {
-                                       qWarning() << "获取lyric失败";
-                                   } });
+                                       if (!lyric.isEmpty())
+                                       {
+                                           (*m_curplaylist)[index].lyric = lyric;
+                                           saveLyricToCache(songhash, lyric);
+                                           lyricParser.parseKRCLyrics(lyric);
+                                       }
+                                       else
+                                       {
+                                           qWarning() << "获取lyric失败";
+                                       } });
+                }
             }
             else
             {
@@ -310,15 +369,22 @@ void PlaylistManager::addandplay(const QString &title, const QString &songhash, 
 
 void PlaylistManager::setposistion(float positionvalue)
 {
+    qint64 position = positionvalue * player->duration();
     QMediaPlayer::PlaybackState state = player->playbackState();
     if (state == QMediaPlayer::PlayingState)
     {
-        qint64 position = positionvalue * player->duration();
         player->setPosition(position);
+    }
+    else if (player->source().isValid())
+    {
+        player->setPosition(position);
+        player->play();
+        m_isPaused = false;
+        emit isPausedChanged();
     }
     else
     {
-        qDebug() << "未在播放状态";
+        qDebug() << "未在播放状态且无有效源";
     }
 }
 // 类中添加辅助函数
@@ -347,7 +413,7 @@ int PlaylistManager::currentIndex() const
 
 QString PlaylistManager::currentTitle() const
 {
-    if (m_currentIndex >= 0 && m_currentIndex < m_playlist.size())
+    if (m_currentIndex >= 0 && m_currentIndex < (*m_curplaylist).size())
     {
         return (*m_curplaylist)[m_currentIndex].title;
     }
@@ -356,7 +422,7 @@ QString PlaylistManager::currentTitle() const
 
 QString PlaylistManager::currentsingername() const
 {
-    if (m_currentIndex >= 0 && m_currentIndex < m_playlist.size())
+    if (m_currentIndex >= 0 && m_currentIndex < (*m_curplaylist).size())
     {
         return (*m_curplaylist)[m_currentIndex].singername;
     }
@@ -365,7 +431,7 @@ QString PlaylistManager::currentsingername() const
 
 QString PlaylistManager::currentSongHash() const
 {
-    if (m_currentIndex >= 0 && m_currentIndex < m_playlist.size())
+    if (m_currentIndex >= 0 && m_currentIndex < (*m_curplaylist).size())
     {
         return (*m_curplaylist)[m_currentIndex].songhash;
     }
@@ -374,7 +440,7 @@ QString PlaylistManager::currentSongHash() const
 
 int PlaylistManager::count() const
 {
-    return m_playlist.size();
+    return (*m_curplaylist).size();
 }
 
 bool PlaylistManager::isPaused() const
@@ -413,7 +479,7 @@ QList<SongInfo> PlaylistManager::togetherplaylist()
 
 int PlaylistManager::playlistcount() const
 {
-    return m_playlist.size();
+    return (*m_curplaylist).size();
 }
 
 QString PlaylistManager::getcurrlyric() const
@@ -460,9 +526,10 @@ void PlaylistManager::changeplaylisttype(enum playlist_type changetype)
     else if (changetype == LOCAL)
     {
         type = LOCAL;
-        m_curplaylist->clear();
         m_curplaylist = &m_playlist;
     }
+    emit playlistUpdated();
+    emit playlist_typeChanged();
 }
 
 float PlaylistManager::getpercent() const
@@ -479,24 +546,8 @@ void PlaylistManager::startPlayback(const SongInfo &song)
     // 初始播放阈值（字节），例如 500KB
     const qint64 startThreshold = 500 * 1024;
 
-    QString cacheDir;
-#ifdef Q_OS_WIN
-    cacheDir = "C:/网狗音乐缓存目录";
-#elif defined(Q_OS_MAC)
-    // 获取用户下载目录
-    QString downloadsPath = QStandardPaths::writableLocation(QStandardPaths::DownloadLocation);
-    cacheDir = downloadsPath + "/网狗音乐缓存目录";
-#endif
-    // 确保目录存在
-    QDir dir(cacheDir);
-    if (!dir.exists())
-    {
-        if (!dir.mkpath("."))
-        {
-            qCritical() << "无法创建缓存目录:" << cacheDir;
-            return;
-        }
-    }
+    ensureCacheDir();
+    QString cacheDir = getCacheDir();
     QString cacheFileName = song.title + "-" + song.singername + ".mp3";
     QString cacheFilePath = cacheDir + "/" + cacheFileName;
 
@@ -556,6 +607,184 @@ void PlaylistManager::startPlayback(const SongInfo &song)
         tempFile->flush();
         tempFile->close();
         qDebug() << "下载完成:" << cacheFilePath; });
+}
+
+// 保存播放列表到本地缓存
+void PlaylistManager::savePlaylistToCache()
+{
+    ensureCacheDir();
+    QJsonArray arr;
+    for (const SongInfo &song : m_playlist) {
+        QJsonObject obj;
+        obj["title"] = song.title;
+        obj["songhash"] = song.songhash;
+        obj["url"] = song.url;
+        obj["singername"] = song.singername;
+        obj["union_cover"] = song.union_cover;
+        obj["album_name"] = song.album_name;
+        obj["duration"] = song.duration;
+        arr.append(obj);
+    }
+    QJsonObject root;
+    root["playlist"] = arr;
+    root["currentIndex"] = m_currentIndex;
+    root["percent"] = m_percent;
+    QJsonDocument doc(root);
+    QFile file(getPlaylistCachePath());
+    if (file.open(QIODevice::WriteOnly)) {
+        file.write(doc.toJson(QJsonDocument::Compact));
+        file.close();
+        qDebug() << "播放列表已缓存，共" << m_playlist.size() << "首歌曲";
+    } else {
+        qWarning() << "无法写入播放列表缓存:" << getPlaylistCachePath();
+    }
+}
+
+// 从本地缓存加载播放列表
+void PlaylistManager::loadPlaylistFromCache()
+{
+    QFile file(getPlaylistCachePath());
+    if (!file.exists() || !file.open(QIODevice::ReadOnly)) {
+        qDebug() << "无播放列表缓存文件，跳过加载";
+        return;
+    }
+    QByteArray data = file.readAll();
+    file.close();
+    QJsonDocument doc = QJsonDocument::fromJson(data);
+
+    QJsonArray arr;
+    int savedIndex = -1;
+    float savedPercent = 0.0f;
+
+    if (doc.isObject()) {
+        QJsonObject root = doc.object();
+        arr = root["playlist"].toArray();
+        savedIndex = root["currentIndex"].toInt(-1);
+        savedPercent = static_cast<float>(root["percent"].toDouble(0.0));
+    } else if (doc.isArray()) {
+        arr = doc.array();
+    } else {
+        qWarning() << "播放列表缓存格式错误";
+        return;
+    }
+
+    m_playlist.clear();
+    for (const QJsonValue &val : arr) {
+        if (!val.isObject()) continue;
+        QJsonObject obj = val.toObject();
+        SongInfo song;
+        song.title = obj["title"].toString();
+        song.songhash = obj["songhash"].toString();
+        song.url = obj["url"].toString();
+        song.singername = obj["singername"].toString();
+        song.union_cover = obj["union_cover"].toString();
+        song.album_name = obj["album_name"].toString();
+        song.duration = obj["duration"].toString();
+        song.lyric = "";
+        m_playlist.append(song);
+    }
+    emit playlistUpdated();
+
+    // 恢复上次播放的歌曲和进度
+    if (savedIndex >= 0 && savedIndex < m_playlist.size()) {
+        m_currentIndex = savedIndex;
+        m_restorePercent = savedPercent;
+        emit currentIndexChanged(savedIndex);
+        emit currentSongChanged();
+        qDebug() << "从缓存恢复播放: index=" << savedIndex << "percent=" << savedPercent;
+    } else {
+        m_currentIndex = -1;
+        emit currentIndexChanged(-1);
+    }
+    qDebug() << "从缓存加载播放列表，共" << m_playlist.size() << "首歌曲";
+}
+
+void PlaylistManager::restoreLastPlayback()
+{
+    if (m_restorePercent < 0 || m_currentIndex < 0 || m_currentIndex >= m_playlist.size())
+        return;
+
+    float seekPercent = m_restorePercent;
+    m_restorePercent = -1.0f;
+
+    int index = m_currentIndex;
+    SongInfo song = m_playlist[index];
+
+    // 加载歌词
+    if (song.lyric.isEmpty()) {
+        QString cachedLyric = loadLyricFromCache(song.songhash);
+        if (!cachedLyric.isEmpty()) {
+            m_playlist[index].lyric = cachedLyric;
+            lyricParser.parseKRCLyrics(cachedLyric);
+        } else {
+            fetchLyricData(song.songhash, [this](const QString &lyric) {
+                if (!lyric.isEmpty())
+                    lyricParser.parseKRCLyrics(lyric);
+            });
+        }
+    } else {
+        lyricParser.parseKRCLyrics(song.lyric);
+    }
+
+    extractDominantColor(song.union_cover);
+    emit currentIndexChanged(index);
+    emit currentSongChanged();
+
+    // 加载歌曲但不播放
+    player->stop();
+    player->setSource(QUrl());
+
+    auto restoreMedia = [this, seekPercent](QMediaPlayer::MediaStatus status) {
+        if (status == QMediaPlayer::LoadedMedia) {
+            if (seekPercent > 0 && seekPercent < 1.0)
+                seekToPercent(seekPercent);
+            player->pause();
+            m_isPaused = true;
+            emit isPausedChanged();
+            disconnect(player, &QMediaPlayer::mediaStatusChanged, this, nullptr);
+        }
+    };
+    connect(player, &QMediaPlayer::mediaStatusChanged, this, restoreMedia);
+
+    if (song.url.isEmpty()) {
+        fetchSongUrl(song.songhash, [this](const QString &url) {
+            if (!url.isEmpty())
+                player->setSource(QUrl(url));
+        });
+    } else {
+        player->setSource(QUrl(song.url));
+    }
+}
+
+// 保存歌词到本地缓存
+void PlaylistManager::saveLyricToCache(const QString &songhash, const QString &lyric)
+{
+    if (songhash.isEmpty() || lyric.isEmpty()) return;
+    ensureCacheDir();
+    QString path = getCacheDir() + "/lyrics_" + songhash + ".json";
+    QFile file(path);
+    if (file.open(QIODevice::WriteOnly)) {
+        QJsonObject obj;
+        obj["songhash"] = songhash;
+        obj["lyric"] = lyric;
+        file.write(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+        file.close();
+        qDebug() << "歌词已缓存:" << songhash;
+    }
+}
+
+// 从本地缓存加载歌词
+QString PlaylistManager::loadLyricFromCache(const QString &songhash)
+{
+    if (songhash.isEmpty()) return QString();
+    QString path = getCacheDir() + "/lyrics_" + songhash + ".json";
+    QFile file(path);
+    if (!file.exists() || !file.open(QIODevice::ReadOnly)) return QString();
+    QByteArray data = file.readAll();
+    file.close();
+    QJsonDocument doc = QJsonDocument::fromJson(data);
+    if (!doc.isObject()) return QString();
+    return doc.object()["lyric"].toString();
 }
 
 void PlaylistManager::fetchSongUrl(const QString &hash, std::function<void(QString)> callback)
@@ -893,4 +1122,171 @@ QColor PlaylistManager::getAverageColor(const QImage &image)
     finalColor.setHsv(h, s, v);
 
     return finalColor;
+}
+
+void PlaylistManager::syncTogetherPlaylistFromServer(const QJsonArray &songs)
+{
+    m_togetherplaylist.clear();
+    for (const QJsonValue &val : songs)
+    {
+        if (!val.isObject())
+            continue;
+        QJsonObject obj = val.toObject();
+        SongInfo song;
+        song.title = obj["songname"].toString();
+        song.songhash = obj["songhash"].toString();
+        song.singername = obj["singername"].toString();
+        song.album_name = obj["album_name"].toString();
+        song.duration = obj["duration"].toString();
+        song.union_cover = obj["cover_url"].toString();
+        m_togetherplaylist.append(song);
+    }
+    emit togetherplaylistUpdated();
+}
+
+void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const QString &songName,
+                                                   const QString &songHash, const QString &singerName,
+                                                   const QString &coverUrl, const QString &albumName,
+                                                   const QString &duration)
+{
+    // 更新 m_togetherplaylist 中对应歌曲的 url
+    for (int i = 0; i < m_togetherplaylist.size(); i++)
+    {
+        if (m_togetherplaylist[i].songhash == songHash)
+        {
+            m_togetherplaylist[i].url = songUrl;
+            m_currentIndex = i;
+            SongInfo song = m_togetherplaylist[i];
+            song.url = songUrl;
+
+            player->stop();
+            player->setSource(QUrl());
+
+            if (!songUrl.isEmpty())
+            {
+                player->setSource(QUrl(songUrl));
+                player->play();
+                m_isPaused = false;
+
+                // 播放就绪后 seek 到同步进度
+                if (m_togetherSeekPercent > 0)
+                {
+                    double seekPercent = m_togetherSeekPercent;
+                    m_togetherSeekPercent = 0;
+                    connect(player, &QMediaPlayer::mediaStatusChanged, this, [this, seekPercent](QMediaPlayer::MediaStatus status)
+                    {
+                        if (status == QMediaPlayer::BufferedMedia)
+                        {
+                            seekToPercent(seekPercent);
+                            disconnect(player, &QMediaPlayer::mediaStatusChanged, this, nullptr);
+                        }
+                    });
+                }
+            }
+
+            extractDominantColor(coverUrl);
+            emit currentIndexChanged(i);
+            emit currentSongChanged();
+            emit isPausedChanged();
+
+            // 客户端自行根据歌曲 hash 获取歌词
+            fetchLyricData(songHash, [this](const QString &lyric)
+            {
+                if (!lyric.isEmpty())
+                {
+                    lyricParser.parseKRCLyrics(lyric);
+                    qDebug() << "一起听模式 - 歌词获取成功，长度:" << lyric.length();
+                }
+                else
+                {
+                    qWarning() << "一起听模式 - 获取歌词失败";
+                }
+            });
+            return;
+        }
+    }
+    // 歌曲不在 togetherplaylist 中，创建并播放
+    SongInfo song;
+    song.title = songName;
+    song.songhash = songHash;
+    song.url = songUrl;
+    song.singername = singerName;
+    song.union_cover = coverUrl;
+    song.album_name = albumName;
+    song.duration = duration;
+    m_togetherplaylist.append(song);
+    m_currentIndex = m_togetherplaylist.size() - 1;
+    emit togetherplaylistUpdated();
+
+    player->stop();
+    player->setSource(QUrl());
+    if (!songUrl.isEmpty())
+    {
+        player->setSource(QUrl(songUrl));
+        player->play();
+        m_isPaused = false;
+
+        // 播放就绪后 seek 到同步进度
+        if (m_togetherSeekPercent > 0)
+        {
+            double seekPercent = m_togetherSeekPercent;
+            m_togetherSeekPercent = 0;
+            connect(player, &QMediaPlayer::mediaStatusChanged, this, [this, seekPercent](QMediaPlayer::MediaStatus status)
+            {
+                if (status == QMediaPlayer::BufferedMedia)
+                {
+                    seekToPercent(seekPercent);
+                    disconnect(player, &QMediaPlayer::mediaStatusChanged, this, nullptr);
+                }
+            });
+        }
+    }
+    extractDominantColor(coverUrl);
+    emit currentIndexChanged(m_currentIndex);
+    emit currentSongChanged();
+    emit isPausedChanged();
+
+    // 客户端自行根据歌曲 hash 获取歌词
+    fetchLyricData(songHash, [this](const QString &lyric)
+    {
+        if (!lyric.isEmpty())
+        {
+            lyricParser.parseKRCLyrics(lyric);
+            qDebug() << "一起听模式(新歌曲) - 歌词获取成功，长度:" << lyric.length();
+        }
+        else
+        {
+            qWarning() << "一起听模式(新歌曲) - 获取歌词失败";
+        }
+    });
+}
+
+void PlaylistManager::seekToPercent(double percent)
+{
+    if (player->duration() > 0)
+    {
+        qint64 targetPos = static_cast<qint64>(percent * player->duration());
+        player->setPosition(targetPos);
+    }
+}
+
+void PlaylistManager::setTogetherSeekPercent(double percent)
+{
+    m_togetherSeekPercent = percent;
+}
+
+void PlaylistManager::setPaused(bool paused)
+{
+    if (paused && player->playbackState() == QMediaPlayer::PlayingState)
+    {
+        player->pause();
+        m_isPaused = true;
+        emit isPausedChanged();
+    }
+    else if (!paused && player->playbackState() != QMediaPlayer::PlayingState)
+    {
+        player->play();
+        m_isPaused = false;
+        emit isPausedChanged();
+    }
 }

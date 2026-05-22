@@ -19,65 +19,96 @@ Window {
     height: desktopLyrics.isVertical ? Math.max(background.height + 20, controlPanelVertical.implicitHeight + 20) : Math.max(background.height + 70, 28 * desktopLyrics.scale + 16 + 8 * desktopLyrics.scale)
 
     // 歌词内容变化时保持中心位置不变
-    property real _prevWidth: width
-    property real _prevHeight: height
+    // 用 _suppressCentering 在启动和模式切换时临时关闭，防止干扰位置
+    property bool _suppressCentering: true
+    property real _prevWidth: 0
+    property real _prevHeight: 0
     onWidthChanged: {
-        if (_prevWidth > 0) {
-            var delta = width - _prevWidth;
-            desktopLyrics.x -= delta / 2;
+        if (!_suppressCentering && _prevWidth > 0) {
+            desktopLyrics.x -= (width - _prevWidth) / 2;
         }
         _prevWidth = width;
     }
     onHeightChanged: {
-        if (_prevHeight > 0) {
-            var delta = height - _prevHeight;
-            desktopLyrics.y -= delta / 2;
+        if (!_suppressCentering && _prevHeight > 0) {
+            desktopLyrics.y -= (height - _prevHeight) / 2;
         }
         _prevHeight = height;
     }
 
-    visible: true
     color: "transparent"
 
     // 根据锁定状态设置窗口标志
-    // 窗口大小跟随歌词内容，不需要 WindowTransparentForInput
-    // WindowDoesNotAcceptFocus: 点击时不获取焦点，避免激活主窗口
     flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool | Qt.WindowDoesNotAcceptFocus
 
-    // 初始化位置 - 从配置读取，延迟处理确保配置已加载
-    Component.onCompleted: {
-        Qt.callLater(function () {
-            if (lyricsConfig) {
-                if (isVertical) {
-                    if (lyricsConfig.verticalX !== 0 || lyricsConfig.verticalY !== 0) {
-                        desktopLyrics.x = lyricsConfig.verticalX;
-                        desktopLyrics.y = lyricsConfig.verticalY;
-                    } else {
-                        // 默认位置：屏幕右侧居中
-                        desktopLyrics.x = Screen.desktopAvailableWidth - desktopLyrics.width - 20;
-                        desktopLyrics.y = (Screen.desktopAvailableHeight - desktopLyrics.height) / 2;
-                    }
-                } else {
-                    if (lyricsConfig.horizontalX !== 0 || lyricsConfig.horizontalY !== 0) {
-                        desktopLyrics.x = lyricsConfig.horizontalX;
-                        desktopLyrics.y = lyricsConfig.horizontalY;
-                    } else {
-                        // 默认位置：屏幕底部居中
-                        desktopLyrics.x = (Screen.desktopAvailableWidth - desktopLyrics.width) / 2;
-                        desktopLyrics.y = Screen.desktopAvailableHeight - desktopLyrics.height - 50;
-                    }
-                }
+    // 根据配置恢复位置（带边界检查）
+    function restorePosition() {
+        var screenW = Screen.desktopAvailableWidth;
+        var screenH = Screen.desktopAvailableHeight;
+        console.log("[DesktopLyrics] restorePosition: screen=" + screenW + "x" + screenH
+            + " windowSize=" + width + "x" + height
+            + " isVertical=" + isVertical);
+
+        if (screenW <= 0 || screenH <= 0) {
+            console.log("[DesktopLyrics] Screen not ready, skipping");
+            return;
+        }
+
+        var targetX, targetY;
+        if (lyricsConfig) {
+            if (isVertical) {
+                targetX = lyricsConfig.verticalX;
+                targetY = lyricsConfig.verticalY;
             } else {
-                // 无配置时使用默认位置
-                if (isVertical) {
-                    desktopLyrics.x = Screen.desktopAvailableWidth - desktopLyrics.width - 20;
-                    desktopLyrics.y = (Screen.desktopAvailableHeight - desktopLyrics.height) / 2;
-                } else {
-                    desktopLyrics.x = (Screen.desktopAvailableWidth - desktopLyrics.width) / 2;
-                    desktopLyrics.y = Screen.desktopAvailableHeight - desktopLyrics.height - 50;
-                }
+                targetX = lyricsConfig.horizontalX;
+                targetY = lyricsConfig.horizontalY;
             }
+        }
+        console.log("[DesktopLyrics] config pos: " + targetX + "," + targetY);
+
+        // 默认位置
+        if (targetX === undefined || (targetX === 0 && targetY === 0)) {
+            if (isVertical) {
+                targetX = screenW - width - 20;
+                targetY = (screenH - height) / 2;
+            } else {
+                targetX = (screenW - width) / 2;
+                targetY = screenH - height - 50;
+            }
+            console.log("[DesktopLyrics] using default pos: " + targetX + "," + targetY);
+        }
+        // 边界检查：窗口完全在屏幕外才重置（允许部分超出，如 Dock 区域）
+        if (targetX + width < 0 || targetX > screenW || targetY + height < 0 || targetY > screenH) {
+            targetX = (screenW - width) / 2;
+            targetY = screenH - height - 50;
+            console.log("[DesktopLyrics] boundary check FAILED, reset to: " + targetX + "," + targetY);
+        }
+        x = targetX;
+        y = targetY;
+        console.log("[DesktopLyrics] final pos: " + x + "," + y);
+    }
+
+    // 启用居中补偿（延迟到布局稳定后）
+    function enableCentering() {
+        _prevWidth = width;
+        _prevHeight = height;
+        _suppressCentering = false;
+    }
+
+    Component.onCompleted: {
+        _suppressCentering = true;
+        // 延迟到 Screen 属性就绪后再恢复位置
+        Qt.callLater(function () {
+            restorePosition();
+            centeringTimer.start();
         });
+    }
+
+    Timer {
+        id: centeringTimer
+        interval: 300
+        repeat: false
+        onTriggered: enableCentering()
     }
 
     // 窗口关闭时保存配置
@@ -503,18 +534,13 @@ Window {
                 TapHandler {
                     cursorShape: Qt.PointingHandCursor
                     onTapped: {
-                        // 先保存当前位置
                         saveCurrentConfig();
-                        // 切换模式
+                        _suppressCentering = true;
                         desktopLyrics.isVertical = !desktopLyrics.isVertical;
-                        // 恢复到新模式的位置
-                        if (desktopLyrics.isVertical) {
-                            desktopLyrics.x = lyricsConfig ? lyricsConfig.verticalX : (Screen.desktopAvailableWidth - desktopLyrics.width - 20);
-                            desktopLyrics.y = lyricsConfig ? lyricsConfig.verticalY : (Screen.desktopAvailableHeight - desktopLyrics.height) / 2;
-                        } else {
-                            desktopLyrics.x = lyricsConfig ? lyricsConfig.horizontalX : (Screen.desktopAvailableWidth - desktopLyrics.width) / 2;
-                            desktopLyrics.y = lyricsConfig ? lyricsConfig.horizontalY : (Screen.desktopAvailableHeight - desktopLyrics.height - 50);
-                        }
+                        Qt.callLater(function () {
+                            restorePosition();
+                            enableCentering();
+                        });
                     }
                 }
             }
@@ -786,18 +812,13 @@ Window {
                 TapHandler {
                     cursorShape: Qt.PointingHandCursor
                     onTapped: {
-                        // 先保存当前位置
                         saveCurrentConfig();
-                        // 切换模式
+                        _suppressCentering = true;
                         desktopLyrics.isVertical = !desktopLyrics.isVertical;
-                        // 恢复到新模式的位置
-                        if (desktopLyrics.isVertical) {
-                            desktopLyrics.x = lyricsConfig ? lyricsConfig.verticalX : (Screen.desktopAvailableWidth - desktopLyrics.width - 20);
-                            desktopLyrics.y = lyricsConfig ? lyricsConfig.verticalY : (Screen.desktopAvailableHeight - desktopLyrics.height) / 2;
-                        } else {
-                            desktopLyrics.x = lyricsConfig ? lyricsConfig.horizontalX : (Screen.desktopAvailableWidth - desktopLyrics.width) / 2;
-                            desktopLyrics.y = lyricsConfig ? lyricsConfig.horizontalY : (Screen.desktopAvailableHeight - desktopLyrics.height - 50);
-                        }
+                        Qt.callLater(function () {
+                            restorePosition();
+                            enableCentering();
+                        });
                     }
                 }
             }

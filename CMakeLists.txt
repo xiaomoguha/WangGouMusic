@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(cmake_wanggou VERSION 0.1.0 LANGUAGES CXX)
+project(cmake_wanggou VERSION 0.2.0 LANGUAGES CXX)
 
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
@@ -31,6 +31,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         CPPSrc/gethostsearch.cpp CPPSrc/gethostsearch.h
         CPPSrc/lyricsconfigmanager.cpp CPPSrc/lyricsconfigmanager.h
         CPPSrc/appupdater.cpp CPPSrc/appupdater.h
+        CPPSrc/usermanager.cpp CPPSrc/usermanager.h
         image.qrc
     )
     # Windows 应用程序图标
@@ -39,7 +40,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     endif()
     # macOS Objective-C++ 源文件
     if(APPLE)
-        target_sources(cmake_wanggou PRIVATE CPPSrc/macoswindow.mm CPPSrc/macoswindow.h)
+        target_sources(cmake_wanggou PRIVATE CPPSrc/macoswindow.mm CPPSrc/macoswindow.h
+                        CPPSrc/NowPlayingMediaController.mm CPPSrc/NowPlayingMediaController.h)
     endif()
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET cmake_wanggou APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
@@ -68,7 +70,10 @@ target_compile_definitions(cmake_wanggou PRIVATE APP_VERSION="${PROJECT_VERSION}
 # macOS 链接 Cocoa 框架
 if(APPLE)
     find_library(COCOA_FRAMEWORK Cocoa)
-    target_link_libraries(cmake_wanggou PRIVATE ${COCOA_FRAMEWORK})
+    find_library(MEDIAPLAYER_FRAMEWORK MediaPlayer)
+    find_library(COREAUDIO_FRAMEWORK CoreAudio)
+    find_library(COREIMAGE_FRAMEWORK CoreImage)
+    target_link_libraries(cmake_wanggou PRIVATE ${COCOA_FRAMEWORK} ${MEDIAPLAYER_FRAMEWORK} ${COREAUDIO_FRAMEWORK} ${COREIMAGE_FRAMEWORK})
 endif()
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
@@ -83,6 +88,7 @@ set_target_properties(cmake_wanggou PROPERTIES
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
     WIN32_EXECUTABLE TRUE
+    MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in
     # 禁用 QML 编译器的 unqualified access 警告
     QT_QML_SKIP_QMLCOMPILER_WARNINGS ON
 )

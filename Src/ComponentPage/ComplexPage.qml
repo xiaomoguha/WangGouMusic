@@ -281,6 +281,55 @@ Page {
                             }
                         }
 
+                        // 添加到一起听按钮
+                        Rectangle {
+                            id: addTogetherBtn
+                            width: 32
+                            height: 32
+                            radius: 16
+                            color: addTogetherHover.hovered ? AppTheme.iconButtonHover : "transparent"
+                            visible: websocket && websocket.connected
+
+                            Image {
+                                id: togetherIcon
+                                anchors.centerIn: parent
+                                source: "qrc:/image/yinle.png"
+                                width: 16
+                                height: 16
+                                fillMode: Image.PreserveAspectFit
+                                layer.enabled: true
+                                layer.effect: ColorOverlay {
+                                    source: togetherIcon
+                                    color: addTogetherHover.hovered ? AppTheme.accent : AppTheme.iconDefault
+                                }
+                            }
+
+                            HoverHandler {
+                                id: addTogetherHover
+                            }
+
+                            TapHandler {
+                                cursorShape: Qt.PointingHandCursor
+                                onTapped: {
+                                    websocket.addSongToTogether(
+                                        modelData.songname,
+                                        modelData.songhash,
+                                        modelData.singername,
+                                        modelData.album_name,
+                                        modelData.duration,
+                                        modelData.union_cover
+                                    );
+                                    BasicConfig.notice_success("已添加到一起听");
+                                }
+                            }
+
+                            Behavior on color {
+                                ColorAnimation {
+                                    duration: 150
+                                }
+                            }
+                        }
+
                         // 添加到喜欢按钮
                         Rectangle {
                             id: addLoveBtn
