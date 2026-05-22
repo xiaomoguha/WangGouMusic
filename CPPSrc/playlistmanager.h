@@ -83,6 +83,7 @@ public:
     Q_INVOKABLE void playPrevious();
     Q_INVOKABLE void playstop();
     Q_INVOKABLE void addandplay(const QString &title, const QString &url, const QString &singername, const QString &union_cover, const QString &album_name, const QString &duration);
+    Q_INVOKABLE void addSongNext(const QString &title, const QString &songhash, const QString &singername, const QString &union_cover, const QString &album_name, const QString &duration);
     Q_INVOKABLE void setposistion(float positionvalue);
 
     int currentIndex() const;
@@ -104,6 +105,21 @@ public:
     enum playlist_type getplaylist_type() const;
     void changeplaylisttype(enum playlist_type type);
     int is_have_cache(const SongInfo &song, const int index);
+
+    // 一起听模式同步方法
+    void syncTogetherPlaylistFromServer(const QJsonArray &songs);
+    void playTogetherSongFromServer(const QString &songUrl, const QString &songName,
+                                     const QString &songHash, const QString &singerName,
+                                     const QString &coverUrl, const QString &albumName,
+                                     const QString &duration);
+    void seekToPercent(double percent);
+    void setPaused(bool paused);
+    void setTogetherSeekPercent(double percent);
+    Q_INVOKABLE void loadPlaylistFromCache();
+    void savePlaylistToCache();
+    Q_INVOKABLE void restoreLastPlayback();
+    void saveLyricToCache(const QString &songhash, const QString &lyric);
+    QString loadLyricFromCache(const QString &songhash);
     QVector<LyricLine> LyricLine_get() const;
     int lyricCharIndexget();
     float lyricCharProgressget();
@@ -151,6 +167,7 @@ private:
     Recommendation *m_recommendation = nullptr; // 改为指针
     QList<SongInfo> convertToSongInfoList(const QVariantList &variantList);
     bool m_isRepairing = false;        // 添加修复状态标志
+    float m_restorePercent = -1.0f;
     int m_repairCount = 0;             // 修复次数计数
     const int MAX_REPAIR_ATTEMPTS = 5; // 最大修复尝试次数
     void fetchLyricData(const QString &hash, std::function<void(QString)> callback);
@@ -161,8 +178,12 @@ private:
     float m_lyricCharProgress = 0.0f;
     QVariantList m_lyricChars;
     int m_lyricCharCount = 0;
+    double m_togetherSeekPercent = 0;
     void extractDominantColor(const QString &imageUrl);
     QColor getAverageColor(const QImage &image);
+    QString getCacheDir() const;
+    void ensureCacheDir() const;
+    QString getPlaylistCachePath() const;
 };
 Q_DECLARE_METATYPE(SongInfo)
 

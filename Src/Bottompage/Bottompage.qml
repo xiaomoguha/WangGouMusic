@@ -335,18 +335,15 @@ Rectangle {
                     }
                     TapHandler {
                         cursorShape: Qt.PointingHandCursor
-                        onTapped: playlistmanager.playPrevious()
-                    }
-
-                    scale: prevHandler.hovered ? 1.1 : 1.0
-                    Behavior on scale {
-                        NumberAnimation {
-                            duration: 100
-                            easing.type: Easing.OutCubic
+                        onTapped: {
+                            if (playlistmanager.type === 1) return; // TOGETHER 模式禁用上一曲
+                            playlistmanager.playPrevious();
                         }
                     }
-                    Behavior on color {
-                        ColorAnimation {
+
+                    opacity: playlistmanager.type === 1 ? 0.3 : 1.0
+                    Behavior on opacity {
+                        NumberAnimation {
                             duration: 150
                         }
                     }
@@ -391,7 +388,18 @@ Rectangle {
                     }
                     TapHandler {
                         cursorShape: Qt.PointingHandCursor
-                        onTapped: playlistmanager.playstop()
+                        onTapped: {
+                            if (playlistmanager.type === 1) {
+                                // TOGETHER 模式：通过 WebSocket 控制
+                                if (playlistmanager.isPaused) {
+                                    websocket.resumeTogether();
+                                } else {
+                                    websocket.pauseTogether();
+                                }
+                            } else {
+                                playlistmanager.playstop();
+                            }
+                        }
                     }
 
                     scale: playPauseHandler.hovered ? 1.05 : 1.0
@@ -435,7 +443,13 @@ Rectangle {
                     }
                     TapHandler {
                         cursorShape: Qt.PointingHandCursor
-                        onTapped: playlistmanager.playNext()
+                        onTapped: {
+                            if (playlistmanager.type === 1) {
+                                websocket.playNextTogether();
+                            } else {
+                                playlistmanager.playNext();
+                            }
+                        }
                     }
 
                     scale: nextHandler.hovered ? 1.1 : 1.0
@@ -528,11 +542,13 @@ Rectangle {
                         hoverEnabled: true
 
                         onPressed: {
+                            if (playlistmanager.type === 1) return; // TOGETHER 模式禁用拖拽
                             progressSlider.dragging = true;
                             updateProgress(mouseX);
                         }
 
                         onPositionChanged: {
+                            if (playlistmanager.type === 1) return;
                             if (pressed)
                                 updateProgress(mouseX);
                         }
@@ -545,6 +561,7 @@ Rectangle {
                         }
 
                         onClicked: {
+                            if (playlistmanager.type === 1) return; // TOGETHER 模式禁用点击 seek
                             updateProgress(mouseX);
                             commitProgress();
                         }

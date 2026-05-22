@@ -14,6 +14,7 @@
         <file>Src/ComponentPage/ComplexPage.qml</file>
         <file>Src/ComponentPage/Danqv.qml</file>
         <file>Src/ComponentPage/AlbumPage.qml</file>
+        <file>Src/ComponentPage/PlaylistDetailPage.qml</file>
         <file>Src/ComponentPage/LyricPage.qml</file>
         <file>Src/ComponentPage/SearchresultPage.qml</file>
         <file>Src/ComponentPage/musictogether.qml</file>
@@ -28,5 +29,7 @@
         <file>Src/ToolWindow/SongAddedToast.qml</file>
         <file>Src/ComponentPage/HomePage.qml</file>
         <file>Src/ComponentPage/UpdateDialog.qml</file>
+        <file>Src/ComponentPage/LoginPage.qml</file>
+        <file>Src/ComponentPage/UserPlaylistPage.qml</file>
     </qresource>
 </RCC>
