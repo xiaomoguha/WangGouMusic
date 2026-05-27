@@ -20,7 +20,7 @@ Rectangle {
         anchors.top: righttoppage.bottom
         anchors.bottom: parent.bottom
         source: "qrc:/Src/ComponentPage/HomePage.qml"
-        visible: !overlayLoader.active || overlayLoader.opacity === 0
+        visible: !overlayLoader.active || overlayLoader._isOnHome
     }
 
     // 其他页面：叠加在主页之上
@@ -35,6 +35,7 @@ Rectangle {
         active: false
 
         property string _pendingUrl: ""
+        property bool _isOnHome: true
 
         Behavior on opacity {
             NumberAnimation {
@@ -52,6 +53,7 @@ Rectangle {
                 let fileName = urlToObjectName(url);
                 if (fileName === "HomePage") {
                     // 返回主页：淡出覆盖层
+                    overlayLoader._isOnHome = true;
                     BasicConfig.previousPageUrl = homePageLoader.source.toString();
                     overlayLoader._pendingUrl = "";
                     overlayLoader.opacity = 0;
@@ -59,11 +61,13 @@ Rectangle {
                     let currentName = overlayLoader.item.objectName;
                     if (currentName === fileName) return;
                     // 非主页之间切换
+                    overlayLoader._isOnHome = false;
                     BasicConfig.previousPageUrl = overlayLoader.source.toString();
                     overlayLoader._pendingUrl = url;
                     overlayLoader.opacity = 0;
                 } else {
                     // 从主页进入子页面
+                    overlayLoader._isOnHome = false;
                     BasicConfig.previousPageUrl = homePageLoader.source.toString();
                     overlayLoader._pendingUrl = "";
                     overlayLoader.source = url;
@@ -71,6 +75,7 @@ Rectangle {
                 }
             }
             function onPushsearchsongPage(url) {
+                overlayLoader._isOnHome = false;
                 BasicConfig.previousPageUrl = overlayLoader.active
                     ? overlayLoader.source.toString()
                     : homePageLoader.source.toString();

@@ -11,6 +11,7 @@ Item {
     // 离开房间确认弹窗
     Dialog {
         id: leaveConfirmDialog
+        parent: Overlay.overlay
         anchors.centerIn: parent
         modal: true
         title: ""

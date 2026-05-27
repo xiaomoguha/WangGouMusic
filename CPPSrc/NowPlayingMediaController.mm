@@ -148,9 +148,19 @@ static OSStatus AudioDeviceChangedCallback(AudioObjectID inObjectID,
     [info setObject:@(rate) forKey:MPNowPlayingInfoPropertyPlaybackRate];
     [info setObject:@(elapsedTime) forKey:MPNowPlayingInfoPropertyElapsedPlaybackTime];
 
-    // 保留已有封面，避免闪烁
+    // 保留已有封面，避免闪烁；无封面时使用 App 图标
     if (self.cachedArtwork) {
         [info setObject:self.cachedArtwork forKey:MPMediaItemPropertyArtwork];
+    } else {
+        NSImage *appIcon = [NSApp applicationIconImage];
+        if (appIcon) {
+            MPMediaItemArtwork *artwork = [[MPMediaItemArtwork alloc]
+                initWithBoundsSize:appIcon.size
+                requestHandler:^NSImage *(CGSize requestedSize) {
+                    return appIcon;
+                }];
+            [info setObject:artwork forKey:MPMediaItemPropertyArtwork];
+        }
     }
 
     [[MPNowPlayingInfoCenter defaultCenter] setNowPlayingInfo:info];

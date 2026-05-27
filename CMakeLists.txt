@@ -32,6 +32,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         CPPSrc/lyricsconfigmanager.cpp CPPSrc/lyricsconfigmanager.h
         CPPSrc/appupdater.cpp CPPSrc/appupdater.h
         CPPSrc/usermanager.cpp CPPSrc/usermanager.h
+        CPPSrc/singleapplication.cpp CPPSrc/singleapplication.h
         image.qrc
     )
     # Windows 应用程序图标
@@ -42,6 +43,9 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     if(APPLE)
         target_sources(cmake_wanggou PRIVATE CPPSrc/macoswindow.mm CPPSrc/macoswindow.h
                         CPPSrc/NowPlayingMediaController.mm CPPSrc/NowPlayingMediaController.h)
+        set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/cmake_wanggou.icns PROPERTIES
+            MACOSX_PACKAGE_LOCATION Resources)
+        target_sources(cmake_wanggou PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/cmake_wanggou.icns)
     endif()
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET cmake_wanggou APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
@@ -89,6 +93,7 @@ set_target_properties(cmake_wanggou PROPERTIES
     MACOSX_BUNDLE TRUE
     WIN32_EXECUTABLE TRUE
     MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in
+    MACOSX_BUNDLE_ICON_FILE cmake_wanggou.icns
     # 禁用 QML 编译器的 unqualified access 警告
     QT_QML_SKIP_QMLCOMPILER_WARNINGS ON
 )

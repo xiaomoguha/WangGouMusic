@@ -5,6 +5,7 @@ import "../BasicConfig"
 
 Item {
     objectName: "HomePage"
+    readonly property bool isTogetherMode: playlistmanager && playlistmanager.type === 1
     width: parent ? parent.width : 0
     height: parent ? parent.height : 0
 
@@ -80,6 +81,7 @@ Item {
                     }
 
                     Rectangle {
+                        visible: !isTogetherMode
                         width: 100
                         height: 34
                         radius: 17
@@ -409,10 +411,19 @@ Item {
                             TapHandler {
                                 cursorShape: Qt.PointingCursor
                                 onTapped: {
-                                    playlistmanager.addandplay(songData.songname, songData.songhash,
-                                                               songData.singername, songData.union_cover,
-                                                               songData.album_name, songData.duration)
-                                    BasicConfig.emitSongAdded("正在播放: " + songData.songname)
+                                    if (isTogetherMode) {
+                                        if (websocket) {
+                                            websocket.addSongToTogether(songData.songname, songData.songhash,
+                                                songData.singername, songData.album_name,
+                                                songData.duration, songData.union_cover)
+                                            BasicConfig.notice_success("已添加到一起听")
+                                        }
+                                    } else {
+                                        playlistmanager.addandplay(songData.songname, songData.songhash,
+                                                                   songData.singername, songData.union_cover,
+                                                                   songData.album_name, songData.duration)
+                                        BasicConfig.emitSongAdded("正在播放: " + songData.songname)
+                                    }
                                 }
                             }
                         }

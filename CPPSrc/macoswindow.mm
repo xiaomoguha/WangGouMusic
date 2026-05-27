@@ -34,4 +34,9 @@ void setupMacOSDesktopLyricsWindow(QWindow *window)
     }
 }
 
+void activateMacOSApp()
+{
+    [[NSApplication sharedApplication] activateIgnoringOtherApps:YES];
+}
+
 #endif
