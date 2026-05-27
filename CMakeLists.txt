@@ -39,6 +39,10 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     if(WIN32)
         target_sources(cmake_wanggou PRIVATE app.rc)
     endif()
+    # 非 macOS 平台也需要头文件以触发 AUTOMOC（#else 分支有 Q_OBJECT）
+    if(NOT APPLE)
+        target_sources(cmake_wanggou PRIVATE CPPSrc/NowPlayingMediaController.h)
+    endif()
     # macOS Objective-C++ 源文件
     if(APPLE)
         target_sources(cmake_wanggou PRIVATE CPPSrc/macoswindow.mm CPPSrc/macoswindow.h
