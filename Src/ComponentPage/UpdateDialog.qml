@@ -63,6 +63,7 @@ Popup {
 
     Overlay.modal: Rectangle {
         color: AppTheme.dialogOverlay
+        MouseArea { anchors.fill: parent }
     }
 
     Column {

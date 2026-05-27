@@ -33,6 +33,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         CPPSrc/appupdater.cpp CPPSrc/appupdater.h
         CPPSrc/usermanager.cpp CPPSrc/usermanager.h
         CPPSrc/singleapplication.cpp CPPSrc/singleapplication.h
+        CPPSrc/NowPlayingMediaController.h
         image.qrc
     )
     # Windows 应用程序图标
