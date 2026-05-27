@@ -572,9 +572,15 @@ void WebSocketClient::handleSongProgressBroadcast(const QJsonObject &data)
     {
         playmanager->setPaused(false);
         float localPercent = playmanager->getpercent();
-        if (localPercent > 0 && qAbs(localPercent - playedPercent) > 0.01)
+        // 用秒数判断偏差，超过 3 秒才 seek，避免网络延迟导致频繁跳动
+        qint64 playerDuration = playmanager->playerDuration();
+        if (localPercent > 0 && playerDuration > 0)
         {
-            playmanager->seekToPercent(playedPercent);
+            double diffSec = qAbs(localPercent - playedPercent) * playerDuration / 1000.0;
+            if (diffSec > 3.0)
+            {
+                playmanager->seekToPercent(playedPercent);
+            }
         }
     }
 }
@@ -622,4 +628,32 @@ QString WebSocketClient::jsonToString(const QJsonObject &json)
 {
     QJsonDocument doc(json);
     return QString::fromUtf8(doc.toJson(QJsonDocument::Compact));
+}
+
+void WebSocketClient::fetchRoomList()
+{
+    QUrl httpUrl(QString("http://%1/rooms").arg(WEB_SOCKET_SERVICE_HOST));
+    QNetworkRequest request(httpUrl);
+    request.setTransferTimeout(5000);
+    QNetworkReply *reply = m_httpManager.get(request);
+
+    connect(reply, &QNetworkReply::finished, this, [this, reply]()
+            {
+        reply->deleteLater();
+        if (reply->error() != QNetworkReply::NoError) {
+            return;
+        }
+        QByteArray data = reply->readAll();
+        QJsonParseError parseError;
+        QJsonDocument doc = QJsonDocument::fromJson(data, &parseError);
+        if (parseError.error != QJsonParseError::NoError || !doc.isArray()) {
+            return;
+        }
+        m_roomList = doc.array().toVariantList();
+        emit roomListUpdated(); });
+}
+
+QVariantList WebSocketClient::roomList() const
+{
+    return m_roomList;
 }

@@ -10,6 +10,9 @@
 #include <QJsonDocument>
 #include <QTimer>
 #include <QMutex>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QVariantList>
 
 // 与服务端 types.h 中的 enum ctrl 保持一致
 enum ServerAction {
@@ -37,6 +40,7 @@ class WebSocketClient : public QObject
     Q_PROPERTY(QString url READ url NOTIFY urlChanged)
     Q_PROPERTY(QString Roomid READ Getroomid NOTIFY roomidChanged)
     Q_PROPERTY(ConnectionState connectionState READ connectionState NOTIFY connectionStateChanged)
+    Q_PROPERTY(QVariantList roomList READ roomList NOTIFY roomListUpdated)
 public:
     explicit WebSocketClient(PlaylistManager *playmanager, UserManager *usermanager, QObject *parent = nullptr);
     // 连接状态枚举
@@ -77,6 +81,8 @@ public:
     Q_INVOKABLE void upSongByHash(const QString &songhash);
     Q_INVOKABLE void requestPlaylist();
     Q_INVOKABLE void requestClientList();
+    Q_INVOKABLE void fetchRoomList();
+    QVariantList roomList() const;
 
 signals:
     void connectionStatusChanged(bool connected);
@@ -93,6 +99,7 @@ signals:
     // 一起听专用信号（QML 绑定用）
     void songInfoUpdated(const QJsonObject &data);
     void clientListUpdated(const QJsonObject &data);
+    void roomListUpdated();
 
 public slots:
     Q_INVOKABLE void sendString(const QString &message);
@@ -143,6 +150,10 @@ private:
 
     // 线程安全
     QMutex m_mutex;
+
+    // 房间列表
+    QNetworkAccessManager m_httpManager;
+    QVariantList m_roomList;
 };
 
 #endif // WEBSOCKETCLIENT_H

@@ -24,6 +24,7 @@
 #include "./CPPSrc/appupdater.h"
 #include "./CPPSrc/usermanager.h"
 #include "./CPPSrc/NowPlayingMediaController.h"
+#include "./CPPSrc/singleapplication.h"
 
 // 注册 HttpGetRequester 为 QML 类型
 #include <QQmlEngine>
@@ -49,6 +50,14 @@ int main(int argc, char *argv[])
     qputenv("QT_FFMPEG_PLAYER_BUFFER", "15000");        // 提高缓冲
 
     QApplication app(argc, argv);
+
+    // 单实例检测：如果已有实例在运行，激活其主窗口并退出
+    SingleApplication singleApp("WangGouMusic");
+    if (singleApp.isRunning()) {
+        singleApp.activateRunningInstance();
+        return 0;
+    }
+
     QQuickStyle::setStyle("Fusion");
     app.setWindowIcon(QIcon(":/image/wyymusic.ico"));
 
@@ -132,6 +141,9 @@ int main(int argc, char *argv[])
         QObject *rootObj = engine.rootObjects().first();
         window = qobject_cast<QQuickWindow *>(rootObj);
     }
+
+    // 让单实例管理器持有主窗口引用
+    singleApp.listen(window);
 
     // ---------------- 托盘图标（跨平台） ----------------
 #ifdef Q_OS_MAC

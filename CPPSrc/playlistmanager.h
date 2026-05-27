@@ -97,6 +97,7 @@ public:
     float getpercent() const;
     QString getpercentstr() const;
     QString durationstr();
+    qint64 playerDuration() const;
     QList<SongInfo> playlist();
     QList<SongInfo> togetherplaylist();
     int playlistcount() const;
@@ -169,6 +170,7 @@ private:
     bool m_isRepairing = false;        // 添加修复状态标志
     float m_restorePercent = -1.0f;
     int m_repairCount = 0;             // 修复次数计数
+    int m_localIndex = -1;             // 一起听模式前保存的本地播放索引
     const int MAX_REPAIR_ATTEMPTS = 5; // 最大修复尝试次数
     void fetchLyricData(const QString &hash, std::function<void(QString)> callback);
     void fetchLyricContent(const QString &id, const QString &accesskey, std::function<void(QString)> callback);

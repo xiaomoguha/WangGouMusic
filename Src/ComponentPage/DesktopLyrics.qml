@@ -345,6 +345,8 @@ Window {
                                 required property int index
                                 property string currentChar: verticalTextContainer.lyricText.charAt(index)
                                 property bool isAscii: currentChar.charCodeAt(0) < 128 && currentChar !== ' '
+                                property bool isLetterOrNumber: (currentChar >= 'a' && currentChar <= 'z') || (currentChar >= 'A' && currentChar <= 'Z') || (currentChar >= '0' && currentChar <= '9')
+                                property bool isPunctuation: isAscii && !isLetterOrNumber
 
                                 text: currentChar
                                 font.pixelSize: desktopLyrics.fontSize * desktopLyrics.scale
@@ -354,10 +356,10 @@ Window {
                                 styleColor: "#40000000"
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter
-                                rotation: isAscii ? 90 : 0
+                                rotation: isPunctuation ? 90 : 0
                                 transformOrigin: Item.Center
                                 width: desktopLyrics.fontSize * desktopLyrics.scale + 10
-                                height: isAscii ? font.pixelSize * 0.6 : font.pixelSize
+                                height: font.pixelSize
                             }
                         }
                     }
@@ -384,6 +386,8 @@ Window {
                                     required property int index
                                     property string currentChar: verticalTextContainer.lyricText.charAt(index)
                                     property bool isAscii: currentChar.charCodeAt(0) < 128 && currentChar !== ' '
+                                    property bool isLetterOrNumber: (currentChar >= 'a' && currentChar <= 'z') || (currentChar >= 'A' && currentChar <= 'Z') || (currentChar >= '0' && currentChar <= '9')
+                                    property bool isPunctuation: isAscii && !isLetterOrNumber
 
                                     text: currentChar
                                     font.pixelSize: desktopLyrics.fontSize * desktopLyrics.scale
@@ -393,10 +397,10 @@ Window {
                                     styleColor: AppTheme.accentGlow
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
-                                    rotation: isAscii ? 90 : 0
+                                    rotation: isPunctuation ? 90 : 0
                                     transformOrigin: Item.Center
                                     width: desktopLyrics.fontSize * desktopLyrics.scale + 10
-                                    height: isAscii ? font.pixelSize * 0.6 : font.pixelSize
+                                    height: font.pixelSize
                                 }
                             }
                         }

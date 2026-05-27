@@ -1,5 +1,7 @@
 #include "playlistmanager.h"
 #include <QDebug>
+#include <QTimer>
+#include <memory>
 PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent) : QObject(parent), m_recommendation(recommendation)
 {
     player->setAudioOutput(audioOutput);
@@ -15,13 +17,9 @@ PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent
             emit isPausedChanged();
             if (type == LOCAL)
             {
-                this->playNext();
-            }
-            else
-            {
-                // TOGETHER 模式下由服务器控制切歌，不自动播放下一首
-                player->stop();
-                player->setSource(QUrl());
+                QTimer::singleShot(200, this, [this]() {
+                    this->playNext();
+                });
             }
         }
         else if (status == QMediaPlayer::LoadedMedia)
@@ -467,6 +465,11 @@ QString PlaylistManager::durationstr()
     return m_duration;
 }
 
+qint64 PlaylistManager::playerDuration() const
+{
+    return player->duration();
+}
+
 QList<SongInfo> PlaylistManager::playlist()
 {
     return m_playlist;
@@ -520,6 +523,8 @@ void PlaylistManager::changeplaylisttype(enum playlist_type changetype)
     }
     if (changetype == TOGETHER)
     {
+        // 切到一起听前，保存本地播放状态
+        m_localIndex = m_currentIndex;
         type = TOGETHER;
         m_curplaylist = &m_togetherplaylist;
     }
@@ -527,6 +532,13 @@ void PlaylistManager::changeplaylisttype(enum playlist_type changetype)
     {
         type = LOCAL;
         m_curplaylist = &m_playlist;
+        // 恢复本地播放索引
+        if (m_localIndex >= 0 && m_localIndex < m_playlist.size())
+        {
+            m_currentIndex = m_localIndex;
+            emit currentIndexChanged(m_currentIndex);
+            emit currentSongChanged();
+        }
     }
     emit playlistUpdated();
     emit playlist_typeChanged();
@@ -734,17 +746,18 @@ void PlaylistManager::restoreLastPlayback()
     player->stop();
     player->setSource(QUrl());
 
-    auto restoreMedia = [this, seekPercent](QMediaPlayer::MediaStatus status) {
-        if (status == QMediaPlayer::LoadedMedia) {
-            if (seekPercent > 0 && seekPercent < 1.0)
-                seekToPercent(seekPercent);
-            player->pause();
-            m_isPaused = true;
-            emit isPausedChanged();
-            disconnect(player, &QMediaPlayer::mediaStatusChanged, this, nullptr);
-        }
-    };
-    connect(player, &QMediaPlayer::mediaStatusChanged, this, restoreMedia);
+    auto conn = std::make_shared<QMetaObject::Connection>();
+    *conn = connect(player, &QMediaPlayer::mediaStatusChanged, this,
+        [this, seekPercent, conn](QMediaPlayer::MediaStatus status) {
+            if (status == QMediaPlayer::LoadedMedia) {
+                if (seekPercent > 0 && seekPercent < 1.0)
+                    seekToPercent(seekPercent);
+                player->pause();
+                m_isPaused = true;
+                emit isPausedChanged();
+                QObject::disconnect(*conn);
+            }
+        });
 
     if (song.url.isEmpty()) {
         fetchSongUrl(song.songhash, [this](const QString &url) {
@@ -1173,14 +1186,15 @@ void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const Q
                 {
                     double seekPercent = m_togetherSeekPercent;
                     m_togetherSeekPercent = 0;
-                    connect(player, &QMediaPlayer::mediaStatusChanged, this, [this, seekPercent](QMediaPlayer::MediaStatus status)
-                    {
-                        if (status == QMediaPlayer::BufferedMedia)
-                        {
-                            seekToPercent(seekPercent);
-                            disconnect(player, &QMediaPlayer::mediaStatusChanged, this, nullptr);
-                        }
-                    });
+                    auto conn = std::make_shared<QMetaObject::Connection>();
+                    *conn = connect(player, &QMediaPlayer::mediaStatusChanged, this,
+                        [this, seekPercent, conn](QMediaPlayer::MediaStatus status) {
+                            if (status == QMediaPlayer::BufferedMedia)
+                            {
+                                seekToPercent(seekPercent);
+                                QObject::disconnect(*conn);
+                            }
+                        });
                 }
             }
 
@@ -1231,14 +1245,15 @@ void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const Q
         {
             double seekPercent = m_togetherSeekPercent;
             m_togetherSeekPercent = 0;
-            connect(player, &QMediaPlayer::mediaStatusChanged, this, [this, seekPercent](QMediaPlayer::MediaStatus status)
-            {
-                if (status == QMediaPlayer::BufferedMedia)
-                {
-                    seekToPercent(seekPercent);
-                    disconnect(player, &QMediaPlayer::mediaStatusChanged, this, nullptr);
-                }
-            });
+            auto conn = std::make_shared<QMetaObject::Connection>();
+            *conn = connect(player, &QMediaPlayer::mediaStatusChanged, this,
+                [this, seekPercent, conn](QMediaPlayer::MediaStatus status) {
+                    if (status == QMediaPlayer::BufferedMedia)
+                    {
+                        seekToPercent(seekPercent);
+                        QObject::disconnect(*conn);
+                    }
+                });
         }
     }
     extractDominantColor(coverUrl);

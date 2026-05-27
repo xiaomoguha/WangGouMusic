@@ -4,6 +4,7 @@ import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
 
 Page {
+    readonly property bool isTogetherMode: playlistmanager && playlistmanager.type === 1
     background: Rectangle {
         color: "transparent"
     }
@@ -202,6 +203,7 @@ Page {
                         // 播放按钮
                         Rectangle {
                             id: playNowBtn
+                            visible: !isTogetherMode
                             width: 32
                             height: 32
                             radius: 16
@@ -243,6 +245,7 @@ Page {
                         // 添加到播放列表按钮
                         Rectangle {
                             id: addPlaylistBtn
+                            visible: !isTogetherMode
                             width: 32
                             height: 32
                             radius: 16
@@ -288,7 +291,7 @@ Page {
                             height: 32
                             radius: 16
                             color: addTogetherHover.hovered ? AppTheme.iconButtonHover : "transparent"
-                            visible: websocket && websocket.connected
+                            visible: (websocket && websocket.connected) || isTogetherMode
 
                             Image {
                                 id: togetherIcon

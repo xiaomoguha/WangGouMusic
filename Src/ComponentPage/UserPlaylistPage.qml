@@ -6,6 +6,7 @@ import "../BasicConfig"
 Item {
     id: userPlaylistPage
     objectName: "UserPlaylistPage"
+    readonly property bool isTogetherMode: playlistmanager && playlistmanager.type === 1
     width: parent ? parent.width : 0
     height: parent ? parent.height : 0
 
@@ -844,6 +845,7 @@ Item {
                                     spacing: 8
 
                                     Rectangle {
+                                        visible: !isTogetherMode
                                         width: 30; height: 30; radius: 15
                                         color: playHover.hovered ? AppTheme.iconButtonHover : "transparent"
                                         Image {
@@ -868,6 +870,7 @@ Item {
                                     }
 
                                     Rectangle {
+                                        visible: !isTogetherMode
                                         width: 30; height: 30; radius: 15
                                         color: addHover.hovered ? AppTheme.iconButtonHover : "transparent"
                                         Image {
@@ -896,7 +899,7 @@ Item {
                                     Rectangle {
                                         width: 30; height: 30; radius: 15
                                         color: addTogetherHover.hovered ? AppTheme.iconButtonHover : "transparent"
-                                        visible: websocket && websocket.connected
+                                        visible: (websocket && websocket.connected) || isTogetherMode
 
                                         Image {
                                             id: togetherIcon
