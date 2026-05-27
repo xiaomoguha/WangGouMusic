@@ -33,6 +33,7 @@ Popup {
 
     Overlay.modal: Rectangle {
         color: AppTheme.dialogOverlay
+        MouseArea { anchors.fill: parent }
     }
 
     // 关闭按钮
