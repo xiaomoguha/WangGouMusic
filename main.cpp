@@ -1,30 +1,30 @@
 #include <QApplication>
-#include <QQmlApplicationEngine>
-#include <QtQuickControls2/QQuickStyle>
-#include <QQmlContext>
-#include <QLoggingCategory>
 #include <QIcon>
+#include <QLoggingCategory>
+#include <QQmlApplicationEngine>
 #include <QQmlComponent>
-#include <QTimer>
+#include <QQmlContext>
 #include <QQuickWindow>
+#include <QTimer>
+#include <QtQuickControls2/QQuickStyle>
 #ifdef Q_OS_WIN
 #include <windows.h>
 #endif
 
 #include "./CPPSrc/macoswindow.h"
 
-#include "./CPPSrc/gethostsearch.h"
-#include "./CPPSrc/searchcomplex.h"
-#include "./CPPSrc/playlistmanager.h"
 #include "./CPPSrc/HttpGetRequester.h"
-#include "./CPPSrc/recommendation.h"
-#include "./CPPSrc/trayhandler.h"
-#include "./CPPSrc/WebSocketClient.h"
-#include "./CPPSrc/lyricsconfigmanager.h"
-#include "./CPPSrc/appupdater.h"
-#include "./CPPSrc/usermanager.h"
 #include "./CPPSrc/NowPlayingMediaController.h"
+#include "./CPPSrc/WebSocketClient.h"
+#include "./CPPSrc/appupdater.h"
+#include "./CPPSrc/gethostsearch.h"
+#include "./CPPSrc/lyricsconfigmanager.h"
+#include "./CPPSrc/playlistmanager.h"
+#include "./CPPSrc/recommendation.h"
+#include "./CPPSrc/searchcomplex.h"
 #include "./CPPSrc/singleapplication.h"
+#include "./CPPSrc/trayhandler.h"
+#include "./CPPSrc/usermanager.h"
 
 // 注册 HttpGetRequester 为 QML 类型
 #include <QQmlEngine>
@@ -33,7 +33,9 @@ class HttpGetRequesterHelper : public HttpGetRequester
 {
     Q_OBJECT
 public:
-    HttpGetRequesterHelper(QObject *parent = nullptr) : HttpGetRequester(10000, parent) {}
+    HttpGetRequesterHelper(QObject *parent = nullptr)
+        : HttpGetRequester(10000, parent)
+    {}
 };
 
 int main(int argc, char *argv[])
@@ -68,10 +70,15 @@ int main(int argc, char *argv[])
 
     const QUrl url(QStringLiteral("qrc:/main.qml"));
 
-    QObject::connect(&engine, &QQmlApplicationEngine::objectCreated, &app, [url](QObject *obj, const QUrl &objUrl)
-                     {
-                         if (!obj && url == objUrl)
-                             QCoreApplication::exit(-1); }, Qt::QueuedConnection);
+    QObject::connect(
+        &engine,
+        &QQmlApplicationEngine::objectCreated,
+        &app,
+        [url](QObject *obj, const QUrl &objUrl) {
+            if (!obj && url == objUrl)
+                QCoreApplication::exit(-1);
+        },
+        Qt::QueuedConnection);
 
     // ---------------- 后端对象（必须在加载 QML 之前创建） ----------------
     GetHostSearch hostSearch;
@@ -101,25 +108,24 @@ int main(int argc, char *argv[])
     QObject *desktopLyricsObj = comp.create();
     QWindow *desktopLyricsWindow = qobject_cast<QWindow *>(desktopLyricsObj);
 
-    if (desktopLyricsWindow)
-    {
+    if (desktopLyricsWindow) {
         desktopLyricsWindow->show();
 
 #ifdef Q_OS_WIN
         // Windows 特有：每次显示时设置置顶和鼠标不抢焦点
-        QObject::connect(desktopLyricsWindow, &QWindow::visibleChanged, [desktopLyricsWindow]()
-                         {
-            if(!desktopLyricsWindow->isVisible()) return;
+        QObject::connect(desktopLyricsWindow, &QWindow::visibleChanged, [desktopLyricsWindow]() {
+            if (!desktopLyricsWindow->isVisible())
+                return;
 
-            HWND hwnd = (HWND)desktopLyricsWindow->winId();
+            HWND hwnd = (HWND) desktopLyricsWindow->winId();
 
             // 总在最上层、不抢焦点
-            SetWindowPos(hwnd, HWND_TOPMOST, 0,0,0,0,
-                         SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+            SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 
             // 不在任务栏，点击不激活主窗口
             LONG exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
-            SetWindowLong(hwnd, GWL_EXSTYLE, exStyle | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE); });
+            SetWindowLong(hwnd, GWL_EXSTYLE, exStyle | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE);
+        });
 #endif
 
 #ifdef Q_OS_MAC
@@ -136,8 +142,7 @@ int main(int argc, char *argv[])
 
     // 获取根窗口 (ApplicationWindow 需要通过 QQuickWindow 获取)
     QQuickWindow *window = nullptr;
-    if (!engine.rootObjects().isEmpty())
-    {
+    if (!engine.rootObjects().isEmpty()) {
         QObject *rootObj = engine.rootObjects().first();
         window = qobject_cast<QQuickWindow *>(rootObj);
     }
