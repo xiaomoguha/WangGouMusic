@@ -209,6 +209,7 @@ Item {
                     readonly property bool isPlaying: playlistmanager && playlistmanager.currentSonghash === modelData.songhash
 
                     Row {
+                        id: mainRow
                         anchors.fill: parent
                         anchors.leftMargin: 10
                         anchors.rightMargin: 10
@@ -359,7 +360,6 @@ Item {
                                         websocket.addSongToTogether(modelData.songname, modelData.songhash,
                                                                     modelData.singername, modelData.album_name,
                                                                     modelData.duration, modelData.union_cover)
-                                        BasicConfig.emitSongAdded("已添加到一起听: " + modelData.songname)
                                     }
                                 }
                                 Behavior on color { ColorAnimation { duration: 100 } }
@@ -367,6 +367,7 @@ Item {
                         }
 
                         Text {
+                            id: durationText
                             text: modelData.duration
                             anchors.verticalCenter: parent.verticalCenter
                             font.pixelSize: 11

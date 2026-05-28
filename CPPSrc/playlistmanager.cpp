@@ -176,6 +176,69 @@ qint64 PlaylistManager::lyricsindexget()
 }
 
 // 根据index播放
+void PlaylistManager::loadSongPaused(int index)
+{
+    if (index < 0 || index >= (*m_curplaylist).size())
+        return;
+
+    const SongInfo &song = (*m_curplaylist)[index];
+    m_currentIndex = index;
+    emit currentIndexChanged(index);
+
+    // 加载歌词
+    if (song.lyric.isEmpty())
+    {
+        QString cachedLyric = loadLyricFromCache(song.songhash);
+        if (!cachedLyric.isEmpty()) {
+            (*m_curplaylist)[index].lyric = cachedLyric;
+            lyricParser.parseKRCLyrics(cachedLyric);
+        } else {
+            fetchLyricData(song.songhash, [this, index](const QString &lyric) {
+                if (!lyric.isEmpty()) {
+                    (*m_curplaylist)[index].lyric = lyric;
+                    saveLyricToCache((*m_curplaylist)[index].songhash, lyric);
+                    lyricParser.parseKRCLyrics(lyric);
+                }
+            });
+        }
+    } else {
+        lyricParser.parseKRCLyrics(song.lyric);
+    }
+
+    // 加载音频到播放器，不播放
+    player->stop();
+    player->setSource(QUrl());
+
+    ensureCacheDir();
+    QString cacheFilePath = getCacheDir() + "/" + song.title + "-" + song.singername + ".mp3";
+
+    if (QFile::exists(cacheFilePath))
+    {
+        player->setSource(QUrl::fromLocalFile(cacheFilePath));
+    }
+    else if (!song.url.isEmpty())
+    {
+        player->setSource(QUrl(song.url));
+    }
+    else
+    {
+        // 异步获取 URL 后加载
+        fetchSongUrl(song.songhash, [this, index](const QString &url) {
+            if (!url.isEmpty()) {
+                (*m_curplaylist)[index].url = url;
+                if (m_currentIndex == index) {
+                    player->setSource(QUrl(url));
+                }
+            }
+        });
+    }
+
+    extractDominantColor(song.union_cover);
+    m_isPaused = true;
+    emit currentSongChanged();
+    emit isPausedChanged();
+}
+
 void PlaylistManager::playSongbyindex(int index)
 {
     if (index >= 0 && index < (*m_curplaylist).size())
@@ -532,12 +595,11 @@ void PlaylistManager::changeplaylisttype(enum playlist_type changetype)
     {
         type = LOCAL;
         m_curplaylist = &m_playlist;
-        // 恢复本地播放索引
+        // 恢复本地播放索引并加载歌曲（暂停状态）
         if (m_localIndex >= 0 && m_localIndex < m_playlist.size())
         {
             m_currentIndex = m_localIndex;
-            emit currentIndexChanged(m_currentIndex);
-            emit currentSongChanged();
+            loadSongPaused(m_localIndex);
         }
     }
     emit playlistUpdated();
@@ -1152,6 +1214,8 @@ void PlaylistManager::syncTogetherPlaylistFromServer(const QJsonArray &songs)
         song.album_name = obj["album_name"].toString();
         song.duration = obj["duration"].toString();
         song.union_cover = obj["cover_url"].toString();
+        song.added_by_nickname = obj["added_by_nickname"].toString();
+        song.added_by_avatar = obj["added_by_avatar"].toString();
         m_togetherplaylist.append(song);
     }
     emit togetherplaylistUpdated();
@@ -1196,6 +1260,25 @@ void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const Q
                             }
                         });
                 }
+            }
+            else
+            {
+                // URL 为空，通过 hash 获取播放链接
+                m_isPaused = true;
+                emit isPausedChanged();
+                fetchSongUrl(songHash, [this, songHash](const QString &url) {
+                    if (!url.isEmpty())
+                    {
+                        player->setSource(QUrl(url));
+                        player->play();
+                        m_isPaused = false;
+                        emit isPausedChanged();
+                    }
+                    else
+                    {
+                        qWarning() << "一起听模式 - 无法获取歌曲URL，hash:" << songHash;
+                    }
+                });
             }
 
             extractDominantColor(coverUrl);
@@ -1255,6 +1338,24 @@ void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const Q
                     }
                 });
         }
+    }
+    else
+    {
+        m_isPaused = true;
+        emit isPausedChanged();
+        fetchSongUrl(songHash, [this](const QString &url) {
+            if (!url.isEmpty())
+            {
+                player->setSource(QUrl(url));
+                player->play();
+                m_isPaused = false;
+                emit isPausedChanged();
+            }
+            else
+            {
+                qWarning() << "一起听模式(新歌曲) - 无法获取歌曲URL";
+            }
+        });
     }
     extractDominantColor(coverUrl);
     emit currentIndexChanged(m_currentIndex);
