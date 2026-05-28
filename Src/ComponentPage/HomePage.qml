@@ -416,7 +416,6 @@ Item {
                                             websocket.addSongToTogether(songData.songname, songData.songhash,
                                                 songData.singername, songData.album_name,
                                                 songData.duration, songData.union_cover)
-                                            BasicConfig.notice_success("已添加到一起听")
                                         }
                                     } else {
                                         playlistmanager.addandplay(songData.songname, songData.songhash,

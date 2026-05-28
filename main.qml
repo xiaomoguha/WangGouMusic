@@ -43,6 +43,18 @@ ApplicationWindow {
                 loadingToast.showError(errormessages);
             }
         }
+        Connections {
+            target: websocket
+            function onServerNotice(message, mode) {
+                if (mode === "loading") {
+                    loadingToast.showLoading(message);
+                } else if (mode === "error") {
+                    loadingToast.showError(message);
+                } else {
+                    loadingToast.showSuccess(message, 1500);
+                }
+            }
+        }
     }
 
     // 当前是否展开歌词

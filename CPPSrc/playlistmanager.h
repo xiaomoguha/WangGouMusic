@@ -23,17 +23,20 @@
 #include "recommendation.h"
 struct SongInfo
 {
-Q_GADGET // 使结构体能被 Qt 元系统识别
+Q_GADGET
 Q_PROPERTY(QString title MEMBER title)
-    Q_PROPERTY(QString songhash MEMBER songhash)
-        Q_PROPERTY(QString url MEMBER url)
-            Q_PROPERTY(QString singername MEMBER singername)
-                Q_PROPERTY(QString union_cover MEMBER union_cover)
-                    Q_PROPERTY(QString album_name MEMBER album_name)
-                        Q_PROPERTY(QString duration MEMBER duration)
-                            Q_PROPERTY(QString lyric MEMBER lyric)
+Q_PROPERTY(QString songhash MEMBER songhash)
+Q_PROPERTY(QString url MEMBER url)
+Q_PROPERTY(QString singername MEMBER singername)
+Q_PROPERTY(QString union_cover MEMBER union_cover)
+Q_PROPERTY(QString album_name MEMBER album_name)
+Q_PROPERTY(QString duration MEMBER duration)
+Q_PROPERTY(QString lyric MEMBER lyric)
+Q_PROPERTY(QString added_by_nickname MEMBER added_by_nickname)
+Q_PROPERTY(QString added_by_avatar MEMBER added_by_avatar)
 
-                                public : QString title;
+public:
+    QString title;
     QString songhash;
     QString url;
     QString singername;
@@ -41,6 +44,8 @@ Q_PROPERTY(QString title MEMBER title)
     QString album_name;
     QString duration;
     QString lyric;
+    QString added_by_nickname;
+    QString added_by_avatar;
 };
 enum playlist_type
 {
@@ -79,6 +84,7 @@ public:
     Q_INVOKABLE void clearPlaylist();
     Q_INVOKABLE void playSongbyhasg(const QString &songhash);
     Q_INVOKABLE void playSongbyindex(int index);
+    void loadSongPaused(int index);
     Q_INVOKABLE void playNext();
     Q_INVOKABLE void playPrevious();
     Q_INVOKABLE void playstop();

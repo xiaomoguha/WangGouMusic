@@ -322,7 +322,6 @@ Page {
                                         modelData.duration,
                                         modelData.union_cover
                                     );
-                                    BasicConfig.notice_success("已添加到一起听");
                                 }
                             }
 

@@ -8,6 +8,11 @@ Item {
     width: parent.width
     height: parent.height
 
+    // 登录弹窗
+    LoginPage {
+        id: loginPopup
+    }
+
     // ========== 未登录状态 ==========
     Item {
         anchors.fill: parent
@@ -64,7 +69,7 @@ Item {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            BasicConfig.pushPage("qrc:/Src/ComponentPage/LoginPage.qml");
+                            loginPopup.open();
                         }
                     }
 
@@ -440,6 +445,39 @@ Item {
                                 onTapped: {
                                     roomidtextfield.text = modelData.room_id
                                 }
+                            }
+
+                            // 加入按钮
+                            Rectangle {
+                                anchors.right: parent.right
+                                anchors.rightMargin: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 60
+                                height: 28
+                                radius: 14
+                                color: joinRoomBtn.containsMouse ? AppTheme.accentHover : AppTheme.accent
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "加入"
+                                    font.pixelSize: 12
+                                    font.family: "黑体"
+                                    color: "#FFFFFF"
+                                }
+
+                                MouseArea {
+                                    id: joinRoomBtn
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        if (websocket && websocket.connectionState !== 0) return;
+                                        roomidtextfield.text = modelData.room_id;
+                                        websocket.setUrl(modelData.room_id, userManager.userid);
+                                    }
+                                }
+
+                                Behavior on color { ColorAnimation { duration: 150 } }
                             }
 
                             Behavior on color { ColorAnimation { duration: 150 } }

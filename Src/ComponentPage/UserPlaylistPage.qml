@@ -155,7 +155,7 @@ Item {
                     var si = s.singerinfo[0]
                     singerName = (si && si.name) ? si.name : ""
                 }
-                var coverUrl = (s.cover || "").replace("{size}", "400")
+                var coverUrl = (s.cover || "").replace("{size}", "80")
                 normalized.push({
                     "songname": s.songname || (s.name || "").split(" - ").pop() || s.name || "",
                     "singername": singerName || (s.name || "").split(" - ")[0] || "",
@@ -400,7 +400,7 @@ Item {
                                                     var s = cachedSongs[j]
                                                     var sn = ""
                                                     if (s.singerinfo && s.singerinfo.length > 0) { var si = s.singerinfo[0]; sn = (si && si.name) ? si.name : "" }
-                                                    var cu = (s.cover || "").replace("{size}", "400")
+                                                    var cu = (s.cover || "").replace("{size}", "80")
                                                     normalized.push({
                                                         "songname": s.songname || (s.name || "").split(" - ").pop() || s.name || "",
                                                         "singername": sn || (s.name || "").split(" - ")[0] || "",
@@ -787,6 +787,8 @@ Item {
                                         width: 40
                                         height: 40
                                         source: filteredSongs[index] ? filteredSongs[index].cover : ""
+                                        sourceSize.width: 80
+                                        sourceSize.height: 80
                                         fillMode: Image.PreserveAspectCrop
                                         anchors.verticalCenter: parent.verticalCenter
                                         asynchronous: true
@@ -817,6 +819,101 @@ Item {
                                         }
                                     }
 
+                                    // 操作按钮区（固定宽度，悬停时显示按钮）
+                                    Item {
+                                        width: isTogetherMode ? 34 : 68
+                                        height: 30
+                                        anchors.verticalCenter: parent.verticalCenter
+
+                                        Row {
+                                            anchors.fill: parent
+                                            spacing: 4
+                                            visible: songMouse.hovered && !isPlaying
+
+                                            Rectangle {
+                                                visible: !isTogetherMode
+                                                width: 30; height: 30; radius: 15
+                                                color: playHover.hovered ? AppTheme.iconButtonHover : "transparent"
+                                                Image {
+                                                    id: playNowIcon
+                                                    anchors.centerIn: parent
+                                                    source: "qrc:/image/playnow.png"
+                                                    width: 14; height: 14
+                                                    fillMode: Image.PreserveAspectFit
+                                                    layer.enabled: true
+                                                    layer.effect: ColorOverlay { source: playNowIcon; color: playHover.hovered ? "#4FC3F7" : "#FFFFFF" }
+                                                }
+                                                HoverHandler { id: playHover }
+                                                TapHandler {
+                                                    cursorShape: Qt.PointingHandCursor
+                                                    onTapped: {
+                                                        if (!playlistmanager) return
+                                                        var s = filteredSongs[index]
+                                                        playlistmanager.addandplay(s.songname, s.hash, s.singername, s.cover, s.album_name, s.duration)
+                                                    }
+                                                }
+                                                Behavior on color { ColorAnimation { duration: 150 } }
+                                            }
+
+                                            Rectangle {
+                                                visible: !isTogetherMode
+                                                width: 30; height: 30; radius: 15
+                                                color: addHover.hovered ? AppTheme.iconButtonHover : "transparent"
+                                                Image {
+                                                    id: addListIcon
+                                                    anchors.centerIn: parent
+                                                    source: "qrc:/image/addplaylist.png"
+                                                    width: 14; height: 14
+                                                    fillMode: Image.PreserveAspectFit
+                                                    layer.enabled: true
+                                                    layer.effect: ColorOverlay { source: addListIcon; color: addHover.hovered ? AppTheme.accent : "#FFFFFF" }
+                                                }
+                                                HoverHandler { id: addHover }
+                                                TapHandler {
+                                                    cursorShape: Qt.PointingHandCursor
+                                                    onTapped: {
+                                                        if (!playlistmanager) return
+                                                        var s = filteredSongs[index]
+                                                        playlistmanager.addSong(s.songname, s.hash, s.singername, s.cover, s.album_name, s.duration)
+                                                        BasicConfig.emitSongAdded()
+                                                    }
+                                                }
+                                                Behavior on color { ColorAnimation { duration: 150 } }
+                                            }
+
+                                            Rectangle {
+                                                visible: isTogetherMode
+                                                width: 30; height: 30; radius: 15
+                                                color: addTogetherHover.hovered ? AppTheme.iconButtonHover : "transparent"
+                                                Image {
+                                                    id: togetherIcon
+                                                    anchors.centerIn: parent
+                                                    source: "qrc:/image/yinle.png"
+                                                    width: 14; height: 14
+                                                    fillMode: Image.PreserveAspectFit
+                                                    layer.enabled: true
+                                                    layer.effect: ColorOverlay {
+                                                        source: togetherIcon
+                                                        color: addTogetherHover.hovered ? AppTheme.accent : "#FFFFFF"
+                                                    }
+                                                }
+                                                HoverHandler { id: addTogetherHover }
+                                                TapHandler {
+                                                    cursorShape: Qt.PointingHandCursor
+                                                    onTapped: {
+                                                        if (!websocket || !filteredSongs[index]) return
+                                                        var s = filteredSongs[index]
+                                                        websocket.addSongToTogether(
+                                                            s.songname, s.hash, s.singername,
+                                                            s.album_name, s.duration, s.cover
+                                                        )
+                                                    }
+                                                }
+                                                Behavior on color { ColorAnimation { duration: 150 } }
+                                            }
+                                        }
+                                    }
+
                                     Text {
                                         text: filteredSongs[index] ? filteredSongs[index].album_name : ""
                                         width: 0.2 * userPlaylistPage.width
@@ -833,101 +930,6 @@ Item {
                                         font.family: "黑体"
                                         color: AppTheme.textMuted
                                         anchors.verticalCenter: parent.verticalCenter
-                                    }
-                                }
-
-                                // hover 操作按钮
-                                Row {
-                                    visible: songMouse.hovered && !isPlaying
-                                    anchors.right: parent.right
-                                    anchors.rightMargin: 20
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    spacing: 8
-
-                                    Rectangle {
-                                        visible: !isTogetherMode
-                                        width: 30; height: 30; radius: 15
-                                        color: playHover.hovered ? AppTheme.iconButtonHover : "transparent"
-                                        Image {
-                                            id: playNowIcon
-                                            anchors.centerIn: parent
-                                            source: "qrc:/image/playnow.png"
-                                            width: 16; height: 16
-                                            fillMode: Image.PreserveAspectFit
-                                            layer.enabled: true
-                                            layer.effect: ColorOverlay { source: playNowIcon; color: playHover.hovered ? "#4FC3F7" : AppTheme.iconDefault }
-                                        }
-                                        HoverHandler { id: playHover }
-                                        TapHandler {
-                                            cursorShape: Qt.PointingHandCursor
-                                            onTapped: {
-                                                if (!playlistmanager) return
-                                                var s = filteredSongs[index]
-                                                playlistmanager.addandplay(s.songname, s.hash, s.singername, s.cover, s.album_name, s.duration)
-                                            }
-                                        }
-                                        Behavior on color { ColorAnimation { duration: 150 } }
-                                    }
-
-                                    Rectangle {
-                                        visible: !isTogetherMode
-                                        width: 30; height: 30; radius: 15
-                                        color: addHover.hovered ? AppTheme.iconButtonHover : "transparent"
-                                        Image {
-                                            id: addListIcon
-                                            anchors.centerIn: parent
-                                            source: "qrc:/image/addplaylist.png"
-                                            width: 16; height: 16
-                                            fillMode: Image.PreserveAspectFit
-                                            layer.enabled: true
-                                            layer.effect: ColorOverlay { source: addListIcon; color: AppTheme.iconDefault }
-                                        }
-                                        HoverHandler { id: addHover }
-                                        TapHandler {
-                                            cursorShape: Qt.PointingHandCursor
-                                            onTapped: {
-                                                if (!playlistmanager) return
-                                                var s = filteredSongs[index]
-                                                playlistmanager.addSong(s.songname, s.hash, s.singername, s.cover, s.album_name, s.duration)
-                                                BasicConfig.emitSongAdded()
-                                            }
-                                        }
-                                        Behavior on color { ColorAnimation { duration: 150 } }
-                                    }
-
-                                    // 一起听按钮
-                                    Rectangle {
-                                        width: 30; height: 30; radius: 15
-                                        color: addTogetherHover.hovered ? AppTheme.iconButtonHover : "transparent"
-                                        visible: (websocket && websocket.connected) || isTogetherMode
-
-                                        Image {
-                                            id: togetherIcon
-                                            anchors.centerIn: parent
-                                            source: "qrc:/image/yinle.png"
-                                            width: 16; height: 16
-                                            fillMode: Image.PreserveAspectFit
-                                            layer.enabled: true
-                                            layer.effect: ColorOverlay {
-                                                source: togetherIcon
-                                                color: addTogetherHover.hovered ? AppTheme.accent : AppTheme.iconDefault
-                                            }
-                                        }
-
-                                        HoverHandler { id: addTogetherHover }
-                                        TapHandler {
-                                            cursorShape: Qt.PointingHandCursor
-                                            onTapped: {
-                                                if (!websocket || !filteredSongs[index]) return
-                                                var s = filteredSongs[index]
-                                                websocket.addSongToTogether(
-                                                    s.songname, s.hash, s.singername,
-                                                    s.album_name, s.duration, s.cover
-                                                )
-                                                BasicConfig.notice_success("已添加到一起听")
-                                            }
-                                        }
-                                        Behavior on color { ColorAnimation { duration: 150 } }
                                     }
                                 }
 

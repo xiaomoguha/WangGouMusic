@@ -13,6 +13,7 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QVariantList>
+#include <QElapsedTimer>
 
 // 与服务端 types.h 中的 enum ctrl 保持一致
 enum ServerAction {
@@ -32,6 +33,13 @@ enum ServerAction {
     BROADCAST_SONG_PROGRESS
 };
 
+// 聊天 & 操作日志 action（与服务端 types.h 一致）
+enum ChatAction {
+    SEND_CHAT = 300,
+    BROADCAST_CHAT,
+    BROADCAST_ROOM_ACTION
+};
+
 class WebSocketClient : public QObject
 {
     Q_OBJECT
@@ -41,6 +49,7 @@ class WebSocketClient : public QObject
     Q_PROPERTY(QString Roomid READ Getroomid NOTIFY roomidChanged)
     Q_PROPERTY(ConnectionState connectionState READ connectionState NOTIFY connectionStateChanged)
     Q_PROPERTY(QVariantList roomList READ roomList NOTIFY roomListUpdated)
+    Q_PROPERTY(QVariantList messages READ messages NOTIFY messagesUpdated)
 public:
     explicit WebSocketClient(PlaylistManager *playmanager, UserManager *usermanager, QObject *parent = nullptr);
     // 连接状态枚举
@@ -83,6 +92,10 @@ public:
     Q_INVOKABLE void requestClientList();
     Q_INVOKABLE void fetchRoomList();
     QVariantList roomList() const;
+    QVariantList messages() const;
+
+    // 聊天
+    Q_INVOKABLE void sendChatMessage(const QString &message);
 
 signals:
     void connectionStatusChanged(bool connected);
@@ -100,6 +113,15 @@ signals:
     void songInfoUpdated(const QJsonObject &data);
     void clientListUpdated(const QJsonObject &data);
     void roomListUpdated();
+    void messagesUpdated();
+
+    // 聊天 & 操作日志
+    void chatMessageReceived(const QString &userid, const QString &nickname,
+                             const QString &avatarUrl, const QString &message, qint64 timestamp);
+    void roomActionsReceived(const QJsonArray &actions);
+
+    // 服务器操作结果通知
+    void serverNotice(const QString &message, const QString &mode); // mode: "loading" / "success" / "error"
 
 public slots:
     Q_INVOKABLE void sendString(const QString &message);
@@ -113,6 +135,7 @@ private slots:
 
     void sendHeartbeat();
     void tryReconnect();
+    void checkHeartbeatTimeout();
 
 private:
     PlaylistManager *playmanager = nullptr;
@@ -135,7 +158,7 @@ private:
     QUrl m_serverUrl;
     ConnectionState m_connectionState;
     bool m_autoReconnect;
-    int m_reconnectInterval;
+    int m_reconnectBaseInterval;    // 初始重连间隔(ms)
     int m_reconnectAttempts;
     int m_maxReconnectAttempts;
     QString Roomid;
@@ -146,7 +169,10 @@ private:
 
     // 心跳机制
     QTimer *m_heartbeatTimer;
+    QTimer *m_heartbeatTimeoutTimer;
     int m_heartbeatInterval;
+    QElapsedTimer m_lastMessageTime;
+    static constexpr int HEARTBEAT_TIMEOUT_FACTOR = 3; // 超过 N 倍心跳间隔无响应则断开
 
     // 线程安全
     QMutex m_mutex;
@@ -154,6 +180,12 @@ private:
     // 房间列表
     QNetworkAccessManager m_httpManager;
     QVariantList m_roomList;
+
+    // 消息存储（聊天 + 操作动态，切换页面不丢失）
+    QVariantList m_messages;
+
+    // 待确认的添加歌曲操作
+    bool m_pendingAddSong = false;
 };
 
 #endif // WEBSOCKETCLIENT_H

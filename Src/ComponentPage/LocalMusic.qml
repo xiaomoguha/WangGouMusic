@@ -22,7 +22,7 @@ Item {
         anchors.top: parent.top
     }
     Text {
-        text: "共" + (playlistmanager ? (playlistmanager.type === 1 ? playlistmanager.togetherplaylist.length : playlistmanager.playlistcount) : 0) + "首"
+        text: "共" + (playlistmanager ? playlistmanager.playlistcount : 0) + "首"
         font.pixelSize: 13
         font.family: "黑体"
         color: AppTheme.textDim
@@ -184,7 +184,7 @@ Item {
             width: playlistflick.width
             spacing: 10
             Repeater {
-                model: playlistmanager ? (playlistmanager.type === 1 ? playlistmanager.togetherplaylist : playlistmanager.playlist) : 0
+                model: playlistmanager ? playlistmanager.playlist : 0
                 delegate: Rectangle {
                     id: playlistItem
                     required property int index
@@ -264,6 +264,7 @@ Item {
                             width: 30
                             height: 30
                             radius: 15
+                            visible: !(playlistmanager && playlistmanager.type === 1)
                             color: playNowHoverHandler.hovered ? AppTheme.iconButtonHover : "transparent"
 
                             Image {
@@ -304,6 +305,7 @@ Item {
                             width: 30
                             height: 30
                             radius: 15
+                            visible: !(playlistmanager && playlistmanager.type === 1)
                             color: addLoveHoverHandler.hovered ? AppTheme.iconButtonHover : "transparent"
 
                             Image {
@@ -345,7 +347,7 @@ Item {
                             height: 30
                             radius: 15
                             color: addTogetherHover.hovered ? AppTheme.iconButtonHover : "transparent"
-                            visible: websocket && websocket.connected
+                            visible: playlistmanager && playlistmanager.type === 1
 
                             Image {
                                 id: togetherIcon
@@ -376,7 +378,6 @@ Item {
                                         modelData.duration,
                                         modelData.union_cover
                                     );
-                                    BasicConfig.notice_success("已添加到一起听");
                                 }
                             }
 
