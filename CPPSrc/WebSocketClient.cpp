@@ -102,8 +102,11 @@ void WebSocketClient::disconnectFromServer()
     emit messagesUpdated();
 
     // 退出一起听模式：暂停当前歌曲，恢复本地播放列表（暂停状态）
-    playmanager->setPaused(true);
-    playmanager->changeplaylisttype(LOCAL);
+    if (playmanager)
+    {
+        playmanager->setPaused(true);
+        playmanager->changeplaylisttype(LOCAL);
+    }
 
     emit logMessage("已断开服务器连接");
 }
@@ -169,9 +172,8 @@ QString WebSocketClient::Getroomid() const
 
 void WebSocketClient::sendJson(const QJsonObject &json)
 {
-    if (!isConnected())
+    if (!isConnected() || !m_webSocket)
     {
-        emit errorOccurred("无法发送JSON：WebSocket未连接");
         return;
     }
 
@@ -182,9 +184,8 @@ void WebSocketClient::sendJson(const QJsonObject &json)
 
 void WebSocketClient::sendString(const QString &message)
 {
-    if (!isConnected())
+    if (!isConnected() || !m_webSocket)
     {
-        emit errorOccurred("无法发送消息：WebSocket未连接");
         return;
     }
 
@@ -383,9 +384,16 @@ void WebSocketClient::onDisconnected()
         m_heartbeatTimeoutTimer->stop();
     }
 
+    // 清空消息
+    m_messages.clear();
+    emit messagesUpdated();
+
     // 退出一起听模式，恢复本地播放列表（暂停状态）
-    playmanager->setPaused(true);
-    playmanager->changeplaylisttype(LOCAL);
+    if (playmanager)
+    {
+        playmanager->setPaused(true);
+        playmanager->changeplaylisttype(LOCAL);
+    }
 
     if (m_autoReconnect && m_reconnectAttempts < m_maxReconnectAttempts)
     {
@@ -498,6 +506,9 @@ void WebSocketClient::tryReconnect()
 
 void WebSocketClient::handleServerMessage(const QJsonObject &json)
 {
+    if (m_connectionState != Connected)
+        return;
+
     int action = json["action"].toInt(-1);
 
     switch (action)
