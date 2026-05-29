@@ -480,7 +480,7 @@ Item {
     // ========== 播放列表侧滑抽屉 ==========
     Rectangle {
         id: playlistDrawer
-        property bool open: false
+        property bool open: true
 
         anchors.top: topBar.bottom
         anchors.bottom: inputBar.top

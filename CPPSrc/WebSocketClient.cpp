@@ -2,11 +2,11 @@
 #include <QDebug>
 #include <QUrlQuery>
 
-#define WEB_SOCKET_SERVICE_HOST "192.168.9.119:3001"
+#define WEB_SOCKET_SERVICE_HOST "music.xjt-togethertracks.top"
 #define WEB_SOCKET_SERVICE_PATH "/ws"
 
 WebSocketClient::WebSocketClient(PlaylistManager *playManager, UserManager *userManager, QObject *parent)
-    : QObject{parent}, playmanager(playManager), usermanager(userManager), m_webSocket(nullptr), m_serverUrl("ws://192.168.9.119:3001/ws"), m_connectionState(Disconnected), m_autoReconnect(true), m_reconnectBaseInterval(2000)
+    : QObject{parent}, playmanager(playManager), usermanager(userManager), m_webSocket(nullptr), m_serverUrl("wss://music.xjt-togethertracks.top/ws"), m_connectionState(Disconnected), m_autoReconnect(true), m_reconnectBaseInterval(2000)
       ,
       m_reconnectAttempts(0), m_maxReconnectAttempts(10)
       ,
@@ -138,9 +138,8 @@ void WebSocketClient::setUrl(const QString &roomid, const QString &userid)
     }
 
     QUrl url;
-    url.setScheme("ws");
-    url.setHost("192.168.9.119");
-    url.setPort(3001);
+    url.setScheme("wss");
+    url.setHost(WEB_SOCKET_SERVICE_HOST);
     url.setPath(WEB_SOCKET_SERVICE_PATH);
 
     QUrlQuery query;
@@ -846,7 +845,7 @@ QString WebSocketClient::jsonToString(const QJsonObject &json)
 
 void WebSocketClient::fetchRoomList()
 {
-    QUrl httpUrl(QString("http://%1/rooms").arg(WEB_SOCKET_SERVICE_HOST));
+    QUrl httpUrl(QString("https://%1/rooms").arg(WEB_SOCKET_SERVICE_HOST));
     QNetworkRequest request(httpUrl);
     request.setTransferTimeout(5000);
     QNetworkReply *reply = m_httpManager.get(request);

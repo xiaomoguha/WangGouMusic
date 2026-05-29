@@ -260,12 +260,12 @@ Popup {
                     loops: Animation.Infinite
                     NumberAnimation {
                         to: parent.width - width
-                        duration: 1200
+                        duration: 700
                         easing.type: Easing.InOutCubic
                     }
                     NumberAnimation {
                         to: 0
-                        duration: 1200
+                        duration: 700
                         easing.type: Easing.InOutCubic
                     }
                 }
