@@ -1,5 +1,6 @@
 #include "WebSocketClient.h"
 #include <QDebug>
+#include <QUrlQuery>
 
 #define WEB_SOCKET_SERVICE_HOST "192.168.9.119:3001"
 #define WEB_SOCKET_SERVICE_PATH "/ws"
@@ -124,7 +125,6 @@ QString WebSocketClient::url() const
 
 void WebSocketClient::setUrl(const QString &roomid, const QString &userid)
 {
-    int ischange = 0;
     Roomid = roomid;
     m_userId = userid;
 
@@ -137,26 +137,29 @@ void WebSocketClient::setUrl(const QString &roomid, const QString &userid)
         avatarUrl = usermanager->avatarUrl();
     }
 
-    QString web_service_url = QString("ws://%1%2?userid=%3&roomid=%4&nickname=%5&avatar=%6")
-                                  .arg(WEB_SOCKET_SERVICE_HOST)
-                                  .arg(WEB_SOCKET_SERVICE_PATH)
-                                  .arg(userid)
-                                  .arg(roomid)
-                                  .arg(QString(QUrl::toPercentEncoding(nickname)))
-                                  .arg(QString(QUrl::toPercentEncoding(avatarUrl)));
-    if (m_serverUrl.toString() != web_service_url)
+    QUrl url;
+    url.setScheme("ws");
+    url.setHost("192.168.9.119");
+    url.setPort(3001);
+    url.setPath(WEB_SOCKET_SERVICE_PATH);
+
+    QUrlQuery query;
+    query.addQueryItem("userid", userid);
+    query.addQueryItem("roomid", roomid);
+    query.addQueryItem("nickname", nickname);
+    query.addQueryItem("avatar", avatarUrl);
+    url.setQuery(query);
+
+    if (m_serverUrl != url || m_connectionState == Disconnected)
     {
         if (m_connectionState == Connected)
         {
             disconnectFromServer();
         }
-        m_serverUrl = QUrl(web_service_url);
-        ischange = 1;
-    }
-    if (ischange)
-    {
+        m_serverUrl = url;
         initializeWebSocket();
-        emit urlChanged(web_service_url);
+        emit urlChanged(url.toString());
+        connectToServer();
     }
 }
 

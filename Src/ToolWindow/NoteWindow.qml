@@ -247,6 +247,7 @@ Popup {
             height: 2
             radius: 1
             color: AppTheme.progressTrack
+            clip: true
             anchors.horizontalCenter: parent.horizontalCenter
             Rectangle {
                 width: parent.width * 0.3
