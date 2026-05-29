@@ -369,6 +369,7 @@ Item {
                         model: websocket ? websocket.roomList : []
 
                         delegate: Rectangle {
+                            required property var modelData
                             width: 500
                             height: 56
                             radius: 12
