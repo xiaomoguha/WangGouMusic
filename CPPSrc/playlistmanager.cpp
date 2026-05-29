@@ -1239,9 +1239,26 @@ void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const Q
             player->stop();
             player->setSource(QUrl());
 
-            if (!songUrl.isEmpty())
+            // 优先使用本地缓存
+            ensureCacheDir();
+            QString cacheDir = getCacheDir();
+            QString cacheFileName = song.title + "-" + song.singername + ".mp3";
+            QString cacheFilePath = cacheDir + "/" + cacheFileName;
+            QFile cacheFile(cacheFilePath);
+            bool useCache = cacheFile.exists();
+
+            if (useCache)
+            {
+                qDebug() << "一起听 - 使用本地缓存:" << cacheFilePath;
+                player->setSource(QUrl::fromLocalFile(cacheFilePath));
+            }
+            else if (!songUrl.isEmpty())
             {
                 player->setSource(QUrl(songUrl));
+            }
+
+            if (useCache || !songUrl.isEmpty())
+            {
                 player->play();
                 m_isPaused = false;
 
