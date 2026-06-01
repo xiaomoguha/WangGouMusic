@@ -54,6 +54,21 @@ Row {
         id: suggestModel
     }
 
+    TextMetrics {
+        id: suggestMetrics
+        font.pixelSize: 15
+        font.family: "黑体"
+    }
+
+    property int suggestMaxWidth: {
+        var maxW = 0
+        for (var i = 0; i < suggestModel.count; i++) {
+            suggestMetrics.text = suggestModel.get(i).hintInfo || ""
+            maxW = Math.max(maxW, suggestMetrics.width)
+        }
+        return maxW
+    }
+
     // 搜索框
     Rectangle {
         id: searchContainer
@@ -127,9 +142,12 @@ Row {
             }
         }
 
+        // 点击图标区域也能聚焦搜索框
         MouseArea {
-            anchors.fill: parent
-            hoverEnabled: true
+            anchors.left: parent.left
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: searchicon.width + parent.anchors.leftMargin
             cursorShape: Qt.IBeamCursor
             onPressed: {
                 searchTextField.forceActiveFocus();
@@ -142,7 +160,7 @@ Row {
     }
     Popup {
         id: seachPop
-        width: parent.width
+        width: Math.min(Math.max(searchContainer.width, suggestMaxWidth + 80), 600)
         height: 500
         y: searchTextField.height + 10
         background: Rectangle {
@@ -213,6 +231,8 @@ Row {
                                 Text {
                                     id: suggestText
                                     anchors.verticalCenter: parent.verticalCenter
+                                    width: parent.width - suggestIcon.width - parent.spacing - parent.anchors.leftMargin - parent.anchors.rightMargin
+                                    elide: Text.ElideRight
                                     textFormat: Text.RichText
                                     font.pixelSize: 15
                                     font.family: "黑体"

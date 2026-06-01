@@ -445,7 +445,13 @@ Item {
                     border.color: chatInput.activeFocus ? AppTheme.borderFocus : AppTheme.borderSubtle
                     border.width: 1
                 }
-                onAccepted: sendBtn.clicked()
+                onAccepted: {
+                    if (chatInput.text.trim() !== "") {
+                        websocket.sendChatMessage(chatInput.text.trim());
+                        chatInput.text = "";
+                        Qt.callLater(function() { messageListView.positionViewAtEnd(); });
+                    }
+                }
             }
 
             Rectangle {

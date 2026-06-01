@@ -10,6 +10,16 @@ Item {
     width: parent ? parent.width : 0
     height: parent ? parent.height : 0
 
+    // ── 工具函数 ──
+    function fmtDuration(raw) {
+        if (!raw && raw !== 0) return ""
+        var sec = parseInt(raw, 10)
+        if (isNaN(sec) || sec < 0) return ""
+        var m = Math.floor(sec / 60)
+        var s = sec % 60
+        return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s
+    }
+
     // ── 数据 ──
     property var playlists: []
     property var currentSongs: []
@@ -163,7 +173,7 @@ Item {
                     "cover": coverUrl,
                     "union_cover": coverUrl,
                     "album_name": (s.albuminfo && s.albuminfo.name) ? s.albuminfo.name : (s.album_name || ""),
-                    "duration": s.duration || (s.timelen ? String(Math.round(s.timelen / 1000)) : ""),
+                    "duration": s.duration ? (String(s.duration).indexOf(":") >= 0 ? s.duration : fmtDuration(s.duration)) : (s.timelen ? fmtDuration(Math.round(s.timelen / 1000)) : ""),
                 })
             }
             if (detailPage === 1) {
@@ -406,7 +416,7 @@ Item {
                                                         "singername": sn || (s.name || "").split(" - ")[0] || "",
                                                         "hash": s.hash || "", "cover": cu, "union_cover": cu,
                                                         "album_name": (s.albuminfo && s.albuminfo.name) ? s.albuminfo.name : (s.album_name || ""),
-                                                        "duration": s.duration || (s.timelen ? String(Math.round(s.timelen / 1000)) : ""),
+                                                        "duration": s.duration ? (String(s.duration).indexOf(":") >= 0 ? s.duration : fmtDuration(s.duration)) : (s.timelen ? fmtDuration(Math.round(s.timelen / 1000)) : ""),
                                                     })
                                                 }
                                                 currentSongs = normalized
