@@ -640,6 +640,7 @@ void PlaylistManager::startPlayback(const SongInfo &song)
         emit currentSongChanged();
         emit isPausedChanged();
         qDebug() << "正在播放:" << song.title << "(" << song.url << ")";
+
         return; // 跳过下载
     }
 
@@ -1201,6 +1202,11 @@ QColor PlaylistManager::getAverageColor(const QImage &image)
 
 void PlaylistManager::syncTogetherPlaylistFromServer(const QJsonArray &songs)
 {
+    // 在清空列表前记住当前播放歌曲的 hash
+    QString playingHash;
+    if (m_currentIndex >= 0 && m_currentIndex < m_togetherplaylist.size())
+        playingHash = m_togetherplaylist[m_currentIndex].songhash;
+
     m_togetherplaylist.clear();
     for (const QJsonValue &val : songs)
     {
@@ -1218,6 +1224,24 @@ void PlaylistManager::syncTogetherPlaylistFromServer(const QJsonArray &songs)
         song.added_by_avatar = obj["added_by_avatar"].toString();
         m_togetherplaylist.append(song);
     }
+
+    // 根据当前播放歌曲 hash 重新定位 currentIndex
+    if (!playingHash.isEmpty())
+    {
+        for (int i = 0; i < m_togetherplaylist.size(); i++)
+        {
+            if (m_togetherplaylist[i].songhash == playingHash)
+            {
+                if (m_currentIndex != i)
+                {
+                    m_currentIndex = i;
+                    emit currentIndexChanged(i);
+                }
+                break;
+            }
+        }
+    }
+
     emit togetherplaylistUpdated();
 }
 

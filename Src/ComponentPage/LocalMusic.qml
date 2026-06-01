@@ -8,6 +8,7 @@ Item {
     objectName: "LocalMusic"
     width: parent ? parent.width : 0
     height: parent ? parent.height : 0
+    readonly property bool isTogetherMode: playlistmanager && playlistmanager.type === 1
     property int index: 5
     Text {
         id: liebiaotext
@@ -193,7 +194,7 @@ Item {
                     height: playlistrow.height + 25
                     radius: 5
                     // 背景色：悬停时或当前播放项时显示
-                    color: (itemHoverHandler.hovered || (playlistmanager && playlistmanager.currentIndex === index)) ? AppTheme.bgCardHover : "transparent"
+                    color: (itemHoverHandler.hovered || (playlistmanager && !isTogetherMode && playlistmanager.currentIndex === index)) ? AppTheme.bgCardHover : "transparent"
 
                     // 使用 HoverHandler 控制列表项悬停效果
                     HoverHandler {
@@ -211,7 +212,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             font.pixelSize: 16
                             color: AppTheme.textMuted
-                            visible: playlistmanager ? (playlistmanager.currentIndex === index ? false : true) : true
+                            visible: playlistmanager ? (!isTogetherMode && playlistmanager.currentIndex === index ? false : true) : true
                         }
                         AnimatedImage {
                             anchors.verticalCenter: parent.verticalCenter
@@ -219,7 +220,7 @@ Item {
                             height: 25
                             source: "qrc:/image/isplaying.gif"
                             playing: visible  // 确保动画自动播放
-                            visible: playlistmanager ? (playlistmanager.currentIndex === index) : false
+                            visible: playlistmanager ? (!isTogetherMode && playlistmanager.currentIndex === index) : false
                         }
 
                         Image {
@@ -234,7 +235,7 @@ Item {
                             Text {
                                 text: modelData.title
                                 font.pixelSize: 13
-                                color: playlistmanager ? (playlistmanager.currentIndex === index ? AppTheme.accentPlaying : AppTheme.textPrimary) : AppTheme.textPrimary
+                                color: playlistmanager ? (!isTogetherMode && playlistmanager.currentIndex === index ? AppTheme.accentPlaying : AppTheme.textPrimary) : AppTheme.textPrimary
                                 elide: Text.ElideRight
                                 width: 0.19 * root.width
                                 wrapMode: Text.NoWrap
@@ -245,14 +246,14 @@ Item {
                                 width: 0.19 * root.width
                                 wrapMode: Text.NoWrap
                                 font.pixelSize: 11
-                                color: playlistmanager ? (playlistmanager.currentIndex === index ? AppTheme.accentPlaying : AppTheme.textMuted) : AppTheme.textMuted
+                                color: playlistmanager ? (!isTogetherMode && playlistmanager.currentIndex === index ? AppTheme.accentPlaying : AppTheme.textMuted) : AppTheme.textMuted
                             }
                         }
                     }
                     Row {
                         id: playlistadditemsrow
                         // 悬停时显示按钮，但当前播放项不显示
-                        visible: itemHoverHandler.hovered && !(playlistmanager && playlistmanager.currentIndex === index)
+                        visible: itemHoverHandler.hovered && !(playlistmanager && !isTogetherMode && playlistmanager.currentIndex === index)
                         anchors.left: playlistrow.right
                         anchors.leftMargin: 10
                         anchors.verticalCenter: parent.verticalCenter

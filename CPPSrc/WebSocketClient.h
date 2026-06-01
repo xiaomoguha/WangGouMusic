@@ -172,7 +172,7 @@ private:
     QTimer *m_heartbeatTimeoutTimer;
     int m_heartbeatInterval;
     QElapsedTimer m_lastMessageTime;
-    static constexpr int HEARTBEAT_TIMEOUT_FACTOR = 3; // 超过 N 倍心跳间隔无响应则断开
+    static constexpr int HEARTBEAT_TIMEOUT_FACTOR = 5; // 超过 N 倍心跳间隔无响应则断开
 
     // 线程安全
     QMutex m_mutex;

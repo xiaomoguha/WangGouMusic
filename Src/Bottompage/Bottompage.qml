@@ -1,4 +1,5 @@
 import QtQuick 2.15
+import QtQuick.Controls 2.15
 import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
 
@@ -680,7 +681,7 @@ Rectangle {
         // ========== 右侧：功能按钮 ==========
         Row {
             id: rightSection
-            width: 120
+            width: 130
             height: parent.height
             spacing: 6
             layoutDirection: Qt.RightToLeft
@@ -711,43 +712,6 @@ Rectangle {
 
                 HoverHandler {
                     id: playlistBtnHandler
-                }
-                TapHandler {
-                    cursorShape: Qt.PointingHandCursor
-                }
-
-                Behavior on color {
-                    ColorAnimation {
-                        duration: 150
-                    }
-                }
-            }
-
-            // 音量
-            Rectangle {
-                id: volumeBtn
-                width: 32
-                height: 32
-                radius: 16
-                color: volumeBtnHandler.hovered ? AppTheme.iconButtonHover : "transparent"
-                anchors.verticalCenter: parent.verticalCenter
-
-                Image {
-                    id: volumeIcon
-                    anchors.centerIn: parent
-                    source: "qrc:/image/shenying.png"
-                    width: 16
-                    height: 16
-                    fillMode: Image.PreserveAspectFit
-                    layer.enabled: true
-                    layer.effect: ColorOverlay {
-                        source: volumeIcon
-                        color: volumeBtnHandler.hovered ? AppTheme.iconHover : AppTheme.textMuted
-                    }
-                }
-
-                HoverHandler {
-                    id: volumeBtnHandler
                 }
                 TapHandler {
                     cursorShape: Qt.PointingHandCursor

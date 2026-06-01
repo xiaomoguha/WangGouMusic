@@ -7,7 +7,7 @@ Popup {
     id: toast
     modal: true
     focus: true
-    closePolicy: Popup.NoAutoClose
+    closePolicy: mode === "loading" ? Popup.NoAutoClose : Popup.CloseOnPressOutside
 
     property string mode: "loading"   // loading | error | success
     property string message: "加载中..."

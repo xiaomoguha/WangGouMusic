@@ -346,7 +346,8 @@ Window {
                                 property string currentChar: verticalTextContainer.lyricText.charAt(index)
                                 property bool isAscii: currentChar.charCodeAt(0) < 128 && currentChar !== ' '
                                 property bool isLetterOrNumber: (currentChar >= 'a' && currentChar <= 'z') || (currentChar >= 'A' && currentChar <= 'Z') || (currentChar >= '0' && currentChar <= '9')
-                                property bool isPunctuation: isAscii && !isLetterOrNumber
+                                property bool isCJKPunctuation: "，。！？：；、（）—…“”‘’".indexOf(currentChar) >= 0
+                                property bool isPunctuation: (isAscii && !isLetterOrNumber) || isCJKPunctuation
 
                                 text: currentChar
                                 font.pixelSize: desktopLyrics.fontSize * desktopLyrics.scale
@@ -387,7 +388,8 @@ Window {
                                     property string currentChar: verticalTextContainer.lyricText.charAt(index)
                                     property bool isAscii: currentChar.charCodeAt(0) < 128 && currentChar !== ' '
                                     property bool isLetterOrNumber: (currentChar >= 'a' && currentChar <= 'z') || (currentChar >= 'A' && currentChar <= 'Z') || (currentChar >= '0' && currentChar <= '9')
-                                    property bool isPunctuation: isAscii && !isLetterOrNumber
+                                    property bool isCJKPunctuation: "，。！？：；、（）—…“”‘’".indexOf(currentChar) >= 0
+                                    property bool isPunctuation: (isAscii && !isLetterOrNumber) || isCJKPunctuation
 
                                     text: currentChar
                                     font.pixelSize: desktopLyrics.fontSize * desktopLyrics.scale
