@@ -63,7 +63,11 @@ Popup {
 
     Overlay.modal: Rectangle {
         color: AppTheme.dialogOverlay
-        MouseArea { anchors.fill: parent }
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.AllButtons
+            onClicked: {}
+        }
     }
 
     Column {
@@ -207,7 +211,7 @@ Popup {
                 height: 36
                 radius: 8
                 visible: updateDialog.hasUpdate
-                color: AppTheme.iconButtonHover
+                color: cancelMA.containsMouse ? AppTheme.bgCardHover : AppTheme.iconButtonHover
                 Behavior on color {
                     ColorAnimation {
                         duration: 150
@@ -220,11 +224,12 @@ Popup {
                     color: AppTheme.textSecondary
                     font.pixelSize: 13
                 }
-                HoverHandler {
-                    id: cancelHover
-                }
-                TapHandler {
-                    onTapped: {
+                MouseArea {
+                    id: cancelMA
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
                         if (updateDialog.state_ === "downloading" && updater) {
                             updater.cancelDownload();
                         }
@@ -241,10 +246,10 @@ Popup {
                 radius: 8
                 color: {
                     if (!updateDialog.hasUpdate)
-                        return AppTheme.iconButtonHover;
+                        return actionMA.containsMouse ? AppTheme.bgCardHover : AppTheme.iconButtonHover;
                     if (updateDialog.state_ === "downloading")
                         return AppTheme.textMuted;
-                    return actionHover.hovered ? AppTheme.accentHover : AppTheme.accent;
+                    return actionMA.containsMouse ? AppTheme.accentHover : AppTheme.accent;
                 }
                 Behavior on color {
                     ColorAnimation {
@@ -272,11 +277,12 @@ Popup {
                     font.pixelSize: 13
                     font.weight: Font.Medium
                 }
-                HoverHandler {
-                    id: actionHover
-                }
-                TapHandler {
-                    onTapped: {
+                MouseArea {
+                    id: actionMA
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
                         if (!updateDialog.hasUpdate) {
                             updateDialog.close();
                             return;

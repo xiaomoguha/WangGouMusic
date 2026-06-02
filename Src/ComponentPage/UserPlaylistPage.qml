@@ -843,7 +843,9 @@ Item {
                                             Rectangle {
                                                 visible: !isTogetherMode
                                                 width: 30; height: 30; radius: 15
-                                                color: playHover.hovered ? AppTheme.iconButtonHover : "transparent"
+                                                color: AppTheme.isDark
+                                                       ? (playHover.hovered ? AppTheme.iconButtonHover : "transparent")
+                                                       : (playHover.hovered ? "#FFCCCC" : "#FFD8D8")
                                                 Image {
                                                     id: playNowIcon
                                                     anchors.centerIn: parent
@@ -851,7 +853,10 @@ Item {
                                                     width: 14; height: 14
                                                     fillMode: Image.PreserveAspectFit
                                                     layer.enabled: true
-                                                    layer.effect: ColorOverlay { source: playNowIcon; color: playHover.hovered ? "#4FC3F7" : "#FFFFFF" }
+                                                    layer.effect: ColorOverlay {
+                                                        source: playNowIcon
+                                                        color: AppTheme.isDark ? (playHover.hovered ? "#4FC3F7" : "#FFFFFF") : AppTheme.accent
+                                                    }
                                                 }
                                                 HoverHandler { id: playHover }
                                                 TapHandler {
@@ -868,7 +873,9 @@ Item {
                                             Rectangle {
                                                 visible: !isTogetherMode
                                                 width: 30; height: 30; radius: 15
-                                                color: addHover.hovered ? AppTheme.iconButtonHover : "transparent"
+                                                color: AppTheme.isDark
+                                                       ? (addHover.hovered ? AppTheme.iconButtonHover : "transparent")
+                                                       : (addHover.hovered ? "#FFCCCC" : "#FFD8D8")
                                                 Image {
                                                     id: addListIcon
                                                     anchors.centerIn: parent
@@ -876,7 +883,10 @@ Item {
                                                     width: 14; height: 14
                                                     fillMode: Image.PreserveAspectFit
                                                     layer.enabled: true
-                                                    layer.effect: ColorOverlay { source: addListIcon; color: addHover.hovered ? AppTheme.accent : "#FFFFFF" }
+                                                    layer.effect: ColorOverlay {
+                                                        source: addListIcon
+                                                        color: AppTheme.isDark ? (addHover.hovered ? AppTheme.accent : "#FFFFFF") : AppTheme.accent
+                                                    }
                                                 }
                                                 HoverHandler { id: addHover }
                                                 TapHandler {
@@ -894,7 +904,9 @@ Item {
                                             Rectangle {
                                                 visible: isTogetherMode
                                                 width: 30; height: 30; radius: 15
-                                                color: addTogetherHover.hovered ? AppTheme.iconButtonHover : "transparent"
+                                                color: AppTheme.isDark
+                                                       ? (addTogetherHover.hovered ? AppTheme.iconButtonHover : "transparent")
+                                                       : (addTogetherHover.hovered ? "#FFCCCC" : "#FFD8D8")
                                                 Image {
                                                     id: togetherIcon
                                                     anchors.centerIn: parent
@@ -904,7 +916,7 @@ Item {
                                                     layer.enabled: true
                                                     layer.effect: ColorOverlay {
                                                         source: togetherIcon
-                                                        color: addTogetherHover.hovered ? AppTheme.accent : "#FFFFFF"
+                                                        color: AppTheme.isDark ? (addTogetherHover.hovered ? AppTheme.accent : "#FFFFFF") : AppTheme.accent
                                                     }
                                                 }
                                                 HoverHandler { id: addTogetherHover }

@@ -8,7 +8,6 @@ Item {
     width: parent.width
     height: parent.height
 
-    // 登录弹窗
     LoginPage {
         id: loginPopup
     }
@@ -18,63 +17,66 @@ Item {
         anchors.fill: parent
         visible: !userManager || !userManager.isLoggedIn
 
-        Rectangle {
-            anchors.horizontalCenter: parent.horizontalCenter
-            y: 0.25 * parent.height
-            width: 400
-            height: 220
-            radius: 20
-            color: AppTheme.bgRoomCard
+        Column {
+            anchors.centerIn: parent
+            spacing: 20
 
-            Column {
+            Rectangle {
+                width: 80
+                height: 80
+                radius: 40
+                color: AppTheme.isDark ? AppTheme.accentDim : "#10FF8A80"
                 anchors.horizontalCenter: parent.horizontalCenter
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: 20
 
                 Text {
-                    text: "请先登录酷狗账号"
-                    font.pixelSize: 20
-                    font.family: "黑体"
-                    color: AppTheme.textPrimary
-                    font.weight: Font.Bold
-                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.centerIn: parent
+                    text: "♪"
+                    font.pixelSize: 36
+                    color: AppTheme.accent
                 }
+            }
+
+            Text {
+                text: "请先登录酷狗账号"
+                font.pixelSize: 20
+                font.family: "黑体"
+                color: AppTheme.textPrimary
+                font.weight: Font.Bold
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+
+            Text {
+                text: "登录后即可加入房间，与其他人一起听歌"
+                font.pixelSize: 13
+                font.family: "黑体"
+                color: AppTheme.textMuted
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+
+            Rectangle {
+                width: 180
+                height: 46
+                radius: 23
+                color: loginBtnHover.containsMouse ? AppTheme.accentHover : AppTheme.accent
+                anchors.horizontalCenter: parent.horizontalCenter
 
                 Text {
-                    text: "登录后即可加入房间，与其他人一起听歌"
-                    font.pixelSize: 13
+                    anchors.centerIn: parent
+                    text: "去登录"
+                    font.pixelSize: 16
                     font.family: "黑体"
-                    color: AppTheme.textMuted
-                    anchors.horizontalCenter: parent.horizontalCenter
+                    color: "#FFFFFF"
                 }
 
-                Rectangle {
-                    width: 180
-                    height: 46
-                    radius: 23
-                    color: loginBtnHover.containsMouse ? AppTheme.accentHover : AppTheme.accent
-                    anchors.horizontalCenter: parent.horizontalCenter
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "去登录"
-                        font.pixelSize: 16
-                        font.family: "黑体"
-                        color: "#FFFFFF"
-                    }
-
-                    MouseArea {
-                        id: loginBtnHover
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            loginPopup.open();
-                        }
-                    }
-
-                    Behavior on color { ColorAnimation { duration: 150 } }
+                MouseArea {
+                    id: loginBtnHover
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: loginPopup.open()
                 }
+
+                Behavior on color { ColorAnimation { duration: 150 } }
             }
         }
     }
@@ -88,58 +90,87 @@ Item {
             id: loggedFlickable
             anchors.fill: parent
             clip: true
-            contentHeight: loggedContentColumn.height + 40
+            contentHeight: loggedContent.height + 60
 
             Column {
-                id: loggedContentColumn
-                width: 500
+                id: loggedContent
+                width: 480
                 x: (loggedFlickable.width - width) / 2
-                topPadding: loggedFlickable.height * 0.06
-                spacing: 20
+                topPadding: 30
+                spacing: 24
 
                 // ===== 加入房间卡片 =====
                 Rectangle {
                     width: parent.width
-                    height: loggedCol.implicitHeight + 60
-                    radius: 20
-                    color: AppTheme.bgRoomCard
+                    height: joinCol.implicitHeight + 50
+                    radius: 16
+                    color: AppTheme.bgCard
+                    border.width: 1
+                    border.color: AppTheme.borderDefault
+
+                    // 浅色模式下的柔和渐变底色
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 16
+                        visible: !AppTheme.isDark
+                        gradient: Gradient {
+                            orientation: Gradient.Vertical
+                            GradientStop { position: 0.0; color: "#FFF5F5" }
+                            GradientStop { position: 1.0; color: "#F8F8FA" }
+                        }
+                    }
+
+                    // 顶部装饰线
+                    Rectangle {
+                        anchors.top: parent.top
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        height: 3
+                        radius: 1.5
+
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: 0.0; color: "transparent" }
+                            GradientStop { position: 0.3; color: AppTheme.accent }
+                            GradientStop { position: 0.7; color: AppTheme.accentHover }
+                            GradientStop { position: 1.0; color: "transparent" }
+                        }
+                    }
 
                     Column {
-                        id: loggedCol
+                        id: joinCol
                         anchors.horizontalCenter: parent.horizontalCenter
                         anchors.top: parent.top
-                        anchors.topMargin: 25
-                        spacing: 18
+                        anchors.topMargin: 28
+                        spacing: 16
                         width: 400
 
                         Text {
-                            text: qsTr("加入房间，一起嗨歌吧！")
-                            font.pixelSize: 20
+                            text: "加入房间，一起嗨歌吧！"
+                            font.pixelSize: 22
                             font.family: "黑体"
                             color: AppTheme.textPrimary
+                            font.weight: Font.Bold
                             anchors.horizontalCenter: parent.horizontalCenter
                         }
 
-                        // 当前登录用户信息
+                        // 用户信息
                         Rectangle {
                             width: parent.width
-                            height: 56
-                            radius: 12
+                            height: 52
+                            radius: 10
                             color: AppTheme.bgInput
-                            border.color: AppTheme.borderSubtle
-                            border.width: 1
 
                             Row {
                                 anchors.left: parent.left
-                                anchors.leftMargin: 16
+                                anchors.leftMargin: 14
                                 anchors.verticalCenter: parent.verticalCenter
-                                spacing: 12
+                                spacing: 10
 
-                                // 用户头像
                                 Rectangle {
-                                    width: 36
-                                    height: 36
-                                    radius: 18
+                                    width: 32
+                                    height: 32
+                                    radius: 16
                                     clip: true
                                     anchors.verticalCenter: parent.verticalCenter
 
@@ -150,32 +181,17 @@ Item {
                                         asynchronous: true
                                         layer.enabled: true
                                         layer.effect: OpacityMask {
-                                            maskSource: Rectangle {
-                                                width: 36
-                                                height: 36
-                                                radius: 18
-                                            }
+                                            maskSource: Rectangle { width: 32; height: 32; radius: 16 }
                                         }
                                     }
                                 }
 
-                                Column {
+                                Text {
+                                    text: (userManager ? userManager.nickname : "") + "  ·  将以该账号加入房间"
+                                    font.pixelSize: 12
+                                    font.family: "黑体"
+                                    color: AppTheme.textMuted
                                     anchors.verticalCenter: parent.verticalCenter
-                                    spacing: 2
-
-                                    Text {
-                                        text: userManager ? userManager.nickname : ""
-                                        font.pixelSize: 14
-                                        font.family: "黑体"
-                                        font.weight: Font.Bold
-                                        color: AppTheme.textPrimary
-                                    }
-                                    Text {
-                                        text: "将以该账号加入房间"
-                                        font.pixelSize: 11
-                                        font.family: "黑体"
-                                        color: AppTheme.textMuted
-                                    }
                                 }
                             }
                         }
@@ -184,45 +200,26 @@ Item {
                         TextField {
                             id: roomidtextfield
                             width: parent.width
-                            height: 50
-                            placeholderText: "输入要加入的房间号，若无该房间将新建一个房间"
+                            height: 48
+                            placeholderText: "输入房间号，若无该房间将自动创建"
                             color: AppTheme.textPrimary
                             palette.placeholderText: AppTheme.textPlaceholder
                             horizontalAlignment: TextInput.AlignHCenter
                             verticalAlignment: TextInput.AlignVCenter
                             font.pixelSize: 14
                             font.family: "黑体"
-                            leftPadding: 15
                             enabled: websocket ? websocket.connectionState === 0 : true
                             background: Rectangle {
-                                anchors.fill: parent
-                                radius: 20
-                                gradient: Gradient {
-                                    orientation: Gradient.Horizontal
-                                    GradientStop { color: AppTheme.roomOuterStart; position: 0 }
-                                    GradientStop { color: AppTheme.roomOuterEnd; position: 1 }
-                                }
-                                Rectangle {
-                                    id: ineer
-                                    anchors.fill: parent
-                                    anchors.margins: 1
-                                    radius: parent.radius - 1
-                                    property real gradientStopPos: 1
-                                    gradient: Gradient {
-                                        orientation: Gradient.Horizontal
-                                        GradientStop { color: AppTheme.roomInnerStart; position: 0 }
-                                        GradientStop { color: AppTheme.roomInnerEnd; position: ineer.gradientStopPos }
-                                    }
-                                }
+                                radius: 12
+                                color: AppTheme.bgInput
+                                border.width: roomidtextfield.activeFocus ? 2 : 1
+                                border.color: roomidtextfield.activeFocus ? AppTheme.accent : AppTheme.borderSubtle
+                                Behavior on border.color { ColorAnimation { duration: 150 } }
+                                Behavior on border.width { NumberAnimation { duration: 100 } }
                             }
-                            Connections {
-                                target: BasicConfig
-                                function onBkanAreaClicked() { ineer.gradientStopPos = 1 }
-                            }
-                            onPressed: { ineer.gradientStopPos = 0 }
                         }
 
-                        // 连接状态提示
+                        // 状态提示
                         Text {
                             id: statusText
                             anchors.horizontalCenter: parent.horizontalCenter
@@ -237,6 +234,40 @@ Item {
 
                         // 加入按钮
                         Rectangle {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: 200
+                            height: 46
+                            radius: 23
+
+                            gradient: Gradient {
+                                orientation: Gradient.Horizontal
+                                GradientStop { position: 0.0; color: joinBtnHover.containsMouse ? AppTheme.accentHover : AppTheme.accent }
+                                GradientStop { position: 1.0; color: joinBtnHover.containsMouse ? AppTheme.accent : AppTheme.accentHover }
+                            }
+                            opacity: (websocket && websocket.connectionState === 1) ? 0.6 : 1.0
+
+                            Text {
+                                text: websocket && websocket.connectionState === 1 ? "连接中..." : "开始一起听！"
+                                font.pixelSize: 16
+                                font.family: "黑体"
+                                color: "#FFFFFF"
+                                anchors.centerIn: parent
+                            }
+                            MouseArea {
+                                id: joinBtnHover
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    if (roomidtextfield.text === "") {
+                                        BasicConfig.notice_error("请输入房间号");
+                                        return;
+                                    }
+                                    if (websocket && websocket.connectionState !== 0) return;
+                                    websocket.setUrl(roomidtextfield.text, userManager.userid);
+                                }
+                            }
+
                             Connections {
                                 target: websocket
                                 function onUrlChanged(url_back) {
@@ -273,36 +304,7 @@ Item {
                                     statusText.visible = true;
                                 }
                             }
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            width: 180
-                            height: 50
-                            radius: 13
-                            color: joinBtnHover.containsMouse ? AppTheme.accentHover : AppTheme.accent
-                            opacity: (websocket && websocket.connectionState === 1) ? 0.6 : 1.0
 
-                            Text {
-                                text: websocket && websocket.connectionState === 1 ? "连接中..." : "开始一起听！"
-                                font.pixelSize: 16
-                                font.family: "黑体"
-                                color: AppTheme.textPrimary
-                                anchors.centerIn: parent
-                            }
-                            MouseArea {
-                                id: joinBtnHover
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    if (roomidtextfield.text === "") {
-                                        BasicConfig.notice_error("请输入房间号");
-                                        return;
-                                    }
-                                    if (websocket && websocket.connectionState !== 0) return;
-                                    // 用 userManager 的 userid 和 nickname
-                                    websocket.setUrl(roomidtextfield.text, userManager.userid);
-                                }
-                            }
-                            Behavior on color { ColorAnimation { duration: 150 } }
                             Behavior on opacity { NumberAnimation { duration: 200 } }
                         }
                     }
@@ -311,10 +313,19 @@ Item {
                 // ===== 活跃房间列表 =====
                 Column {
                     width: parent.width
-                    spacing: 10
+                    spacing: 12
 
                     Row {
-                        spacing: 10
+                        spacing: 8
+
+                        // 标题前的小圆点装饰
+                        Rectangle {
+                            width: 4
+                            height: 16
+                            radius: 2
+                            color: AppTheme.accent
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
 
                         Text {
                             text: "当前活跃房间"
@@ -348,20 +359,46 @@ Item {
                             HoverHandler { id: roomRefreshHover }
                             TapHandler {
                                 cursorShape: Qt.PointingCursor
-                                onTapped: {
-                                    if (websocket) websocket.fetchRoomList()
-                                }
+                                onTapped: { if (websocket) websocket.fetchRoomList() }
                             }
                         }
                     }
 
                     // 空状态
-                    Text {
+                    Column {
                         visible: !websocket || websocket.roomList.length === 0
-                        text: "暂无活跃房间，输入房间号创建一个吧"
-                        font.pixelSize: 13
-                        font.family: "黑体"
-                        color: AppTheme.textMuted
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        spacing: 8
+                        topPadding: 20
+
+                        Rectangle {
+                            width: 56
+                            height: 56
+                            radius: 28
+                            color: AppTheme.isDark ? AppTheme.accentDim : "#10FF8A80"
+                            anchors.horizontalCenter: parent.horizontalCenter
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "♫"
+                                font.pixelSize: 24
+                                color: AppTheme.accent
+                            }
+                        }
+                        Text {
+                            text: "暂无活跃房间"
+                            font.pixelSize: 13
+                            font.family: "黑体"
+                            color: AppTheme.textMuted
+                            anchors.horizontalCenter: parent.horizontalCenter
+                        }
+                        Text {
+                            text: "输入房间号创建一个吧"
+                            font.pixelSize: 12
+                            font.family: "黑体"
+                            color: AppTheme.textDim
+                            anchors.horizontalCenter: parent.horizontalCenter
+                        }
                     }
 
                     // 房间列表
@@ -370,36 +407,73 @@ Item {
 
                         delegate: Rectangle {
                             required property var modelData
-                            width: 500
-                            height: 56
+                            width: 480
+                            height: 64
                             radius: 12
-                            color: roomCardHover.hovered ? AppTheme.bgCard : AppTheme.bgRoomCard
+                            color: roomCardMA.containsMouse ? AppTheme.bgCardHover : AppTheme.bgCard
+                            border.width: 1
+                            border.color: AppTheme.borderDefault
+
+                            // 浅色模式下柔和渐变底色
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: 12
+                                visible: !AppTheme.isDark
+                                gradient: Gradient {
+                                    orientation: Gradient.Horizontal
+                                    GradientStop { position: 0.0; color: "#FFFAFA" }
+                                    GradientStop { position: 1.0; color: "#F8F8FC" }
+                                }
+                            }
+
+                            // 浅色模式下左侧强调线
+                            Rectangle {
+                                visible: !AppTheme.isDark
+                                anchors.left: parent.left
+                                anchors.top: parent.top
+                                anchors.bottom: parent.bottom
+                                anchors.margins: 8
+                                width: 3
+                                radius: 1.5
+                                color: AppTheme.accent
+                                opacity: 0.5
+                            }
 
                             Row {
                                 anchors.fill: parent
                                 anchors.margins: 12
                                 spacing: 12
 
-                                // 房间图标
+                                // 房间封面（歌曲封面或首字母）
                                 Rectangle {
-                                    width: 36
-                                    height: 36
-                                    radius: 18
-                                    color: AppTheme.accentDim
+                                    width: 40
+                                    height: 40
+                                    radius: 10
+                                    clip: true
                                     anchors.verticalCenter: parent.verticalCenter
+                                    color: !modelData.cover_url ? AppTheme.accentDim : "transparent"
+
+                                    Image {
+                                        anchors.fill: parent
+                                        visible: modelData.cover_url && modelData.cover_url !== ""
+                                        source: modelData.cover_url || ""
+                                        fillMode: Image.PreserveAspectCrop
+                                        asynchronous: true
+                                    }
 
                                     Text {
                                         anchors.centerIn: parent
+                                        visible: !modelData.cover_url || modelData.cover_url === ""
                                         text: modelData.room_id ? modelData.room_id.substring(0, 1) : "#"
                                         color: AppTheme.accent
-                                        font.pixelSize: 14
+                                        font.pixelSize: 16
                                         font.bold: true
                                     }
                                 }
 
                                 // 房间信息
                                 Column {
-                                    width: parent.width - 48 - memberBadge.width - 24
+                                    width: parent.width - 40 - 12 - memberBadge.width - 12 - joinRoomBtn.width - 12
                                     anchors.verticalCenter: parent.verticalCenter
                                     spacing: 2
 
@@ -423,62 +497,63 @@ Item {
                                 // 在线人数
                                 Rectangle {
                                     id: memberBadge
-                                    height: 24
-                                    width: memberText.width + 16
-                                    radius: 12
+                                    height: 22
+                                    width: memberText.width + 14
+                                    radius: 11
                                     color: AppTheme.accentDim
                                     anchors.verticalCenter: parent.verticalCenter
 
                                     Text {
                                         id: memberText
                                         anchors.centerIn: parent
-                                        text: modelData.member_count + "人在线"
-                                        font.pixelSize: 11
+                                        text: modelData.member_count + "人"
+                                        font.pixelSize: 10
                                         color: AppTheme.accent
                                         font.family: "黑体"
                                     }
                                 }
-                            }
 
-                            HoverHandler { id: roomCardHover }
-                            TapHandler {
-                                cursorShape: Qt.PointingCursor
-                                onTapped: {
-                                    roomidtextfield.text = modelData.room_id
-                                }
-                            }
-
-                            // 加入按钮
-                            Rectangle {
-                                anchors.right: parent.right
-                                anchors.rightMargin: 12
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: 60
-                                height: 28
-                                radius: 14
-                                color: joinRoomBtn.containsMouse ? AppTheme.accentHover : AppTheme.accent
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: "加入"
-                                    font.pixelSize: 12
-                                    font.family: "黑体"
-                                    color: "#FFFFFF"
-                                }
-
-                                MouseArea {
+                                // 加入按钮
+                                Rectangle {
                                     id: joinRoomBtn
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        if (websocket && websocket.connectionState !== 0) return;
-                                        roomidtextfield.text = modelData.room_id;
-                                        websocket.setUrl(modelData.room_id, userManager.userid);
+                                    width: 56
+                                    height: 28
+                                    radius: 14
+
+                                    gradient: Gradient {
+                                        orientation: Gradient.Horizontal
+                                        GradientStop { position: 0.0; color: joinRoomBtnMA.containsMouse ? AppTheme.accentHover : AppTheme.accent }
+                                        GradientStop { position: 1.0; color: joinRoomBtnMA.containsMouse ? AppTheme.accent : AppTheme.accentHover }
+                                    }
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "加入"
+                                        font.pixelSize: 12
+                                        font.family: "黑体"
+                                        color: "#FFFFFF"
+                                    }
+
+                                    MouseArea {
+                                        id: joinRoomBtnMA
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            if (websocket && websocket.connectionState !== 0) return;
+                                            roomidtextfield.text = modelData.room_id;
+                                            websocket.setUrl(modelData.room_id, userManager.userid);
+                                        }
                                     }
                                 }
+                            }
 
-                                Behavior on color { ColorAnimation { duration: 150 } }
+                            MouseArea {
+                                id: roomCardMA
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: roomidtextfield.text = modelData.room_id
                             }
 
                             Behavior on color { ColorAnimation { duration: 150 } }

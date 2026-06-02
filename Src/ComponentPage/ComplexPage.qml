@@ -12,6 +12,7 @@ Page {
     Connections {
         target: BasicConfig
         function onSearchKeywordchange() {
+            flick.contentY = 0;
             loadingOverlay.visible = true;
             complexsearch.fetchComplexData(BasicConfig.searchKeyword);
         }
@@ -198,28 +199,30 @@ Page {
                         visible: showActions
                         x: 0.28 * root.width
                         anchors.verticalCenter: parent.verticalCenter
-                        spacing: 8
+                        spacing: 6
 
                         // 播放按钮
                         Rectangle {
                             id: playNowBtn
                             visible: !isTogetherMode
-                            width: 32
-                            height: 32
-                            radius: 16
-                            color: playNowHoverHandler.hovered ? AppTheme.iconButtonHover : "transparent"
+                            width: 28
+                            height: 28
+                            radius: 14
+                            color: AppTheme.isDark
+                                   ? (playNowHoverHandler.hovered ? AppTheme.iconButtonHover : "transparent")
+                                   : (playNowHoverHandler.hovered ? "#FFCCCC" : "#FFD8D8")
 
                             Image {
                                 id: playNowIcon
                                 anchors.centerIn: parent
                                 source: "qrc:/image/playnow.png"
-                                width: 16
-                                height: 16
+                                width: 12
+                                height: 12
                                 fillMode: Image.PreserveAspectFit
                                 layer.enabled: true
                                 layer.effect: ColorOverlay {
                                     source: playNowIcon
-                                    color: AppTheme.iconDefault
+                                    color: AppTheme.isDark ? AppTheme.iconDefault : AppTheme.accent
                                 }
                             }
 
@@ -246,22 +249,24 @@ Page {
                         Rectangle {
                             id: addPlaylistBtn
                             visible: !isTogetherMode
-                            width: 32
-                            height: 32
-                            radius: 16
-                            color: addPlaylistHoverHandler.hovered ? AppTheme.iconButtonHover : "transparent"
+                            width: 28
+                            height: 28
+                            radius: 14
+                            color: AppTheme.isDark
+                                   ? (addPlaylistHoverHandler.hovered ? AppTheme.iconButtonHover : "transparent")
+                                   : (addPlaylistHoverHandler.hovered ? "#FFCCCC" : "#FFD8D8")
 
                             Image {
                                 id: addPlaylistIcon
                                 anchors.centerIn: parent
                                 source: "qrc:/image/addplaylist.png"
-                                width: 16
-                                height: 16
+                                width: 12
+                                height: 12
                                 fillMode: Image.PreserveAspectFit
                                 layer.enabled: true
                                 layer.effect: ColorOverlay {
                                     source: addPlaylistIcon
-                                    color: AppTheme.iconDefault
+                                    color: AppTheme.isDark ? AppTheme.iconDefault : AppTheme.accent
                                 }
                             }
 
@@ -287,23 +292,26 @@ Page {
                         // 添加到一起听按钮
                         Rectangle {
                             id: addTogetherBtn
-                            width: 32
-                            height: 32
-                            radius: 16
-                            color: addTogetherHover.hovered ? AppTheme.iconButtonHover : "transparent"
+                            width: 28
+                            height: 28
+                            radius: 14
+                            color: AppTheme.isDark
+                                   ? (addTogetherHover.hovered ? AppTheme.iconButtonHover : "transparent")
+                                   : (addTogetherHover.hovered ? "#FFCCCC" : "#FFD8D8")
                             visible: (websocket && websocket.connected) || isTogetherMode
 
                             Image {
                                 id: togetherIcon
                                 anchors.centerIn: parent
                                 source: "qrc:/image/yinle.png"
-                                width: 16
-                                height: 16
+                                width: 12
+                                height: 12
                                 fillMode: Image.PreserveAspectFit
                                 layer.enabled: true
                                 layer.effect: ColorOverlay {
                                     source: togetherIcon
-                                    color: addTogetherHover.hovered ? AppTheme.accent : AppTheme.iconDefault
+                                    color: AppTheme.isDark ? (addTogetherHover.hovered ? AppTheme.accent : AppTheme.iconDefault)
+                                         : AppTheme.accent
                                 }
                             }
 
@@ -335,22 +343,25 @@ Page {
                         // 添加到喜欢按钮
                         Rectangle {
                             id: addLoveBtn
-                            width: 32
-                            height: 32
-                            radius: 16
-                            color: addLoveHoverHandler.hovered ? AppTheme.iconButtonHover : "transparent"
+                            width: 28
+                            height: 28
+                            radius: 14
+                            color: AppTheme.isDark
+                                   ? (addLoveHoverHandler.hovered ? AppTheme.iconButtonHover : "transparent")
+                                   : (addLoveHoverHandler.hovered ? "#FFCCCC" : "#FFD8D8")
 
                             Image {
                                 id: addLoveIcon
                                 anchors.centerIn: parent
                                 source: "qrc:/image/addlove.png"
-                                width: 16
-                                height: 16
+                                width: 12
+                                height: 12
                                 fillMode: Image.PreserveAspectFit
                                 layer.enabled: true
                                 layer.effect: ColorOverlay {
                                     source: addLoveIcon
-                                    color: addLoveHoverHandler.hovered ? AppTheme.accent : AppTheme.iconDefault
+                                    color: AppTheme.isDark ? (addLoveHoverHandler.hovered ? AppTheme.accent : AppTheme.iconDefault)
+                                         : AppTheme.accent
                                 }
                             }
 
