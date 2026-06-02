@@ -586,10 +586,15 @@ void PlaylistManager::changeplaylisttype(enum playlist_type changetype)
     }
     if (changetype == TOGETHER)
     {
-        // 切到一起听前，保存本地播放状态
+        // 切到一起听前，暂停并保存本地播放状态
+        player->pause();
+        m_isPaused = true;
+        emit isPausedChanged();
         m_localIndex = m_currentIndex;
         type = TOGETHER;
         m_curplaylist = &m_togetherplaylist;
+        m_currentIndex = -1;
+        emit currentIndexChanged(-1);
     }
     else if (changetype == LOCAL)
     {
@@ -822,13 +827,16 @@ void PlaylistManager::restoreLastPlayback()
             }
         });
 
-    if (song.url.isEmpty()) {
+    // 优先使用本地缓存文件，避免过期 URL 导致 403
+    ensureCacheDir();
+    QString cacheFilePath = getCacheDir() + "/" + song.title + "-" + song.singername + ".mp3";
+    if (QFile::exists(cacheFilePath)) {
+        player->setSource(QUrl::fromLocalFile(cacheFilePath));
+    } else {
         fetchSongUrl(song.songhash, [this](const QString &url) {
             if (!url.isEmpty())
                 player->setSource(QUrl(url));
         });
-    } else {
-        player->setSource(QUrl(song.url));
     }
 }
 
@@ -1069,11 +1077,19 @@ void PlaylistManager::handlePlayerError(QMediaPlayer::Error error, const QString
     }
     else
     {
-        // 修复失败，跳过当前歌曲
+        // 修复失败，跳到下一首但不自动播放
         qWarning() << "修复失败，跳过当前歌曲";
+        m_repairCount = 0;
         m_isPaused = true;
         emit isPausedChanged();
-        this->playNext();
+        // 只切歌不播放
+        int nextIdx = m_currentIndex + 1;
+        if (nextIdx >= (*m_curplaylist).size()) nextIdx = 0;
+        if (nextIdx != m_currentIndex && nextIdx < (*m_curplaylist).size()) {
+            m_currentIndex = nextIdx;
+            emit currentIndexChanged(nextIdx);
+            loadSongPaused(nextIdx);
+        }
     }
 }
 // 将毫秒转换为 "分:秒" 格式

@@ -41,23 +41,23 @@ Rectangle {
     // 主内容区域 - 横向布局
     Row {
         anchors.fill: parent
-        anchors.leftMargin: 35
-        anchors.rightMargin: 20
-        spacing: 8
+        anchors.leftMargin: 20
+        anchors.rightMargin: 4
+        spacing: 4
 
         // ========== 左侧：歌曲信息 ==========
         Row {
             id: leftSection
-            width: 180
+            width: 155
             height: parent.height
             spacing: 5
 
             // 专辑封面（旋转动画）
             Rectangle {
                 id: albumCoverContainer
-                width: 50
-                height: 50
-                radius: 25
+                width: 65
+                height: 65
+                radius: 32
                 anchors.verticalCenter: parent.verticalCenter
                 clip: true
 
@@ -85,14 +85,14 @@ Rectangle {
                     asynchronous: true
                     cache: true
                     mipmap: true
-                    sourceSize.width: 100
-                    sourceSize.height: 100
+                    sourceSize.width: 130
+                    sourceSize.height: 130
                     layer.enabled: true
                     layer.effect: OpacityMask {
                         maskSource: Rectangle {
-                            width: 50
-                            height: 50
-                            radius: 25
+                            width: 65
+                            height: 65
+                            radius: 32
                         }
                     }
 
@@ -103,7 +103,7 @@ Rectangle {
                         id: rotationAnim
                         from: 0
                         to: 360
-                        duration: 8000
+                        duration: 20000
                         loops: Animation.Infinite
                         running: playlistmanager && !playlistmanager.isPaused && root.visible
                     }
@@ -146,7 +146,7 @@ Rectangle {
             Column {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 2
-                width: 110
+                width: 80
 
                 Text {
                     id: songNameText
@@ -172,15 +172,11 @@ Rectangle {
                 }
             }
         }
-        Item {
-            width: -1
-            height: parent.height
-        }
 
         // ========== 中间：播放控制（歌词/按钮切换）==========
         Item {
             id: lyricsControlContainer
-            width: 200  // 扩大宽度，让歌词区域更靠近左侧歌曲信息
+            width: 260
             height: parent.height
             anchors.verticalCenter: parent.verticalCenter
 
@@ -238,7 +234,6 @@ Rectangle {
                 property int charIndex: playlistmanager ? playlistmanager.lyricCharIndex : -1
                 property real charProgress: playlistmanager ? playlistmanager.lyricCharProgress : 0.0
 
-                // 高亮比例
                 property real highlightRatio: {
                     var totalChars = playlistmanager ? (playlistmanager.lyricCharCount || lyricText.length) : lyricText.length;
                     if (totalChars === 0 || charIndex < 0)
@@ -246,47 +241,76 @@ Rectangle {
                     return (charIndex + charProgress) / totalChars;
                 }
 
-                // 歌词内容容器（左对齐，与桌面歌词一致）
+                // 是否需要滚动（文字超出容器）
+                property bool needsScroll: bgText.implicitWidth > lyricsContainer.width
+                // 高亮位置的 x 坐标
+                property real highlightX: hlText.width * highlightRatio
+                // 滚动偏移：保证高亮位置始终在容器中可见
+                property real scrollOffset: {
+                    if (!needsScroll) return 0;
+                    var viewW = lyricsContainer.width;
+                    // 目标：高亮点在容器 40%~60% 的位置
+                    var target = highlightX - viewW * 0.45;
+                    // 限制范围：不超出 [0, maxScroll]
+                    var maxScroll = bgText.implicitWidth - viewW;
+                    return Math.max(0, Math.min(maxScroll, target));
+                }
+
+                // 歌词内容容器
                 Item {
                     id: lyricsContainer
-                    anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: lyricsScrollLayer.width - 20
+                    anchors.fill: parent
                     height: 24
-                    clip: true  // 裁剪超出部分
+                    clip: true
 
-                    // 底层：完整灰色文字（左对齐）
-                    Text {
-                        id: bgText
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: lyricsScrollLayer.lyricText
-                        font.pixelSize: 14
-                        font.bold: true
-                        font.family: "黑体"
-                        color: AppTheme.textMuted
-                        maximumLineCount: 1
-                    }
-
-                    // 高亮层：从左到右刷过去（与桌面歌词一致）
+                    // 内部可滑动层
                     Item {
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: hlText.width * lyricsScrollLayer.highlightRatio
-                        height: bgText.height
-                        clip: true
-                        visible: lyricsScrollLayer.highlightRatio > 0
+                        id: lyricsSlide
+                        width: Math.max(bgText.implicitWidth, lyricsContainer.width)
+                        height: parent.height
+                        // 短歌词居中，长歌词跟随高亮滚动
+                        x: lyricsScrollLayer.needsScroll
+                           ? -lyricsScrollLayer.scrollOffset
+                           : (lyricsContainer.width - bgText.implicitWidth) / 2
 
+                        Behavior on x {
+                            enabled: lyricsScrollLayer.needsScroll
+                            SmoothedAnimation { duration: 300; velocity: 150 }
+                        }
+
+                        // 底层：完整灰色文字
                         Text {
-                            id: hlText
+                            id: bgText
                             anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
                             text: lyricsScrollLayer.lyricText
                             font.pixelSize: 14
                             font.bold: true
                             font.family: "黑体"
-                            color: AppTheme.accent
+                            color: AppTheme.textMuted
                             maximumLineCount: 1
+                        }
+
+                        // 高亮层
+                        Item {
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: hlText.width * lyricsScrollLayer.highlightRatio
+                            height: bgText.height
+                            clip: true
+                            visible: lyricsScrollLayer.highlightRatio > 0
+
+                            Text {
+                                id: hlText
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: lyricsScrollLayer.lyricText
+                                font.pixelSize: 14
+                                font.bold: true
+                                font.family: "黑体"
+                                color: AppTheme.accent
+                                maximumLineCount: 1
+                            }
                         }
                     }
                 }
@@ -299,11 +323,10 @@ Rectangle {
                 }
             }
 
-            // ===== 控制按钮层（悬停显示，按钮在歌词区域左侧中间） =====
+            // ===== 控制按钮层（悬停显示，按钮在歌词区域居中） =====
             Row {
                 id: controlButtonsLayer
-                anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
+                anchors.centerIn: parent
                 spacing: 16
                 opacity: lyricsControlContainer.showControls ? 1.0 : 0.0
                 visible: opacity > 0
@@ -391,7 +414,8 @@ Rectangle {
                         cursorShape: Qt.PointingHandCursor
                         onTapped: {
                             if (playlistmanager.type === 1) {
-                                // TOGETHER 模式：通过 WebSocket 控制
+                                // TOGETHER 模式：没有歌曲时不发指令
+                                if (playlistmanager.currentIndex < 0) return;
                                 if (playlistmanager.isPaused) {
                                     websocket.resumeTogether();
                                 } else {
@@ -480,7 +504,7 @@ Rectangle {
         Row {
             id: progressSection
             height: parent.height
-            spacing: 8
+            spacing: 10
             anchors.verticalCenter: parent.verticalCenter
 
             // 当前时间
@@ -488,8 +512,8 @@ Rectangle {
                 id: currentTimeText
                 text: playlistmanager ? playlistmanager.percentstr : "00:00"
                 font.family: "黑体"
-                font.pixelSize: 12
-                color: AppTheme.textDim
+                font.pixelSize: 11
+                color: AppTheme.isDark ? "#99FFFFFF" : AppTheme.textMuted
                 anchors.verticalCenter: parent.verticalCenter
             }
 
@@ -497,86 +521,61 @@ Rectangle {
             Item {
                 id: progressContainer
                 height: parent.height
-                // 进度条宽度 = 总宽度 - 左侧(180) - 中间控制(152) - 右侧(120) - 边距(40) - spacing(45) - 时间文字(约80)
-                width: 0.35 * root.width
+                width: root.width - 640
 
-                // 进度条
+                // 底层轨道
                 Rectangle {
                     id: progressSlider
                     anchors.centerIn: parent
                     width: parent.width
-                    height: progressMouseArea.containsMouse ? 6 : 4
+                    height: progressMouseArea.containsMouse || progressSlider.dragging ? 4 : 2
                     radius: height / 2
-                    color: AppTheme.progressTrack
+                    color: AppTheme.isDark ? "#1AFFFFFF" : "#1A000000"
 
                     property real value: playlistmanager ? playlistmanager.percent : 0.0
                     property bool dragging: false
 
-                    // 悬停高亮边框
-                    border.width: progressMouseArea.containsMouse ? 1 : 0
-                    border.color: AppTheme.accentGlow
-                    Behavior on border.width {
-                        NumberAnimation {
-                            duration: 150
-                        }
-                    }
                     Behavior on height {
-                        NumberAnimation {
-                            duration: 150
-                            easing.type: Easing.OutCubic
-                        }
-                    }
-                    Behavior on radius {
-                        NumberAnimation {
-                            duration: 150
-                        }
+                        NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
                     }
 
                     MouseArea {
                         id: progressMouseArea
                         anchors.fill: parent
-                        // 扩大悬停检测范围
                         anchors.leftMargin: -8
                         anchors.rightMargin: -8
-                        anchors.topMargin: -12
-                        anchors.bottomMargin: -12
+                        anchors.topMargin: -14
+                        anchors.bottomMargin: -14
                         hoverEnabled: true
 
                         onPressed: {
-                            if (playlistmanager.type === 1) return; // TOGETHER 模式禁用拖拽
+                            if (playlistmanager.type === 1) return;
                             progressSlider.dragging = true;
                             updateProgress(mouseX);
                         }
-
                         onPositionChanged: {
                             if (playlistmanager.type === 1) return;
-                            if (pressed)
-                                updateProgress(mouseX);
+                            if (pressed) updateProgress(mouseX);
                         }
-
                         onReleased: {
                             if (progressSlider.dragging) {
                                 commitProgress();
                                 progressSlider.dragging = false;
                             }
                         }
-
                         onClicked: {
-                            if (playlistmanager.type === 1) return; // TOGETHER 模式禁用点击 seek
+                            if (playlistmanager.type === 1) return;
                             updateProgress(mouseX);
                             commitProgress();
                         }
 
                         function updateProgress(mouseX) {
-                            var newValue = Math.max(0, Math.min(1, mouseX / progressSlider.width));
-                            progressFill.tempWidth = progressSlider.width * newValue;
+                            var v = Math.max(0, Math.min(1, mouseX / progressSlider.width));
+                            progressFill.tempWidth = progressSlider.width * v;
                         }
-
                         function commitProgress() {
-                            var newValue = progressFill.tempWidth / progressSlider.width;
-                            if (playlistmanager) {
-                                playlistmanager.setposistion(newValue);
-                            }
+                            var v = progressFill.tempWidth / progressSlider.width;
+                            if (playlistmanager) playlistmanager.setposistion(v);
                         }
                     }
 
@@ -587,82 +586,39 @@ Rectangle {
                         anchors.top: parent.top
                         anchors.bottom: parent.bottom
                         radius: parent.radius
-                        color: AppTheme.accent
                         width: progressSlider.dragging ? tempWidth : parent.width * progressSlider.value
                         property real tempWidth: 0
 
-                        // 播放时脉冲发光效果
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: parent.radius
-                            color: "transparent"
-                            border.width: 1
-                            border.color: AppTheme.accentGlow
-                            visible: playlistmanager && !playlistmanager.isPaused
-                            opacity: 0
-
-                            SequentialAnimation on opacity {
-                                running: playlistmanager && !playlistmanager.isPaused
-                                loops: Animation.Infinite
-                                NumberAnimation {
-                                    from: 0.3
-                                    to: 0.8
-                                    duration: 1200
-                                    easing.type: Easing.InOutSine
-                                }
-                                NumberAnimation {
-                                    from: 0.8
-                                    to: 0.3
-                                    duration: 1200
-                                    easing.type: Easing.InOutSine
-                                }
-                            }
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: 0.0; color: AppTheme.isDark ? "#B0FFFFFF" : AppTheme.accent }
+                            GradientStop { position: 1.0; color: AppTheme.isDark ? "#FFFFFFFF" : AppTheme.accentHover }
                         }
                     }
 
-                    // 播放指示点
+                    // 拖拽指示点（仅悬停/拖拽时显示）
                     Rectangle {
                         id: progressDot
                         width: 12
                         height: 12
                         radius: 6
-                        color: AppTheme.progressDot
+                        color: AppTheme.isDark ? "#FFFFFF" : AppTheme.accent
                         anchors.verticalCenter: parent.verticalCenter
                         x: progressFill.width - width / 2
+                        opacity: progressMouseArea.containsMouse || progressSlider.dragging ? 1 : 0
+                        scale: progressMouseArea.containsMouse || progressSlider.dragging ? 1 : 0.5
 
-                        // 发光效果 - 播放时脉冲
+                        // 柔和阴影
                         Rectangle {
                             anchors.centerIn: parent
-                            width: 18
-                            height: 18
-                            radius: 9
-                            color: AppTheme.accentGlow
-                            visible: playlistmanager && !playlistmanager.isPaused
-
-                            SequentialAnimation on scale {
-                                running: playlistmanager && !playlistmanager.isPaused
-                                loops: Animation.Infinite
-                                NumberAnimation {
-                                    from: 0.8
-                                    to: 1.3
-                                    duration: 1000
-                                    easing.type: Easing.InOutSine
-                                }
-                                NumberAnimation {
-                                    from: 1.3
-                                    to: 0.8
-                                    duration: 1000
-                                    easing.type: Easing.InOutSine
-                                }
-                            }
+                            width: 20
+                            height: 20
+                            radius: 10
+                            color: AppTheme.isDark ? "#33FFFFFF" : "#20FF8A80"
                         }
 
-                        scale: progressMouseArea.containsMouse ? 1.2 : 1.0
-                        Behavior on scale {
-                            NumberAnimation {
-                                duration: 100
-                            }
-                        }
+                        Behavior on opacity { NumberAnimation { duration: 180 } }
+                        Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
                     }
                 }
             }
@@ -672,8 +628,8 @@ Rectangle {
                 id: totalTimeText
                 text: playlistmanager ? playlistmanager.duration : "00:00"
                 font.family: "黑体"
-                font.pixelSize: 12
-                color: AppTheme.textDim
+                font.pixelSize: 11
+                color: AppTheme.isDark ? "#99FFFFFF" : AppTheme.textMuted
                 anchors.verticalCenter: parent.verticalCenter
             }
         }
@@ -681,9 +637,9 @@ Rectangle {
         // ========== 右侧：功能按钮 ==========
         Row {
             id: rightSection
-            width: 130
+            width: 72
             height: parent.height
-            spacing: 6
+            spacing: 4
             layoutDirection: Qt.RightToLeft
             anchors.verticalCenter: parent.verticalCenter
 
@@ -713,8 +669,217 @@ Rectangle {
                 HoverHandler {
                     id: playlistBtnHandler
                 }
-                TapHandler {
+                MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
+                    onClicked: playlistPopup.open()
+                }
+
+                Popup {
+                    id: playlistPopup
+                    x: -(320 - playlistBtn.width)
+                    y: -420
+                    width: 320
+                    height: 400
+                    padding: 0
+                    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+                    background: Rectangle {
+                        radius: 12
+                        color: AppTheme.bgCard
+                        border.width: 1
+                        border.color: AppTheme.borderDefault
+                    }
+
+                    enter: Transition {
+                        NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 150 }
+                        NumberAnimation { property: "scale"; from: 0.9; to: 1.0; duration: 150; easing.type: Easing.OutCubic }
+                    }
+                    exit: Transition {
+                        NumberAnimation { property: "opacity"; from: 1; to: 0; duration: 100 }
+                        NumberAnimation { property: "scale"; from: 1.0; to: 0.9; duration: 100 }
+                    }
+
+                    Column {
+                        anchors.fill: parent
+
+                        // 标题栏
+                        Rectangle {
+                            width: parent.width
+                            height: 44
+                            radius: 12
+                            color: "transparent"
+
+                            Row {
+                                anchors.fill: parent
+                                anchors.leftMargin: 16
+                                anchors.rightMargin: 16
+                                spacing: 6
+
+                                Text {
+                                    text: "播放列表"
+                                    font.pixelSize: 14
+                                    font.bold: true
+                                    font.family: "黑体"
+                                    color: AppTheme.textPrimary
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                                Text {
+                                    text: "(" + playlistView.count + ")"
+                                    font.pixelSize: 12
+                                    font.family: "黑体"
+                                    color: AppTheme.textMuted
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+
+                                Item { width: parent.width - 200; height: 1 }
+
+                                Text {
+                                    text: "清空"
+                                    font.pixelSize: 12
+                                    font.family: "黑体"
+                                    color: clearBtnArea.containsMouse ? AppTheme.accent : AppTheme.textMuted
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    visible: playlistmanager && playlistmanager.type === 0
+
+                                    MouseArea {
+                                        id: clearBtnArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            if (playlistmanager) playlistmanager.clearPlaylist()
+                                        }
+                                    }
+                                }
+                            }
+
+                            // 底部分隔线
+                            Rectangle {
+                                anchors.bottom: parent.bottom
+                                width: parent.width
+                                height: 1
+                                color: AppTheme.borderDefault
+                            }
+                        }
+
+                        // 歌曲列表
+                        ListView {
+                            id: playlistView
+                            width: parent.width
+                            height: parent.height - 44
+                            clip: true
+                            spacing: 0
+
+                            model: playlistmanager ? (playlistmanager.type === 1 ? playlistmanager.togetherplaylist : playlistmanager.playlist) : []
+
+                            delegate: Rectangle {
+                                width: playlistView.width
+                                height: 44
+                                color: {
+                                    if (index === playlistmanager.currentIndex) return AppTheme.accentDim
+                                    return songItemMA.containsMouse ? AppTheme.bgCardHover : "transparent"
+                                }
+
+                                Row {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 14
+                                    anchors.rightMargin: 14
+                                    spacing: 8
+
+                                    // 序号或播放指示
+                                    Text {
+                                        width: 24
+                                        height: parent.height
+                                        text: index === playlistmanager.currentIndex ? "♪" : (index + 1)
+                                        font.pixelSize: index === playlistmanager.currentIndex ? 14 : 12
+                                        font.family: "黑体"
+                                        color: index === playlistmanager.currentIndex ? AppTheme.accent : AppTheme.textMuted
+                                        verticalAlignment: Text.AlignVCenter
+                                        horizontalAlignment: Text.AlignHCenter
+                                    }
+
+                                    // 歌名 + 歌手
+                                    Column {
+                                        width: parent.width - 24 - 50 - 24
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        clip: true
+
+                                        Text {
+                                            text: modelData.title
+                                            font.pixelSize: 13
+                                            font.family: "黑体"
+                                            color: index === playlistmanager.currentIndex ? AppTheme.accent : AppTheme.textPrimary
+                                            elide: Text.ElideRight
+                                            width: parent.width
+                                        }
+                                        Text {
+                                            text: modelData.singername
+                                            font.pixelSize: 10
+                                            font.family: "黑体"
+                                            color: AppTheme.textMuted
+                                            elide: Text.ElideRight
+                                            width: parent.width
+                                        }
+                                    }
+
+                                    // 时长
+                                    Text {
+                                        text: {
+                                            var d = modelData.duration
+                                            if (d.indexOf(":") >= 0) return d
+                                            var sec = parseInt(d) || 0
+                                            var m = Math.floor(sec / 60)
+                                            var s = sec % 60
+                                            return m + ":" + (s < 10 ? "0" : "") + s
+                                        }
+                                        font.pixelSize: 11
+                                        font.family: "黑体"
+                                        color: AppTheme.textDim
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+
+                                    // 删除按钮（仅本地模式）
+                                    Rectangle {
+                                        width: 24
+                                        height: 24
+                                        radius: 12
+                                        color: delBtnMA.containsMouse ? AppTheme.bgCardHover : "transparent"
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        visible: playlistmanager && playlistmanager.type === 0
+
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "×"
+                                            font.pixelSize: 14
+                                            color: delBtnMA.containsMouse ? AppTheme.accent : AppTheme.textMuted
+                                        }
+
+                                        MouseArea {
+                                            id: delBtnMA
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                if (playlistmanager) playlistmanager.removeSong(index)
+                                            }
+                                        }
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: songItemMA
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        if (playlistmanager) playlistmanager.playSongbyindex(index)
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
 
                 Behavior on color {

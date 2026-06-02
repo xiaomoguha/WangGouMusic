@@ -266,19 +266,22 @@ Item {
                             height: 30
                             radius: 15
                             visible: !(playlistmanager && playlistmanager.type === 1)
-                            color: playNowHoverHandler.hovered ? AppTheme.iconButtonHover : "transparent"
+                            color: AppTheme.isDark
+                                   ? (playNowHoverHandler.hovered ? AppTheme.iconButtonHover : "transparent")
+                                   : (playNowHoverHandler.hovered ? "#FFCCCC" : "#FFD8D8")
 
                             Image {
                                 id: playlistplayNowImage
                                 anchors.centerIn: parent
                                 source: "qrc:/image/playnow.png"
-                                width: 16
-                                height: 16
+                                width: 14
+                                height: 14
                                 fillMode: Image.PreserveAspectFit
                                 layer.enabled: true
                                 layer.effect: ColorOverlay {
                                     source: playlistplayNowImage
-                                    color: playNowHoverHandler.hovered ? "#4FC3F7" : "#FFFFFF"
+                                    color: AppTheme.isDark ? (playNowHoverHandler.hovered ? "#4FC3F7" : "#FFFFFF")
+                                           : AppTheme.accent
                                 }
                             }
 
@@ -307,19 +310,22 @@ Item {
                             height: 30
                             radius: 15
                             visible: !(playlistmanager && playlistmanager.type === 1)
-                            color: addLoveHoverHandler.hovered ? AppTheme.iconButtonHover : "transparent"
+                            color: AppTheme.isDark
+                                   ? (addLoveHoverHandler.hovered ? AppTheme.iconButtonHover : "transparent")
+                                   : (addLoveHoverHandler.hovered ? "#FFCCCC" : "#FFD8D8")
 
                             Image {
                                 id: playlistaddloveImage
                                 anchors.centerIn: parent
                                 source: "qrc:/image/addlove.png"
-                                width: 16
-                                height: 16
+                                width: 14
+                                height: 14
                                 fillMode: Image.PreserveAspectFit
                                 layer.enabled: true
                                 layer.effect: ColorOverlay {
                                     source: playlistaddloveImage
-                                    color: addLoveHoverHandler.hovered ? AppTheme.accent : "#FFFFFF"
+                                    color: AppTheme.isDark ? (addLoveHoverHandler.hovered ? AppTheme.accent : "#FFFFFF")
+                                           : AppTheme.accent
                                 }
                             }
 
@@ -347,20 +353,23 @@ Item {
                             width: 30
                             height: 30
                             radius: 15
-                            color: addTogetherHover.hovered ? AppTheme.iconButtonHover : "transparent"
+                            color: AppTheme.isDark
+                                   ? (addTogetherHover.hovered ? AppTheme.iconButtonHover : "transparent")
+                                   : (addTogetherHover.hovered ? "#FFCCCC" : "#FFD8D8")
                             visible: playlistmanager && playlistmanager.type === 1
 
                             Image {
                                 id: togetherIcon
                                 anchors.centerIn: parent
                                 source: "qrc:/image/yinle.png"
-                                width: 16
-                                height: 16
+                                width: 14
+                                height: 14
                                 fillMode: Image.PreserveAspectFit
                                 layer.enabled: true
                                 layer.effect: ColorOverlay {
                                     source: togetherIcon
-                                    color: addTogetherHover.hovered ? AppTheme.accent : "#FFFFFF"
+                                    color: AppTheme.isDark ? (addTogetherHover.hovered ? AppTheme.accent : "#FFFFFF")
+                                           : AppTheme.accent
                                 }
                             }
 
