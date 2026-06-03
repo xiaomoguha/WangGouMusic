@@ -71,6 +71,7 @@ class PlaylistManager : public QObject
     Q_PROPERTY(QString currlyric READ getcurrlyric NOTIFY currlyricChanged)
     Q_PROPERTY(enum playlist_type type READ getplaylist_type NOTIFY playlist_typeChanged)
     Q_PROPERTY(QList<SongInfo> togetherplaylist READ togetherplaylist NOTIFY togetherplaylistUpdated)
+    Q_PROPERTY(QList<SongInfo> recentPlaylist READ recentPlaylist NOTIFY recentPlaylistUpdated)
     Q_PROPERTY(QVector<LyricLine> m_lyrics READ LyricLine_get NOTIFY parlyricsuc)
     Q_PROPERTY(qint64 lyricsindex READ lyricsindexget NOTIFY currlyricChanged)
     Q_PROPERTY(int lyricCharIndex READ lyricCharIndexget NOTIFY currlyricChanged)
@@ -106,6 +107,8 @@ public:
     qint64 playerDuration() const;
     QList<SongInfo> playlist();
     QList<SongInfo> togetherplaylist();
+    QList<SongInfo> recentPlaylist() const;
+    void addToRecent(const SongInfo &song);
     int playlistcount() const;
     int getnowplaylistrange() const;
     QString getcurrlyric() const;
@@ -124,6 +127,8 @@ public:
     void setTogetherSeekPercent(double percent);
     Q_INVOKABLE void loadPlaylistFromCache();
     void savePlaylistToCache();
+    void saveRecentToCache();
+    void loadRecentFromCache();
     Q_INVOKABLE void restoreLastPlayback();
     void saveLyricToCache(const QString &songhash, const QString &lyric);
     QString loadLyricFromCache(const QString &songhash);
@@ -144,6 +149,7 @@ signals:
     void currlyricChanged();
     void playlist_typeChanged();
     void togetherplaylistUpdated();
+    void recentPlaylistUpdated();
     void parlyricsuc();
     void dominantColorChanged();
 
@@ -154,6 +160,8 @@ private:
     enum playlist_type type = LOCAL;
     QList<SongInfo> m_playlist;
     QList<SongInfo> m_togetherplaylist;
+    QList<SongInfo> m_recentPlaylist;
+    static const int MAX_RECENT_SIZE = 300;
     QList<SongInfo> *m_curplaylist = &m_playlist;
     int m_currentIndex = -1;
     bool m_isPaused = true;
@@ -192,6 +200,7 @@ private:
     QString getCacheDir() const;
     void ensureCacheDir() const;
     QString getPlaylistCachePath() const;
+    QString getRecentCachePath() const;
 };
 Q_DECLARE_METATYPE(SongInfo)
 

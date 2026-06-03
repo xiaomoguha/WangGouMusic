@@ -4,30 +4,24 @@ import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
 
 Page {
+    id: complexPage
     readonly property bool isTogetherMode: playlistmanager && playlistmanager.type === 1
-    background: Rectangle {
-        color: "transparent"
-    }
+    background: Rectangle { color: "transparent" }
 
     Connections {
         target: BasicConfig
         function onSearchKeywordchange() {
             flick.contentY = 0;
-            loadingOverlay.visible = true;
             complexsearch.fetchComplexData(BasicConfig.searchKeyword);
         }
     }
-    Connections {
-        target: complexsearch
-        function onLoadFinished() {
-            loadingOverlay.visible = false;
-        }
-    }
+
+    // ===== 加载骨架屏（首次搜索） =====
     Rectangle {
         id: loadingOverlay
         anchors.fill: parent
         color: AppTheme.bgLoadingOverlay
-        visible: false
+        visible: complexsearch && complexsearch.isLoading && complexsearch.page === 1
         z: 9999
 
         Column {
@@ -35,53 +29,40 @@ Page {
             anchors.topMargin: 30
             anchors.leftMargin: 20
             anchors.rightMargin: 20
-            spacing: 12
+            spacing: 10
 
             Repeater {
-                model: 6
-
+                model: 8
                 delegate: Rectangle {
                     width: loadingOverlay.width - 40
-                    height: 60
+                    height: 56
                     radius: 8
                     color: AppTheme.bgCard
                     clip: true
 
                     Row {
                         anchors.fill: parent
-                        anchors.margins: 10
+                        anchors.margins: 8
                         spacing: 12
 
-                        // 骨架封面占位
                         Rectangle {
-                            width: 40
-                            height: 40
-                            radius: 6
+                            width: 40; height: 40; radius: 8
                             color: AppTheme.progressTrack
                         }
-
                         Column {
                             spacing: 8
                             anchors.verticalCenter: parent.verticalCenter
-
-                            // 骨架标题占位
                             Rectangle {
-                                width: 120 + index * 20
-                                height: 12
-                                radius: 4
+                                width: 100 + index * 18; height: 12; radius: 4
                                 color: AppTheme.progressTrack
                             }
-                            // 骨架副标题占位
                             Rectangle {
-                                width: 80 + index * 15
-                                height: 10
-                                radius: 4
+                                width: 70 + index * 12; height: 10; radius: 4
                                 color: AppTheme.progressTrack
                             }
                         }
                     }
 
-                    // Shimmer 动画覆盖层
                     Rectangle {
                         anchors.fill: parent
                         gradient: Gradient {
@@ -92,144 +73,141 @@ Page {
                             GradientStop { position: 0.6; color: "transparent" }
                             GradientStop { position: 1.0; color: "transparent" }
                         }
-
                         NumberAnimation on x {
-                            from: -parent.width
-                            to: parent.width
-                            duration: 1500
-                            loops: Animation.Infinite
+                            from: -parent.width; to: parent.width
+                            duration: 1500; loops: Animation.Infinite
                             running: loadingOverlay.visible
                         }
                     }
                 }
             }
-
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: "正在搜索..."
-                color: AppTheme.textMuted
-                font.pixelSize: 13
-                font.family: "黑体"
-            }
         }
     }
+
+    // ===== 结果列表 =====
     Flickable {
         id: flick
         anchors.fill: parent
-        anchors.leftMargin: 0.025 * root.width
         clip: true
-        contentWidth: listCol.width
-        contentHeight: listCol.height
+        contentHeight: listCol.height + bottomLoader.height + 20
+        onContentYChanged: {
+            if (!complexsearch || complexsearch.isLoading) return;
+            if (!complexsearch.hasMore) return;
+            if (contentY + height >= contentHeight - 200) {
+                complexsearch.fetchMore();
+            }
+        }
+
         Column {
             id: listCol
             width: flick.width
-            spacing: 10
+            spacing: 2
+
             Repeater {
                 model: complexsearch ? complexsearch.items : []
-                delegate: Rectangle {
-                    id: sosuoItem
-                    width: listCol.width
-                    height: sosuoindexrow.height + 25
-                    radius: 5
-                    color: sosuoHoverHandler.hovered ? AppTheme.bgCardHover : "transparent"
 
-                    // Entrance animation - fade in
+                delegate: Rectangle {
+                    id: songItem
+                    required property int index
+                    required property var modelData
+                    width: listCol.width
+                    height: 56
+                    radius: 8
+                    color: itemHover.hovered ? AppTheme.bgCardHover : "transparent"
+
+                    property bool showActions: itemHover.hovered
+
+                    HoverHandler { id: itemHover }
+
+                    // 入场动画
                     opacity: 0
-                    Component.onCompleted: entranceAnim.start()
+                    Component.onCompleted: enterAnim.start()
                     NumberAnimation on opacity {
-                        id: entranceAnim
-                        from: 0
-                        to: 1
-                        duration: 350
+                        id: enterAnim
+                        from: 0; to: 1
+                        duration: 280
                         easing.type: Easing.OutCubic
                     }
 
-
-                    property bool showActions: sosuoHoverHandler.hovered
-
-                    HoverHandler {
-                        id: sosuoHoverHandler
-                    }
+                    // 左侧：序号 + 封面 + 歌名/歌手
                     Row {
-                        id: sosuoindexrow
-                        anchors.left: parent.left
-                        anchors.leftMargin: 20
+                        x: 0.025 * root.width
                         anchors.verticalCenter: parent.verticalCenter
-                        spacing: 15
+                        spacing: 12
+
+                        // 序号
                         Text {
-                            text: index + 1 <= 9 ? "0" + String(index + 1) : index + 1
+                            width: 28
+                            text: songItem.index + 1 <= 9 ? "0" + String(songItem.index + 1) : songItem.index + 1
                             anchors.verticalCenter: parent.verticalCenter
-                            font.pixelSize: 16
+                            font.pixelSize: 14
                             color: AppTheme.textMuted
+                            font.family: "黑体"
                         }
-                        Image {
+
+                        // 封面
+                        Rectangle {
+                            width: 40; height: 40; radius: 8
                             anchors.verticalCenter: parent.verticalCenter
-                            width: 45
-                            height: 45
-                            source: modelData.union_cover
-                            asynchronous: true
-                            cache: true
-                            mipmap: true
-                            sourceSize.width: 90
-                            sourceSize.height: 90
+                            clip: true
+                            color: AppTheme.bgCard
+
+                            Image {
+                                anchors.fill: parent
+                                source: modelData.union_cover || ""
+                                fillMode: Image.PreserveAspectCrop
+                                asynchronous: true
+                                cache: true
+                                sourceSize.width: 80
+                                sourceSize.height: 80
+                            }
                         }
+
+                        // 歌名 + 歌手
                         Column {
+                            width: 0.2 * root.width
                             anchors.verticalCenter: parent.verticalCenter
-                            spacing: 5
+                            spacing: 3
+
                             Text {
                                 text: modelData.songname
-                                font.pixelSize: 13
+                                font.pixelSize: 13; font.family: "黑体"
                                 color: AppTheme.textPrimary
-                                elide: Text.ElideRight     // 超出部分显示省略号
-                                width: 0.19 * root.width                 // 设置最大宽度，省略号才生效
-                                wrapMode: Text.NoWrap      // 禁止换行
+                                elide: Text.ElideRight; width: parent.width; wrapMode: Text.NoWrap
                             }
                             Text {
                                 text: modelData.singername
-                                elide: Text.ElideRight     // 超出部分显示省略号
-                                width: 0.19 * root.width                  // 设置最大宽度，省略号才生效
-                                wrapMode: Text.NoWrap      // 禁止换行
-                                font.pixelSize: 11
+                                font.pixelSize: 11; font.family: "黑体"
                                 color: AppTheme.textMuted
+                                elide: Text.ElideRight; width: parent.width; wrapMode: Text.NoWrap
                             }
                         }
                     }
+
+                    // 操作按钮（悬停显示，固定位置，不影响布局）
                     Row {
-                        id: additemsrow
-                        visible: showActions
+                        visible: songItem.showActions
                         x: 0.28 * root.width
                         anchors.verticalCenter: parent.verticalCenter
-                        spacing: 6
+                        spacing: 4
+                        z: 1
 
-                        // 播放按钮
+                        // 播放
                         Rectangle {
-                            id: playNowBtn
                             visible: !isTogetherMode
-                            width: 28
-                            height: 28
-                            radius: 14
+                            width: 28; height: 28; radius: 14
                             color: AppTheme.isDark
-                                   ? (playNowHoverHandler.hovered ? AppTheme.iconButtonHover : "transparent")
-                                   : (playNowHoverHandler.hovered ? "#FFCCCC" : "#FFD8D8")
-
+                                   ? (playH.hovered ? AppTheme.iconButtonHover : "transparent")
+                                   : (playH.hovered ? "#FFCCCC" : "#FFD8D8")
                             Image {
-                                id: playNowIcon
+                                id: playIco
                                 anchors.centerIn: parent
                                 source: "qrc:/image/playnow.png"
-                                width: 12
-                                height: 12
-                                fillMode: Image.PreserveAspectFit
+                                width: 12; height: 12; fillMode: Image.PreserveAspectFit
                                 layer.enabled: true
-                                layer.effect: ColorOverlay {
-                                    source: playNowIcon
-                                    color: AppTheme.isDark ? AppTheme.iconDefault : AppTheme.accent
-                                }
+                                layer.effect: ColorOverlay { source: playIco; color: AppTheme.isDark ? AppTheme.iconDefault : AppTheme.accent }
                             }
-
-                            HoverHandler {
-                                id: playNowHoverHandler
-                            }
-
+                            HoverHandler { id: playH }
                             TapHandler {
                                 cursorShape: Qt.PointingHandCursor
                                 onTapped: {
@@ -237,43 +215,25 @@ Page {
                                     BasicConfig.emitSongAdded("正在播放: " + modelData.songname);
                                 }
                             }
-
-                            Behavior on color {
-                                ColorAnimation {
-                                    duration: 150
-                                }
-                            }
+                            Behavior on color { ColorAnimation { duration: 150 } }
                         }
 
-                        // 添加到播放列表按钮
+                        // 添加到列表
                         Rectangle {
-                            id: addPlaylistBtn
                             visible: !isTogetherMode
-                            width: 28
-                            height: 28
-                            radius: 14
+                            width: 28; height: 28; radius: 14
                             color: AppTheme.isDark
-                                   ? (addPlaylistHoverHandler.hovered ? AppTheme.iconButtonHover : "transparent")
-                                   : (addPlaylistHoverHandler.hovered ? "#FFCCCC" : "#FFD8D8")
-
+                                   ? (addH.hovered ? AppTheme.iconButtonHover : "transparent")
+                                   : (addH.hovered ? "#FFCCCC" : "#FFD8D8")
                             Image {
-                                id: addPlaylistIcon
+                                id: addIco
                                 anchors.centerIn: parent
                                 source: "qrc:/image/addplaylist.png"
-                                width: 12
-                                height: 12
-                                fillMode: Image.PreserveAspectFit
+                                width: 12; height: 12; fillMode: Image.PreserveAspectFit
                                 layer.enabled: true
-                                layer.effect: ColorOverlay {
-                                    source: addPlaylistIcon
-                                    color: AppTheme.isDark ? AppTheme.iconDefault : AppTheme.accent
-                                }
+                                layer.effect: ColorOverlay { source: addIco; color: AppTheme.isDark ? AppTheme.iconDefault : AppTheme.accent }
                             }
-
-                            HoverHandler {
-                                id: addPlaylistHoverHandler
-                            }
-
+                            HoverHandler { id: addH }
                             TapHandler {
                                 cursorShape: Qt.PointingHandCursor
                                 onTapped: {
@@ -281,135 +241,164 @@ Page {
                                     BasicConfig.emitSongAdded();
                                 }
                             }
-
-                            Behavior on color {
-                                ColorAnimation {
-                                    duration: 150
-                                }
-                            }
+                            Behavior on color { ColorAnimation { duration: 150 } }
                         }
 
-                        // 添加到一起听按钮
+                        // 一起听
                         Rectangle {
-                            id: addTogetherBtn
-                            width: 28
-                            height: 28
-                            radius: 14
-                            color: AppTheme.isDark
-                                   ? (addTogetherHover.hovered ? AppTheme.iconButtonHover : "transparent")
-                                   : (addTogetherHover.hovered ? "#FFCCCC" : "#FFD8D8")
                             visible: (websocket && websocket.connected) || isTogetherMode
-
+                            width: 28; height: 28; radius: 14
+                            color: AppTheme.isDark
+                                   ? (togetherH.hovered ? AppTheme.iconButtonHover : "transparent")
+                                   : (togetherH.hovered ? "#FFCCCC" : "#FFD8D8")
                             Image {
-                                id: togetherIcon
+                                id: togetherIco
                                 anchors.centerIn: parent
                                 source: "qrc:/image/yinle.png"
-                                width: 12
-                                height: 12
-                                fillMode: Image.PreserveAspectFit
+                                width: 12; height: 12; fillMode: Image.PreserveAspectFit
                                 layer.enabled: true
                                 layer.effect: ColorOverlay {
-                                    source: togetherIcon
-                                    color: AppTheme.isDark ? (addTogetherHover.hovered ? AppTheme.accent : AppTheme.iconDefault)
-                                         : AppTheme.accent
+                                    source: togetherIco
+                                    color: AppTheme.isDark ? (togetherH.hovered ? AppTheme.accent : AppTheme.iconDefault) : AppTheme.accent
                                 }
                             }
-
-                            HoverHandler {
-                                id: addTogetherHover
-                            }
-
+                            HoverHandler { id: togetherH }
                             TapHandler {
                                 cursorShape: Qt.PointingHandCursor
                                 onTapped: {
-                                    websocket.addSongToTogether(
-                                        modelData.songname,
-                                        modelData.songhash,
-                                        modelData.singername,
-                                        modelData.album_name,
-                                        modelData.duration,
-                                        modelData.union_cover
-                                    );
+                                    websocket.addSongToTogether(modelData.songname, modelData.songhash, modelData.singername, modelData.album_name, modelData.duration, modelData.union_cover);
                                 }
                             }
-
-                            Behavior on color {
-                                ColorAnimation {
-                                    duration: 150
-                                }
-                            }
+                            Behavior on color { ColorAnimation { duration: 150 } }
                         }
 
-                        // 添加到喜欢按钮
+                        // 喜欢
                         Rectangle {
-                            id: addLoveBtn
-                            width: 28
-                            height: 28
-                            radius: 14
+                            width: 28; height: 28; radius: 14
                             color: AppTheme.isDark
-                                   ? (addLoveHoverHandler.hovered ? AppTheme.iconButtonHover : "transparent")
-                                   : (addLoveHoverHandler.hovered ? "#FFCCCC" : "#FFD8D8")
-
+                                   ? (loveH.hovered ? AppTheme.iconButtonHover : "transparent")
+                                   : (loveH.hovered ? "#FFCCCC" : "#FFD8D8")
                             Image {
-                                id: addLoveIcon
+                                id: loveIco
                                 anchors.centerIn: parent
                                 source: "qrc:/image/addlove.png"
-                                width: 12
-                                height: 12
-                                fillMode: Image.PreserveAspectFit
+                                width: 12; height: 12; fillMode: Image.PreserveAspectFit
                                 layer.enabled: true
                                 layer.effect: ColorOverlay {
-                                    source: addLoveIcon
-                                    color: AppTheme.isDark ? (addLoveHoverHandler.hovered ? AppTheme.accent : AppTheme.iconDefault)
-                                         : AppTheme.accent
+                                    source: loveIco
+                                    color: AppTheme.isDark ? (loveH.hovered ? AppTheme.accent : AppTheme.iconDefault) : AppTheme.accent
                                 }
                             }
-
-                            HoverHandler {
-                                id: addLoveHoverHandler
-                            }
-
-                            TapHandler {
-                                cursorShape: Qt.PointingHandCursor
-                            }
-
-                            Behavior on color {
-                                ColorAnimation {
-                                    duration: 150
-                                }
-                            }
+                            HoverHandler { id: loveH }
+                            TapHandler { cursorShape: Qt.PointingHandCursor }
+                            Behavior on color { ColorAnimation { duration: 150 } }
                         }
                     }
+
+                    // 专辑（固定位置）
                     Text {
-                        id: albumText
-                        x: showActions ? 0.48 * root.width : 0.4 * root.width
+                        x: 0.48 * root.width
                         anchors.verticalCenter: parent.verticalCenter
-                        elide: Text.ElideRight     // 超出部分显示省略号
-                        width: 0.28 * root.width                 // 设置最大宽度，省略号才生效
-                        wrapMode: Text.NoWrap      // 禁止换行
+                        elide: Text.ElideRight; width: 0.28 * root.width; wrapMode: Text.NoWrap
                         text: modelData.album_name
-                        font.pixelSize: 14
-                        font.family: "黑体"
-                        color: AppTheme.textMuted
-
-                        Behavior on x {
-                            NumberAnimation {
-                                duration: 150
-                            }
-                        }
+                        font.pixelSize: 13; font.family: "黑体"; color: AppTheme.textMuted
                     }
+
+                    // 时长（固定位置）
                     Text {
-                        id: songlenText
                         anchors.right: parent.right
-                        anchors.rightMargin: 0.05 * root.width
+                        anchors.rightMargin: 0.04 * root.width
                         anchors.verticalCenter: parent.verticalCenter
-                        text: modelData.duration
-                        font.pixelSize: 14
-                        font.family: "黑体"
-                        color: AppTheme.textMuted
+                        text: {
+                            var d = modelData.duration;
+                            if (!d) return "--:--";
+                            if (d.indexOf(":") !== -1) return d;
+                            var sec = parseInt(d);
+                            if (isNaN(sec)) return d;
+                            var m = Math.floor(sec / 60);
+                            var s = sec % 60;
+                            return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+                        }
+                        font.pixelSize: 13; font.family: "黑体"; color: AppTheme.textMuted
                     }
                 }
             }
+        }
+
+        // ===== 底部加载指示器 =====
+        Column {
+            id: bottomLoader
+            width: flick.width
+            y: listCol.height + 10
+            spacing: 8
+
+            // 加载中旋转
+            Row {
+                visible: complexsearch && complexsearch.isLoading && complexsearch.page > 1
+                anchors.horizontalCenter: parent.horizontalCenter
+                spacing: 8
+
+                Rectangle {
+                    width: 18; height: 18; radius: 9
+                    anchors.verticalCenter: parent.verticalCenter
+                    color: "transparent"
+                    border.width: 2; border.color: AppTheme.accent
+                    Rectangle {
+                        width: 6; height: 6; radius: 3
+                        color: AppTheme.accent
+                        anchors.top: parent.top; anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    RotationAnimation on rotation {
+                        from: 0; to: 360; duration: 800; loops: Animation.Infinite
+                        running: parent.parent.visible
+                    }
+                }
+
+                Text {
+                    text: "加载更多..."
+                    font.pixelSize: 12; font.family: "黑体"
+                    color: AppTheme.textMuted
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+
+            // 没有更多
+            Text {
+                visible: complexsearch && !complexsearch.hasMore && complexsearch.items.length > 0
+                text: "— 没有更多了 —"
+                font.pixelSize: 12; font.family: "黑体"
+                color: AppTheme.textDim
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+        }
+    }
+
+    // ===== 无结果状态 =====
+    Column {
+        visible: complexsearch && !complexsearch.isLoading && complexsearch.items.length === 0 && BasicConfig.searchKeyword !== ""
+        anchors.centerIn: parent
+        spacing: 10
+
+        Rectangle {
+            width: 64; height: 64; radius: 32
+            color: AppTheme.isDark ? AppTheme.accentDim : "#10FF8A80"
+            anchors.horizontalCenter: parent.horizontalCenter
+
+            Text {
+                anchors.centerIn: parent
+                text: "♪"
+                font.pixelSize: 28; color: AppTheme.accent
+            }
+        }
+        Text {
+            text: "没有找到相关歌曲"
+            font.pixelSize: 14; font.family: "黑体"; color: AppTheme.textMuted
+            anchors.horizontalCenter: parent.horizontalCenter
+        }
+        Text {
+            text: "换个关键词试试吧"
+            font.pixelSize: 12; font.family: "黑体"; color: AppTheme.textDim
+            anchors.horizontalCenter: parent.horizontalCenter
         }
     }
 }

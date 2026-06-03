@@ -23,6 +23,7 @@ Row {
                             "hot": records[i].Hot
                         });
                     }
+                    updateSuggestWidth();
                 }
             } catch (e) {
                 console.log("解析搜索建议失败:", e);
@@ -45,6 +46,7 @@ Row {
                 suggestRequester.fetchData("https://xjt-togethertracks.top/api/search/suggest?keywords=" + encodedKeyword);
             } else {
                 suggestModel.clear();
+                suggestMaxWidth = 0;
             }
         }
     }
@@ -60,13 +62,15 @@ Row {
         font.family: "黑体"
     }
 
-    property int suggestMaxWidth: {
+    property int suggestMaxWidth: 0
+
+    function updateSuggestWidth() {
         var maxW = 0
         for (var i = 0; i < suggestModel.count; i++) {
             suggestMetrics.text = suggestModel.get(i).hintInfo || ""
             maxW = Math.max(maxW, suggestMetrics.width)
         }
-        return maxW
+        suggestMaxWidth = maxW
     }
 
     // 搜索框
@@ -126,6 +130,7 @@ Row {
                     BasicConfig.indexchange(-1);
                     seachPop.close();
                     suggestModel.clear();
+                    suggestMaxWidth = 0;
                     var isExist = false;
                     for (var i = 0; i < searchsingmodel.count; i++) {
                         if (searchsingmodel.get(i).songName === text) {
@@ -265,6 +270,7 @@ Row {
                                     BasicConfig.pushsearchsongPage("qrc:/Src/ComponentPage/SearchresultPage.qml");
                                     seachPop.close();
                                     suggestModel.clear();
+                                    suggestMaxWidth = 0;
                                     // 添加到搜索历史
                                     var isExist = false;
                                     for (var i = 0; i < searchsingmodel.count; i++) {
