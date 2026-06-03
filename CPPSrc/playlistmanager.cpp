@@ -7,6 +7,7 @@ PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent
     player->setAudioOutput(audioOutput);
     audioOutput->setVolume(1.0);
     loadPlaylistFromCache();
+    loadRecentFromCache();
     // lyricParser();
     //  连接 mediaStatusChanged 信号
     QObject::connect(player, &QMediaPlayer::mediaStatusChanged, this, [this](QMediaPlayer::MediaStatus status)
@@ -128,6 +129,88 @@ QString PlaylistManager::getPlaylistCachePath() const
     return getCacheDir() + "/playlist_cache.json";
 }
 
+QString PlaylistManager::getRecentCachePath() const
+{
+    return getCacheDir() + "/recent_cache.json";
+}
+
+QList<SongInfo> PlaylistManager::recentPlaylist() const
+{
+    return m_recentPlaylist;
+}
+
+void PlaylistManager::addToRecent(const SongInfo &song)
+{
+    if (song.songhash.isEmpty()) return;
+
+    // 如果已存在则先移除
+    for (int i = 0; i < m_recentPlaylist.size(); ++i) {
+        if (m_recentPlaylist[i].songhash == song.songhash) {
+            m_recentPlaylist.removeAt(i);
+            break;
+        }
+    }
+
+    // 插入到头部
+    m_recentPlaylist.prepend(song);
+
+    // 超出上限则移除最旧的
+    while (m_recentPlaylist.size() > MAX_RECENT_SIZE) {
+        m_recentPlaylist.removeLast();
+    }
+
+    saveRecentToCache();
+    emit recentPlaylistUpdated();
+}
+
+void PlaylistManager::saveRecentToCache()
+{
+    ensureCacheDir();
+    QJsonArray arr;
+    for (const SongInfo &song : m_recentPlaylist) {
+        QJsonObject obj;
+        obj["title"] = song.title;
+        obj["songhash"] = song.songhash;
+        obj["singername"] = song.singername;
+        obj["union_cover"] = song.union_cover;
+        obj["album_name"] = song.album_name;
+        obj["duration"] = song.duration;
+        arr.append(obj);
+    }
+    QJsonDocument doc(arr);
+    QFile file(getRecentCachePath());
+    if (file.open(QIODevice::WriteOnly)) {
+        file.write(doc.toJson(QJsonDocument::Compact));
+        file.close();
+    }
+}
+
+void PlaylistManager::loadRecentFromCache()
+{
+    QFile file(getRecentCachePath());
+    if (!file.exists() || !file.open(QIODevice::ReadOnly)) return;
+
+    QByteArray data = file.readAll();
+    file.close();
+    QJsonDocument doc = QJsonDocument::fromJson(data);
+    if (!doc.isArray()) return;
+
+    m_recentPlaylist.clear();
+    QJsonArray arr = doc.array();
+    for (const QJsonValue &val : arr) {
+        if (!val.isObject()) continue;
+        QJsonObject obj = val.toObject();
+        SongInfo song;
+        song.title = obj["title"].toString();
+        song.songhash = obj["songhash"].toString();
+        song.singername = obj["singername"].toString();
+        song.union_cover = obj["union_cover"].toString();
+        song.album_name = obj["album_name"].toString();
+        song.duration = obj["duration"].toString();
+        m_recentPlaylist.append(song);
+    }
+}
+
 // 判断是否有缓存文件
 int PlaylistManager::is_have_cache(const SongInfo &song, const int index)
 {
@@ -155,6 +238,7 @@ int PlaylistManager::is_have_cache(const SongInfo &song, const int index)
         emit currentSongChanged();
         emit isPausedChanged();
         qDebug() << "正在播放:" << song.title << "(" << song.url << ")";
+        addToRecent(song);
         return 1;
     }
     return 0;
@@ -618,6 +702,9 @@ float PlaylistManager::getpercent() const
 
 void PlaylistManager::startPlayback(const SongInfo &song)
 {
+    // 记录到最近播放
+    addToRecent(song);
+
     // 停止播放器，防止文件句柄未释放
     player->stop();
     player->setSource(QUrl());
@@ -1266,6 +1353,18 @@ void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const Q
                                                    const QString &coverUrl, const QString &albumName,
                                                    const QString &duration)
 {
+    // 记录到最近播放
+    {
+        SongInfo recentSong;
+        recentSong.title = songName;
+        recentSong.songhash = songHash;
+        recentSong.singername = singerName;
+        recentSong.union_cover = coverUrl;
+        recentSong.album_name = albumName;
+        recentSong.duration = duration;
+        addToRecent(recentSong);
+    }
+
     // 更新 m_togetherplaylist 中对应歌曲的 url
     for (int i = 0; i < m_togetherplaylist.size(); i++)
     {
@@ -1299,10 +1398,7 @@ void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const Q
 
             if (useCache || !songUrl.isEmpty())
             {
-                player->play();
-                m_isPaused = false;
-
-                // 播放就绪后 seek 到同步进度
+                // 如果有同步进度，先 seek 再播放，避免先播几秒再跳
                 if (m_togetherSeekPercent > 0)
                 {
                     double seekPercent = m_togetherSeekPercent;
@@ -1313,9 +1409,23 @@ void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const Q
                             if (status == QMediaPlayer::BufferedMedia)
                             {
                                 seekToPercent(seekPercent);
+                                if (m_isPaused) {
+                                    player->play();
+                                    m_isPaused = false;
+                                    emit isPausedChanged();
+                                }
                                 QObject::disconnect(*conn);
                             }
                         });
+                    // 先 pause 状态等待 seek，seek 完成后再播放
+                    player->play();
+                    player->pause();
+                    m_isPaused = true;
+                }
+                else
+                {
+                    player->play();
+                    m_isPaused = false;
                 }
             }
             else
@@ -1377,10 +1487,7 @@ void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const Q
     if (!songUrl.isEmpty())
     {
         player->setSource(QUrl(songUrl));
-        player->play();
-        m_isPaused = false;
 
-        // 播放就绪后 seek 到同步进度
         if (m_togetherSeekPercent > 0)
         {
             double seekPercent = m_togetherSeekPercent;
@@ -1391,9 +1498,22 @@ void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const Q
                     if (status == QMediaPlayer::BufferedMedia)
                     {
                         seekToPercent(seekPercent);
+                        if (m_isPaused) {
+                            player->play();
+                            m_isPaused = false;
+                            emit isPausedChanged();
+                        }
                         QObject::disconnect(*conn);
                     }
                 });
+            player->play();
+            player->pause();
+            m_isPaused = true;
+        }
+        else
+        {
+            player->play();
+            m_isPaused = false;
         }
     }
     else

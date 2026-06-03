@@ -232,6 +232,14 @@ void WebSocketClient::addSongToTogether(const QString &songname, const QString &
     m_pendingAddSong = true;
     emit serverNotice("正在添加到一起听...", "loading");
     sendJson(json);
+
+    // 超时机制：5秒内没收到确认则提示失败
+    if (!m_addSongTimeoutTimer) {
+        m_addSongTimeoutTimer = new QTimer(this);
+        m_addSongTimeoutTimer->setSingleShot(true);
+        connect(m_addSongTimeoutTimer, &QTimer::timeout, this, &WebSocketClient::checkAddSongTimeout);
+    }
+    m_addSongTimeoutTimer->start(5000);
 }
 
 void WebSocketClient::removeSongFromTogether(const QString &songhash)
@@ -353,7 +361,7 @@ void WebSocketClient::onConnected()
     // 切换到一起听模式（不在 mutex 锁内调用）
     playmanager->changeplaylisttype(TOGETHER);
 
-    // 连接成功后主动请求房间状态（播放列表 + 当前歌曲 + 在线用户）
+    // 连接成功后主动请求房间状态（播放列表 + 当前歌曲 + 在线用户 + 历史操作）
     QTimer::singleShot(100, this, [this]()
                        {
         if (isConnected())
@@ -364,6 +372,11 @@ void WebSocketClient::onConnected()
             json["userid"] = m_userId;
             json["action"] = GET_CUR_SONG_INFO;
             sendJson(json);
+            // 请求历史操作日志
+            QJsonObject historyReq;
+            historyReq["userid"] = m_userId;
+            historyReq["action"] = BROADCAST_ROOM_ACTION;
+            sendJson(historyReq);
         } });
 }
 
@@ -395,16 +408,9 @@ void WebSocketClient::onDisconnected()
         playmanager->changeplaylisttype(LOCAL);
     }
 
-    if (m_autoReconnect && m_reconnectAttempts < m_maxReconnectAttempts)
-    {
-        // 指数退避：2s, 4s, 8s, 16s, 32s, 32s, ...
-        int delay = qMin(m_reconnectBaseInterval * (1 << m_reconnectAttempts), 32000);
-        QTimer::singleShot(delay, this, &WebSocketClient::tryReconnect);
-    }
-    else
-    {
-        emit connectFail();
-    }
+    // 断线直接提示，不自动重连
+    emit serverNotice(QStringLiteral("连接已断开，请重新加入房间"), QStringLiteral("error"));
+    emit connectFail();
 }
 
 void WebSocketClient::onTextMessageReceived(const QString &message)
@@ -474,6 +480,15 @@ void WebSocketClient::checkHeartbeatTimeout()
             m_webSocket->close();
         }
     }
+}
+
+void WebSocketClient::checkAddSongTimeout()
+{
+    if (!m_pendingAddSong)
+        return;
+
+    m_pendingAddSong = false;
+    emit serverNotice(QStringLiteral("添加歌曲超时，请重试"), QStringLiteral("error"));
 }
 
 void WebSocketClient::tryReconnect()
@@ -647,6 +662,7 @@ void WebSocketClient::handleServerMessage(const QJsonObject &json)
         if (json["status"].toString() == "error")
         {
             m_pendingAddSong = false;
+            if (m_addSongTimeoutTimer) m_addSongTimeoutTimer->stop();
             emit serverNotice(json["message"].toString(), "error");
         }
         break;
@@ -819,6 +835,7 @@ void WebSocketClient::handleSongListBroadcast(const QJsonObject &json)
     if (m_pendingAddSong)
     {
         m_pendingAddSong = false;
+        if (m_addSongTimeoutTimer) m_addSongTimeoutTimer->stop();
         emit serverNotice("已添加到一起听", "success");
     }
 }

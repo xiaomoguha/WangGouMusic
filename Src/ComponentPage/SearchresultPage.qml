@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
 
 Item {
@@ -7,88 +8,69 @@ Item {
     width: parent ? parent.width : 0
     height: parent ? parent.height : 0
     objectName: "SearchresultPage"
-    property alias currentIndex: stackView.currentIndex
+
     property string keyword: BasicConfig.searchKeyword
+
+    // ===== 顶部信息栏 =====
     Row {
-        id: tishirow
+        id: headerRow
         anchors.left: parent.left
-        anchors.leftMargin: 0.03 * parent.width
-        anchors.right: parent.right
+        anchors.leftMargin: 0.025 * parent.width
         anchors.top: parent.top
-        anchors.topMargin: 20
+        anchors.topMargin: 16
         spacing: 10
+        height: 36
+
         Text {
-            id: searchkeywods
             text: keyword
-            font.pixelSize: 23
-            font.family: "黑体"
+            font.pixelSize: 22
+            font.bold: true
             color: AppTheme.textPrimary
-            font.bold: true
-        }
-        Text {
-            id: tishitext
-            anchors.bottom: searchkeywods.bottom
-            text: "的相关搜索如下，找到" + (complexsearch ? complexsearch.total : 0) + "首单曲"
-            font.pixelSize: 14
             font.family: "黑体"
-            color: AppTheme.textSearchKeyword
-            font.bold: true
+            anchors.verticalCenter: parent.verticalCenter
         }
-    }
-    Row {
-        id: sosjieguorow
-        anchors.left: parent.left
-        anchors.leftMargin: 0.03 * parent.width
-        anchors.right: parent.right
-        anchors.top: tishirow.bottom
-        anchors.topMargin: 25
-        spacing: 10
-        Repeater {
-            model: ["综合", "单曲", "专辑", "歌词"]
-            Item {
-                width: 50
-                height: 20
 
-                Column {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: 5
-                    Text {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: modelData
-                        font.pixelSize: 18
-                        font.family: "黑体"
-                        color: index === stackView.currentIndex ? AppTheme.textPrimary : AppTheme.textSecondary
-                    }
-                    Rectangle {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        visible: index === stackView.currentIndex
-                        width: 40
-                        height: 2
-                        color: index === stackView.currentIndex ? AppTheme.accent : AppTheme.textSecondary
-                    }
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        stackView.currentIndex = index;
-                    }
-                }
+        Text {
+            text: {
+                var total = complexsearch ? complexsearch.total : 0;
+                if (total > 10000) return (total / 10000).toFixed(1) + "万首";
+                return total + "首";
             }
+            font.pixelSize: 13
+            color: AppTheme.textMuted
+            font.family: "黑体"
+            anchors.verticalCenter: parent.verticalCenter
+        }
+
+        // 返回按钮
+        Rectangle {
+            width: 28; height: 28; radius: 14
+            color: backH.hovered ? AppTheme.iconButtonHover : "transparent"
+            anchors.verticalCenter: parent.verticalCenter
+
+            Image {
+                id: backIco
+                anchors.centerIn: parent
+                source: "qrc:/image/fanhui.png"
+                width: 14; height: 14; fillMode: Image.PreserveAspectFit
+                layer.enabled: true
+                layer.effect: ColorOverlay { source: backIco; color: AppTheme.iconDefault }
+            }
+            HoverHandler { id: backH }
+            TapHandler {
+                cursorShape: Qt.PointingHandCursor
+                onTapped: BasicConfig.goBack()
+            }
+            Behavior on color { ColorAnimation { duration: 150 } }
         }
     }
-    SwipeView {
-        id: stackView
+
+    // ===== 搜索结果列表 =====
+    ComplexPage {
+        anchors.top: headerRow.bottom
+        anchors.topMargin: 8
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.top: sosjieguorow.bottom
-        anchors.topMargin: 15
         anchors.bottom: parent.bottom
-        currentIndex: 0
-        // 页面组件
-        ComplexPage {}
-        Danqv {}
-        AlbumPage {}
-        LyricPage {}
     }
 }

@@ -780,9 +780,9 @@ Item {
         target: websocket
 
         function onConnectionStateChanged(state) {
-            if (state === 3) {
+            if (state === 0) {
                 connectionBanner.height = 36
-                bannerText.text = "连接断开，正在尝试重连..."
+                bannerText.text = "连接已断开，正在退出房间..."
             } else if (state === 2) {
                 connectionBanner.height = 0
             }

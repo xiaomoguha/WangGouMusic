@@ -136,6 +136,7 @@ private slots:
     void sendHeartbeat();
     void tryReconnect();
     void checkHeartbeatTimeout();
+    void checkAddSongTimeout();
 
 private:
     PlaylistManager *playmanager = nullptr;
@@ -186,6 +187,7 @@ private:
 
     // 待确认的添加歌曲操作
     bool m_pendingAddSong = false;
+    QTimer *m_addSongTimeoutTimer = nullptr;
 };
 
 #endif // WEBSOCKETCLIENT_H
