@@ -372,11 +372,6 @@ void WebSocketClient::onConnected()
             json["userid"] = m_userId;
             json["action"] = GET_CUR_SONG_INFO;
             sendJson(json);
-            // 请求历史操作日志
-            QJsonObject historyReq;
-            historyReq["userid"] = m_userId;
-            historyReq["action"] = BROADCAST_ROOM_ACTION;
-            sendJson(historyReq);
         } });
 }
 
@@ -736,6 +731,7 @@ void WebSocketClient::handleSongInfoBroadcast(const QJsonObject &data)
         // 同一首歌：检测是否为循环重播（进度回到起点）
         if (isPlaying == 1 && playedPercent < 0.05)
         {
+            playmanager->clearTogetherSongHash(); // 允许重新播放同一首歌
             playmanager->playTogetherSongFromServer(songUrl, songName, songHash,
                                                       singerName, coverUrl, albumName,
                                                       duration);

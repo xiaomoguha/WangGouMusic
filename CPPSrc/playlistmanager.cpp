@@ -627,6 +627,11 @@ QList<SongInfo> PlaylistManager::togetherplaylist()
     return m_togetherplaylist;
 }
 
+void PlaylistManager::clearTogetherSongHash()
+{
+    m_currentTogetherSongHash.clear();
+}
+
 int PlaylistManager::playlistcount() const
 {
     return (*m_curplaylist).size();
@@ -683,6 +688,7 @@ void PlaylistManager::changeplaylisttype(enum playlist_type changetype)
     else if (changetype == LOCAL)
     {
         type = LOCAL;
+        m_currentTogetherSongHash.clear();
         m_curplaylist = &m_playlist;
         // 恢复本地播放索引并加载歌曲（暂停状态）
         if (m_localIndex >= 0 && m_localIndex < m_playlist.size())
@@ -1129,6 +1135,43 @@ void PlaylistManager::handlePlayerError(QMediaPlayer::Error error, const QString
 
     qWarning() << "播放出错:" << errorString << "错误代码:" << error;
 
+    // FormatError 且正在播放本地缓存文件（非边下边播）→ 删除损坏的缓存并重新下载
+    if (error == QMediaPlayer::FormatError && type == TOGETHER)
+    {
+        QUrl src = player->source();
+        if (src.isLocalFile())
+        {
+            QString localPath = src.toLocalFile();
+            QFileInfo fi(localPath);
+            // 只处理文件不再增长的情况（非边下边播）
+            qint64 size1 = fi.size();
+            QTimer::singleShot(200, this, [this, localPath, size1]() {
+                QFileInfo fi2(localPath);
+                if (fi2.size() != size1 || size1 < 10240)
+                {
+                    return;
+                }
+                qDebug() << "一起听 - 缓存文件损坏，删除并重新下载:" << localPath;
+                player->stop();
+                player->setSource(QUrl());
+                QFile::remove(localPath);
+                m_currentTogetherSongHash.clear(); // 允许重新播放同一首歌
+
+                if (m_currentIndex >= 0 && m_currentIndex < m_togetherplaylist.size())
+                {
+                    const SongInfo &song = m_togetherplaylist[m_currentIndex];
+                    if (!song.url.isEmpty())
+                    {
+                        playTogetherSongFromServer(song.url, song.title, song.songhash,
+                                                   song.singername, song.union_cover,
+                                                   song.album_name, song.duration);
+                    }
+                }
+            });
+            return;
+        }
+    }
+
     // 检查是否是FFmpeg解复用错误
     if ((errorString.contains("Demuxing failed") || errorString.contains("AV_NOPTS_VALUE")) && m_repairCount < MAX_REPAIR_ATTEMPTS)
     {
@@ -1353,6 +1396,14 @@ void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const Q
                                                    const QString &coverUrl, const QString &albumName,
                                                    const QString &duration)
 {
+    // 防重入：同一首歌正在播放或下载中，跳过
+    if (m_currentTogetherSongHash == songHash)
+    {
+        qDebug() << "一起听 - 跳过重复播放请求:" << songName;
+        return;
+    }
+    m_currentTogetherSongHash = songHash;
+
     // 记录到最近播放
     {
         SongInfo recentSong;
@@ -1365,128 +1416,58 @@ void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const Q
         addToRecent(recentSong);
     }
 
-    // 更新 m_togetherplaylist 中对应歌曲的 url
+    // 查找或创建歌曲条目
+    int playIndex = -1;
     for (int i = 0; i < m_togetherplaylist.size(); i++)
     {
         if (m_togetherplaylist[i].songhash == songHash)
         {
             m_togetherplaylist[i].url = songUrl;
-            m_currentIndex = i;
-            SongInfo song = m_togetherplaylist[i];
-            song.url = songUrl;
-
-            player->stop();
-            player->setSource(QUrl());
-
-            // 优先使用本地缓存
-            ensureCacheDir();
-            QString cacheDir = getCacheDir();
-            QString cacheFileName = song.title + "-" + song.singername + ".mp3";
-            QString cacheFilePath = cacheDir + "/" + cacheFileName;
-            QFile cacheFile(cacheFilePath);
-            bool useCache = cacheFile.exists();
-
-            if (useCache)
-            {
-                qDebug() << "一起听 - 使用本地缓存:" << cacheFilePath;
-                player->setSource(QUrl::fromLocalFile(cacheFilePath));
-            }
-            else if (!songUrl.isEmpty())
-            {
-                player->setSource(QUrl(songUrl));
-            }
-
-            if (useCache || !songUrl.isEmpty())
-            {
-                // 如果有同步进度，先 seek 再播放，避免先播几秒再跳
-                if (m_togetherSeekPercent > 0)
-                {
-                    double seekPercent = m_togetherSeekPercent;
-                    m_togetherSeekPercent = 0;
-                    auto conn = std::make_shared<QMetaObject::Connection>();
-                    *conn = connect(player, &QMediaPlayer::mediaStatusChanged, this,
-                        [this, seekPercent, conn](QMediaPlayer::MediaStatus status) {
-                            if (status == QMediaPlayer::BufferedMedia)
-                            {
-                                seekToPercent(seekPercent);
-                                if (m_isPaused) {
-                                    player->play();
-                                    m_isPaused = false;
-                                    emit isPausedChanged();
-                                }
-                                QObject::disconnect(*conn);
-                            }
-                        });
-                    // 先 pause 状态等待 seek，seek 完成后再播放
-                    player->play();
-                    player->pause();
-                    m_isPaused = true;
-                }
-                else
-                {
-                    player->play();
-                    m_isPaused = false;
-                }
-            }
-            else
-            {
-                // URL 为空，通过 hash 获取播放链接
-                m_isPaused = true;
-                emit isPausedChanged();
-                fetchSongUrl(songHash, [this, songHash](const QString &url) {
-                    if (!url.isEmpty())
-                    {
-                        player->setSource(QUrl(url));
-                        player->play();
-                        m_isPaused = false;
-                        emit isPausedChanged();
-                    }
-                    else
-                    {
-                        qWarning() << "一起听模式 - 无法获取歌曲URL，hash:" << songHash;
-                    }
-                });
-            }
-
-            extractDominantColor(coverUrl);
-            emit currentIndexChanged(i);
-            emit currentSongChanged();
-            emit isPausedChanged();
-
-            // 客户端自行根据歌曲 hash 获取歌词
-            fetchLyricData(songHash, [this](const QString &lyric)
-            {
-                if (!lyric.isEmpty())
-                {
-                    lyricParser.parseKRCLyrics(lyric);
-                    qDebug() << "一起听模式 - 歌词获取成功，长度:" << lyric.length();
-                }
-                else
-                {
-                    qWarning() << "一起听模式 - 获取歌词失败";
-                }
-            });
-            return;
+            playIndex = i;
+            break;
         }
     }
-    // 歌曲不在 togetherplaylist 中，创建并播放
-    SongInfo song;
-    song.title = songName;
-    song.songhash = songHash;
-    song.url = songUrl;
-    song.singername = singerName;
-    song.union_cover = coverUrl;
-    song.album_name = albumName;
-    song.duration = duration;
-    m_togetherplaylist.append(song);
-    m_currentIndex = m_togetherplaylist.size() - 1;
-    emit togetherplaylistUpdated();
+    if (playIndex < 0)
+    {
+        SongInfo song;
+        song.title = songName;
+        song.songhash = songHash;
+        song.url = songUrl;
+        song.singername = singerName;
+        song.union_cover = coverUrl;
+        song.album_name = albumName;
+        song.duration = duration;
+        m_togetherplaylist.append(song);
+        playIndex = m_togetherplaylist.size() - 1;
+        emit togetherplaylistUpdated();
+    }
+    m_currentIndex = playIndex;
+    emit currentIndexChanged(playIndex);
 
     player->stop();
     player->setSource(QUrl());
-    if (!songUrl.isEmpty())
+
+    ensureCacheDir();
+    QString cacheDir = getCacheDir();
+    QString cacheFileName = songName + "-" + singerName + ".mp3";
+    QString cacheFilePath = cacheDir + "/" + cacheFileName;
+    bool useCache = false;
+    if (QFile::exists(cacheFilePath))
     {
-        player->setSource(QUrl(songUrl));
+        QFileInfo cacheInfo(cacheFilePath);
+        if (cacheInfo.size() > 10240) // 至少 10KB 才认为是有效缓存
+            useCache = true;
+        else
+        {
+            qDebug() << "一起听 - 缓存文件过小，删除并重新下载:" << cacheFilePath << "大小:" << cacheInfo.size();
+            QFile::remove(cacheFilePath);
+        }
+    }
+
+    if (useCache)
+    {
+        qDebug() << "一起听 - 使用本地缓存:" << cacheFilePath;
+        player->setSource(QUrl::fromLocalFile(cacheFilePath));
 
         if (m_togetherSeekPercent > 0)
         {
@@ -1498,29 +1479,80 @@ void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const Q
                     if (status == QMediaPlayer::BufferedMedia)
                     {
                         seekToPercent(seekPercent);
-                        if (m_isPaused) {
-                            player->play();
-                            m_isPaused = false;
-                            emit isPausedChanged();
-                        }
                         QObject::disconnect(*conn);
                     }
                 });
             player->play();
-            player->pause();
-            m_isPaused = true;
         }
         else
         {
             player->play();
+        }
+        m_isPaused = false;
+        emit isPausedChanged();
+    }
+    else if (!songUrl.isEmpty())
+    {
+        // 无缓存 - 边下边播，保存到本地缓存文件
+        const qint64 startThreshold = 500 * 1024;
+
+        QFile *tempFile = new QFile(cacheFilePath, this);
+        if (!tempFile->open(QIODevice::WriteOnly))
+        {
+            qCritical() << "Cannot open cache file:" << cacheFilePath;
+            player->setSource(QUrl(songUrl));
+            player->play();
             m_isPaused = false;
+            emit isPausedChanged();
+        }
+        else
+        {
+            QNetworkAccessManager *mgr = new QNetworkAccessManager(this);
+            QNetworkReply *reply = mgr->get(QNetworkRequest(QUrl(songUrl)));
+
+            double seekPercent = m_togetherSeekPercent;
+            m_togetherSeekPercent = 0;
+
+            QObject::connect(reply, &QNetworkReply::readyRead, this, [=]() {
+                QByteArray chunk = reply->readAll();
+                if (!chunk.isEmpty()) {
+                    tempFile->write(chunk);
+                    tempFile->flush();
+                }
+
+                QFileInfo fi(cacheFilePath);
+                if (fi.size() >= startThreshold && player->source().isEmpty()) {
+                    player->setSource(QUrl::fromLocalFile(cacheFilePath));
+                    player->play();
+                    m_isPaused = false;
+                    emit isPausedChanged();
+                }
+            });
+
+            QObject::connect(reply, &QNetworkReply::finished, this, [=]() {
+                tempFile->flush();
+                tempFile->close();
+                qDebug() << "一起听 - 下载完成:" << cacheFilePath;
+
+                // 文件太小没触发阈值时，手动设置源并播放
+                if (player->source().isEmpty() && QFile::exists(cacheFilePath)) {
+                    player->setSource(QUrl::fromLocalFile(cacheFilePath));
+                    player->play();
+                    m_isPaused = false;
+                    emit isPausedChanged();
+                }
+
+                reply->deleteLater();
+                mgr->deleteLater();
+                tempFile->deleteLater();
+            });
         }
     }
     else
     {
+        // URL 为空，通过 hash 获取播放链接
         m_isPaused = true;
-        emit isPausedChanged();
-        fetchSongUrl(songHash, [this](const QString &url) {
+        fetchSongUrl(songHash, [this, songHash](const QString &url) {
             if (!url.isEmpty())
             {
                 player->setSource(QUrl(url));
@@ -1530,26 +1562,25 @@ void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const Q
             }
             else
             {
-                qWarning() << "一起听模式(新歌曲) - 无法获取歌曲URL";
+                qWarning() << "一起听模式 - 无法获取歌曲URL，hash:" << songHash;
             }
         });
     }
+
     extractDominantColor(coverUrl);
-    emit currentIndexChanged(m_currentIndex);
     emit currentSongChanged();
     emit isPausedChanged();
 
-    // 客户端自行根据歌曲 hash 获取歌词
     fetchLyricData(songHash, [this](const QString &lyric)
     {
         if (!lyric.isEmpty())
         {
             lyricParser.parseKRCLyrics(lyric);
-            qDebug() << "一起听模式(新歌曲) - 歌词获取成功，长度:" << lyric.length();
+            qDebug() << "一起听模式 - 歌词获取成功，长度:" << lyric.length();
         }
         else
         {
-            qWarning() << "一起听模式(新歌曲) - 获取歌词失败";
+            qWarning() << "一起听模式 - 获取歌词失败";
         }
     });
 }

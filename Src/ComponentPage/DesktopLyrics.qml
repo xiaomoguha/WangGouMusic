@@ -18,8 +18,7 @@ Window {
     width: desktopLyrics.isVertical ? Math.max(background.width + 70, 44 * desktopLyrics.scale + 16) : Math.max(background.width + 20, controlPanelHorizontal.implicitWidth + 20)
     height: desktopLyrics.isVertical ? Math.max(background.height + 20, controlPanelVertical.implicitHeight + 20) : Math.max(background.height + 70, 28 * desktopLyrics.scale + 16 + 8 * desktopLyrics.scale)
 
-    // 歌词内容变化时保持中心位置不变
-    // 用 _suppressCentering 在启动和模式切换时临时关闭，防止干扰位置
+    // 歌词内容变化时保持中心位置不变（横向）/ 顶部位置不变（竖向）
     property bool _suppressCentering: true
     property real _prevWidth: 0
     property real _prevHeight: 0
@@ -30,7 +29,7 @@ Window {
         _prevWidth = width;
     }
     onHeightChanged: {
-        if (!_suppressCentering && _prevHeight > 0) {
+        if (!_suppressCentering && _prevHeight > 0 && !desktopLyrics.isVertical) {
             desktopLyrics.y -= (height - _prevHeight) / 2;
         }
         _prevHeight = height;

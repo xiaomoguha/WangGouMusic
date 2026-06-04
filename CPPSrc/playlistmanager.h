@@ -109,6 +109,7 @@ public:
     QList<SongInfo> togetherplaylist();
     QList<SongInfo> recentPlaylist() const;
     void addToRecent(const SongInfo &song);
+    void clearTogetherSongHash();
     int playlistcount() const;
     int getnowplaylistrange() const;
     QString getcurrlyric() const;
@@ -180,6 +181,7 @@ private:
     void handlePlayerError(QMediaPlayer::Error error, const QString &errorString);
     QString formatTime(qint64 milliseconds);
     Recommendation *m_recommendation = nullptr; // 改为指针
+    QString m_currentTogetherSongHash;
     QList<SongInfo> convertToSongInfoList(const QVariantList &variantList);
     bool m_isRepairing = false;        // 添加修复状态标志
     float m_restorePercent = -1.0f;
