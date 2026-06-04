@@ -92,6 +92,25 @@ Item {
     property var onlineUsers: []
     property int onlineCount: 0
     property var messages: websocket ? websocket.messages : []
+    property bool messageAutoScroll: true
+    property int prevMsgCount: 0      // 上次消息数，用于判断哪些是新增的
+    property bool firstLoad: true     // 首次加载不播动画
+
+    onMessagesChanged: {
+        if (firstLoad && messages.length > 0) {
+            prevMsgCount = messages.length;
+            firstLoad = false;
+        }
+        if (!firstLoad)
+            updateCountTimer.start();
+    }
+
+    Timer {
+        id: updateCountTimer
+        interval: 500
+        repeat: false
+        onTriggered: root.prevMsgCount = root.messages.length
+    }
 
     // ========== 连接状态横幅 ==========
     Rectangle {
@@ -293,11 +312,46 @@ Item {
         anchors.bottomMargin: 6
         clip: true
         spacing: 6
+        cacheBuffer: 9999
         model: messages
 
+        onContentHeightChanged: positionViewAtEnd()
+
+        footer: Item { height: 4 }
+
         delegate: Item {
+            id: messageDelegate
             width: messageListView.width
             height: modelData.type === "action" ? actionRow.height + 6 : chatBubble.height + 8
+
+            property bool isNewMsg: false
+            property real slideX: 0
+            property real msgOpacity: 1
+
+            transform: Translate { x: messageDelegate.slideX }
+            opacity: messageDelegate.msgOpacity
+
+            Component.onCompleted: {
+                var newMsg = index >= root.prevMsgCount;
+                if (newMsg) {
+                    isNewMsg = true;
+                    slideX = -60;
+                    msgOpacity = 0;
+                    slideInAnim.start();
+                }
+            }
+
+            ParallelAnimation {
+                id: slideInAnim
+                NumberAnimation {
+                    target: messageDelegate; property: "slideX"
+                    from: -60; to: 0; duration: 500; easing.type: Easing.OutCubic
+                }
+                NumberAnimation {
+                    target: messageDelegate; property: "msgOpacity"
+                    from: 0; to: 1; duration: 400; easing.type: Easing.OutCubic
+                }
+            }
 
             // --- 操作动态 ---
             Row {
@@ -449,7 +503,7 @@ Item {
                     if (chatInput.text.trim() !== "") {
                         websocket.sendChatMessage(chatInput.text.trim());
                         chatInput.text = "";
-                        Qt.callLater(function() { messageListView.positionViewAtEnd(); });
+                        root.messageAutoScroll = true;
                     }
                 }
             }
@@ -474,7 +528,7 @@ Item {
                         if (chatInput.text.trim() !== "") {
                             websocket.sendChatMessage(chatInput.text.trim());
                             chatInput.text = "";
-                            Qt.callLater(function() { messageListView.positionViewAtEnd(); });
+                            root.messageAutoScroll = true;
                         }
                     }
                 }
@@ -637,7 +691,7 @@ Item {
                         radius: 6
                         color: {
                             if (playlistmanager && playlistmanager.currentIndex === index)
-                                return AppTheme.bgCardHover;
+                                return AppTheme.accentDim;
                             return songHover.hovered ? AppTheme.bgCardHover : "transparent";
                         }
 
@@ -728,28 +782,61 @@ Item {
 
                             // 悬停操作（固定宽度，用 opacity 避免闪烁）
                             Row {
+                                property bool isCurrent: playlistmanager && playlistmanager.currentIndex === index
                                 opacity: songHover.hovered ? 1 : 0
                                 visible: opacity > 0
                                 anchors.verticalCenter: parent.verticalCenter
                                 spacing: 2
                                 Behavior on opacity { NumberAnimation { duration: 80 } }
 
+                                // 播放按钮（当前歌曲隐藏）
                                 Rectangle {
                                     width: 22; height: 22; radius: 11
+                                    visible: !parent.isCurrent
                                     color: iPlayBtnHover.hovered ? AppTheme.iconButtonHover : "transparent"
                                     Image { id: iPlayIco; anchors.centerIn: parent; source: "qrc:/image/playnow.png"; width: 10; height: 10; fillMode: Image.PreserveAspectFit; layer.enabled: true; layer.effect: ColorOverlay { source: iPlayIco; color: AppTheme.textSecondary } }
                                     HoverHandler { id: iPlayBtnHover }
                                     TapHandler { cursorShape: Qt.PointingHandCursor; onTapped: websocket.playTogetherByHash(modelData.songhash) }
                                 }
+                                // 置顶按钮（当前歌曲隐藏）
                                 Rectangle {
                                     width: 22; height: 22; radius: 11
+                                    visible: !parent.isCurrent
                                     color: iUpBtnHover.hovered ? AppTheme.iconButtonHover : "transparent"
-                                    Image { id: iUpIco; anchors.centerIn: parent; source: "qrc:/image/upplay.png"; width: 10; height: 10; fillMode: Image.PreserveAspectFit; layer.enabled: true; layer.effect: ColorOverlay { source: iUpIco; color: AppTheme.textSecondary } }
+                                    Canvas {
+                                        anchors.centerIn: parent
+                                        width: 12; height: 12
+                                        onPaint: {
+                                            var ctx = getContext("2d");
+                                            ctx.clearRect(0, 0, width, height);
+                                            ctx.strokeStyle = AppTheme.textSecondary;
+                                            ctx.lineWidth = 1.5;
+                                            ctx.lineCap = ctx.lineJoin = "round";
+                                            // 上箭头：先画竖线
+                                            ctx.beginPath();
+                                            ctx.moveTo(6, 10);
+                                            ctx.lineTo(6, 2);
+                                            ctx.stroke();
+                                            // 箭头头部 V
+                                            ctx.beginPath();
+                                            ctx.moveTo(2.5, 5.5);
+                                            ctx.lineTo(6, 2);
+                                            ctx.lineTo(9.5, 5.5);
+                                            ctx.stroke();
+                                            // 顶部横线（表示"顶"）
+                                            ctx.beginPath();
+                                            ctx.moveTo(2, 2);
+                                            ctx.lineTo(10, 2);
+                                            ctx.stroke();
+                                        }
+                                    }
                                     HoverHandler { id: iUpBtnHover }
                                     TapHandler { cursorShape: Qt.PointingHandCursor; onTapped: websocket.upSongByHash(modelData.songhash) }
                                 }
+                                // 删除按钮（当前歌曲隐藏）
                                 Rectangle {
                                     width: 22; height: 22; radius: 11
+                                    visible: !parent.isCurrent
                                     color: iDelBtnHover.hovered ? AppTheme.iconButtonHover : "transparent"
                                     Image { id: iDelIco; anchors.centerIn: parent; source: "qrc:/image/delete_line.png"; width: 10; height: 10; fillMode: Image.PreserveAspectFit; layer.enabled: true; layer.effect: ColorOverlay { source: iDelIco; color: AppTheme.textSecondary } }
                                     HoverHandler { id: iDelBtnHover }
@@ -777,14 +864,26 @@ Item {
 
     // ========== 信号连接 ==========
     Connections {
+        target: playlistmanager
+        function onTogetherplaylistUpdated() {
+            playlistView.model = null;
+            playlistView.model = playlistmanager ? playlistmanager.togetherplaylist : 0;
+        }
+    }
+
+    Connections {
         target: websocket
 
         function onConnectionStateChanged(state) {
             if (state === 0) {
                 connectionBanner.height = 36
                 bannerText.text = "连接已断开，正在退出房间..."
+                root.firstLoad = true;
+                root.prevMsgCount = 0;
             } else if (state === 2) {
                 connectionBanner.height = 0
+                root.firstLoad = true;
+                root.prevMsgCount = 0;
             }
         }
 
@@ -804,13 +903,11 @@ Item {
         }
 
         function onRoomActionsReceived(actions) {
-            Qt.callLater(function() {
-                if (messageListView.atYEnd) messageListView.positionViewAtEnd();
-            });
+            root.messageAutoScroll = messageListView.atYEnd || messageListView.contentHeight <= messageListView.height
         }
 
         function onChatMessageReceived(userid, nickname, avatarUrl, message, timestamp) {
-            Qt.callLater(function() { messageListView.positionViewAtEnd(); });
+            root.messageAutoScroll = true
         }
     }
 
@@ -818,7 +915,6 @@ Item {
         if (websocket && websocket.connected) {
             websocket.requestClientList();
         }
-        // 恢复历史消息时滚动到底部
-        Qt.callLater(function() { messageListView.positionViewAtEnd(); });
+        messageListView.positionViewAtEnd();
     }
 }
