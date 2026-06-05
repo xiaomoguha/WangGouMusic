@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(cmake_wanggou VERSION 0.5.1 LANGUAGES CXX)
+project(网狗音乐 VERSION 0.5.5 LANGUAGES CXX)
 
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
@@ -23,7 +23,7 @@ set(PROJECT_SOURCES
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
-    qt_add_executable(cmake_wanggou
+    qt_add_executable(WangGouMusic
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
         qml.qrc
@@ -38,43 +38,43 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     )
     # Windows 应用程序图标
     if(WIN32)
-        target_sources(cmake_wanggou PRIVATE app.rc)
+        target_sources(WangGouMusic PRIVATE app.rc)
     endif()
     # 非 macOS 平台也需要头文件以触发 AUTOMOC（#else 分支有 Q_OBJECT）
     if(NOT APPLE)
-        target_sources(cmake_wanggou PRIVATE CPPSrc/NowPlayingMediaController.h)
+        target_sources(WangGouMusic PRIVATE CPPSrc/NowPlayingMediaController.h)
     endif()
     # macOS Objective-C++ 源文件
     if(APPLE)
-        target_sources(cmake_wanggou PRIVATE CPPSrc/macoswindow.mm CPPSrc/macoswindow.h
+        target_sources(WangGouMusic PRIVATE CPPSrc/macoswindow.mm CPPSrc/macoswindow.h
                         CPPSrc/NowPlayingMediaController.mm CPPSrc/NowPlayingMediaController.h)
         set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/cmake_wanggou.icns PROPERTIES
             MACOSX_PACKAGE_LOCATION Resources)
-        target_sources(cmake_wanggou PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/cmake_wanggou.icns)
+        target_sources(WangGouMusic PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/cmake_wanggou.icns)
     endif()
 # Define target properties for Android with Qt 6 as:
-#    set_property(TARGET cmake_wanggou APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
+#    set_property(TARGET WangGouMusic APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
 #                 ${CMAKE_CURRENT_SOURCE_DIR}/android)
 # For more information, see https://doc.qt.io/qt-6/qt-add-executable.html#target-creation
 else()
     if(ANDROID)
-        add_library(cmake_wanggou SHARED
+        add_library(WangGouMusic SHARED
             ${PROJECT_SOURCES}
         )
 # Define properties for Android with Qt 5 after find_package() calls as:
 #    set(ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android")
     else()
-        add_executable(cmake_wanggou
+        add_executable(WangGouMusic
           ${PROJECT_SOURCES}
         )
     endif()
 endif()
 
-target_link_libraries(cmake_wanggou
+target_link_libraries(WangGouMusic
   PRIVATE Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Quick Qt${QT_VERSION_MAJOR}::Multimedia Qt${QT_VERSION_MAJOR}::WebSockets Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::QuickControls2 Qt${QT_VERSION_MAJOR}::Core5Compat Qt${QT_VERSION_MAJOR}::Network)
 
 # 将版本号注入 C++ 宏
-target_compile_definitions(cmake_wanggou PRIVATE APP_VERSION="${PROJECT_VERSION}")
+target_compile_definitions(WangGouMusic PRIVATE APP_VERSION="${PROJECT_VERSION}")
 
 # macOS 链接 Cocoa 框架
 if(APPLE)
@@ -82,17 +82,18 @@ if(APPLE)
     find_library(MEDIAPLAYER_FRAMEWORK MediaPlayer)
     find_library(COREAUDIO_FRAMEWORK CoreAudio)
     find_library(COREIMAGE_FRAMEWORK CoreImage)
-    target_link_libraries(cmake_wanggou PRIVATE ${COCOA_FRAMEWORK} ${MEDIAPLAYER_FRAMEWORK} ${COREAUDIO_FRAMEWORK} ${COREIMAGE_FRAMEWORK})
+    target_link_libraries(WangGouMusic PRIVATE ${COCOA_FRAMEWORK} ${MEDIAPLAYER_FRAMEWORK} ${COREAUDIO_FRAMEWORK} ${COREIMAGE_FRAMEWORK})
 endif()
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an
 # explicit, fixed bundle identifier manually though.
 if(${QT_VERSION} VERSION_LESS 6.1.0)
-  set(BUNDLE_ID_OPTION MACOSX_BUNDLE_GUI_IDENTIFIER com.example.cmake_wanggou)
+  set(BUNDLE_ID_OPTION MACOSX_BUNDLE_GUI_IDENTIFIER com.example.WangGouMusic)
 endif()
-set_target_properties(cmake_wanggou PROPERTIES
+set_target_properties(WangGouMusic PROPERTIES
     ${BUNDLE_ID_OPTION}
+    OUTPUT_NAME "网狗音乐"
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
@@ -104,11 +105,11 @@ set_target_properties(cmake_wanggou PROPERTIES
 )
 
 include(GNUInstallDirs)
-install(TARGETS cmake_wanggou
+install(TARGETS WangGouMusic
     BUNDLE DESTINATION .
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 if(QT_VERSION_MAJOR EQUAL 6)
-    qt_import_qml_plugins(cmake_wanggou)
-    qt_finalize_executable(cmake_wanggou)
+    qt_import_qml_plugins(WangGouMusic)
+    qt_finalize_executable(WangGouMusic)
 endif()

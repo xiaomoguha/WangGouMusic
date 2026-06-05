@@ -606,14 +606,14 @@ Rectangle {
     // ================== 右侧歌词区 ==========================
     ListView {
         id: lyricList
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.horizontalCenterOffset: parent.width * 0.15
+        anchors.left: leftAlbumSection.right
+        anchors.leftMargin: parent.width * 0.02
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         anchors.bottomMargin: 0.2 * root.height
         anchors.topMargin: 160
         clip: true
-        width: parent.width * 0.3
+        width: parent.width * 0.32
         cacheBuffer: 150
 
         model: playlistmanager ? playlistmanager.m_lyrics : 0

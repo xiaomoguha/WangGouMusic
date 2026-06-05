@@ -3,16 +3,23 @@ import QtQuick 2.15
 import "../BasicConfig"
 
 Rectangle {
+    id: rightPage
     property alias rightTopPage: righttoppage
+
+    // 导航栈：记录页面历史，最后一个是当前页面
+    property var navStack: []
+
     RightTopPage {
         id: righttoppage
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
         height: 60
+        canGoBack: navStack.length > 0
+        onGoBack: rightPage.goBack()
     }
 
-    // 主页：始终保留，不销毁，避免图片重新加载
+    // 主页：始终保留
     Loader {
         id: homePageLoader
         anchors.left: parent.left
@@ -20,85 +27,112 @@ Rectangle {
         anchors.top: righttoppage.bottom
         anchors.bottom: parent.bottom
         source: "qrc:/Src/ComponentPage/HomePage.qml"
-        visible: !overlayLoader.active || overlayLoader._isOnHome
+        visible: currentOverlayUrl === ""
     }
 
-    // 其他页面：叠加在主页之上
-    Loader {
-        id: overlayLoader
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: righttoppage.bottom
-        anchors.bottom: parent.bottom
-        z: 1
-        opacity: 0
-        active: false
+    // 子页面 Loader 池：每个 URL 一个 Loader，切换时只隐藏不销毁
+    property var pageLoaders: ({})
+    property string currentOverlayUrl: ""
 
-        property string _pendingUrl: ""
-        property bool _isOnHome: true
+    Component {
+        id: pageLoaderComponent
+        Loader {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: righttoppage.bottom
+            anchors.bottom: parent.bottom
+            z: 1
+            opacity: 0
+            visible: false
 
-        Behavior on opacity {
-            NumberAnimation {
-                duration: 150
-                easing.type: Easing.OutCubic
+            Behavior on opacity {
+                NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
             }
-        }
-
-        Connections {
-            target: BasicConfig
-            function urlToObjectName(url) {
-                return url.split('/').pop().split('.')[0];
-            }
-            function onPushPage(url) {
-                let fileName = urlToObjectName(url);
-                if (fileName === "HomePage") {
-                    // 返回主页：淡出覆盖层
-                    overlayLoader._isOnHome = true;
-                    BasicConfig.previousPageUrl = homePageLoader.source.toString();
-                    overlayLoader._pendingUrl = "";
-                    overlayLoader.opacity = 0;
-                } else if (overlayLoader.active && overlayLoader.item) {
-                    let currentName = overlayLoader.item.objectName;
-                    if (currentName === fileName) return;
-                    // 非主页之间切换
-                    overlayLoader._isOnHome = false;
-                    BasicConfig.previousPageUrl = overlayLoader.source.toString();
-                    overlayLoader._pendingUrl = url;
-                    overlayLoader.opacity = 0;
-                } else {
-                    // 从主页进入子页面
-                    overlayLoader._isOnHome = false;
-                    BasicConfig.previousPageUrl = homePageLoader.source.toString();
-                    overlayLoader._pendingUrl = "";
-                    overlayLoader.source = url;
-                    overlayLoader.active = true;
+            onLoaded: opacity = 1
+            onOpacityChanged: {
+                if (opacity === 0 && !activeOverlay) {
+                    visible = false;
                 }
             }
-            function onPushsearchsongPage(url) {
-                overlayLoader._isOnHome = false;
-                BasicConfig.previousPageUrl = overlayLoader.active
-                    ? overlayLoader.source.toString()
-                    : homePageLoader.source.toString();
-                overlayLoader._pendingUrl = "";
-                overlayLoader.source = url;
-                overlayLoader.active = true;
-                BasicConfig.searchKeywordchange();
+            property bool activeOverlay: false
+        }
+    }
+
+    // 内部：显示页面（不操作导航栈）
+    function showOverlay(url) {
+        if (currentOverlayUrl !== "" && pageLoaders[currentOverlayUrl]) {
+            pageLoaders[currentOverlayUrl].activeOverlay = false;
+            pageLoaders[currentOverlayUrl].opacity = 0;
+        }
+
+        if (!pageLoaders[url]) {
+            var loader = pageLoaderComponent.createObject(rightPage, { "source": url });
+            pageLoaders[url] = loader;
+        }
+
+        var target = pageLoaders[url];
+        target.activeOverlay = true;
+        target.visible = true;
+        if (target.item) {
+            target.opacity = 1;
+        }
+        currentOverlayUrl = url;
+    }
+
+    function hideOverlay() {
+        if (currentOverlayUrl !== "" && pageLoaders[currentOverlayUrl]) {
+            pageLoaders[currentOverlayUrl].activeOverlay = false;
+            pageLoaders[currentOverlayUrl].opacity = 0;
+        }
+        currentOverlayUrl = "";
+    }
+
+    // 导航：更新栈 + 显示页面（用新数组赋值确保绑定更新）
+    function navigateTo(url) {
+        var current = navStack.length > 0 ? navStack[navStack.length - 1] : "";
+        if (url === current) return;
+
+        navStack = [...navStack, url];
+
+        BasicConfig.previousPageUrl = current !== "" ? current : homePageLoader.source.toString();
+
+        if (url === "") {
+            hideOverlay();
+        } else {
+            showOverlay(url);
+        }
+    }
+
+    function goBack() {
+        if (navStack.length === 0) return;
+
+        navStack = navStack.slice(0, -1);
+
+        var target = navStack.length > 0 ? navStack[navStack.length - 1] : "";
+        BasicConfig.previousPageUrl = target !== "" ? target : homePageLoader.source.toString();
+
+        if (target === "") {
+            hideOverlay();
+        } else {
+            showOverlay(target);
+        }
+    }
+
+    Connections {
+        target: BasicConfig
+
+        function onPushPage(url) {
+            let fileName = url.split('/').pop().split('.')[0];
+            if (fileName === "HomePage") {
+                navigateTo("");
+            } else {
+                navigateTo(url);
             }
         }
 
-        // 淡出完成后：切换页面或卸载
-        onOpacityChanged: {
-            if (opacity === 0) {
-                if (_pendingUrl !== "") {
-                    source = _pendingUrl;
-                    _pendingUrl = "";
-                } else {
-                    active = false;
-                    source = "";
-                }
-            }
+        function onPushsearchsongPage(url) {
+            navigateTo(url);
+            BasicConfig.searchKeywordchange();
         }
-        // 页面加载完成后淡入
-        onLoaded: opacity = 1
     }
 }
