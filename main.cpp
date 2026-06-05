@@ -7,6 +7,10 @@
 #include <QQuickWindow>
 #include <QTimer>
 #include <QtQuickControls2/QQuickStyle>
+#include <QNetworkAccessManager>
+#include <QNetworkDiskCache>
+#include <QStandardPaths>
+#include <QQmlNetworkAccessManagerFactory>
 #ifdef Q_OS_WIN
 #include <windows.h>
 #endif
@@ -38,6 +42,22 @@ public:
     {}
 };
 
+// QML 网络图片磁盘缓存
+class NetworkCacheFactory : public QQmlNetworkAccessManagerFactory
+{
+public:
+    QNetworkAccessManager *create(QObject *parent) override
+    {
+        QNetworkAccessManager *nam = new QNetworkAccessManager(parent);
+        QNetworkDiskCache *cache = new QNetworkDiskCache(nam);
+        cache->setCacheDirectory(
+            QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/images");
+        cache->setMaximumCacheSize(100 * 1024 * 1024); // 100MB
+        nam->setCache(cache);
+        return nam;
+    }
+};
+
 int main(int argc, char *argv[])
 {
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
@@ -64,6 +84,10 @@ int main(int argc, char *argv[])
     app.setWindowIcon(QIcon(":/image/wyymusic.ico"));
 
     QQmlApplicationEngine engine;
+
+    // 启用网络图片磁盘缓存（QML Image 自动缓存，无需改 QML 代码）
+    NetworkCacheFactory cacheFactory;
+    engine.setNetworkAccessManagerFactory(&cacheFactory);
 
     // 注册 HttpGetRequester 为可实例化的 QML 类型
     qmlRegisterType<HttpGetRequesterHelper>("NetworkRequest", 1, 0, "HttpGetRequester");
