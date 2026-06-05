@@ -96,6 +96,7 @@ public:
 
     // 聊天
     Q_INVOKABLE void sendChatMessage(const QString &message);
+    Q_INVOKABLE void retryMessage(int msgId);
 
 signals:
     void connectionStatusChanged(bool connected);
@@ -119,6 +120,7 @@ signals:
     void chatMessageReceived(const QString &userid, const QString &nickname,
                              const QString &avatarUrl, const QString &message, qint64 timestamp);
     void roomActionsReceived(const QJsonArray &actions);
+    void messageConfirmed(int msgId);
 
     // 服务器操作结果通知
     void serverNotice(const QString &message, const QString &mode); // mode: "loading" / "success" / "error"
@@ -188,6 +190,11 @@ private:
     // 待确认的添加歌曲操作
     bool m_pendingAddSong = false;
     QTimer *m_addSongTimeoutTimer = nullptr;
+
+    // 消息发送状态追踪
+    int m_msgIdCounter = 0;
+    QMap<int, QTimer*> m_pendingMsgTimers;
+    void markMessageFailed(int msgId);
 };
 
 #endif // WEBSOCKETCLIENT_H

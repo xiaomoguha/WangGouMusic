@@ -168,7 +168,7 @@ Window {
             // 始终居中于窗口
             anchors.centerIn: parent
             // 横向：宽度根据歌词内容 + 边距，最大屏幕80%
-            // 竖向：宽度根据字体大小（旋转后的英文需要更大宽度），高度根据歌词行数，最大屏幕80%
+            // 竖向：宽度根据字体大小，高度根据容器高度（已限制最大屏幕80%）
             width: desktopLyrics.isVertical ? (desktopLyrics.fontSize * desktopLyrics.scale + 30) : Math.min(horizontalLyricContainer.width + 30, Screen.desktopAvailableWidth * 0.8)
             height: desktopLyrics.isVertical ? Math.min(verticalTextContainer.height + 30, Screen.desktopAvailableHeight * 0.8) : (50 * desktopLyrics.scale)
 
@@ -193,6 +193,7 @@ Window {
                     anchors.verticalCenter: parent.verticalCenter
                     width: Math.min(bgTextHorizontal.implicitWidth, Screen.desktopAvailableWidth * 0.8 - 30)
                     height: bgTextHorizontal.implicitHeight
+                    clip: true
 
                     property string lyricText: {
                         try {
@@ -220,32 +221,43 @@ Window {
 
                     // 高亮比例
                     property real highlightRatio: {
-                        // 使用 lyricCharCount（时间标签数）而不是 text.length，因为英文歌词可能按单词分割
                         var totalChars = playlistmanager ? (playlistmanager.lyricCharCount || horizontalLyricContainer.lyricText.length) : horizontalLyricContainer.lyricText.length;
                         if (totalChars === 0 || horizontalLyricContainer.charIndex < 0)
                             return 0;
                         return (horizontalLyricContainer.charIndex + horizontalLyricContainer.charProgress) / totalChars;
                     }
 
+                    // 滚动偏移：跟随高亮位置
+                    property real scrollOffset: {
+                        var totalWidth = bgTextHorizontal.implicitWidth;
+                        var visWidth = width;
+                        if (totalWidth <= visWidth) return 0;
+                        var hlX = highlightRatio * totalWidth;
+                        var target = hlX - visWidth * 0.4;
+                        return Math.max(0, Math.min(target, totalWidth - visWidth));
+                    }
+
+                    Behavior on scrollOffset {
+                        SmoothedAnimation { duration: 300; easing.type: Easing.OutCubic }
+                    }
+
                     // 底层：完整白色文字
                     Text {
                         id: bgTextHorizontal
-                        anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
+                        x: -horizontalLyricContainer.scrollOffset
                         text: horizontalLyricContainer.lyricText
                         font.pixelSize: desktopLyrics.fontSize * desktopLyrics.scale
                         font.bold: true
                         color: desktopLyrics.textColor
                         style: Text.Outline
                         styleColor: "#40000000"
-                        maximumLineCount: 1
-                        elide: Text.ElideRight
                     }
 
                     // 高亮层：从左到右刷过去
                     Item {
-                        anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
+                        x: -horizontalLyricContainer.scrollOffset
                         width: hlTextHorizontal.width * horizontalLyricContainer.highlightRatio
                         height: bgTextHorizontal.height
                         clip: true
@@ -261,7 +273,6 @@ Window {
                             color: AppTheme.accent
                             style: Text.Outline
                             styleColor: AppTheme.accentGlow
-                            maximumLineCount: 1
                         }
                     }
                 }
@@ -287,20 +298,12 @@ Window {
                     id: verticalTextContainer
                     anchors.horizontalCenter: parent.horizontalCenter
                     width: verticalBgColumn.width
-                    height: verticalBgColumn.height
+                    height: Math.min(verticalBgColumn.height, Screen.desktopAvailableHeight * 0.8 - 30)
+                    clip: true
 
                     property string lyricText: {
                         try {
-                            var text = playlistmanager ? (playlistmanager.currlyric || "网狗音乐") : "网狗音乐";
-                            // 计算最大可显示字符数（屏幕高度80%）
-                            var maxHeight = Screen.desktopAvailableHeight * 0.8 - 30;
-                            var charHeight = desktopLyrics.fontSize * desktopLyrics.scale + 2;
-                            var maxChars = Math.floor(maxHeight / charHeight);
-                            // 如果超出，保留前面的字符，最后加省略号
-                            if (text.length > maxChars && maxChars > 3) {
-                                return text.substring(0, maxChars - 1) + "…";
-                            }
-                            return text;
+                            return playlistmanager ? (playlistmanager.currlyric || "网狗音乐") : "网狗音乐";
                         } catch (e) {
                             return "网狗音乐";
                         }
@@ -324,18 +327,32 @@ Window {
 
                     // 高亮比例
                     property real highlightRatio: {
-                        // 使用 lyricCharCount（时间标签数）而不是 text.length，因为英文歌词可能按单词分割
                         var totalChars = playlistmanager ? (playlistmanager.lyricCharCount || verticalTextContainer.lyricText.length) : verticalTextContainer.lyricText.length;
                         if (totalChars === 0 || verticalTextContainer.charIndex < 0)
                             return 0;
                         return (verticalTextContainer.charIndex + verticalTextContainer.charProgress) / totalChars;
                     }
 
+                    // 滚动偏移：跟随高亮位置
+                    property real scrollOffset: {
+                        var totalHeight = verticalBgColumn.height;
+                        var visHeight = height;
+                        if (totalHeight <= visHeight) return 0;
+                        var hlY = highlightRatio * totalHeight;
+                        var target = hlY - visHeight * 0.4;
+                        return Math.max(0, Math.min(target, totalHeight - visHeight));
+                    }
+
+                    Behavior on scrollOffset {
+                        SmoothedAnimation { duration: 300; easing.type: Easing.OutCubic }
+                    }
+
                     // 底层：完整灰色文字（整列）
                     Column {
                         id: verticalBgColumn
                         spacing: 2
-                        anchors.centerIn: parent
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        y: -verticalTextContainer.scrollOffset
 
                         Repeater {
                             model: verticalTextContainer.lyricText.length
@@ -366,8 +383,8 @@ Window {
 
                     // 高亮层：从上到下刷过去
                     Item {
-                        anchors.top: parent.top
                         anchors.horizontalCenter: parent.horizontalCenter
+                        y: -verticalTextContainer.scrollOffset
                         width: verticalBgColumn.width
                         height: verticalBgColumn.height * verticalTextContainer.highlightRatio
                         clip: true

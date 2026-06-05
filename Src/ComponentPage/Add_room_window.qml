@@ -519,6 +519,7 @@ Item {
                                     width: 56
                                     height: 28
                                     radius: 14
+                                    anchors.verticalCenter: parent.verticalCenter
 
                                     gradient: Gradient {
                                         orientation: Gradient.Horizontal
@@ -553,7 +554,11 @@ Item {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: roomidtextfield.text = modelData.room_id
+                                onClicked: {
+                                    if (websocket && websocket.connectionState !== 0) return;
+                                    roomidtextfield.text = modelData.room_id;
+                                    websocket.setUrl(modelData.room_id, userManager.userid);
+                                }
                             }
 
                             Behavior on color { ColorAnimation { duration: 150 } }

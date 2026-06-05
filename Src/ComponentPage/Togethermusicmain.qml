@@ -44,6 +44,7 @@ Item {
 
         Column {
             spacing: 20
+            width: parent.width
 
             Text {
                 text: "确认离开房间？"
@@ -92,6 +93,7 @@ Item {
     property var onlineUsers: []
     property int onlineCount: 0
     property var messages: websocket ? websocket.messages : []
+    property var confirmedMsgIds: ({})
     property bool messageAutoScroll: true
     property int prevMsgCount: 0      // 上次消息数，用于判断哪些是新增的
     property bool firstLoad: true     // 首次加载不播动画
@@ -332,7 +334,7 @@ Item {
             opacity: messageDelegate.msgOpacity
 
             Component.onCompleted: {
-                var newMsg = index >= root.prevMsgCount;
+                var newMsg = index >= root.prevMsgCount && modelData.status !== "sent";
                 if (newMsg) {
                     isNewMsg = true;
                     slideX = -60;
@@ -454,13 +456,91 @@ Item {
                         }
                     }
 
-                    Text {
-                        text: modelData.message || ""
-                        font.pixelSize: 13
-                        font.family: "黑体"
-                        color: AppTheme.textSecondary
-                        wrapMode: Text.Wrap
-                        width: Math.min(messageListView.width - 60, 400)
+                    Row {
+                        spacing: 4
+                        anchors.right: parent.right
+
+                        Text {
+                            text: modelData.message || ""
+                            font.pixelSize: 13
+                            font.family: "黑体"
+                            color: AppTheme.textSecondary
+                            wrapMode: Text.Wrap
+                            width: Math.min(messageListView.width - 90, 380)
+                        }
+
+                        // 发送状态指示器
+                        Item {
+                            width: 16
+                            height: 16
+                            anchors.verticalCenter: parent.verticalCenter
+                            property bool isConfirmed: root.confirmedMsgIds[modelData._msgId] === true
+                            visible: (modelData.status === "sending" && !isConfirmed) || modelData.status === "failed"
+
+                            // 发送中：旋转小圈
+                            Canvas {
+                                id: sendingSpinner
+                                anchors.fill: parent
+                                visible: modelData.status === "sending" && !parent.isConfirmed
+                                property real angle: 0
+
+                                onAngleChanged: requestPaint()
+
+                                onPaint: {
+                                    var ctx = getContext("2d");
+                                    ctx.clearRect(0, 0, width, height);
+                                    ctx.beginPath();
+                                    ctx.arc(8, 8, 5, angle, angle + Math.PI * 1.5);
+                                    ctx.strokeStyle = AppTheme.textDim;
+                                    ctx.lineWidth = 1.5;
+                                    ctx.lineCap = "round";
+                                    ctx.stroke();
+                                }
+
+                                NumberAnimation on angle {
+                                    from: 0; to: Math.PI * 2
+                                    duration: 800; loops: Animation.Infinite
+                                }
+                            }
+
+                            // 发送失败：感叹号
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: 8
+                                visible: modelData.status === "failed"
+                                color: "transparent"
+
+                                Canvas {
+                                    anchors.fill: parent
+                                    onPaint: {
+                                        var ctx = getContext("2d");
+                                        ctx.clearRect(0, 0, width, height);
+                                        ctx.beginPath();
+                                        ctx.arc(8, 8, 7, 0, Math.PI * 2);
+                                        ctx.fillStyle = "#FF4D4F";
+                                        ctx.fill();
+                                        ctx.beginPath();
+                                        ctx.arc(8, 5.5, 1, 0, Math.PI * 2);
+                                        ctx.fillStyle = "#FFFFFF";
+                                        ctx.fill();
+                                        ctx.beginPath();
+                                        ctx.arc(8, 10, 1, 0, Math.PI * 2);
+                                        ctx.fillStyle = "#FFFFFF";
+                                        ctx.fill();
+                                    }
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        if (modelData._msgId) {
+                                            websocket.retryMessage(modelData._msgId);
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -874,16 +954,24 @@ Item {
     Connections {
         target: websocket
 
+        function onMessageConfirmed(msgId) {
+            var copy = Object.assign({}, confirmedMsgIds);
+            copy[msgId] = true;
+            confirmedMsgIds = copy;
+        }
+
         function onConnectionStateChanged(state) {
             if (state === 0) {
                 connectionBanner.height = 36
                 bannerText.text = "连接已断开，正在退出房间..."
                 root.firstLoad = true;
                 root.prevMsgCount = 0;
+                root.confirmedMsgIds = ({});
             } else if (state === 2) {
                 connectionBanner.height = 0
                 root.firstLoad = true;
                 root.prevMsgCount = 0;
+                root.confirmedMsgIds = ({});
             }
         }
 

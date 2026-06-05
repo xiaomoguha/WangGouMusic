@@ -320,6 +320,7 @@ void WebSocketClient::sendChatMessage(const QString &message)
     if (message.trimmed().isEmpty()) return;
 
     // 本地回显：立即显示自己发的消息
+    int msgId = ++m_msgIdCounter;
     QVariantMap msg;
     msg["type"] = "chat";
     msg["userid"] = m_userId;
@@ -328,8 +329,19 @@ void WebSocketClient::sendChatMessage(const QString &message)
     msg["message"] = message.trimmed();
     msg["time"] = QDateTime::currentSecsSinceEpoch();
     msg["_local"] = true;
+    msg["status"] = "sending";
+    msg["_msgId"] = msgId;
     m_messages.append(msg);
     emit messagesUpdated();
+
+    // 超时计时器：10秒未确认则标记为失败
+    QTimer *timer = new QTimer(this);
+    timer->setSingleShot(true);
+    connect(timer, &QTimer::timeout, this, [this, msgId]() {
+        markMessageFailed(msgId);
+    });
+    m_pendingMsgTimers[msgId] = timer;
+    timer->start(10000);
 
     QJsonObject json;
     json["userid"] = m_userId;
@@ -341,6 +353,59 @@ void WebSocketClient::sendChatMessage(const QString &message)
 }
 
 // ==================== 事件处理 ====================
+
+void WebSocketClient::markMessageFailed(int msgId)
+{
+    for (int i = 0; i < m_messages.size(); ++i) {
+        QVariantMap m = m_messages[i].toMap();
+        if (m.value("_msgId").toInt() == msgId && m.value("status").toString() == "sending") {
+            m["status"] = "failed";
+            m_messages[i] = m;
+            emit messagesUpdated();
+            break;
+        }
+    }
+    m_pendingMsgTimers.remove(msgId);
+}
+
+void WebSocketClient::retryMessage(int msgId)
+{
+    QString messageText;
+    int idx = -1;
+    for (int i = 0; i < m_messages.size(); ++i) {
+        QVariantMap m = m_messages[i].toMap();
+        if (m.value("_msgId").toInt() == msgId && m.value("status").toString() == "failed") {
+            messageText = m.value("message").toString();
+            idx = i;
+            break;
+        }
+    }
+    if (idx < 0 || messageText.isEmpty()) return;
+
+    // 恢复为发送中状态
+    QVariantMap m = m_messages[idx].toMap();
+    m["status"] = "sending";
+    m_messages[idx] = m;
+    emit messagesUpdated();
+
+    // 重新启动超时计时器
+    QTimer *timer = new QTimer(this);
+    timer->setSingleShot(true);
+    connect(timer, &QTimer::timeout, this, [this, msgId]() {
+        markMessageFailed(msgId);
+    });
+    m_pendingMsgTimers[msgId] = timer;
+    timer->start(10000);
+
+    // 重新发送
+    QJsonObject json;
+    json["userid"] = m_userId;
+    json["action"] = SEND_CHAT;
+    QJsonObject params;
+    params["message"] = messageText;
+    json["params"] = params;
+    sendJson(json);
+}
 
 void WebSocketClient::onConnected()
 {
@@ -396,7 +461,12 @@ void WebSocketClient::onDisconnected()
     m_messages.clear();
     emit messagesUpdated();
 
-    // 退出一起听模式，恢复本地播放列表（暂停状态）
+    // 清理待确认消息的超时计时器
+    for (auto it = m_pendingMsgTimers.begin(); it != m_pendingMsgTimers.end(); ++it) {
+        it.value()->stop();
+        it.value()->deleteLater();
+    }
+    m_pendingMsgTimers.clear();
     if (playmanager)
     {
         playmanager->setPaused(true);
@@ -579,15 +649,26 @@ void WebSocketClient::handleServerMessage(const QJsonObject &json)
                     && m.value("userid").toString() == chatUserid
                     && m.value("message").toString() == chatMsg)
                 {
-                    // 替换本地回显为服务器确认的消息
-                    QVariantMap confirmed;
-                    confirmed["type"] = "chat";
-                    confirmed["userid"] = chatUserid;
-                    confirmed["nickname"] = data["nickname"].toString();
-                    confirmed["avatarUrl"] = data["avatar_url"].toString();
-                    confirmed["message"] = chatMsg;
-                    confirmed["time"] = chatTime;
-                    m_messages[i] = confirmed;
+                    int msgId = m.value("_msgId").toInt();
+                    // 更新状态但不触发模型刷新，避免闪烁
+                    QVariantMap updated = m;
+                    updated["_local"] = false;
+                    updated["status"] = "sent";
+                    updated["nickname"] = data["nickname"].toString();
+                    updated["avatarUrl"] = data["avatar_url"].toString();
+                    updated["time"] = chatTime;
+                    m_messages[i] = updated;
+
+                    // 取消超时计时器
+                    if (m_pendingMsgTimers.contains(msgId)) {
+                        m_pendingMsgTimers.value(msgId)->stop();
+                        m_pendingMsgTimers.value(msgId)->deleteLater();
+                        m_pendingMsgTimers.remove(msgId);
+                    }
+
+                    // 通知 QML 隐藏 spinner（不刷新模型）
+                    emit messageConfirmed(msgId);
+
                     isLocalEcho = true;
                     break;
                 }
@@ -603,7 +684,10 @@ void WebSocketClient::handleServerMessage(const QJsonObject &json)
                 msg["time"] = chatTime;
                 m_messages.append(msg);
             }
-            emit messagesUpdated();
+            // 本地回显确认时不触发模型刷新，避免闪烁
+            if (!isLocalEcho) {
+                emit messagesUpdated();
+            }
 
             emit chatMessageReceived(
                 chatUserid,
@@ -623,7 +707,14 @@ void WebSocketClient::handleServerMessage(const QJsonObject &json)
             for (int i = actions.size() - 1; i >= 0; --i)
             {
                 QVariantMap act = actions[i].toObject().toVariantMap();
-                act["type"] = "action";
+                // 区分聊天历史和操作动态
+                if (act.value("msg_type").toString() == "chat") {
+                    act["type"] = "chat";
+                    act["avatarUrl"] = act["avatar_url"];
+                    act["status"] = "sent";
+                } else {
+                    act["type"] = "action";
+                }
                 // 去重：检查最近 30 条
                 bool dup = false;
                 for (int j = m_messages.size() - 1; j >= qMax(0, m_messages.size() - 30); --j)
@@ -671,7 +762,13 @@ void WebSocketClient::handleServerMessage(const QJsonObject &json)
         for (int i = actions.size() - 1; i >= 0; --i)
         {
             QVariantMap act = actions[i].toObject().toVariantMap();
-            act["type"] = "action";
+            if (act.value("msg_type").toString() == "chat") {
+                act["type"] = "chat";
+                act["avatarUrl"] = act["avatar_url"];
+                act["status"] = "sent";
+            } else {
+                act["type"] = "action";
+            }
             bool dup = false;
             for (int j = m_messages.size() - 1; j >= qMax(0, m_messages.size() - 30); --j)
             {
