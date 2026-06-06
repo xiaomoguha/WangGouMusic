@@ -667,6 +667,16 @@ playlist_type PlaylistManager::getplaylist_type() const
     return type;
 }
 
+qreal PlaylistManager::downloadProgress() const
+{
+    return m_downloadProgress;
+}
+
+bool PlaylistManager::isBuffering() const
+{
+    return m_isBuffering;
+}
+
 void PlaylistManager::changeplaylisttype(enum playlist_type changetype)
 {
     if (changetype == type)
@@ -680,6 +690,7 @@ void PlaylistManager::changeplaylisttype(enum playlist_type changetype)
         m_isPaused = true;
         emit isPausedChanged();
         m_localIndex = m_currentIndex;
+        m_localPercent = m_percent;
         type = TOGETHER;
         m_curplaylist = &m_togetherplaylist;
         m_currentIndex = -1;
@@ -714,6 +725,14 @@ void PlaylistManager::startPlayback(const SongInfo &song)
     // 停止播放器，防止文件句柄未释放
     player->stop();
     player->setSource(QUrl());
+
+    // 重置下载状态
+    m_downloadProgress = 1.0;
+    m_isBuffering = false;
+    m_downloadedBytes = 0;
+    m_totalDownloadBytes = 0;
+    emit downloadProgressChanged();
+    emit isBufferingChanged();
 
     // 初始播放阈值（字节），例如 500KB
     const qint64 startThreshold = 500 * 1024;
@@ -753,12 +772,23 @@ void PlaylistManager::startPlayback(const SongInfo &song)
     QNetworkAccessManager *mgr = new QNetworkAccessManager(this);
     QNetworkReply *reply = mgr->get(QNetworkRequest(QUrl(song.url)));
 
-    QObject::connect(reply, &QNetworkReply::readyRead, this, [=]()
+    // 下载进度追踪
+    m_downloadProgress = 0.0;
+    m_downloadedBytes = 0;
+    m_totalDownloadBytes = reply->header(QNetworkRequest::ContentLengthHeader).toLongLong();
+    emit downloadProgressChanged();
+
+    QObject::connect(reply, &QNetworkReply::readyRead, this, [=, this]()
                      {
         QByteArray chunk = reply->readAll();
         if (!chunk.isEmpty()) {
             tempFile->write(chunk);
             tempFile->flush();
+            m_downloadedBytes += chunk.size();
+            if (m_totalDownloadBytes > 0) {
+                m_downloadProgress = static_cast<qreal>(m_downloadedBytes) / m_totalDownloadBytes;
+                emit downloadProgressChanged();
+            }
         }
 
         // 可以在达到一定缓存大小后播放，实现边下边播
@@ -775,10 +805,18 @@ void PlaylistManager::startPlayback(const SongInfo &song)
             qDebug() << "开始播放边下边播:" << cacheFilePath;
         } });
 
-    QObject::connect(reply, &QNetworkReply::finished, this, [=]()
+    QObject::connect(reply, &QNetworkReply::finished, this, [=, this]()
                      {
         tempFile->flush();
         tempFile->close();
+        m_downloadProgress = 1.0;
+        m_downloadedBytes = m_totalDownloadBytes;
+        emit downloadProgressChanged();
+        if (m_isBuffering) {
+            m_isBuffering = false;
+            player->play();
+            emit isBufferingChanged();
+        }
         qDebug() << "下载完成:" << cacheFilePath; });
 }
 
@@ -800,8 +838,9 @@ void PlaylistManager::savePlaylistToCache()
     }
     QJsonObject root;
     root["playlist"] = arr;
-    root["currentIndex"] = m_currentIndex;
-    root["percent"] = m_percent;
+    // TOGETHER 模式下保存切换前的本地索引和进度，而非一起听的
+    root["currentIndex"] = (type == TOGETHER) ? m_localIndex : m_currentIndex;
+    root["percent"] = (type == TOGETHER) ? m_localPercent : m_percent;
     QJsonDocument doc(root);
     QFile file(getPlaylistCachePath());
     if (file.open(QIODevice::WriteOnly)) {
@@ -1093,11 +1132,35 @@ void PlaylistManager::showplaylist()
 }
 void PlaylistManager::updatePlaybackProgress(qint64 position)
 {
+    // 歌曲播完后 position 会重置到 0，跳过以避免歌词闪回第一句
+    if (player->mediaStatus() == QMediaPlayer::EndOfMedia)
+        return;
+
     if (player->duration() > 0)
     {
         m_percent = static_cast<float>(position) / player->duration();
         m_percentstr = formatTime(position);
         emit percentChanged();
+
+        // 缓冲检测：正在边下边播且播放追上下载进度
+        if (m_downloadProgress > 0 && m_downloadProgress < 1.0)
+        {
+            if (!m_isBuffering && m_percent >= m_downloadProgress - 0.03f)
+            {
+                m_isBuffering = true;
+                player->pause();
+                emit isBufferingChanged();
+                qDebug() << "缓冲中: 播放进度" << m_percent << "下载进度" << m_downloadProgress;
+            }
+        }
+        // 缓冲恢复：下载进度领先播放进度足够多
+        if (m_isBuffering && m_downloadProgress - m_percent > 0.1)
+        {
+            m_isBuffering = false;
+            player->play();
+            emit isBufferingChanged();
+            qDebug() << "缓冲完成，恢复播放";
+        }
         // 更新歌词
         QString newlyric = lyricParser.getLyricAtTime(position);
         int newCharIndex = lyricParser.getCharIndexAtTime(position);
@@ -1447,6 +1510,14 @@ void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const Q
     player->stop();
     player->setSource(QUrl());
 
+    // 重置下载状态
+    m_downloadProgress = 1.0;
+    m_isBuffering = false;
+    m_downloadedBytes = 0;
+    m_totalDownloadBytes = 0;
+    emit downloadProgressChanged();
+    emit isBufferingChanged();
+
     ensureCacheDir();
     QString cacheDir = getCacheDir();
     QString cacheFileName = songName + "-" + singerName + ".mp3";
@@ -1476,20 +1547,22 @@ void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const Q
             auto conn = std::make_shared<QMetaObject::Connection>();
             *conn = connect(player, &QMediaPlayer::mediaStatusChanged, this,
                 [this, seekPercent, conn](QMediaPlayer::MediaStatus status) {
-                    if (status == QMediaPlayer::BufferedMedia)
+                    if (status == QMediaPlayer::LoadedMedia)
                     {
                         seekToPercent(seekPercent);
+                        player->play();
+                        m_isPaused = false;
+                        emit isPausedChanged();
                         QObject::disconnect(*conn);
                     }
                 });
-            player->play();
         }
         else
         {
             player->play();
+            m_isPaused = false;
+            emit isPausedChanged();
         }
-        m_isPaused = false;
-        emit isPausedChanged();
     }
     else if (!songUrl.isEmpty())
     {
@@ -1510,28 +1583,61 @@ void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const Q
             QNetworkAccessManager *mgr = new QNetworkAccessManager(this);
             QNetworkReply *reply = mgr->get(QNetworkRequest(QUrl(songUrl)));
 
+            m_downloadProgress = 0.0;
+            m_downloadedBytes = 0;
+            m_totalDownloadBytes = reply->header(QNetworkRequest::ContentLengthHeader).toLongLong();
+            emit downloadProgressChanged();
+
             double seekPercent = m_togetherSeekPercent;
             m_togetherSeekPercent = 0;
 
-            QObject::connect(reply, &QNetworkReply::readyRead, this, [=]() {
+            QObject::connect(reply, &QNetworkReply::readyRead, this, [=, this]() {
                 QByteArray chunk = reply->readAll();
                 if (!chunk.isEmpty()) {
                     tempFile->write(chunk);
                     tempFile->flush();
+                    m_downloadedBytes += chunk.size();
+                    if (m_totalDownloadBytes > 0) {
+                        m_downloadProgress = static_cast<qreal>(m_downloadedBytes) / m_totalDownloadBytes;
+                        emit downloadProgressChanged();
+                    }
                 }
 
                 QFileInfo fi(cacheFilePath);
                 if (fi.size() >= startThreshold && player->source().isEmpty()) {
                     player->setSource(QUrl::fromLocalFile(cacheFilePath));
-                    player->play();
-                    m_isPaused = false;
-                    emit isPausedChanged();
+                    if (seekPercent > 0) {
+                        auto conn = std::make_shared<QMetaObject::Connection>();
+                        *conn = connect(player, &QMediaPlayer::mediaStatusChanged, this,
+                            [this, seekPercent, conn](QMediaPlayer::MediaStatus status) {
+                                if (status == QMediaPlayer::LoadedMedia)
+                                {
+                                    seekToPercent(seekPercent);
+                                    player->play();
+                                    m_isPaused = false;
+                                    emit isPausedChanged();
+                                    QObject::disconnect(*conn);
+                                }
+                            });
+                    } else {
+                        player->play();
+                        m_isPaused = false;
+                        emit isPausedChanged();
+                    }
                 }
             });
 
-            QObject::connect(reply, &QNetworkReply::finished, this, [=]() {
+            QObject::connect(reply, &QNetworkReply::finished, this, [=, this]() {
                 tempFile->flush();
                 tempFile->close();
+                m_downloadProgress = 1.0;
+                m_downloadedBytes = m_totalDownloadBytes;
+                emit downloadProgressChanged();
+                if (m_isBuffering) {
+                    m_isBuffering = false;
+                    player->play();
+                    emit isBufferingChanged();
+                }
                 qDebug() << "一起听 - 下载完成:" << cacheFilePath;
 
                 // 文件太小没触发阈值时，手动设置源并播放
@@ -1552,13 +1658,30 @@ void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const Q
     {
         // URL 为空，通过 hash 获取播放链接
         m_isPaused = true;
-        fetchSongUrl(songHash, [this, songHash](const QString &url) {
+        double seekPercent = m_togetherSeekPercent;
+        m_togetherSeekPercent = 0;
+        fetchSongUrl(songHash, [this, songHash, seekPercent](const QString &url) {
             if (!url.isEmpty())
             {
                 player->setSource(QUrl(url));
-                player->play();
-                m_isPaused = false;
-                emit isPausedChanged();
+                if (seekPercent > 0) {
+                    auto conn = std::make_shared<QMetaObject::Connection>();
+                    *conn = connect(player, &QMediaPlayer::mediaStatusChanged, this,
+                        [this, seekPercent, conn](QMediaPlayer::MediaStatus status) {
+                            if (status == QMediaPlayer::LoadedMedia)
+                            {
+                                seekToPercent(seekPercent);
+                                player->play();
+                                m_isPaused = false;
+                                emit isPausedChanged();
+                                QObject::disconnect(*conn);
+                            }
+                        });
+                } else {
+                    player->play();
+                    m_isPaused = false;
+                    emit isPausedChanged();
+                }
             }
             else
             {

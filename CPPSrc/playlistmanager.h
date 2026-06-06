@@ -78,6 +78,8 @@ class PlaylistManager : public QObject
     Q_PROPERTY(float lyricCharProgress READ lyricCharProgressget NOTIFY currlyricChanged)
     Q_PROPERTY(QVariantList lyricChars READ lyricCharsget NOTIFY currlyricChanged)
     Q_PROPERTY(int lyricCharCount READ lyricCharCountget NOTIFY currlyricChanged)
+    Q_PROPERTY(qreal downloadProgress READ downloadProgress NOTIFY downloadProgressChanged)
+    Q_PROPERTY(bool isBuffering READ isBuffering NOTIFY isBufferingChanged)
 public:
     explicit PlaylistManager(Recommendation *recommendation, QObject *parent = nullptr);
     Q_INVOKABLE void addSong(const QString &title, const QString &songhash, const QString &singername, const QString &union_cover, const QString &album_name, const QString &duration);
@@ -138,6 +140,8 @@ public:
     float lyricCharProgressget();
     QVariantList lyricCharsget();
     int lyricCharCountget();
+    qreal downloadProgress() const;
+    bool isBuffering() const;
 
 signals:
     void currentIndexChanged(int index);
@@ -153,6 +157,8 @@ signals:
     void recentPlaylistUpdated();
     void parlyricsuc();
     void dominantColorChanged();
+    void downloadProgressChanged();
+    void isBufferingChanged();
 
 public slots:
     void parselyricsuc();
@@ -187,6 +193,7 @@ private:
     float m_restorePercent = -1.0f;
     int m_repairCount = 0;             // 修复次数计数
     int m_localIndex = -1;             // 一起听模式前保存的本地播放索引
+    float m_localPercent = 0.0f;       // 一起听模式前保存的本地播放进度
     const int MAX_REPAIR_ATTEMPTS = 5; // 最大修复尝试次数
     void fetchLyricData(const QString &hash, std::function<void(QString)> callback);
     void fetchLyricContent(const QString &id, const QString &accesskey, std::function<void(QString)> callback);
@@ -197,6 +204,10 @@ private:
     QVariantList m_lyricChars;
     int m_lyricCharCount = 0;
     double m_togetherSeekPercent = 0;
+    qreal m_downloadProgress = 1.0;    // 下载进度 0~1，默认1表示已就绪
+    bool m_isBuffering = false;
+    qint64 m_downloadedBytes = 0;
+    qint64 m_totalDownloadBytes = 0;
     void extractDominantColor(const QString &imageUrl);
     QColor getAverageColor(const QImage &image);
     QString getCacheDir() const;

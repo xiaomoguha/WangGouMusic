@@ -533,6 +533,7 @@ Rectangle {
                     color: AppTheme.isDark ? "#1AFFFFFF" : "#1A000000"
 
                     property real value: playlistmanager ? playlistmanager.percent : 0.0
+                    property real dlProgress: playlistmanager ? playlistmanager.downloadProgress : 1.0
                     property bool dragging: false
 
                     Behavior on height {
@@ -577,6 +578,18 @@ Rectangle {
                             var v = progressFill.tempWidth / progressSlider.width;
                             if (playlistmanager) playlistmanager.setposistion(v);
                         }
+                    }
+
+                    // 已下载进度（中间色）
+                    Rectangle {
+                        id: downloadFill
+                        anchors.left: parent.left
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        radius: parent.radius
+                        color: AppTheme.isDark ? "#30FFFFFF" : "#20FF8A80"
+                        width: parent.width * progressSlider.dlProgress
+                        visible: progressSlider.dlProgress < 1.0
                     }
 
                     // 已播放进度
