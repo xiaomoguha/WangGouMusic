@@ -81,7 +81,9 @@ int main(int argc, char *argv[])
     }
 
     QQuickStyle::setStyle("Fusion");
+#ifndef Q_OS_MAC
     app.setWindowIcon(QIcon(":/image/wyymusic.ico"));
+#endif
 
     QQmlApplicationEngine engine;
 
@@ -175,12 +177,7 @@ int main(int argc, char *argv[])
     singleApp.listen(window);
 
     // ---------------- 托盘图标（跨平台） ----------------
-#ifdef Q_OS_MAC
-    // macOS 使用 PNG 格式图标
-    QIcon trayIcon(QStringLiteral(":/image/wyyicon.png"));
-#else
-    QIcon trayIcon(QStringLiteral(":/image/wyymusic.ico"));
-#endif
+    QIcon trayIcon(QStringLiteral(":/image/tray_icon_mac.png"));
     if (trayIcon.isNull())
         trayIcon = QIcon::fromTheme(QStringLiteral("application-exit"));
 

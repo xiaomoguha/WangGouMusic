@@ -695,6 +695,58 @@ Rectangle {
         }
     }
 
+    // 缓冲提示（覆盖在歌词区上方）
+    Rectangle {
+        anchors.fill: lyricList
+        color: "#8013131a"
+        visible: playlistmanager && playlistmanager.isBuffering
+        radius: 12
+
+        Column {
+            anchors.centerIn: parent
+            spacing: 12
+
+            // 旋转加载圈
+            Rectangle {
+                width: 36
+                height: 36
+                radius: 18
+                anchors.horizontalCenter: parent.horizontalCenter
+                color: "transparent"
+                border.width: 3
+                border.color: "#30FFFFFF"
+
+                Rectangle {
+                    width: 10
+                    height: 3
+                    radius: 1.5
+                    color: "#FFFFFF"
+                    anchors.top: parent.top
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.topMargin: -1
+                }
+
+                RotationAnimation on rotation {
+                    from: 0
+                    to: 360
+                    duration: 1000
+                    loops: Animation.Infinite
+                    running: parent.parent.parent.visible
+                }
+            }
+
+            Text {
+                text: "正在缓冲..."
+                font.pixelSize: 16
+                color: "#CCCCCC"
+                font.family: "黑体"
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+        }
+
+        Behavior on opacity { NumberAnimation { duration: 200 } }
+    }
+
     // ================== 底部播放控制区 ==================
     RowLayout {
         id: bottomControlBar
@@ -856,6 +908,7 @@ Rectangle {
                     width: parent.width - currentTimeText.width - totalTimeText.width - 36
 
                     property real value: playlistmanager ? playlistmanager.percent : 0.0
+                    property real dlProgress: playlistmanager ? playlistmanager.downloadProgress : 1.0
                     property bool dragging: false
 
                     // 悬停高亮边框
@@ -865,6 +918,18 @@ Rectangle {
                         NumberAnimation {
                             duration: 150
                         }
+                    }
+
+                    // 已下载部分（中间色）
+                    Rectangle {
+                        id: downloadFill
+                        anchors.left: parent.left
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        radius: 2
+                        color: "#5A5A6A"
+                        width: parent.width * progressBar.dlProgress
+                        visible: progressBar.dlProgress < 1.0
                     }
 
                     // 已播放部分

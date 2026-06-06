@@ -155,7 +155,7 @@ Item {
             spacing: 12
 
             Text {
-                text: qsTr("房间 " + (websocket ? websocket.Roomid : ""))
+                text: qsTr(websocket ? websocket.Roomid : "")
                 font.pixelSize: 20
                 font.family: "黑体"
                 color: AppTheme.textPrimary
