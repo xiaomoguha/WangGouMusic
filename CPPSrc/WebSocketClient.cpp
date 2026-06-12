@@ -826,13 +826,18 @@ void WebSocketClient::handleSongInfoBroadcast(const QJsonObject &data)
     else
     {
         // 同一首歌：检测是否为循环重播（进度回到起点）
+        // 只有本地播放进度也接近结尾时才认为是真正的循环，避免服务端进度临时为0导致误重启
         if (isPlaying == 1 && playedPercent < 0.05)
         {
-            playmanager->clearTogetherSongHash(); // 允许重新播放同一首歌
-            playmanager->playTogetherSongFromServer(songUrl, songName, songHash,
-                                                      singerName, coverUrl, albumName,
-                                                      duration);
-            return;
+            float localPercent = playmanager->getpercent();
+            if (localPercent > 0.9)
+            {
+                playmanager->clearTogetherSongHash(); // 允许重新播放同一首歌
+                playmanager->playTogetherSongFromServer(songUrl, songName, songHash,
+                                                          singerName, coverUrl, albumName,
+                                                          duration);
+                return;
+            }
         }
 
         // 正常进度同步
@@ -920,9 +925,15 @@ void WebSocketClient::handleSongListBroadcast(const QJsonObject &json)
         playmanager->syncTogetherPlaylistFromServer(playlist);
     }
     // 合并消息可能同时包含 song_info
+    // 只在是当前播放歌曲或客户端尚未播放时才处理，避免别人添加歌曲触发错误切歌
     if (json.contains("song_info") && json["song_info"].isObject())
     {
-        handleSongInfoBroadcast(json["song_info"].toObject());
+        QJsonObject songInfo = json["song_info"].toObject();
+        QString infoHash = songInfo["songhash"].toString();
+        if (m_currentTogetherSongHash.isEmpty() || infoHash == m_currentTogetherSongHash)
+        {
+            handleSongInfoBroadcast(songInfo);
+        }
     }
     // 添加歌曲成功确认
     if (m_pendingAddSong)
