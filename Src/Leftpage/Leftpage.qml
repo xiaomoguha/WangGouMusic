@@ -42,6 +42,14 @@ Rectangle {
                     fillMode: Image.PreserveAspectFit
                     smooth: true
                     mipmap: true
+                    layer.enabled: true
+                    layer.effect: OpacityMask {
+                        maskSource: Rectangle {
+                            width: 36
+                            height: 36
+                            radius: 8
+                        }
+                    }
                 }
             }
 
