@@ -10,7 +10,7 @@ Item {
     id: root
     visible: false
     opacity: 0
-    width: 200
+    width: Math.max(200, Math.min(400, textLabel.implicitWidth + 78))
     height: 50
 
     // ── 自动消失定时器 ──
@@ -83,7 +83,10 @@ Item {
 
         // 文字
         Text {
+            id: textLabel
             anchors.verticalCenter: parent.verticalCenter
+            width: Math.min(implicitWidth, 322)
+            elide: Text.ElideRight
             text: root._message || "已添加至播放列表"
             color: AppTheme.textSecondary
             font.pixelSize: 14

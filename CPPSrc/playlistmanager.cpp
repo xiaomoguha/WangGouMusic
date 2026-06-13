@@ -205,6 +205,8 @@ void PlaylistManager::loadRecentFromCache()
         song.songhash = obj["songhash"].toString();
         song.singername = obj["singername"].toString();
         song.union_cover = obj["union_cover"].toString();
+        // 旧缓存里的封面可能是低清尺寸(80/150/300/400/480)，统一升级到 720
+        song.union_cover.replace("/80/", "/720/").replace("/150/", "/720/").replace("/300/", "/720/").replace("/400/", "/720/").replace("/480/", "/720/");
         song.album_name = obj["album_name"].toString();
         song.duration = obj["duration"].toString();
         m_recentPlaylist.append(song);
@@ -890,6 +892,8 @@ void PlaylistManager::loadPlaylistFromCache()
         song.url = obj["url"].toString();
         song.singername = obj["singername"].toString();
         song.union_cover = obj["union_cover"].toString();
+        // 旧缓存里的封面可能是低清尺寸(80/150/300/400/480)，统一升级到 720
+        song.union_cover.replace("/80/", "/720/").replace("/150/", "/720/").replace("/300/", "/720/").replace("/400/", "/720/").replace("/480/", "/720/");
         song.album_name = obj["album_name"].toString();
         song.duration = obj["duration"].toString();
         song.lyric = "";

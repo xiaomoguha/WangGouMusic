@@ -130,7 +130,7 @@ void SearchComplex::onReplyFinished(QNetworkReply *reply)
         item["duration"] = durationstr;
         item["album_name"] = album_name;
         item["songhash"] = songhash;
-        item["union_cover"] = union_cover.replace("{size}", "300");
+        item["union_cover"] = union_cover.replace("{size}", "720");
 
         m_items.append(item);
     }

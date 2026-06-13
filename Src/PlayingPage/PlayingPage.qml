@@ -454,7 +454,9 @@ Rectangle {
                     asynchronous: true
                     cache: true
                     mipmap: true
+                    sourceSize: Qt.size(720, 720)
                     layer.enabled: true
+                    layer.textureSize: Qt.size(720, 720)
                     layer.effect: OpacityMask {
                         maskSource: Rectangle {
                             width: 340
