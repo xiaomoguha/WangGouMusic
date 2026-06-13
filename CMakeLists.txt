@@ -97,7 +97,6 @@ set_target_properties(WangGouMusic PROPERTIES
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
-    WIN32_EXECUTABLE TRUE
     MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in
     MACOSX_BUNDLE_ICON_FILE cmake_wanggou.icns
     # 禁用 QML 编译器的 unqualified access 警告
@@ -112,4 +111,13 @@ install(TARGETS WangGouMusic
 if(QT_VERSION_MAJOR EQUAL 6)
     qt_import_qml_plugins(WangGouMusic)
     qt_finalize_executable(WangGouMusic)
+endif()
+
+# Debug 构建时显示控制台窗口以查看 qDebug 输出，Release 时隐藏
+if(WIN32)
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        set_target_properties(WangGouMusic PROPERTIES WIN32_EXECUTABLE FALSE)
+    else()
+        set_target_properties(WangGouMusic PROPERTIES WIN32_EXECUTABLE TRUE)
+    endif()
 endif()
