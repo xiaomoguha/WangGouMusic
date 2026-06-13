@@ -333,6 +333,7 @@ Item {
                             font.bold: true
                             color: AppTheme.textPrimary
                             font.family: AppTheme.fontFamily
+                            anchors.verticalCenter: parent.verticalCenter
                         }
 
                         Rectangle {
