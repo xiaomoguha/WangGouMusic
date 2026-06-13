@@ -63,7 +63,7 @@ void Recommendation::onTopSongsData(const QByteArray &data)
         QString singername = names.join(", ");
 
         QString cover = s["trans_param"].toObject()["union_cover"].toString();
-        cover.replace("{size}", "80");
+        cover.replace("{size}", "720");
 
         int durationMs = s["timelength_128"].toInt();
         QString duration = secondsToMinutesSeconds(durationMs / 1000);
@@ -161,7 +161,7 @@ void Recommendation::onPlaylistTracksData(const QByteArray &data)
 
         QString cover = s["trans_param"].toObject()["union_cover"].toString();
         if (cover.isEmpty()) cover = s["cover"].toString();
-        cover.replace("{size}", "80");
+        cover.replace("{size}", "720");
 
         int durationSec = s["timelen"].toInt(0) / 1000;
         QString albumName = s["albuminfo"].toObject()["name"].toString();
