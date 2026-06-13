@@ -59,7 +59,7 @@ Row {
     TextMetrics {
         id: suggestMetrics
         font.pixelSize: 15
-        font.family: "黑体"
+        font.family: AppTheme.fontFamily
     }
 
     property int suggestMaxWidth: 0
@@ -113,7 +113,7 @@ Row {
                 palette.placeholderText: AppTheme.textPlaceholder
                 verticalAlignment: TextInput.AlignVCenter
                 font.pixelSize: 14
-                font.family: "黑体"
+                font.family: AppTheme.fontFamily
                 background: Rectangle {
                     color: "transparent"
                 }
@@ -240,7 +240,7 @@ Row {
                                     elide: Text.ElideRight
                                     textFormat: Text.RichText
                                     font.pixelSize: 15
-                                    font.family: "黑体"
+                                    font.family: AppTheme.fontFamily
                                     color: AppTheme.textPrimary
                                     text: {
                                         var keyword = searchTextField.text;
@@ -308,7 +308,7 @@ Row {
                         text: qsTr("搜索历史")
                         anchors.verticalCenter: parent.verticalCenter
                         color: AppTheme.textSearchKeyword
-                        font.family: "黑体"
+                        font.family: AppTheme.fontFamily
                         font.pixelSize: 15
                     }
                     // 清除历史按钮
@@ -368,15 +368,14 @@ Row {
                             border.color: AppTheme.borderDefault
                             color: AppTheme.bgSearchPopup
                             radius: 15
-                            visible: index < (historyRep.showall ? 10 : 7)
+                            visible: index < (historyRep.showall ? 999 : 6)
                             Label {
                                 id: datalabel
-                                text: songName === undefined ? "" : (historyRep.showall ? (index === 9 ? ">" : songName) : (index === 6 ? ">" : songName))
-                                rotation: historyRep.showall ? (index === 9 ? -90 : 0) : (index === 6 ? 90 : 0)
+                                text: songName === undefined ? "" : songName
                                 font.pixelSize: 16
                                 anchors.centerIn: parent
                                 color: AppTheme.textSecondary
-                                font.family: "黑体"
+                                font.family: AppTheme.fontFamily
                             }
                             MouseArea {
                                 anchors.fill: parent
@@ -407,17 +406,33 @@ Row {
                         }
                     }
                 }
+                // 展开/收起历史记录（历史超过 6 条时显示）
+                Item {
+                    width: songflow.width
+                    height: historyRep.count > 6 ? 36 : 0
+                    visible: historyRep.count > 6 && suggestModel.count === 0
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: historyRep.showall ? "收起 ▲" : "展开更多 ▼"
+                        font.pixelSize: 13
+                        font.family: AppTheme.fontFamily
+                        color: expandHover.hovered ? AppTheme.accent : AppTheme.textMuted
+                    }
+
+                    HoverHandler { id: expandHover }
+                    TapHandler {
+                        cursorShape: Qt.PointingHandCursor
+                        onTapped: historyRep.showall = !historyRep.showall
+                    }
+                }
+
                 Text {
                     id: hotsearchtext
                     text: "热搜榜"
-                    font.family: "黑体"
+                    font.family: AppTheme.fontFamily
                     font.pixelSize: 15
                     color: AppTheme.textSearchKeyword
-                    visible: suggestModel.count === 0
-                }
-                Rectangle {
-                    width: parent.width
-                    height: -35
                     visible: suggestModel.count === 0
                 }
                 Column {
@@ -439,7 +454,7 @@ Row {
                                 width: 12
                                 anchors.verticalCenter: parent.verticalCenter
                                 font.pixelSize: 16
-                                font.family: "黑体"
+                                font.family: AppTheme.fontFamily
                                 color: index < 3 ? AppTheme.textHotIndex : AppTheme.textNormalIndex
                                 text: String(index + 1)
                             }
@@ -449,7 +464,7 @@ Row {
                                 anchors.leftMargin: 15
                                 anchors.verticalCenter: parent.verticalCenter
                                 font.pixelSize: 16
-                                font.family: "黑体"
+                                font.family: AppTheme.fontFamily
                                 color: AppTheme.textNormalIndex
                                 text: modelData.keyword
                             }

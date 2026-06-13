@@ -23,7 +23,7 @@ Page {
             font.pixelSize: 22
             font.bold: true
             color: AppTheme.textPrimary
-            font.family: "黑体"
+            font.family: AppTheme.fontFamily
             anchors.verticalCenter: parent.verticalCenter
         }
 
@@ -31,7 +31,7 @@ Page {
             text: playlistmanager ? playlistmanager.recentPlaylist.length + "首" : "0首"
             font.pixelSize: 13
             color: AppTheme.textMuted
-            font.family: "黑体"
+            font.family: AppTheme.fontFamily
             anchors.verticalCenter: parent.verticalCenter
         }
     }
@@ -59,14 +59,14 @@ Page {
         Text {
             text: "还没有播放记录"
             font.pixelSize: 14
-            font.family: "黑体"
+            font.family: AppTheme.fontFamily
             color: AppTheme.textMuted
             anchors.horizontalCenter: parent.horizontalCenter
         }
         Text {
             text: "播放过的歌曲会出现在这里"
             font.pixelSize: 12
-            font.family: "黑体"
+            font.family: AppTheme.fontFamily
             color: AppTheme.textDim
             anchors.horizontalCenter: parent.horizontalCenter
         }
@@ -118,7 +118,7 @@ Page {
                             anchors.verticalCenter: parent.verticalCenter
                             font.pixelSize: 14
                             color: AppTheme.textMuted
-                            font.family: "黑体"
+                            font.family: AppTheme.fontFamily
                         }
 
                         // 封面
@@ -159,7 +159,7 @@ Page {
                             Text {
                                 text: modelData.title
                                 font.pixelSize: 13
-                                font.family: "黑体"
+                                font.family: AppTheme.fontFamily
                                 color: AppTheme.textPrimary
                                 elide: Text.ElideRight
                                 width: parent.width
@@ -168,7 +168,7 @@ Page {
                             Text {
                                 text: modelData.singername
                                 font.pixelSize: 11
-                                font.family: "黑体"
+                                font.family: AppTheme.fontFamily
                                 color: AppTheme.textMuted
                                 elide: Text.ElideRight
                                 width: parent.width
@@ -275,31 +275,6 @@ Page {
                                 Behavior on color { ColorAnimation { duration: 150 } }
                             }
 
-                            // 喜欢按钮
-                            Rectangle {
-                                width: 28; height: 28; radius: 14
-                                color: AppTheme.isDark
-                                       ? (loveHover.hovered ? AppTheme.iconButtonHover : "transparent")
-                                       : (loveHover.hovered ? "#FFCCCC" : "#FFD8D8")
-                                Image {
-                                    id: loveIcon
-                                    anchors.centerIn: parent
-                                    source: "qrc:/image/addlove.png"
-                                    width: 12; height: 12
-                                    fillMode: Image.PreserveAspectFit
-                                    layer.enabled: true
-                                    layer.effect: ColorOverlay {
-                                        source: loveIcon
-                                        color: AppTheme.isDark ? (loveHover.hovered ? AppTheme.accent : AppTheme.iconDefault)
-                                               : AppTheme.accent
-                                    }
-                                }
-                                HoverHandler { id: loveHover }
-                                TapHandler {
-                                    cursorShape: Qt.PointingHandCursor
-                                }
-                                Behavior on color { ColorAnimation { duration: 150 } }
-                            }
                         }
 
                         // 专辑
@@ -311,7 +286,7 @@ Page {
                             wrapMode: Text.NoWrap
                             text: modelData.album_name
                             font.pixelSize: 13
-                            font.family: "黑体"
+                            font.family: AppTheme.fontFamily
                             color: AppTheme.textMuted
 
                             Behavior on x { NumberAnimation { duration: 150 } }
@@ -331,7 +306,7 @@ Page {
                                 return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
                             }
                             font.pixelSize: 13
-                            font.family: "黑体"
+                            font.family: AppTheme.fontFamily
                             color: AppTheme.textMuted
                         }
                     }

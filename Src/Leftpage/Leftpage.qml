@@ -58,7 +58,7 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 text: qsTr("网狗音乐")
                 font.pixelSize: 20
-                font.family: "黑体"
+                font.family: AppTheme.fontFamily
                 font.bold: true
                 color: AppTheme.textPrimary
             }
@@ -125,7 +125,7 @@ Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
                         text: navColumn.navList[navItemRect.index].text
                         font.pixelSize: 14
-                        font.family: "黑体"
+                        font.family: AppTheme.fontFamily
                         color: navItemRect.isSelected ? AppTheme.textPrimary : AppTheme.textSecondary
                     }
                 }
@@ -244,7 +244,7 @@ Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
                         text: navColumn2.navList[navItemRect2.index].text
                         font.pixelSize: 14
-                        font.family: "黑体"
+                        font.family: AppTheme.fontFamily
                         color: navItemRect2.isSelected ? AppTheme.textPrimary : AppTheme.textSecondary
                     }
                 }
@@ -307,7 +307,7 @@ Rectangle {
                 text: "检查更新"
                 color: AppTheme.textMuted
                 font.pixelSize: 13
-                font.family: "黑体"
+                font.family: AppTheme.fontFamily
                 anchors.verticalCenter: parent.verticalCenter
             }
 

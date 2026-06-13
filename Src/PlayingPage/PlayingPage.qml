@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
+import "../BasicConfig"
 
 Rectangle {
     id: lyricspage
@@ -11,6 +12,19 @@ Rectangle {
     property string songName: playlistmanager ? (playlistmanager.currentTitle === "" ? "默认歌曲" : playlistmanager.currentTitle) : "........"
     property string singerName: playlistmanager ? (playlistmanager.currentsingername === "" ? "默认歌手" : playlistmanager.currentsingername) : "....."
     property string dominantColor: playlistmanager ? playlistmanager.dominantColor : "#FF6B6B"
+
+    // 安全地把 "#RRGGBB" 转为 rgba：避免 dominantColor 为空 / 非 #RRGGBB 格式时
+    // substring + parseInt 产生 NaN，进而让 Qt.rgba 渲染出异常颜色甚至崩溃
+    function rgbFromHex(hex, alpha) {
+        if (typeof hex !== "string" || hex.length < 7 || hex.charAt(0) !== "#")
+            return Qt.rgba(1.0, 0.42, 0.42, alpha)
+        var r = parseInt(hex.substring(1, 3), 16)
+        var g = parseInt(hex.substring(3, 5), 16)
+        var b = parseInt(hex.substring(5, 7), 16)
+        if (isNaN(r) || isNaN(g) || isNaN(b))
+            return Qt.rgba(1.0, 0.42, 0.42, alpha)
+        return Qt.rgba(r / 255, g / 255, b / 255, alpha)
+    }
 
     // 1. 原始图片
     Image {
@@ -268,41 +282,6 @@ Rectangle {
         }
     }
 
-    // ======================= 顶部 ===========================
-    Row {
-        id: topBar
-        spacing: 16
-        anchors.top: parent.top
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.topMargin: 24
-
-        Text {
-            text: "歌曲"
-            font.pixelSize: 20
-            color: "white"
-        }
-        Text {
-            text: "·"
-            font.pixelSize: 20
-            color: "#AAAAAA"
-        }
-        Text {
-            text: "评论"
-            font.pixelSize: 20
-            color: "#666666"
-        }
-        Text {
-            text: "·"
-            font.pixelSize: 20
-            color: "#AAAAAA"
-        }
-        Text {
-            text: "相关"
-            font.pixelSize: 20
-            color: "#666666"
-        }
-    }
-
     // ================== 左侧唱片区 ==========================
     Column {
         id: leftAlbumSection
@@ -319,7 +298,7 @@ Rectangle {
             font.pixelSize: 20
             font.bold: true
             color: "white"
-            font.family: "黑体"
+            font.family: AppTheme.fontFamily
             horizontalAlignment: Text.AlignHCenter
             width: parent.width
         }
@@ -351,7 +330,7 @@ Rectangle {
                 width: 340
                 height: 340
                 radius: width / 2
-                color: Qt.rgba(parseInt(dominantColor.substring(1, 3), 16) / 255, parseInt(dominantColor.substring(3, 5), 16) / 255, parseInt(dominantColor.substring(5, 7), 16) / 255, 0.06)
+                color: rgbFromHex(dominantColor,0.06)
                 visible: false
             }
             FastBlur {
@@ -370,7 +349,7 @@ Rectangle {
                 width: 340
                 height: 340
                 radius: width / 2
-                color: Qt.rgba(parseInt(dominantColor.substring(1, 3), 16) / 255, parseInt(dominantColor.substring(3, 5), 16) / 255, parseInt(dominantColor.substring(5, 7), 16) / 255, 0.10)
+                color: rgbFromHex(dominantColor,0.10)
                 visible: false
             }
             FastBlur {
@@ -389,7 +368,7 @@ Rectangle {
                 width: 340
                 height: 340
                 radius: width / 2
-                color: Qt.rgba(parseInt(dominantColor.substring(1, 3), 16) / 255, parseInt(dominantColor.substring(3, 5), 16) / 255, parseInt(dominantColor.substring(5, 7), 16) / 255, 0.15)
+                color: rgbFromHex(dominantColor,0.15)
                 visible: false
             }
             FastBlur {
@@ -408,7 +387,7 @@ Rectangle {
                 width: 340
                 height: 340
                 radius: width / 2
-                color: Qt.rgba(parseInt(dominantColor.substring(1, 3), 16) / 255, parseInt(dominantColor.substring(3, 5), 16) / 255, parseInt(dominantColor.substring(5, 7), 16) / 255, 0.22)
+                color: rgbFromHex(dominantColor,0.22)
                 visible: false
             }
             FastBlur {
@@ -427,7 +406,7 @@ Rectangle {
                 width: 340
                 height: 340
                 radius: width / 2
-                color: Qt.rgba(parseInt(dominantColor.substring(1, 3), 16) / 255, parseInt(dominantColor.substring(3, 5), 16) / 255, parseInt(dominantColor.substring(5, 7), 16) / 255, 0.32)
+                color: rgbFromHex(dominantColor,0.32)
                 visible: false
             }
             FastBlur {
@@ -446,7 +425,7 @@ Rectangle {
                 width: 340
                 height: 340
                 radius: width / 2
-                color: Qt.rgba(parseInt(dominantColor.substring(1, 3), 16) / 255, parseInt(dominantColor.substring(3, 5), 16) / 255, parseInt(dominantColor.substring(5, 7), 16) / 255, 0.45)
+                color: rgbFromHex(dominantColor,0.45)
                 visible: false
             }
             FastBlur {
@@ -524,83 +503,6 @@ Rectangle {
             height: 16
             width: 1
         }
-
-        Row {
-            spacing: 40
-            anchors.horizontalCenter: parent.horizontalCenter
-
-            // 收藏按钮
-            Rectangle {
-                id: favoriteBtn
-                width: 40
-                height: 40
-                radius: 20
-                color: favoriteMouseArea.containsMouse ? "#30FFFFFF" : "transparent"
-
-                Image {
-                    id: favoriteIcon
-                    anchors.centerIn: parent
-                    source: "qrc:/image/shoucang.png"
-                    width: 22
-                    height: 22
-                    fillMode: Image.PreserveAspectFit
-                    layer.enabled: true
-                    layer.effect: ColorOverlay {
-                        source: favoriteIcon
-                        color: favoriteMouseArea.containsMouse ? "#FF6B6B" : "#FFFFFF"
-                    }
-                }
-
-                MouseArea {
-                    id: favoriteMouseArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                }
-
-                Behavior on color {
-                    ColorAnimation {
-                        duration: 150
-                    }
-                }
-            }
-
-            // 下载按钮
-            Rectangle {
-                id: downloadBtn
-                width: 40
-                height: 40
-                radius: 20
-                color: downloadMouseArea.containsMouse ? "#30FFFFFF" : "transparent"
-
-                Image {
-                    id: downloadIcon
-                    anchors.centerIn: parent
-                    source: "qrc:/image/xiazai.png"
-                    width: 22
-                    height: 22
-                    fillMode: Image.PreserveAspectFit
-                    layer.enabled: true
-                    layer.effect: ColorOverlay {
-                        source: downloadIcon
-                        color: downloadMouseArea.containsMouse ? "#4FC3F7" : "#FFFFFF"
-                    }
-                }
-
-                MouseArea {
-                    id: downloadMouseArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                }
-
-                Behavior on color {
-                    ColorAnimation {
-                        duration: 150
-                    }
-                }
-            }
-        }
     }
 
     // ================== 右侧歌词区 ==========================
@@ -654,7 +556,7 @@ Rectangle {
                     textFormat: Text.PlainText
                     font.pixelSize: isCurrentLine ? 20 : 16
                     font.bold: isCurrentLine
-                    font.family: "黑体"
+                    font.family: AppTheme.fontFamily
                     color: "#dddddd"
                     opacity: isCurrentLine ? 1.0 : 0.7
                 }
@@ -687,7 +589,7 @@ Rectangle {
                         textFormat: Text.PlainText
                         font.pixelSize: isCurrentLine ? 20 : 16
                         font.bold: isCurrentLine
-                        font.family: "黑体"
+                        font.family: AppTheme.fontFamily
                         color: dominantColor
                     }
                 }
@@ -739,7 +641,7 @@ Rectangle {
                 text: "正在缓冲..."
                 font.pixelSize: 16
                 color: "#CCCCCC"
-                font.family: "黑体"
+                font.family: AppTheme.fontFamily
                 anchors.horizontalCenter: parent.horizontalCenter
             }
         }
@@ -893,7 +795,7 @@ Rectangle {
                     text: playlistmanager ? playlistmanager.percentstr : "00:00"
                     font.pixelSize: 13
                     color: "#AAAAAA"
-                    font.family: "黑体"
+                    font.family: AppTheme.fontFamily
                     anchors.verticalCenter: parent.verticalCenter
                 }
 
@@ -1005,119 +907,11 @@ Rectangle {
                     text: playlistmanager ? playlistmanager.duration : "00:00"
                     font.pixelSize: 13
                     color: "#AAAAAA"
-                    font.family: "黑体"
+                    font.family: AppTheme.fontFamily
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
         }
 
-        // ===== 右侧：功能图标 =====
-        Row {
-            spacing: 20
-            Layout.alignment: Qt.AlignVCenter
-
-            // 倍速
-            Text {
-                id: speedBtn
-                text: "1.0x"
-                font.pixelSize: 13
-                color: speedMouseArea.containsMouse ? "#FFFFFF" : "#AAAAAA"
-                font.family: "黑体"
-                anchors.verticalCenter: parent.verticalCenter
-
-                MouseArea {
-                    id: speedMouseArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                }
-
-                Behavior on color {
-                    ColorAnimation {
-                        duration: 150
-                    }
-                }
-            }
-
-            // 音量
-            Image {
-                id: volumeBtn
-                source: "qrc:/image/shenying.png"
-                width: 20
-                height: 20
-                fillMode: Image.PreserveAspectFit
-                opacity: volumeMouseArea.containsMouse ? 1.0 : 0.7
-                layer.enabled: true
-                layer.effect: ColorOverlay {
-                    source: volumeBtn
-                    color: "#FFFFFF"
-                }
-
-                MouseArea {
-                    id: volumeMouseArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                }
-
-                Behavior on opacity {
-                    NumberAnimation {
-                        duration: 150
-                    }
-                }
-            }
-
-            // 歌词
-            Text {
-                id: lyricBtn
-                text: "词"
-                font.pixelSize: 14
-                font.bold: true
-                color: lyricMouseArea.containsMouse ? "#FFFFFF" : "#AAAAAA"
-                font.family: "黑体"
-                anchors.verticalCenter: parent.verticalCenter
-
-                MouseArea {
-                    id: lyricMouseArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                }
-
-                Behavior on color {
-                    ColorAnimation {
-                        duration: 150
-                    }
-                }
-            }
-
-            // 播放列表
-            Image {
-                id: playlistBtn
-                source: "qrc:/image/liebiao.png"
-                width: 20
-                height: 20
-                fillMode: Image.PreserveAspectFit
-                opacity: playlistMouseArea.containsMouse ? 1.0 : 0.7
-                layer.enabled: true
-                layer.effect: ColorOverlay {
-                    source: playlistBtn
-                    color: "#FFFFFF"
-                }
-
-                MouseArea {
-                    id: playlistMouseArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                }
-
-                Behavior on opacity {
-                    NumberAnimation {
-                        duration: 150
-                    }
-                }
-            }
-        }
     }
 }

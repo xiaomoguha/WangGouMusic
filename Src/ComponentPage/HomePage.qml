@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
+import "../ToolWindow"
 
 Item {
     objectName: "HomePage"
@@ -61,7 +62,7 @@ Item {
                         text: "每日推荐"
                         font.pixelSize: 11
                         color: "#aaaacc"
-                        font.family: "黑体"
+                        font.family: AppTheme.fontFamily
                         font.bold: true
                     }
                     Text {
@@ -69,13 +70,13 @@ Item {
                         font.pixelSize: 26
                         color: "#ffffff"
                         font.bold: true
-                        font.family: "黑体"
+                        font.family: AppTheme.fontFamily
                     }
                     Text {
                         text: "精选音乐，为你的每一个时刻匹配最完美的声音"
                         font.pixelSize: 12
                         color: "#aaaacc"
-                        font.family: "黑体"
+                        font.family: AppTheme.fontFamily
                         width: 300
                         wrapMode: Text.WordWrap
                     }
@@ -92,7 +93,7 @@ Item {
                             text: "▶ 立即播放"
                             font.pixelSize: 13
                             color: "#ffffff"
-                            font.family: "黑体"
+                            font.family: AppTheme.fontFamily
                             font.bold: true
                         }
 
@@ -132,7 +133,7 @@ Item {
                         font.pixelSize: 18
                         font.bold: true
                         color: AppTheme.textPrimary
-                        font.family: "黑体"
+                        font.family: AppTheme.fontFamily
                     }
 
                     Item { width: 10; height: 1 }
@@ -248,7 +249,7 @@ Item {
                                             font.pixelSize: 13
                                             font.bold: true
                                             color: AppTheme.textPrimary
-                                            font.family: "黑体"
+                                            font.family: AppTheme.fontFamily
                                         }
                                         Text {
                                             text: plData.intro
@@ -259,7 +260,7 @@ Item {
                                             maximumLineCount: 2
                                             font.pixelSize: 11
                                             color: AppTheme.textMuted
-                                            font.family: "黑体"
+                                            font.family: AppTheme.fontFamily
                                         }
                                         Row {
                                             spacing: 8
@@ -267,7 +268,7 @@ Item {
                                                 text: (plData.play_count / 10000).toFixed(1) + "万播放"
                                                 font.pixelSize: 10
                                                 color: AppTheme.textMuted
-                                                font.family: "黑体"
+                                                font.family: AppTheme.fontFamily
                                             }
                                             Rectangle {
                                                 visible: plData.tags !== ""
@@ -281,7 +282,7 @@ Item {
                                                     font.pixelSize: 10
                                                     color: AppTheme.textMuted
                                                     anchors.centerIn: parent
-                                                    font.family: "黑体"
+                                                    font.family: AppTheme.fontFamily
                                                 }
                                             }
                                         }
@@ -316,7 +317,7 @@ Item {
                     font.pixelSize: 18
                     font.bold: true
                     color: AppTheme.textPrimary
-                    font.family: "黑体"
+                    font.family: AppTheme.fontFamily
                 }
 
                 GridView {
@@ -393,7 +394,7 @@ Item {
                                     elide: Text.ElideRight
                                     font.pixelSize: 12
                                     color: isPlaying ? AppTheme.accentPlaying : AppTheme.textPrimary
-                                    font.family: "黑体"
+                                    font.family: AppTheme.fontFamily
                                 }
 
                                 Text {
@@ -402,7 +403,7 @@ Item {
                                     elide: Text.ElideRight
                                     font.pixelSize: 11
                                     color: AppTheme.textMuted
-                                    font.family: "黑体"
+                                    font.family: AppTheme.fontFamily
                                 }
                             }
 
@@ -425,6 +426,22 @@ Item {
                                     }
                                 }
                             }
+                        }
+                    }
+                }
+
+                EmptyState {
+                    visible: !recommendation || recommendation.topSongsQml.length === 0
+                    width: parent.width
+                    height: 220
+                    iconText: "♪"
+                    title: "暂无推荐内容"
+                    subtitle: "点击下方按钮刷新试试"
+                    buttonText: "刷新推荐"
+                    onButtonClicked: {
+                        if (recommendation) {
+                            recommendation.fetchTopSongs()
+                            recommendation.fetchTopPlaylists()
                         }
                     }
                 }

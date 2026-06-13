@@ -39,7 +39,7 @@ Item {
             Text {
                 text: "请先登录酷狗账号"
                 font.pixelSize: 20
-                font.family: "黑体"
+                font.family: AppTheme.fontFamily
                 color: AppTheme.textPrimary
                 font.weight: Font.Bold
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -48,7 +48,7 @@ Item {
             Text {
                 text: "登录后即可加入房间，与其他人一起听歌"
                 font.pixelSize: 13
-                font.family: "黑体"
+                font.family: AppTheme.fontFamily
                 color: AppTheme.textMuted
                 anchors.horizontalCenter: parent.horizontalCenter
             }
@@ -64,7 +64,7 @@ Item {
                     anchors.centerIn: parent
                     text: "去登录"
                     font.pixelSize: 16
-                    font.family: "黑体"
+                    font.family: AppTheme.fontFamily
                     color: "#FFFFFF"
                 }
 
@@ -148,7 +148,7 @@ Item {
                         Text {
                             text: "加入房间，一起嗨歌吧！"
                             font.pixelSize: 22
-                            font.family: "黑体"
+                            font.family: AppTheme.fontFamily
                             color: AppTheme.textPrimary
                             font.weight: Font.Bold
                             anchors.horizontalCenter: parent.horizontalCenter
@@ -189,7 +189,7 @@ Item {
                                 Text {
                                     text: (userManager ? userManager.nickname : "") + "  ·  将以该账号加入房间"
                                     font.pixelSize: 12
-                                    font.family: "黑体"
+                                    font.family: AppTheme.fontFamily
                                     color: AppTheme.textMuted
                                     anchors.verticalCenter: parent.verticalCenter
                                 }
@@ -207,7 +207,7 @@ Item {
                             horizontalAlignment: TextInput.AlignHCenter
                             verticalAlignment: TextInput.AlignVCenter
                             font.pixelSize: 14
-                            font.family: "黑体"
+                            font.family: AppTheme.fontFamily
                             enabled: websocket ? websocket.connectionState === 0 : true
                             background: Rectangle {
                                 radius: 12
@@ -224,7 +224,7 @@ Item {
                             id: statusText
                             anchors.horizontalCenter: parent.horizontalCenter
                             font.pixelSize: 13
-                            font.family: "黑体"
+                            font.family: AppTheme.fontFamily
                             visible: false
                             property string statusMsg: ""
                             property color statusColor: AppTheme.textMuted
@@ -249,7 +249,7 @@ Item {
                             Text {
                                 text: websocket && websocket.connectionState === 1 ? "连接中..." : "开始一起听！"
                                 font.pixelSize: 16
-                                font.family: "黑体"
+                                font.family: AppTheme.fontFamily
                                 color: "#FFFFFF"
                                 anchors.centerIn: parent
                             }
@@ -332,7 +332,7 @@ Item {
                             font.pixelSize: 16
                             font.bold: true
                             color: AppTheme.textPrimary
-                            font.family: "黑体"
+                            font.family: AppTheme.fontFamily
                         }
 
                         Rectangle {
@@ -388,14 +388,14 @@ Item {
                         Text {
                             text: "暂无活跃房间"
                             font.pixelSize: 13
-                            font.family: "黑体"
+                            font.family: AppTheme.fontFamily
                             color: AppTheme.textMuted
                             anchors.horizontalCenter: parent.horizontalCenter
                         }
                         Text {
                             text: "输入房间号创建一个吧"
                             font.pixelSize: 12
-                            font.family: "黑体"
+                            font.family: AppTheme.fontFamily
                             color: AppTheme.textDim
                             anchors.horizontalCenter: parent.horizontalCenter
                         }
@@ -482,13 +482,13 @@ Item {
                                         font.pixelSize: 14
                                         font.bold: true
                                         color: AppTheme.textPrimary
-                                        font.family: "黑体"
+                                        font.family: AppTheme.fontFamily
                                     }
                                     Text {
                                         text: modelData.current_song ? (modelData.current_song + " - " + modelData.singername) : "空闲中"
                                         font.pixelSize: 11
                                         color: AppTheme.textMuted
-                                        font.family: "黑体"
+                                        font.family: AppTheme.fontFamily
                                         elide: Text.ElideRight
                                         width: parent.width
                                     }
@@ -509,7 +509,7 @@ Item {
                                         text: modelData.member_count + "人"
                                         font.pixelSize: 10
                                         color: AppTheme.accent
-                                        font.family: "黑体"
+                                        font.family: AppTheme.fontFamily
                                     }
                                 }
 
@@ -531,7 +531,7 @@ Item {
                                         anchors.centerIn: parent
                                         text: "加入"
                                         font.pixelSize: 12
-                                        font.family: "黑体"
+                                        font.family: AppTheme.fontFamily
                                         color: "#FFFFFF"
                                     }
 

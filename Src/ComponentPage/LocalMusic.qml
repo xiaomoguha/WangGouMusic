@@ -3,6 +3,7 @@ import QtQuick 2.15
 import QtQuick.Controls
 import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
+import "../ToolWindow"
 
 Item {
     objectName: "LocalMusic"
@@ -14,7 +15,7 @@ Item {
         id: liebiaotext
         text: qsTr("播放列表")
         font.pixelSize: 24
-        font.family: "黑体"
+        font.family: AppTheme.fontFamily
         color: AppTheme.textPrimary
         font.weight: Font.Bold
         anchors.left: parent.left
@@ -25,107 +26,16 @@ Item {
     Text {
         text: "共" + (playlistmanager ? playlistmanager.playlistcount : 0) + "首"
         font.pixelSize: 13
-        font.family: "黑体"
+        font.family: AppTheme.fontFamily
         color: AppTheme.textDim
         anchors.left: liebiaotext.right
         anchors.leftMargin: 10
         anchors.bottom: liebiaotext.bottom
     }
-    Row {
-        id: playallrow
-        anchors.left: liebiaotext.left
-        anchors.top: liebiaotext.bottom
-        anchors.topMargin: 25
-        spacing: 12
-        Rectangle {
-            id: playallbtn
-            width: 100
-            height: 35
-            radius: 17
-            color: AppTheme.accent
-            Row {
-                anchors.centerIn: parent
-                spacing: 5
-                Image {
-                    id: playallico
-                    source: "qrc:/image/play.png"
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 16
-                    height: 16
-                    fillMode: Image.PreserveAspectFit
-                    layer.enabled: true
-                    layer.effect: ColorOverlay {
-                        source: playallico
-                        color: "#FFFFFF"
-                    }
-                }
-                Text {
-                    id: playalltext
-                    text: qsTr("播放全部")
-                    anchors.verticalCenter: parent.verticalCenter
-                    font.family: "黑体"
-                    font.pixelSize: 14
-                    color: AppTheme.textPrimary
-                }
-            }
-            HoverHandler {
-                id: playAllHoverHandler
-            }
-            TapHandler {
-                cursorShape: Qt.PointingHandCursor
-                onTapped: {
-                    // 播放全部
-                }
-            }
-            Binding {
-                target: playallbtn
-                property: "color"
-                value: playAllHoverHandler.hovered ? AppTheme.accentHover : AppTheme.accent
-            }
-        }
-        // 刷新按钮
-        Rectangle {
-            id: refreshBtn
-            width: 34
-            height: 34
-            radius: 17
-            color: refreshHoverHandler.hovered ? AppTheme.iconButtonHover : "transparent"
-
-            Image {
-                id: refreshIcon
-                anchors.centerIn: parent
-                source: "qrc:/image/shuaxin.png"
-                width: 18
-                height: 18
-                fillMode: Image.PreserveAspectFit
-                layer.enabled: true
-                layer.effect: ColorOverlay {
-                    source: refreshIcon
-                    color: "#FFFFFF"
-                }
-            }
-
-            HoverHandler {
-                id: refreshHoverHandler
-            }
-            TapHandler {
-                cursorShape: Qt.PointingHandCursor
-                onTapped: {
-                    // 刷新
-                }
-            }
-
-            Behavior on color {
-                ColorAnimation {
-                    duration: 150
-                }
-            }
-        }
-    }
     // 搜索框
     Rectangle {
         id: searchContainer
-        anchors.verticalCenter: playallrow.verticalCenter
+        anchors.verticalCenter: liebiaotext.verticalCenter
         anchors.right: parent.right
         anchors.rightMargin: 0.1 * root.width
         width: 200
@@ -163,7 +73,7 @@ Item {
                 palette.placeholderText: "#666666"
                 verticalAlignment: TextInput.AlignVCenter
                 font.pixelSize: 13
-                font.family: "黑体"
+                font.family: AppTheme.fontFamily
                 background: Rectangle {
                     color: "transparent"
                 }
@@ -174,8 +84,8 @@ Item {
         id: playlistflick
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.top: playallrow.bottom
-        anchors.topMargin: 20
+        anchors.top: liebiaotext.bottom
+        anchors.topMargin: 30
         anchors.bottom: parent.bottom
         clip: true
         contentWidth: playlistcolumn.width
@@ -407,7 +317,7 @@ Item {
                         wrapMode: Text.NoWrap
                         text: modelData.album_name
                         font.pixelSize: 14
-                        font.family: "黑体"
+                        font.family: AppTheme.fontFamily
                         color: AppTheme.textPrimary
                     }
                     Text {
@@ -417,11 +327,24 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         text: modelData.duration
                         font.pixelSize: 14
-                        font.family: "黑体"
+                        font.family: AppTheme.fontFamily
                         color: AppTheme.textMuted
                     }
                 }
             }
         }
+    }
+
+    // 空状态：播放列表为空时
+    EmptyState {
+        anchors.top: liebiaotext.bottom
+        anchors.topMargin: 60
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        visible: !playlistmanager || playlistmanager.playlistcount === 0
+        iconText: "♪"
+        title: "播放列表还是空的"
+        subtitle: "去首页发现喜欢的音乐，添加到播放列表吧"
     }
 }

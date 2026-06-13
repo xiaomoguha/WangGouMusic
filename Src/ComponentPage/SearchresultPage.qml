@@ -26,7 +26,7 @@ Item {
             font.pixelSize: 22
             font.bold: true
             color: AppTheme.textPrimary
-            font.family: "黑体"
+            font.family: AppTheme.fontFamily
             anchors.verticalCenter: parent.verticalCenter
         }
 
@@ -38,7 +38,7 @@ Item {
             }
             font.pixelSize: 13
             color: AppTheme.textMuted
-            font.family: "黑体"
+            font.family: AppTheme.fontFamily
             anchors.verticalCenter: parent.verticalCenter
         }
 

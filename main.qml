@@ -8,16 +8,15 @@ import "./Src/PlayingPage"
 import "./Src/ToolWindow"
 import "./Src/ComponentPage" as ComponentPage
 import QtQuick.Controls
+import Qt5Compat.GraphicalEffects
 
 ApplicationWindow {
     id: root
     objectName: "mainWindow"
     width: 1057
     height: 752
-    minimumWidth: 1057
-    minimumHeight: 752
-    maximumWidth: 1057
-    maximumHeight: 752
+    minimumWidth: 960
+    minimumHeight: 680
     visible: true
     title: qsTr("WYYMUSIC")
     color: "transparent"
@@ -134,6 +133,30 @@ ApplicationWindow {
             }
         }
     }
+    // 内容容器：四周留出投影空间；最大化时自动贴边、无阴影
+    Item {
+        id: windowShell
+        anchors.fill: parent
+        anchors.margins: root.visibility === Window.Maximized ? 0 : 10
+
+        // 阴影源：与窗口同形状的圆角矩形（不可见，仅用于生成投影）
+        Rectangle {
+            id: shadowSource
+            anchors.fill: parent
+            radius: root.visibility === Window.Maximized ? 0 : 20
+            color: "#000000"
+            visible: false
+        }
+        DropShadow {
+            anchors.fill: parent
+            source: shadowSource
+            horizontalOffset: 0
+            verticalOffset: 4
+            radius: 16
+            samples: 33
+            color: AppTheme.isDark ? "#A0000000" : "#26000000"
+            transparentBorder: true
+        }
     Leftpage {
         id: leftrect
         width: 200
@@ -282,6 +305,7 @@ ApplicationWindow {
                 duration: AppTheme.animThemeTransition
             }
         }
+    }
     }
     // 使用 Loader 延迟加载歌词页，减少启动内存
     Loader {

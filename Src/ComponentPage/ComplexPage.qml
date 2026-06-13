@@ -142,7 +142,7 @@ Page {
                             anchors.verticalCenter: parent.verticalCenter
                             font.pixelSize: 14
                             color: AppTheme.textMuted
-                            font.family: "黑体"
+                            font.family: AppTheme.fontFamily
                         }
 
                         // 封面
@@ -171,13 +171,13 @@ Page {
 
                             Text {
                                 text: modelData.songname
-                                font.pixelSize: 13; font.family: "黑体"
+                                font.pixelSize: 13; font.family: AppTheme.fontFamily
                                 color: AppTheme.textPrimary
                                 elide: Text.ElideRight; width: parent.width; wrapMode: Text.NoWrap
                             }
                             Text {
                                 text: modelData.singername
-                                font.pixelSize: 11; font.family: "黑体"
+                                font.pixelSize: 11; font.family: AppTheme.fontFamily
                                 color: AppTheme.textMuted
                                 elide: Text.ElideRight; width: parent.width; wrapMode: Text.NoWrap
                             }
@@ -272,27 +272,6 @@ Page {
                             Behavior on color { ColorAnimation { duration: 150 } }
                         }
 
-                        // 喜欢
-                        Rectangle {
-                            width: 28; height: 28; radius: 14
-                            color: AppTheme.isDark
-                                   ? (loveH.hovered ? AppTheme.iconButtonHover : "transparent")
-                                   : (loveH.hovered ? "#FFCCCC" : "#FFD8D8")
-                            Image {
-                                id: loveIco
-                                anchors.centerIn: parent
-                                source: "qrc:/image/addlove.png"
-                                width: 12; height: 12; fillMode: Image.PreserveAspectFit
-                                layer.enabled: true
-                                layer.effect: ColorOverlay {
-                                    source: loveIco
-                                    color: AppTheme.isDark ? (loveH.hovered ? AppTheme.accent : AppTheme.iconDefault) : AppTheme.accent
-                                }
-                            }
-                            HoverHandler { id: loveH }
-                            TapHandler { cursorShape: Qt.PointingHandCursor }
-                            Behavior on color { ColorAnimation { duration: 150 } }
-                        }
                     }
 
                     // 专辑（固定位置）
@@ -301,7 +280,7 @@ Page {
                         anchors.verticalCenter: parent.verticalCenter
                         elide: Text.ElideRight; width: 0.28 * root.width; wrapMode: Text.NoWrap
                         text: modelData.album_name
-                        font.pixelSize: 13; font.family: "黑体"; color: AppTheme.textMuted
+                        font.pixelSize: 13; font.family: AppTheme.fontFamily; color: AppTheme.textMuted
                     }
 
                     // 时长（固定位置）
@@ -319,7 +298,7 @@ Page {
                             var s = sec % 60;
                             return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
                         }
-                        font.pixelSize: 13; font.family: "黑体"; color: AppTheme.textMuted
+                        font.pixelSize: 13; font.family: AppTheme.fontFamily; color: AppTheme.textMuted
                     }
                 }
             }
@@ -356,7 +335,7 @@ Page {
 
                 Text {
                     text: "加载更多..."
-                    font.pixelSize: 12; font.family: "黑体"
+                    font.pixelSize: 12; font.family: AppTheme.fontFamily
                     color: AppTheme.textMuted
                     anchors.verticalCenter: parent.verticalCenter
                 }
@@ -366,7 +345,7 @@ Page {
             Text {
                 visible: complexsearch && !complexsearch.hasMore && complexsearch.items.length > 0
                 text: "— 没有更多了 —"
-                font.pixelSize: 12; font.family: "黑体"
+                font.pixelSize: 12; font.family: AppTheme.fontFamily
                 color: AppTheme.textDim
                 anchors.horizontalCenter: parent.horizontalCenter
             }
@@ -392,12 +371,12 @@ Page {
         }
         Text {
             text: "没有找到相关歌曲"
-            font.pixelSize: 14; font.family: "黑体"; color: AppTheme.textMuted
+            font.pixelSize: 14; font.family: AppTheme.fontFamily; color: AppTheme.textMuted
             anchors.horizontalCenter: parent.horizontalCenter
         }
         Text {
             text: "换个关键词试试吧"
-            font.pixelSize: 12; font.family: "黑体"; color: AppTheme.textDim
+            font.pixelSize: 12; font.family: AppTheme.fontFamily; color: AppTheme.textDim
             anchors.horizontalCenter: parent.horizontalCenter
         }
     }
