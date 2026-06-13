@@ -466,7 +466,7 @@ Rectangle {
                         id: rotationAnim
                         from: 0
                         to: 360
-                        duration: 15000
+                        duration: 30000
                         loops: Animation.Infinite
                         running: !playlistmanager.isPaused && root.visible
                     }
@@ -509,11 +509,11 @@ Rectangle {
     ListView {
         id: lyricList
         anchors.left: leftAlbumSection.right
-        anchors.leftMargin: parent.width * 0.02
+        anchors.leftMargin: parent.width * 0.13
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         anchors.bottomMargin: 0.2 * root.height
-        anchors.topMargin: 160
+        anchors.topMargin: 80
         clip: true
         width: parent.width * 0.32
         cacheBuffer: 150

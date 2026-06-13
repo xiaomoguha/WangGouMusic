@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick 2.15
 import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
+import "../ToolWindow"
 
 Rectangle {
     id: leftpageRectangle
@@ -76,12 +77,12 @@ Rectangle {
 
         property var navList: [
             {
-                icon: "qrc:/image/jingxuan_xuanzhong.png",
+                iconType: "discover",
                 text: "云音乐精选",
                 pageurl: "qrc:/Src/ComponentPage/HomePage.qml"
             },
             {
-                icon: "qrc:/image/yinle.png",
+                iconType: "together",
                 text: "一起听歌",
                 pageurl: "qrc:/Src/ComponentPage/musictogether.qml"
             }
@@ -107,18 +108,13 @@ Rectangle {
                     anchors.leftMargin: 16
                     anchors.verticalCenter: parent.verticalCenter
 
-                    Image {
-                        id: navIcon
+                    NavIcon {
+                        iconType: navColumn.navList[navItemRect.index].iconType
+                        selected: navItemRect.isSelected
+                        iconColor: navItemRect.isSelected ? AppTheme.iconActive : AppTheme.iconNav
                         width: 20
                         height: 20
                         anchors.verticalCenter: parent.verticalCenter
-                        fillMode: Image.PreserveAspectFit
-                        source: navColumn.navList[navItemRect.index].icon
-                        layer.enabled: true
-                        layer.effect: ColorOverlay {
-                            source: navIcon
-                            color: navItemRect.isSelected ? AppTheme.iconActive : AppTheme.iconNav
-                        }
                     }
 
                     Text {
@@ -190,17 +186,17 @@ Rectangle {
 
         property var navList: [
             {
-                icon: "qrc:/image/shoucang.png",
+                iconType: "playlist",
                 text: "我的歌单",
                 pageurl: "qrc:/Src/ComponentPage/UserPlaylistPage.qml"
             },
             {
-                icon: "qrc:/image/liebiao.png",
+                iconType: "list",
                 text: "播放列表",
                 pageurl: "qrc:/Src/ComponentPage/LocalMusic.qml"
             },
             {
-                icon: "qrc:/image/zuijinbofang.png",
+                iconType: "recent",
                 text: "最近播放",
                 pageurl: "qrc:/Src/ComponentPage/RecentlyPlayed.qml"
             }
@@ -226,18 +222,13 @@ Rectangle {
                     anchors.leftMargin: 16
                     anchors.verticalCenter: parent.verticalCenter
 
-                    Image {
-                        id: navIcon2
+                    NavIcon {
+                        iconType: navColumn2.navList[navItemRect2.index].iconType
+                        selected: navItemRect2.isSelected
+                        iconColor: navItemRect2.isSelected ? AppTheme.iconActive : AppTheme.iconNav
                         width: 20
                         height: 20
                         anchors.verticalCenter: parent.verticalCenter
-                        fillMode: Image.PreserveAspectFit
-                        source: navColumn2.navList[navItemRect2.index].icon
-                        layer.enabled: true
-                        layer.effect: ColorOverlay {
-                            source: navIcon2
-                            color: navItemRect2.isSelected ? AppTheme.iconActive : AppTheme.iconNav
-                        }
                     }
 
                     Text {

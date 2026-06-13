@@ -20,6 +20,18 @@ Item {
             recommendation.fetchPlaylistTracks(playlistId)
     }
 
+    // 歌单详情页会被 Rightpage 的 Loader 缓存复用，切换不同歌单时
+    // Component.onCompleted 不会再次触发，因此监听 id 变化重新拉取歌曲列表
+    Connections {
+        target: BasicConfig
+        function onPlaylistDetailIdChanged() {
+            if (recommendation && playlistId !== "") {
+                flickable.contentY = 0
+                recommendation.fetchPlaylistTracks(playlistId)
+            }
+        }
+    }
+
     Column {
         anchors.fill: parent
         spacing: 0
