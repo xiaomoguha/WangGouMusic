@@ -151,7 +151,7 @@ Rectangle {
                 Text {
                     id: songNameText
                     text: playlistmanager ? (playlistmanager.currentTitle === "" ? "默认歌曲" : playlistmanager.currentTitle) : "........"
-                    font.family: "黑体"
+                    font.family: AppTheme.fontFamily
                     font.pixelSize: 14
                     font.bold: true
                     color: AppTheme.textPrimary
@@ -163,7 +163,7 @@ Rectangle {
                 Text {
                     id: singerNameText
                     text: playlistmanager ? (playlistmanager.currentsingername === "" ? "默认歌手" : playlistmanager.currentsingername) : "....."
-                    font.family: "黑体"
+                    font.family: AppTheme.fontFamily
                     font.pixelSize: 12
                     color: AppTheme.textMuted
                     elide: Text.ElideRight
@@ -286,7 +286,7 @@ Rectangle {
                             text: lyricsScrollLayer.lyricText
                             font.pixelSize: 14
                             font.bold: true
-                            font.family: "黑体"
+                            font.family: AppTheme.fontFamily
                             color: AppTheme.textMuted
                             maximumLineCount: 1
                         }
@@ -307,7 +307,7 @@ Rectangle {
                                 text: lyricsScrollLayer.lyricText
                                 font.pixelSize: 14
                                 font.bold: true
-                                font.family: "黑体"
+                                font.family: AppTheme.fontFamily
                                 color: AppTheme.accent
                                 maximumLineCount: 1
                             }
@@ -337,6 +337,7 @@ Rectangle {
                     width: 36
                     height: 36
                     radius: 18
+                    enabled: playlistmanager ? playlistmanager.type !== 1 : true
                     color: prevHandler.hovered ? AppTheme.iconButtonHover : "transparent"
                     anchors.verticalCenter: parent.verticalCenter
 
@@ -365,7 +366,7 @@ Rectangle {
                         }
                     }
 
-                    opacity: playlistmanager.type === 1 ? 0.3 : 1.0
+                    opacity: enabled ? 1.0 : 0.3
                     Behavior on opacity {
                         NumberAnimation {
                             duration: 150
@@ -511,7 +512,7 @@ Rectangle {
             Text {
                 id: currentTimeText
                 text: playlistmanager ? playlistmanager.percentstr : "00:00"
-                font.family: "黑体"
+                font.family: AppTheme.fontFamily
                 font.pixelSize: 11
                 color: AppTheme.isDark ? "#99FFFFFF" : AppTheme.textMuted
                 anchors.verticalCenter: parent.verticalCenter
@@ -640,7 +641,7 @@ Rectangle {
             Text {
                 id: totalTimeText
                 text: playlistmanager ? playlistmanager.duration : "00:00"
-                font.family: "黑体"
+                font.family: AppTheme.fontFamily
                 font.pixelSize: 11
                 color: AppTheme.isDark ? "#99FFFFFF" : AppTheme.textMuted
                 anchors.verticalCenter: parent.verticalCenter
@@ -734,14 +735,14 @@ Rectangle {
                                     text: "播放列表"
                                     font.pixelSize: 14
                                     font.bold: true
-                                    font.family: "黑体"
+                                    font.family: AppTheme.fontFamily
                                     color: AppTheme.textPrimary
                                     anchors.verticalCenter: parent.verticalCenter
                                 }
                                 Text {
                                     text: "(" + playlistView.count + ")"
                                     font.pixelSize: 12
-                                    font.family: "黑体"
+                                    font.family: AppTheme.fontFamily
                                     color: AppTheme.textMuted
                                     anchors.verticalCenter: parent.verticalCenter
                                 }
@@ -751,7 +752,7 @@ Rectangle {
                                 Text {
                                     text: "清空"
                                     font.pixelSize: 12
-                                    font.family: "黑体"
+                                    font.family: AppTheme.fontFamily
                                     color: clearBtnArea.containsMouse ? AppTheme.accent : AppTheme.textMuted
                                     anchors.verticalCenter: parent.verticalCenter
                                     visible: playlistmanager && playlistmanager.type === 0
@@ -807,7 +808,7 @@ Rectangle {
                                         height: parent.height
                                         text: index === playlistmanager.currentIndex ? "♪" : (index + 1)
                                         font.pixelSize: index === playlistmanager.currentIndex ? 14 : 12
-                                        font.family: "黑体"
+                                        font.family: AppTheme.fontFamily
                                         color: index === playlistmanager.currentIndex ? AppTheme.accent : AppTheme.textMuted
                                         verticalAlignment: Text.AlignVCenter
                                         horizontalAlignment: Text.AlignHCenter
@@ -822,7 +823,7 @@ Rectangle {
                                         Text {
                                             text: modelData.title
                                             font.pixelSize: 13
-                                            font.family: "黑体"
+                                            font.family: AppTheme.fontFamily
                                             color: index === playlistmanager.currentIndex ? AppTheme.accent : AppTheme.textPrimary
                                             elide: Text.ElideRight
                                             width: parent.width
@@ -830,7 +831,7 @@ Rectangle {
                                         Text {
                                             text: modelData.singername
                                             font.pixelSize: 10
-                                            font.family: "黑体"
+                                            font.family: AppTheme.fontFamily
                                             color: AppTheme.textMuted
                                             elide: Text.ElideRight
                                             width: parent.width
@@ -848,7 +849,7 @@ Rectangle {
                                             return m + ":" + (s < 10 ? "0" : "") + s
                                         }
                                         font.pixelSize: 11
-                                        font.family: "黑体"
+                                        font.family: AppTheme.fontFamily
                                         color: AppTheme.textDim
                                         anchors.verticalCenter: parent.verticalCenter
                                     }

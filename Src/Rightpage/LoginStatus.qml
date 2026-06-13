@@ -77,7 +77,7 @@ Row {
         height: 28
         verticalAlignment: Text.AlignVCenter
         font {
-            family: "黑体"
+            family: AppTheme.fontFamily
             pixelSize: 13
         }
 
@@ -177,7 +177,7 @@ Row {
                             color: AppTheme.textPrimary
                             font.pixelSize: 15
                             font.bold: true
-                            font.family: "黑体"
+                            font.family: AppTheme.fontFamily
                         }
 
                         // VIP 标识
@@ -200,7 +200,7 @@ Row {
                                 color: "#333"
                                 font.pixelSize: 10
                                 font.bold: true
-                                font.family: "黑体"
+                                font.family: AppTheme.fontFamily
                             }
                         }
                     }
@@ -217,7 +217,7 @@ Row {
                         }
                         color: AppTheme.textMuted
                         font.pixelSize: 11
-                        font.family: "黑体"
+                        font.family: AppTheme.fontFamily
                     }
                 }
             }
@@ -232,7 +232,7 @@ Row {
                 elide: Text.ElideRight
                 color: AppTheme.textSecondary
                 font.pixelSize: 12
-                font.family: "黑体"
+                font.family: AppTheme.fontFamily
             }
 
             // ── 社交数据 ──
@@ -260,7 +260,7 @@ Row {
                                 color: AppTheme.textPrimary
                                 font.pixelSize: 14
                                 font.bold: true
-                                font.family: "黑体"
+                                font.family: AppTheme.fontFamily
                                 anchors.horizontalCenter: parent.horizontalCenter
                             }
 
@@ -268,7 +268,7 @@ Row {
                                 text: modelData.label
                                 color: AppTheme.textMuted
                                 font.pixelSize: 11
-                                font.family: "黑体"
+                                font.family: AppTheme.fontFamily
                                 anchors.horizontalCenter: parent.horizontalCenter
                             }
                         }
@@ -305,7 +305,7 @@ Row {
                         text: userDetailData ? String(userDetailData.birthday || "") : ""
                         color: AppTheme.textMuted
                         font.pixelSize: 11
-                        font.family: "黑体"
+                        font.family: AppTheme.fontFamily
                         anchors.verticalCenter: parent.verticalCenter
                     }
                 }
@@ -330,7 +330,7 @@ Row {
                         text: userDetailData ? String(userDetailData.occupation || "") : ""
                         color: AppTheme.textMuted
                         font.pixelSize: 11
-                        font.family: "黑体"
+                        font.family: AppTheme.fontFamily
                         anchors.verticalCenter: parent.verticalCenter
                     }
                 }
@@ -355,7 +355,7 @@ Row {
                     text: "退出登录"
                     color: AppTheme.errorColor
                     font.pixelSize: 13
-                    font.family: "黑体"
+                    font.family: AppTheme.fontFamily
                 }
 
                 HoverHandler { id: menuLogoutHover }
@@ -367,72 +367,6 @@ Row {
                     }
                 }
             }
-        }
-    }
-
-    // 消息按钮
-    Rectangle {
-        width: 28
-        height: 28
-        radius: 14
-        color: mailMouseArea.containsMouse ? AppTheme.iconButtonHover : "transparent"
-
-        Image {
-            id: mailbuttom
-            anchors.centerIn: parent
-            width: 14
-            height: 14
-            fillMode: Image.PreserveAspectFit
-            source: "qrc:/image/mail_line.png"
-            layer.enabled: true
-            layer.effect: ColorOverlay {
-                source: mailbuttom
-                color: AppTheme.iconDefault
-            }
-        }
-
-        MouseArea {
-            id: mailMouseArea
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-        }
-
-        Behavior on color {
-            ColorAnimation { duration: 150 }
-        }
-    }
-
-    // 设置按钮
-    Rectangle {
-        width: 28
-        height: 28
-        radius: 14
-        color: settingMouseArea.containsMouse ? AppTheme.iconButtonHover : "transparent"
-
-        Image {
-            id: settingbuttom
-            anchors.centerIn: parent
-            width: 14
-            height: 14
-            fillMode: Image.PreserveAspectFit
-            source: "qrc:/image/setting_line.png"
-            layer.enabled: true
-            layer.effect: ColorOverlay {
-                source: settingbuttom
-                color: AppTheme.iconDefault
-            }
-        }
-
-        MouseArea {
-            id: settingMouseArea
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-        }
-
-        Behavior on color {
-            ColorAnimation { duration: 150 }
         }
     }
 

@@ -199,7 +199,7 @@ Item {
                 text: "请先登录查看歌单"
                 color: AppTheme.textMuted
                 font.pixelSize: 16
-                font.family: "黑体"
+                font.family: AppTheme.fontFamily
                 anchors.horizontalCenter: parent.horizontalCenter
             }
 
@@ -215,7 +215,7 @@ Item {
                     text: "去登录"
                     color: "white"
                     font.pixelSize: 14
-                    font.family: "黑体"
+                    font.family: AppTheme.fontFamily
                 }
 
                 HoverHandler { id: loginBtnHover }
@@ -285,7 +285,7 @@ Item {
                         color: AppTheme.textPrimary
                         font.pixelSize: 24
                         font.weight: Font.Bold
-                        font.family: "黑体"
+                        font.family: AppTheme.fontFamily
                         anchors.left: parent.left
                         anchors.leftMargin: 0.04 * userPlaylistPage.width
                     }
@@ -296,7 +296,7 @@ Item {
                         text: "加载中..."
                         color: AppTheme.textMuted
                         font.pixelSize: 13
-                        font.family: "黑体"
+                        font.family: AppTheme.fontFamily
                         anchors.horizontalCenter: parent.horizontalCenter
                         topPadding: 20
                     }
@@ -355,14 +355,14 @@ Item {
                                             elide: Text.ElideRight
                                             color: AppTheme.textPrimary
                                             font.pixelSize: 14
-                                            font.family: "黑体"
+                                            font.family: AppTheme.fontFamily
                                         }
 
                                         Text {
                                             text: (playlistData.count || 0) + " 首"
                                             color: AppTheme.textMuted
                                             font.pixelSize: 12
-                                            font.family: "黑体"
+                                            font.family: AppTheme.fontFamily
                                         }
                                     }
 
@@ -443,7 +443,7 @@ Item {
                                 text: "加载更多..."
                                 color: AppTheme.textMuted
                                 font.pixelSize: 12
-                                font.family: "黑体"
+                                font.family: AppTheme.fontFamily
                                 anchors.centerIn: parent
                             }
 
@@ -452,7 +452,7 @@ Item {
                                 text: "共 " + playlists.length + " 个歌单"
                                 color: AppTheme.textDim
                                 font.pixelSize: 12
-                                font.family: "黑体"
+                                font.family: AppTheme.fontFamily
                                 anchors.centerIn: parent
                             }
                         }
@@ -464,7 +464,7 @@ Item {
                         text: "暂无歌单"
                         color: AppTheme.textMuted
                         font.pixelSize: 14
-                        font.family: "黑体"
+                        font.family: AppTheme.fontFamily
                         anchors.horizontalCenter: parent.horizontalCenter
                     }
                 }
@@ -537,7 +537,7 @@ Item {
                             color: AppTheme.textPrimary
                             font.pixelSize: 24
                             font.weight: Font.Bold
-                            font.family: "黑体"
+                            font.family: AppTheme.fontFamily
                             anchors.verticalCenter: parent.verticalCenter
                         }
 
@@ -545,7 +545,7 @@ Item {
                             text: "共" + currentListCount + "首"
                             color: AppTheme.textDim
                             font.pixelSize: 13
-                            font.family: "黑体"
+                            font.family: AppTheme.fontFamily
                             anchors.bottom: parent.bottom
                             anchors.bottomMargin: 4
                         }
@@ -595,7 +595,7 @@ Item {
                                 text: "播放全部"
                                 color: "white"
                                 font.pixelSize: 14
-                                font.family: "黑体"
+                                font.family: AppTheme.fontFamily
                                 anchors.verticalCenter: parent.verticalCenter
                             }
                         }
@@ -622,7 +622,7 @@ Item {
                         text: "加载中..."
                         color: AppTheme.textMuted
                         font.pixelSize: 13
-                        font.family: "黑体"
+                        font.family: AppTheme.fontFamily
                         anchors.verticalCenter: parent.verticalCenter
                     }
 
@@ -632,7 +632,7 @@ Item {
                         text: "找到 " + filteredSongs.length + " 首"
                         color: AppTheme.textMuted
                         font.pixelSize: 13
-                        font.family: "黑体"
+                        font.family: AppTheme.fontFamily
                         anchors.verticalCenter: parent.verticalCenter
                     }
                 }
@@ -677,7 +677,7 @@ Item {
                                 palette.placeholderText: AppTheme.textPlaceholder
                                 verticalAlignment: TextInput.AlignVCenter
                                 font.pixelSize: 13
-                                font.family: "黑体"
+                                font.family: AppTheme.fontFamily
                                 background: Rectangle { color: "transparent" }
                                 onTextChanged: {
                                     searchKeyword = text
@@ -815,7 +815,7 @@ Item {
                                             width: parent.width
                                             elide: Text.ElideRight
                                             font.pixelSize: 13
-                                            font.family: "黑体"
+                                            font.family: AppTheme.fontFamily
                                             color: isPlaying ? AppTheme.accentPlaying : AppTheme.textPrimary
                                         }
 
@@ -824,7 +824,7 @@ Item {
                                             width: parent.width
                                             elide: Text.ElideRight
                                             font.pixelSize: 11
-                                            font.family: "黑体"
+                                            font.family: AppTheme.fontFamily
                                             color: isPlaying ? AppTheme.accentPlaying : AppTheme.textMuted
                                         }
                                     }
@@ -941,7 +941,7 @@ Item {
                                         width: 0.2 * userPlaylistPage.width
                                         elide: Text.ElideRight
                                         font.pixelSize: 14
-                                        font.family: "黑体"
+                                        font.family: AppTheme.fontFamily
                                         color: AppTheme.textPrimary
                                         anchors.verticalCenter: parent.verticalCenter
                                     }
@@ -949,7 +949,7 @@ Item {
                                     Text {
                                         text: filteredSongs[index] ? filteredSongs[index].duration : ""
                                         font.pixelSize: 14
-                                        font.family: "黑体"
+                                        font.family: AppTheme.fontFamily
                                         color: AppTheme.textMuted
                                         anchors.verticalCenter: parent.verticalCenter
                                     }
@@ -970,7 +970,7 @@ Item {
                                 text: "加载更多歌曲..."
                                 color: AppTheme.textMuted
                                 font.pixelSize: 12
-                                font.family: "黑体"
+                                font.family: AppTheme.fontFamily
                                 anchors.centerIn: parent
                             }
 
@@ -979,7 +979,7 @@ Item {
                                 text: "已加载全部 " + currentSongs.length + " 首"
                                 color: AppTheme.textDim
                                 font.pixelSize: 12
-                                font.family: "黑体"
+                                font.family: AppTheme.fontFamily
                                 anchors.centerIn: parent
                             }
                         }

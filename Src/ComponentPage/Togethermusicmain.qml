@@ -49,7 +49,7 @@ Item {
             Text {
                 text: "确认离开房间？"
                 font.pixelSize: 18
-                font.family: "黑体"
+                font.family: AppTheme.fontFamily
                 font.weight: Font.Bold
                 color: AppTheme.textPrimary
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -58,7 +58,7 @@ Item {
             Text {
                 text: "离开后将无法继续与好友同步听歌"
                 font.pixelSize: 13
-                font.family: "黑体"
+                font.family: AppTheme.fontFamily
                 color: AppTheme.textMuted
                 anchors.horizontalCenter: parent.horizontalCenter
             }
@@ -71,7 +71,7 @@ Item {
                     width: 100; height: 36; radius: 8
                     color: cancelLeaveHover.hovered ? AppTheme.iconButtonHover : "transparent"
                     border.width: 1; border.color: AppTheme.borderDefault
-                    Text { anchors.centerIn: parent; text: "取消"; font.pixelSize: 13; font.family: "黑体"; color: AppTheme.textSecondary }
+                    Text { anchors.centerIn: parent; text: "取消"; font.pixelSize: 13; font.family: AppTheme.fontFamily; color: AppTheme.textSecondary }
                     HoverHandler { id: cancelLeaveHover }
                     TapHandler { onTapped: leaveConfirmDialog.close() }
                     Behavior on color { ColorAnimation { duration: 150 } }
@@ -80,7 +80,7 @@ Item {
                 Rectangle {
                     width: 100; height: 36; radius: 8
                     color: confirmLeaveHover.hovered ? "#E04040" : "#FF4D4F"
-                    Text { anchors.centerIn: parent; text: "离开"; font.pixelSize: 13; font.family: "黑体"; font.weight: Font.Medium; color: "#FFFFFF" }
+                    Text { anchors.centerIn: parent; text: "离开"; font.pixelSize: 13; font.family: AppTheme.fontFamily; font.weight: Font.Medium; color: "#FFFFFF" }
                     HoverHandler { id: confirmLeaveHover }
                     TapHandler { onTapped: { leaveConfirmDialog.close(); websocket.disconnectFromServer(); } }
                     Behavior on color { ColorAnimation { duration: 150 } }
@@ -131,7 +131,7 @@ Item {
         Text {
             anchors.centerIn: parent
             font.pixelSize: 13
-            font.family: "黑体"
+            font.family: AppTheme.fontFamily
             color: "#FFA500"
             text: bannerText.text
         }
@@ -157,7 +157,7 @@ Item {
             Text {
                 text: qsTr(websocket ? websocket.Roomid : "")
                 font.pixelSize: 20
-                font.family: "黑体"
+                font.family: AppTheme.fontFamily
                 color: AppTheme.textPrimary
                 font.weight: Font.Bold
                 anchors.verticalCenter: parent.verticalCenter
@@ -186,7 +186,7 @@ Item {
                     Text {
                         text: onlineCount + " 人在线"
                         font.pixelSize: 12
-                        font.family: "黑体"
+                        font.family: AppTheme.fontFamily
                         color: AppTheme.accent
                         anchors.verticalCenter: parent.verticalCenter
                     }
@@ -217,7 +217,7 @@ Item {
                         Text {
                             text: "在线用户"
                             font.pixelSize: 13
-                            font.family: "黑体"
+                            font.family: AppTheme.fontFamily
                             font.weight: Font.Bold
                             color: AppTheme.textPrimary
                         }
@@ -259,7 +259,7 @@ Item {
                                 Text {
                                     text: modelData.nickname || modelData.userId || "未知用户"
                                     font.pixelSize: 12
-                                    font.family: "黑体"
+                                    font.family: AppTheme.fontFamily
                                     color: AppTheme.textPrimary
                                     elide: Text.ElideRight
                                     width: 130
@@ -285,7 +285,7 @@ Item {
             Text {
                 anchors.centerIn: parent
                 text: "离开房间"
-                font.pixelSize: 13; font.family: "黑体"
+                font.pixelSize: 13; font.family: AppTheme.fontFamily
                 color: leaveMouseArea.containsMouse ? "#FF4D4F" : AppTheme.textMuted
             }
 
@@ -394,7 +394,7 @@ Item {
                         return timeStr + (d.nickname || d.userid || "") + " " + (d.message || "");
                     }
                     font.pixelSize: 12
-                    font.family: "黑体"
+                    font.family: AppTheme.fontFamily
                     color: AppTheme.textSecondary
                     wrapMode: Text.Wrap
                     width: Math.min(messageListView.width - 60, 360)
@@ -437,7 +437,7 @@ Item {
                         Text {
                             text: modelData.nickname || modelData.userid || "未知"
                             font.pixelSize: 12
-                            font.family: "黑体"
+                            font.family: AppTheme.fontFamily
                             color: AppTheme.accent
                             font.weight: Font.Medium
                         }
@@ -450,7 +450,7 @@ Item {
                                 return "";
                             }
                             font.pixelSize: 10
-                            font.family: "黑体"
+                            font.family: AppTheme.fontFamily
                             color: AppTheme.textDim
                             anchors.verticalCenter: parent.verticalCenter
                         }
@@ -463,7 +463,7 @@ Item {
                         Text {
                             text: modelData.message || ""
                             font.pixelSize: 13
-                            font.family: "黑体"
+                            font.family: AppTheme.fontFamily
                             color: AppTheme.textSecondary
                             wrapMode: Text.Wrap
                             width: Math.min(messageListView.width - 90, 380)
@@ -570,7 +570,7 @@ Item {
                 placeholderText: "说点什么..."
                 color: AppTheme.textPrimary
                 font.pixelSize: 13
-                font.family: "黑体"
+                font.family: AppTheme.fontFamily
                 verticalAlignment: Text.AlignVCenter
                 leftPadding: 14
                 background: Rectangle {
@@ -596,7 +596,7 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: "发送"
-                    font.pixelSize: 13; font.family: "黑体"; color: "#FFFFFF"
+                    font.pixelSize: 13; font.family: AppTheme.fontFamily; color: "#FFFFFF"
                 }
 
                 MouseArea {
@@ -685,14 +685,14 @@ Item {
 
                     Text {
                         text: qsTr("播放列表")
-                        font.pixelSize: 15; font.family: "黑体"
+                        font.pixelSize: 15; font.family: AppTheme.fontFamily
                         color: AppTheme.textPrimary; font.weight: Font.Bold
                         anchors.verticalCenter: parent.verticalCenter
                     }
 
                     Text {
                         text: (playlistmanager ? playlistmanager.togetherplaylist.length : 0) + "首"
-                        font.pixelSize: 12; font.family: "黑体"
+                        font.pixelSize: 12; font.family: AppTheme.fontFamily
                         color: AppTheme.textDim
                         anchors.verticalCenter: parent.verticalCenter
                     }
@@ -931,7 +931,7 @@ Item {
                             anchors.rightMargin: 8
                             anchors.verticalCenter: parent.verticalCenter
                             text: modelData.duration
-                            font.pixelSize: 11; font.family: "黑体"
+                            font.pixelSize: 11; font.family: AppTheme.fontFamily
                             color: AppTheme.textDim
                         }
 

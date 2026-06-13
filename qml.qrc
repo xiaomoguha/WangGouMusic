@@ -18,7 +18,6 @@
         <file>Src/ComponentPage/LyricPage.qml</file>
         <file>Src/ComponentPage/SearchresultPage.qml</file>
         <file>Src/ComponentPage/musictogether.qml</file>
-        <file>Src/ComponentPage/MyfavoriteMusic.qml</file>
         <file>Src/ComponentPage/RecentlyPlayed.qml</file>
         <file>Src/ComponentPage/LocalMusic.qml</file>
         <file>Src/ComponentPage/DesktopLyrics.qml</file>
@@ -27,6 +26,7 @@
         <file>Src/PlayingPage/PlayingPage.qml</file>
         <file>Src/ToolWindow/NoteWindow.qml</file>
         <file>Src/ToolWindow/SongAddedToast.qml</file>
+        <file>Src/ToolWindow/EmptyState.qml</file>
         <file>Src/ComponentPage/HomePage.qml</file>
         <file>Src/ComponentPage/UpdateDialog.qml</file>
         <file>Src/ComponentPage/LoginPage.qml</file>

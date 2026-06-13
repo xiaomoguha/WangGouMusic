@@ -73,7 +73,7 @@ Popup {
             color: AppTheme.textPrimary
             font.pixelSize: 20
             font.weight: Font.Bold
-            font.family: "黑体"
+            font.family: AppTheme.fontFamily
             anchors.horizontalCenter: parent.horizontalCenter
         }
 
@@ -81,7 +81,7 @@ Popup {
             text: "验证码登录，无需密码"
             color: AppTheme.textMuted
             font.pixelSize: 12
-            font.family: "黑体"
+            font.family: AppTheme.fontFamily
             anchors.horizontalCenter: parent.horizontalCenter
         }
 
@@ -93,7 +93,7 @@ Popup {
             placeholderText: "请输入手机号"
             color: AppTheme.textPrimary
             font.pixelSize: 14
-            font.family: "黑体"
+            font.family: AppTheme.fontFamily
             leftPadding: 14
             rightPadding: 14
             verticalAlignment: Text.AlignVCenter
@@ -121,7 +121,7 @@ Popup {
                 placeholderText: "请输入验证码"
                 color: AppTheme.textPrimary
                 font.pixelSize: 14
-                font.family: "黑体"
+                font.family: AppTheme.fontFamily
                 leftPadding: 14
                 rightPadding: 14
                 verticalAlignment: Text.AlignVCenter
@@ -152,7 +152,7 @@ Popup {
                     text: cooldown > 0 ? cooldown + "s" : "获取验证码"
                     color: "white"
                     font.pixelSize: 13
-                    font.family: "黑体"
+                    font.family: AppTheme.fontFamily
                 }
 
                 HoverHandler { id: sendHover }
@@ -172,7 +172,7 @@ Popup {
             text: loginPopup.errorMsg
             color: AppTheme.errorColor
             font.pixelSize: 12
-            font.family: "黑体"
+            font.family: AppTheme.fontFamily
             wrapMode: Text.Wrap
             horizontalAlignment: Text.AlignHCenter
         }
@@ -193,7 +193,7 @@ Popup {
                 color: "white"
                 font.pixelSize: 14
                 font.weight: Font.Medium
-                font.family: "黑体"
+                font.family: AppTheme.fontFamily
             }
 
             HoverHandler { id: loginBtnHover }
@@ -210,7 +210,7 @@ Popup {
             text: "使用酷狗音乐账号登录"
             color: AppTheme.textDim
             font.pixelSize: 11
-            font.family: "黑体"
+            font.family: AppTheme.fontFamily
             anchors.horizontalCenter: parent.horizontalCenter
         }
     }

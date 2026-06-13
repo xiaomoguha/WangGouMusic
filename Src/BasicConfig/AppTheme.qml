@@ -111,4 +111,9 @@ QtObject {
     readonly property int animNormal: 250
     readonly property int animSlow: 400
     readonly property int animThemeTransition: 300
+
+    // ===== 字体 =====
+    // 跨平台中文优先字体栈：Windows 用微软雅黑，macOS 用苹方，Linux 用思源黑体，
+    // 避免之前硬编码 "黑体" 在非 Windows 中文系统上回退到默认字体导致观感不一致。
+    readonly property string fontFamily: "Microsoft YaHei UI, Microsoft YaHei, PingFang SC, Hiragino Sans GB, Noto Sans CJK SC, Source Han Sans CN, sans-serif"
 }

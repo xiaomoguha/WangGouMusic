@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
+import "../ToolWindow"
 
 Item {
     objectName: "PlaylistDetailPage"
@@ -100,7 +101,7 @@ Item {
                         font.pixelSize: 20
                         font.bold: true
                         color: AppTheme.textPrimary
-                        font.family: "黑体"
+                        font.family: AppTheme.fontFamily
                     }
 
                     Text {
@@ -112,7 +113,7 @@ Item {
                         maximumLineCount: 2
                         font.pixelSize: 12
                         color: AppTheme.textMuted
-                        font.family: "黑体"
+                        font.family: AppTheme.fontFamily
                     }
 
                     Row {
@@ -130,7 +131,7 @@ Item {
                                 text: "▶ 播放全部"
                                 font.pixelSize: 12
                                 color: "#ffffff"
-                                font.family: "黑体"
+                                font.family: AppTheme.fontFamily
                                 font.bold: true
                             }
 
@@ -222,7 +223,7 @@ Item {
                             horizontalAlignment: Text.AlignHCenter
                             font.pixelSize: 13
                             color: isPlaying ? AppTheme.accentPlaying : AppTheme.textMuted
-                            font.family: "黑体"
+                            font.family: AppTheme.fontFamily
                             text: isPlaying ? "♪" : (index + 1)
                         }
 
@@ -257,7 +258,7 @@ Item {
                                 elide: Text.ElideRight
                                 font.pixelSize: 13
                                 color: isPlaying ? AppTheme.accentPlaying : AppTheme.textPrimary
-                                font.family: "黑体"
+                                font.family: AppTheme.fontFamily
                             }
 
                             Text {
@@ -266,7 +267,7 @@ Item {
                                 elide: Text.ElideRight
                                 font.pixelSize: 11
                                 color: AppTheme.textMuted
-                                font.family: "黑体"
+                                font.family: AppTheme.fontFamily
                             }
                         }
 
@@ -292,7 +293,7 @@ Item {
                                         text: "立即播放"
                                         font.pixelSize: 10
                                         color: "#ffffff"
-                                        font.family: "黑体"
+                                        font.family: AppTheme.fontFamily
                                     }
 
                                     HoverHandler { id: playBtnHover }
@@ -321,7 +322,7 @@ Item {
                                         text: "下一首播放"
                                         font.pixelSize: 10
                                         color: AppTheme.textPrimary
-                                        font.family: "黑体"
+                                        font.family: AppTheme.fontFamily
                                     }
 
                                     HoverHandler { id: nextBtnHover }
@@ -350,7 +351,7 @@ Item {
                                     text: "添加到一起听"
                                     font.pixelSize: 10
                                     color: "#ffffff"
-                                    font.family: "黑体"
+                                    font.family: AppTheme.fontFamily
                                 }
 
                                 HoverHandler { id: togetherBtnHover }
@@ -372,7 +373,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             font.pixelSize: 11
                             color: AppTheme.textMuted
-                            font.family: "黑体"
+                            font.family: AppTheme.fontFamily
                             visible: !songHover.hovered
                         }
                     }
@@ -385,5 +386,18 @@ Item {
 
             Item { width: 1; height: 20 }
         }
+    }
+
+    // 空状态：歌单无歌曲时
+    EmptyState {
+        anchors.top: parent.top
+        anchors.topMargin: 200
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        visible: !recommendation || recommendation.playlistTracksQml.length === 0
+        iconText: "♪"
+        title: "歌单暂无歌曲"
+        subtitle: "稍后再来看看吧"
     }
 }
