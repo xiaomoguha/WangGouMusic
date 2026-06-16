@@ -955,6 +955,27 @@ Item {
                                     }
                                 }
 
+                                MouseArea {
+                                    anchors.fill: parent
+                                    acceptedButtons: Qt.LeftButton
+                                    enabled: !isTogetherMode
+                                    propagateComposedEvents: true
+                                    onDoubleClicked: {
+                                        if (!playlistmanager) return
+                                        var songs = (searchKeyword.trim() !== "")
+                                                    ? filteredSongs : currentSongs
+                                        if (songs.length === 0) return
+                                        playlistmanager.clearPlaylist()
+                                        for (var i = 0; i < songs.length; i++) {
+                                            var s = songs[i]
+                                            playlistmanager.addSong(s.songname, s.hash, s.singername,
+                                                                    s.cover, s.album_name, s.duration)
+                                        }
+                                        playlistmanager.playSongbyindex(index)
+                                        BasicConfig.emitSongAdded("已切换播放列表: " + currentListName)
+                                    }
+                                }
+
                                 HoverHandler { id: songMouse }
                             }
                         }
