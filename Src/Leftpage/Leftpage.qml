@@ -191,11 +191,6 @@ Rectangle {
                 pageurl: "qrc:/Src/ComponentPage/UserPlaylistPage.qml"
             },
             {
-                iconType: "list",
-                text: "播放列表",
-                pageurl: "qrc:/Src/ComponentPage/LocalMusic.qml"
-            },
-            {
                 iconType: "recent",
                 text: "最近播放",
                 pageurl: "qrc:/Src/ComponentPage/RecentlyPlayed.qml"
@@ -212,9 +207,9 @@ Rectangle {
                 height: 44
                 radius: 12
                 anchors.horizontalCenter: parent.horizontalCenter
-                color: leftpageRectangle.currentIndex - 3 === index ? AppTheme.accent : (navMouseArea2.containsMouse ? AppTheme.bgNavHover : AppTheme.bgSidebar)
+                color: leftpageRectangle.currentIndex - 2 === index ? AppTheme.accent : (navMouseArea2.containsMouse ? AppTheme.bgNavHover : AppTheme.bgSidebar)
 
-                property bool isSelected: leftpageRectangle.currentIndex - 3 === index
+                property bool isSelected: leftpageRectangle.currentIndex - 2 === index
 
                 Row {
                     spacing: 12
@@ -247,8 +242,8 @@ Rectangle {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         // 已选中时不重复切换
-                        if (leftpageRectangle.currentIndex !== navItemRect2.index + 3) {
-                            leftpageRectangle.currentIndex = navItemRect2.index + 3;
+                        if (leftpageRectangle.currentIndex !== navItemRect2.index + 2) {
+                            leftpageRectangle.currentIndex = navItemRect2.index + 2;
                             BasicConfig.pushPage(navColumn2.navList[navItemRect2.index].pageurl);
                         }
                     }

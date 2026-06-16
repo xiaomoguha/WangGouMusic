@@ -390,6 +390,25 @@ Item {
                         }
                     }
 
+                    MouseArea {
+                        anchors.fill: parent
+                        acceptedButtons: Qt.LeftButton
+                        enabled: !isTogetherMode
+                        propagateComposedEvents: true
+                        onDoubleClicked: {
+                            var songs = recommendation ? recommendation.playlistTracksQml : []
+                            if (songs.length === 0) return
+                            playlistmanager.clearPlaylist()
+                            for (var i = 0; i < songs.length; i++) {
+                                var s = songs[i]
+                                playlistmanager.addSong(s.songname, s.songhash, s.singername,
+                                                        s.union_cover, s.album_name, s.duration)
+                            }
+                            playlistmanager.playSongbyindex(index)
+                            BasicConfig.emitSongAdded("已切换播放列表: " + playlistName)
+                        }
+                    }
+
                     HoverHandler { id: songHover }
 
                     Behavior on color { ColorAnimation { duration: 100 } }

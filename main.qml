@@ -340,6 +340,19 @@ ApplicationWindow {
         }
     }
 
+    // 一起听播放列表切换提示
+    Connections {
+        target: playlistmanager
+        function onPlaylist_typeChanged() {
+            if (!playlistmanager) return
+            if (playlistmanager.type === 1) {
+                songAddedToast.show("已切换到一起听播放列表")
+            } else {
+                songAddedToast.show("已切回本地播放列表")
+            }
+        }
+    }
+
     // ── 登录弹窗 ──
     ComponentPage.LoginPage {
         id: loginPopup
