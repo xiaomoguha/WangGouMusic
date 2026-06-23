@@ -68,6 +68,7 @@ class PlaylistManager : public QObject
     Q_PROPERTY(QString duration READ durationstr NOTIFY durationChanged)
     Q_PROPERTY(QList<SongInfo> playlist READ playlist NOTIFY playlistUpdated)
     Q_PROPERTY(int playlistcount READ playlistcount NOTIFY playlistUpdated)
+    Q_PROPERTY(int playlistTotalCount READ playlistTotalCount NOTIFY playlistUpdated)
     Q_PROPERTY(QString currlyric READ getcurrlyric NOTIFY currlyricChanged)
     Q_PROPERTY(enum playlist_type type READ getplaylist_type NOTIFY playlist_typeChanged)
     Q_PROPERTY(QList<SongInfo> togetherplaylist READ togetherplaylist NOTIFY togetherplaylistUpdated)
@@ -93,6 +94,7 @@ public:
     Q_INVOKABLE void playstop();
     Q_INVOKABLE void addandplay(const QString &title, const QString &url, const QString &singername, const QString &union_cover, const QString &album_name, const QString &duration);
     Q_INVOKABLE void addSongNext(const QString &title, const QString &songhash, const QString &singername, const QString &union_cover, const QString &album_name, const QString &duration);
+    Q_INVOKABLE void playPlaylistFromSource(const QString &sourceId, int totalCount, int startIndexInSource, const QVariantList &firstBatch);
     Q_INVOKABLE void setposistion(float positionvalue);
 
     int currentIndex() const;
@@ -113,6 +115,7 @@ public:
     void addToRecent(const SongInfo &song);
     void clearTogetherSongHash();
     int playlistcount() const;
+    int playlistTotalCount() const;
     int getnowplaylistrange() const;
     QString getcurrlyric() const;
     enum playlist_type getplaylist_type() const;
@@ -195,6 +198,13 @@ private:
     int m_localIndex = -1;             // 一起听模式前保存的本地播放索引
     float m_localPercent = 0.0f;       // 一起听模式前保存的本地播放进度
     const int MAX_REPAIR_ATTEMPTS = 5; // 最大修复尝试次数
+    // 懒加载队列源
+    QString m_lazySourceId;            // 源歌单 id（空 = 非懒加载模式）
+    int m_lazyTotal = 0;               // 源歌单总数
+    int m_lazyPage = 0;                // 已加载到第几页
+    int m_lazyPageSize = 30;
+    bool m_lazyFetching = false;       // 是否正在拉取下一批
+    void tryLazyLoadMore();            // 接近队列末尾时自动拉下一批
     void fetchLyricData(const QString &hash, std::function<void(QString)> callback);
     void fetchLyricContent(const QString &id, const QString &accesskey, std::function<void(QString)> callback);
     QString currlyric = "网狗音乐！";

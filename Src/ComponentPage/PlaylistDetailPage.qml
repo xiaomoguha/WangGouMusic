@@ -15,6 +15,13 @@ Item {
     property string playlistIntro: BasicConfig.playlistDetailIntro
     readonly property bool isTogetherMode: playlistmanager && playlistmanager.type === 1
 
+    // 搜索状态
+    property string searchKeyword: ""
+    property var filteredTracks: []
+    property bool isSearchAllLoaded: false   // 是否已为搜索全量加载
+    property var searchTimer: null
+    property bool _pendingPlayAll: false
+
     Component.onCompleted: {
         if (recommendation && playlistId !== "")
             recommendation.fetchPlaylistTracks(playlistId)
@@ -26,8 +33,72 @@ Item {
         target: BasicConfig
         function onPlaylistDetailIdChanged() {
             if (recommendation && playlistId !== "") {
-                flickable.contentY = 0
+                tracksListView.contentY = 0
+                searchKeyword = ""
+                filteredTracks = []
+                isSearchAllLoaded = false
+                _pendingPlayAll = false
                 recommendation.fetchPlaylistTracks(playlistId)
+            }
+        }
+    }
+
+    // 搜索：输入时防抖，触发全量加载后客户端过滤
+    function doSearch() {
+        var kw = searchKeyword.trim()
+        if (kw === "") {
+            filteredTracks = []
+            // 清空搜索后恢复分页（重新拉第 1 页）
+            if (recommendation) {
+                recommendation.fetchPlaylistTracks(playlistId)
+            }
+            return
+        }
+        // 尚未全量加载时，先触发全量；加载完成后由 onTracksChanged 再过滤
+        if (!isSearchAllLoaded) {
+            if (recommendation) recommendation.loadAllPlaylistTracks()
+            return
+        }
+        var lower = kw.toLowerCase()
+        var src = recommendation ? recommendation.playlistTracksQml : []
+        var result = []
+        for (var i = 0; i < src.length; i++) {
+            var s = src[i]
+            if ((s.songname && s.songname.toLowerCase().indexOf(lower) >= 0) ||
+                (s.singername && s.singername.toLowerCase().indexOf(lower) >= 0) ||
+                (s.album_name && s.album_name.toLowerCase().indexOf(lower) >= 0)) {
+                result.push(s)
+            }
+        }
+        filteredTracks = result
+    }
+
+    // 监听后端歌曲列表变化：全量加载完成后执行搜索过滤 / 播放全部
+    Connections {
+        target: recommendation
+        function onPlaylistTracksChanged() {
+            if (!recommendation) return
+            // 全量加载完成（hasMore=false）
+            if (!recommendation.playlistHasMore) {
+                // 搜索触发的全量
+                if (searchKeyword.trim() !== "" && !isSearchAllLoaded) {
+                    isSearchAllLoaded = true
+                    doSearch()
+                }
+                // 播放全部触发的全量
+                if (_pendingPlayAll) {
+                    _pendingPlayAll = false
+                    var songs = recommendation.playlistTracksQml
+                    if (songs.length > 0) {
+                        playlistmanager.clearPlaylist()
+                        for (var i = 0; i < songs.length; i++) {
+                            var s = songs[i]
+                            playlistmanager.addSong(s.songname, s.songhash, s.singername, s.union_cover, s.album_name, s.duration)
+                        }
+                        playlistmanager.playSongbyindex(0)
+                        BasicConfig.emitSongAdded("正在播放: " + playlistName)
+                    }
+                }
             }
         }
     }
@@ -128,6 +199,32 @@ Item {
                         font.family: AppTheme.fontFamily
                     }
 
+                    // 搜索框
+                    TextField {
+                        id: searchInput
+                        width: 180
+                        height: 32
+                        placeholderText: "搜索歌单内歌曲"
+                        font.pixelSize: 12
+                        font.family: AppTheme.fontFamily
+                        color: AppTheme.textPrimary
+                        background: Rectangle {
+                            radius: 16
+                            color: AppTheme.bgCard
+                            border.color: searchInput.activeFocus ? AppTheme.accent : AppTheme.borderDefault
+                            border.width: 1
+                        }
+                        onTextChanged: {
+                            searchKeyword = text
+                            if (text.trim() === "") isSearchAllLoaded = false
+                            if (!searchTimer) {
+                                searchTimer = Qt.createQmlObject('import QtQuick 2.15; Timer { interval: 400; repeat: false }', searchInput)
+                                searchTimer.triggered.connect(function(){ doSearch() })
+                            }
+                            searchTimer.restart()
+                        }
+                    }
+
                     Row {
                         spacing: 12
                         visible: !isTogetherMode
@@ -140,7 +237,7 @@ Item {
 
                             Text {
                                 anchors.centerIn: parent
-                                text: "▶ 播放全部"
+                                text: (recommendation && recommendation.playlistIsLoading) ? "加载中..." : "▶ 播放全部"
                                 font.pixelSize: 12
                                 color: "#ffffff"
                                 font.family: AppTheme.fontFamily
@@ -150,8 +247,16 @@ Item {
                             HoverHandler { id: playAllHover }
                             TapHandler {
                                 cursorShape: Qt.PointingCursor
+                                enabled: recommendation && !recommendation.playlistIsLoading
                                 onTapped: {
-                                    var songs = recommendation ? recommendation.playlistTracksQml : []
+                                    if (!recommendation) return
+                                    var songs = recommendation.playlistTracksQml
+                                    // 未全量加载时，先全量；全量后由 onTracksChanged 触发播放
+                                    if (recommendation.playlistHasMore) {
+                                        _pendingPlayAll = true
+                                        recommendation.loadAllPlaylistTracks()
+                                        return
+                                    }
                                     if (songs.length > 0) {
                                         playlistmanager.clearPlaylist()
                                         for (var i = 0; i < songs.length; i++) {
@@ -180,15 +285,20 @@ Item {
     }
 
     // 歌曲列表
-    Flickable {
-        id: flickable
+    ListView {
+        id: tracksListView
         anchors.top: parent.top
         anchors.topMargin: 170
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.right: parent.right
         clip: true
-        contentHeight: contentColumn.height
+        // 搜索时显示过滤结果，否则显示全部已加载
+        model: searchKeyword.trim() !== "" ? filteredTracks
+              : (recommendation ? recommendation.playlistTracksQml : [])
+        spacing: 2
+        leftMargin: 30
+        rightMargin: 30
 
         ScrollBar.vertical: ScrollBar {
             anchors.right: parent.right
@@ -202,24 +312,25 @@ Item {
             }
         }
 
-        Column {
-            id: contentColumn
-            width: parent.width
-            spacing: 2
-            anchors.leftMargin: 30
-            anchors.rightMargin: 30
+        // 滚动到底加载下一页（仅非搜索状态）
+        onContentYChanged: {
+            if (searchKeyword.trim() !== "") return
+            if (recommendation && !recommendation.playlistIsLoading
+                && recommendation.playlistHasMore
+                && contentHeight > height
+                && contentY >= contentHeight - height - 200) {
+                recommendation.fetchMorePlaylistTracks()
+            }
+        }
 
-            Repeater {
-                model: recommendation ? recommendation.playlistTracksQml : []
+        delegate: Rectangle {
+            width: tracksListView.width - 60
+            height: 55
+            x: 30
+            radius: 8
+            color: songHover.hovered ? AppTheme.bgCard : "transparent"
 
-                delegate: Rectangle {
-                    width: contentColumn.width - 60
-                    height: 55
-                    x: 30
-                    radius: 8
-                    color: songHover.hovered ? AppTheme.bgCard : "transparent"
-
-                    readonly property bool isPlaying: playlistmanager && playlistmanager.currentSonghash === modelData.songhash
+            readonly property bool isPlaying: playlistmanager && playlistmanager.currentSonghash === modelData.songhash
 
                     Row {
                         id: mainRow
@@ -396,15 +507,11 @@ Item {
                         enabled: !isTogetherMode
                         propagateComposedEvents: true
                         onDoubleClicked: {
-                            var songs = recommendation ? recommendation.playlistTracksQml : []
-                            if (songs.length === 0) return
-                            playlistmanager.clearPlaylist()
-                            for (var i = 0; i < songs.length; i++) {
-                                var s = songs[i]
-                                playlistmanager.addSong(s.songname, s.songhash, s.singername,
-                                                        s.union_cover, s.album_name, s.duration)
-                            }
-                            playlistmanager.playSongbyindex(index)
+                            if (!recommendation) return
+                            var total = recommendation.playlistTotal
+                            var firstBatch = recommendation.playlistTracksQml
+                            if (firstBatch.length === 0 || total <= 0) return
+                            playlistmanager.playPlaylistFromSource(playlistId, total, index, firstBatch)
                             BasicConfig.emitSongAdded("已切换播放列表: " + playlistName)
                         }
                     }
@@ -413,9 +520,28 @@ Item {
 
                     Behavior on color { ColorAnimation { duration: 100 } }
                 }
-            }
 
-            Item { width: 1; height: 20 }
+        // footer：总数 / 加载中 / 已加载全部
+        footer: Item {
+            width: tracksListView.width
+            height: 44
+            Text {
+                anchors.centerIn: parent
+                font.pixelSize: 12
+                color: AppTheme.textMuted
+                font.family: AppTheme.fontFamily
+                text: {
+                    if (!recommendation) return ""
+                    if (searchKeyword.trim() !== "") {
+                        return "找到 " + filteredTracks.length + " 首"
+                    }
+                    if (recommendation.playlistIsLoading) return "加载中..."
+                    var loaded = recommendation.playlistTracksQml ? recommendation.playlistTracksQml.length : 0
+                    if (!recommendation.playlistHasMore)
+                        return "共 " + recommendation.playlistTotal + " 首"
+                    return "已加载 " + loaded + " / " + recommendation.playlistTotal + " 首"
+                }
+            }
         }
     }
 

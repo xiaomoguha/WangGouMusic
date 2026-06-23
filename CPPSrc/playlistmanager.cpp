@@ -98,6 +98,10 @@ void PlaylistManager::clearPlaylist()
 {
     (*m_curplaylist).clear();
     m_currentIndex = -1;
+    m_lazySourceId.clear();
+    m_lazyTotal = 0;
+    m_lazyPage = 0;
+    m_lazyFetching = false;
     if (type == LOCAL) savePlaylistToCache();
     emit playlistUpdated();
     emit currentIndexChanged(-1);
@@ -383,10 +387,60 @@ void PlaylistManager::playSongbyindex(int index)
             lyricParser.parseKRCLyrics((*m_curplaylist)[index].lyric);
             qDebug() << "已有歌词";
         }
+        // 懒加载模式：播放位置接近队列末尾时预加载下一批
+        tryLazyLoadMore();
     }
     else
     {
         qDebug() << "索引出错！";
+    }
+}
+// 根据hash值播放
+void PlaylistManager::playPlaylistFromSource(const QString &sourceId, int totalCount,
+                                             int startIndexInSource, const QVariantList &firstBatch)
+{
+    if (type != LOCAL) return;   // 一起听模式不处理
+    m_lazySourceId = sourceId;
+    m_lazyTotal = totalCount;
+    m_lazyPage = 1;              // 首批已由 QML 提供，视为第 1 页已加载
+    m_lazyFetching = false;
+
+    // 清空队列，用首批数据立即建队（无网络延迟）
+    m_playlist.clear();
+    QList<SongInfo> songs = convertToSongInfoList(firstBatch);
+    for (const SongInfo &s : songs)
+        m_playlist.append(s);
+
+    savePlaylistToCache();
+    emit playlistUpdated();
+
+    // 起始下标在首批内的相对位置
+    int localIndex = startIndexInSource;
+    if (localIndex >= m_playlist.size()) localIndex = m_playlist.size() - 1;
+    if (localIndex < 0) localIndex = 0;
+    playSongbyindex(localIndex);
+}
+
+void PlaylistManager::tryLazyLoadMore()
+{
+    // 仅懒加载模式；非一起听；未在拉取；源还有更多；距末尾 ≤ 5
+    if (m_lazySourceId.isEmpty() || type != LOCAL || m_lazyFetching) return;
+    if (m_lazyPage * m_lazyPageSize >= m_lazyTotal) return;   // 源已全加载
+    if (m_playlist.size() - m_currentIndex > 5) return;       // 余量充足
+    m_lazyFetching = true;
+    int nextPage = m_lazyPage + 1;
+    if (m_recommendation) {
+        m_recommendation->fetchPlaylistTracksPage(
+            m_lazySourceId, nextPage, m_lazyPageSize,
+            [this](const QVariantList &items) {
+                m_lazyFetching = false;
+                QList<SongInfo> songs = convertToSongInfoList(items);
+                for (const SongInfo &s : songs)
+                    m_playlist.append(s);
+                m_lazyPage += 1;
+                savePlaylistToCache();
+                emit playlistUpdated();
+            });
     }
 }
 // 根据hash值播放
@@ -637,6 +691,13 @@ void PlaylistManager::clearTogetherSongHash()
 int PlaylistManager::playlistcount() const
 {
     return (*m_curplaylist).size();
+}
+
+int PlaylistManager::playlistTotalCount() const
+{
+    // 懒加载模式返回源总数，否则返回队列实际大小
+    if (!m_lazySourceId.isEmpty()) return m_lazyTotal;
+    return m_playlist.size();
 }
 
 QString PlaylistManager::getcurrlyric() const

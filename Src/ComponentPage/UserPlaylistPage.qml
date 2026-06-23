@@ -47,9 +47,35 @@ Item {
     // ── 歌单内搜索 ──
     property string searchKeyword: ""
     property var filteredSongs: []
+    property bool isSearchAllLoaded: false   // 搜索是否已全量加载
 
-    onSearchKeywordChanged: updateFilteredSongs()
+    onSearchKeywordChanged: triggerSearch()
     onCurrentSongsChanged: updateFilteredSongs()
+
+    // 搜索总入口
+    function triggerSearch() {
+        var kw = searchKeyword.trim()
+        if (kw === "") {
+            // 清空搜索：恢复分页
+            if (isSearchAllLoaded && currentListId !== "") {
+                isSearchAllLoaded = false
+                detailPage = 1
+                hasMoreSongs = true
+                currentSongs = []
+                userManager.fetchPlaylistDetail(currentListId, 1, detailPageSize)
+            }
+            return
+        }
+        // 未全量加载：先全量（一次性 pagesize=总数）
+        if (!isSearchAllLoaded && currentListCount > currentSongs.length) {
+            detailPage = 1   // 重置为 1，使 onPlaylistDetailReceived 走替换分支
+            isSearchAllLoaded = true
+            isLoadingMoreSongs = true
+            userManager.fetchPlaylistDetail(currentListId, 1, currentListCount)
+            return
+        }
+        updateFilteredSongs()
+    }
 
     function updateFilteredSongs() {
         if (searchKeyword.trim() === "") {
@@ -183,6 +209,11 @@ Item {
                 currentSongs = combined
             }
             hasMoreSongs = normalized.length >= detailPageSize && currentSongs.length < currentListCount
+            // 搜索全量加载完成后执行过滤
+            if (isSearchAllLoaded) {
+                hasMoreSongs = false
+                updateFilteredSongs()
+            }
         }
     }
 
@@ -754,7 +785,12 @@ Item {
                         id: detailListColumn
                         width: parent.width
 
-                        Repeater {
+                        ListView {
+                            id: songsListView
+                            width: parent.width
+                            height: contentHeight
+                            interactive: false
+                            spacing: 0
                             model: filteredSongs.length
 
                             delegate: Rectangle {
@@ -964,14 +1000,20 @@ Item {
                                         if (!playlistmanager) return
                                         var songs = (searchKeyword.trim() !== "")
                                                     ? filteredSongs : currentSongs
-                                        if (songs.length === 0) return
-                                        playlistmanager.clearPlaylist()
+                                        if (songs.length === 0 || currentListCount <= 0) return
+                                        // 字段映射：hash→songhash, cover→union_cover
+                                        var batch = []
                                         for (var i = 0; i < songs.length; i++) {
                                             var s = songs[i]
-                                            playlistmanager.addSong(s.songname, s.hash, s.singername,
-                                                                    s.cover, s.album_name, s.duration)
+                                            batch.push({
+                                                "songname": s.songname, "songhash": s.hash,
+                                                "singername": s.singername, "union_cover": s.cover,
+                                                "album_name": s.album_name, "duration": s.duration
+                                            })
                                         }
-                                        playlistmanager.playSongbyindex(index)
+                                        // 搜索状态下 index 是过滤列表下标，无法对应歌单内真实位置，取 0
+                                        var startIdx = (searchKeyword.trim() !== "") ? 0 : index
+                                        playlistmanager.playPlaylistFromSource(currentListId, currentListCount, startIdx, batch)
                                         BasicConfig.emitSongAdded("已切换播放列表: " + currentListName)
                                     }
                                 }
