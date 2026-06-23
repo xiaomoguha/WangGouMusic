@@ -12,10 +12,12 @@ Recommendation::Recommendation(QObject *parent)
     , m_topSongsRequester(10000, this)
     , m_topPlaylistsRequester(10000, this)
     , m_playlistTracksRequester(10000, this)
+    , m_lazyRequester(10000, this)
 {
     connect(&m_topSongsRequester, &HttpGetRequester::dataReceived, this, &Recommendation::onTopSongsData);
     connect(&m_topPlaylistsRequester, &HttpGetRequester::dataReceived, this, &Recommendation::onTopPlaylistsData);
     connect(&m_playlistTracksRequester, &HttpGetRequester::dataReceived, this, &Recommendation::onPlaylistTracksData);
+    connect(&m_lazyRequester, &HttpGetRequester::dataReceived, this, &Recommendation::onLazyTracksData);
 }
 
 void Recommendation::fetchTopSongs()
@@ -124,7 +126,40 @@ QVariantList Recommendation::getPlaylistTracksQml() const { return m_playlistTra
 
 void Recommendation::fetchPlaylistTracks(const QString &globalCollectionId)
 {
-    QString url = QString("https://xjt-togethertracks.top/api/playlist/track/all?id=%1&pagesize=50").arg(globalCollectionId);
+    m_currentPlaylistId = globalCollectionId;
+    m_playlistPage = 0;
+    m_playlistTotal = 0;
+    m_playlistHasMore = true;
+    m_playlistTracks.clear();
+    emit playlistTracksChanged();
+    fetchMorePlaylistTracks();
+}
+
+void Recommendation::fetchMorePlaylistTracks()
+{
+    if (m_playlistIsLoading || !m_playlistHasMore || m_currentPlaylistId.isEmpty())
+        return;
+    m_playlistIsLoading = true;
+    emit playlistIsLoadingChanged();
+    int nextPage = m_playlistPage + 1;
+    QString url = QString("https://xjt-togethertracks.top/api/playlist/track/all?id=%1&page=%2&pagesize=%3")
+                      .arg(m_currentPlaylistId).arg(nextPage).arg(m_playlistPageSize);
+    m_playlistTracksRequester.fetchData(url);
+}
+
+void Recommendation::loadAllPlaylistTracks()
+{
+    if (m_playlistIsLoading || m_currentPlaylistId.isEmpty())
+        return;
+    m_playlistTracks.clear();
+    m_playlistPage = 0;
+    m_playlistHasMore = false;
+    m_playlistTotal = 0;
+    emit playlistTracksChanged();
+    m_playlistIsLoading = true;
+    emit playlistIsLoadingChanged();
+    QString url = QString("https://xjt-togethertracks.top/api/playlist/track/all?id=%1&page=1&pagesize=1000")
+                      .arg(m_currentPlaylistId);
     m_playlistTracksRequester.fetchData(url);
 }
 
@@ -137,8 +172,12 @@ void Recommendation::onPlaylistTracksData(const QByteArray &data)
         return;
     }
 
-    QJsonArray songs = doc.object()["data"].toObject()["songs"].toArray();
-    m_playlistTracks.clear();
+    QJsonObject dataObj = doc.object()["data"].toObject();
+    QJsonArray songs = dataObj["songs"].toArray();
+    int serverCount = dataObj["count"].toInt(0);
+    // loadAll 已置 hasMore=false（全量模式）；分页模式按 count 判断
+    if (serverCount > 0) m_playlistTotal = serverCount;
+    // 注意：不清空，追加到已有列表（fetchPlaylistTracks / loadAllPlaylistTracks 已先行 clear）
 
     for (const QJsonValue &val : songs) {
         QJsonObject s = val.toObject();
@@ -175,8 +214,65 @@ void Recommendation::onPlaylistTracksData(const QByteArray &data)
         item["duration"] = secondsToMinutesSeconds(durationSec);
         m_playlistTracks.append(item);
     }
+    // 更新分页状态：分页模式下，已加载数 < total 则还有更多
+    if (m_playlistHasMore && m_playlistTotal > 0) {
+        m_playlistHasMore = m_playlistTracks.size() < m_playlistTotal;
+    }
+    // loadAll 模式下 hasMore 保持 false（已在 loadAllPlaylistTracks 设定）
+    m_playlistIsLoading = false;
+    emit playlistIsLoadingChanged();
     emit playlistTracksChanged();
-    qDebug() << "歌单曲目加载完成，共" << m_playlistTracks.size() << "首";
+    qDebug() << "歌单曲目加载完成，已加载" << m_playlistTracks.size() << "/" << m_playlistTotal << "首";
+}
+
+void Recommendation::fetchPlaylistTracksPage(const QString &id, int page, int pagesize,
+                                             std::function<void(const QVariantList&)> callback)
+{
+    m_pendingLazyCallback = callback;
+    QString url = QString("https://xjt-togethertracks.top/api/playlist/track/all?id=%1&page=%2&pagesize=%3")
+                      .arg(id).arg(page).arg(pagesize);
+    m_lazyRequester.fetchData(url);
+}
+
+void Recommendation::onLazyTracksData(const QByteArray &data)
+{
+    QVariantList result;
+    QJsonParseError error;
+    QJsonDocument doc = QJsonDocument::fromJson(data, &error);
+    if (error.error == QJsonParseError::NoError && doc.isObject()) {
+        QJsonArray arr = doc.object()["data"].toObject()["songs"].toArray();
+        for (const QJsonValue &val : arr) {
+            QJsonObject s = val.toObject();
+            QString name = s["name"].toString();
+            QStringList parts = name.split(" - ");
+            QString songname = parts.size() > 1 ? parts.mid(1).join(" - ") : name;
+            QString singername = parts.size() > 1 ? parts[0] : QString();
+            QJsonArray singerinfo = s["singerinfo"].toArray();
+            if (!singerinfo.isEmpty()) {
+                QStringList singers;
+                for (const QJsonValue &si : singerinfo)
+                    singers << si.toObject()["name"].toString();
+                singername = singers.join(", ");
+            }
+            QString cover = s["trans_param"].toObject()["union_cover"].toString();
+            if (cover.isEmpty()) cover = s["cover"].toString();
+            cover.replace("{size}", "720");
+            int durationSec = s["timelen"].toInt(0) / 1000;
+            QVariantMap item;
+            item["songname"] = songname;
+            item["songhash"] = s["hash"].toString();
+            item["singername"] = singername;
+            item["union_cover"] = cover;
+            item["album_name"] = s["albuminfo"].toObject()["name"].toString();
+            item["duration"] = secondsToMinutesSeconds(durationSec);
+            result.append(item);
+        }
+    }
+    if (m_pendingLazyCallback) {
+        auto cb = m_pendingLazyCallback;
+        m_pendingLazyCallback = nullptr;
+        cb(result);
+    }
 }
 
 QString Recommendation::secondsToMinutesSeconds(int totalSeconds)

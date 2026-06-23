@@ -740,7 +740,7 @@ Rectangle {
                                     anchors.verticalCenter: parent.verticalCenter
                                 }
                                 Text {
-                                    text: "(" + playlistView.count + ")"
+                                    text: "(" + (playlistmanager ? playlistmanager.playlistTotalCount : playlistView.count) + ")"
                                     font.pixelSize: 12
                                     font.family: AppTheme.fontFamily
                                     color: AppTheme.textMuted
