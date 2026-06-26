@@ -2,13 +2,17 @@
 #define USERMANAGER_H
 
 #include <QObject>
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
-#include <QSettings>
-#include <QJsonDocument>
 #include <QJsonObject>
-#include <QDebug>
+#include <QString>
+#include <QSettings>
+#include <QVariantMap>
+#include <functional>
 
+/**
+ * @brief 用户登录 / Token 管理 / 歌单获取
+ *
+ * 内部已迁移到 ApiClient 单例。Q_INVOKABLE 与信号保持不变。
+ */
 class UserManager : public QObject
 {
     Q_OBJECT
@@ -57,17 +61,25 @@ signals:
     void userPlaylistReceived(const QVariantMap &data);
     void playlistDetailReceived(const QVariantMap &data);
 
-private slots:
-    void handleLoginReply(QNetworkReply *reply);
-    void handleCaptchaReply(QNetworkReply *reply);
-    void handlePhoneLoginReply(QNetworkReply *reply);
-    void handleRefreshReply(QNetworkReply *reply);
-    void handleUserDetailReply(QNetworkReply *reply);
-    void handleUserPlaylistReply(QNetworkReply *reply);
-    void handlePlaylistDetailReply(QNetworkReply *reply);
-
 private:
-    QNetworkAccessManager m_networkManager;
+    void setIsLoading(bool loading);
+    void saveToSettings();
+    void loadFromSettings();
+    void clearSettings();
+    void syncTokenToApiClient() const;
+
+    QString getCacheDir() const;
+    void ensureCacheDir() const;
+    void writeCacheFile(const QString &fileName, const QJsonDocument &doc) const;
+    QJsonDocument readCacheFile(const QString &fileName) const;
+
+    /// 内部：POST 一组 form 参数，响应作为 QJsonObject 回调
+    void postForm(const QString &path,
+                  const QList<QPair<QString, QString>> &params,
+                  std::function<void(QJsonObject)> onSuccess,
+                  std::function<void(QString, int)> onError,
+                  int timeoutMs = 10000);
+
     QSettings m_settings{"WangGouMusic", "UserConfig"};
 
     QString m_token;
@@ -78,19 +90,6 @@ private:
     bool m_isLoading = false;
     int m_vipType = 0;
     QString m_vipToken;
-
-    void setIsLoading(bool loading);
-    void saveToSettings();
-    void loadFromSettings();
-    void clearSettings();
-
-    QString getCacheDir() const;
-    void ensureCacheDir() const;
-    void writeCacheFile(const QString &fileName, const QJsonDocument &doc) const;
-    QJsonDocument readCacheFile(const QString &fileName) const;
-
-    void sendPostRequest(const QString &path, const QList<QPair<QString, QString>> &params,
-                         std::function<void(QNetworkReply *)> callback);
 };
 
 #endif // USERMANAGER_H

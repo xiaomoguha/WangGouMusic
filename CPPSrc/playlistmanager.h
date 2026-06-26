@@ -2,7 +2,10 @@
 #define PLAYLISTMANAGER_H
 #include "lyricparser.h"
 #include <QObject>
+#include <QHash>
 #include <QList>
+#include <QMutex>
+#include <QSet>
 #include <QString>
 #include <QMediaPlayer>
 #include <QNetworkAccessManager>
@@ -83,7 +86,8 @@ class PlaylistManager : public QObject
     Q_PROPERTY(bool isBuffering READ isBuffering NOTIFY isBufferingChanged)
 public:
     explicit PlaylistManager(Recommendation *recommendation, QObject *parent = nullptr);
-    Q_INVOKABLE void addSong(const QString &title, const QString &songhash, const QString &singername, const QString &union_cover, const QString &album_name, const QString &duration);
+    Q_INVOKABLE void addSong(const SongInfo &song);
+    Q_INVOKABLE void addSong(const QVariantMap &songMap);
     Q_INVOKABLE void removeSong(int index);
     Q_INVOKABLE void clearPlaylist();
     Q_INVOKABLE void playSongbyhasg(const QString &songhash);
@@ -92,8 +96,10 @@ public:
     Q_INVOKABLE void playNext();
     Q_INVOKABLE void playPrevious();
     Q_INVOKABLE void playstop();
-    Q_INVOKABLE void addandplay(const QString &title, const QString &url, const QString &singername, const QString &union_cover, const QString &album_name, const QString &duration);
-    Q_INVOKABLE void addSongNext(const QString &title, const QString &songhash, const QString &singername, const QString &union_cover, const QString &album_name, const QString &duration);
+    Q_INVOKABLE void playNextAndPlay(const SongInfo &song);
+    Q_INVOKABLE void playNextAndPlay(const QVariantMap &songMap);
+    Q_INVOKABLE void addSongNext(const SongInfo &song);
+    Q_INVOKABLE void addSongNext(const QVariantMap &songMap);
     Q_INVOKABLE void playPlaylistFromSource(const QString &sourceId, int totalCount, int startIndexInSource, const QVariantList &firstBatch);
     Q_INVOKABLE void setposistion(float positionvalue);
 
@@ -181,7 +187,6 @@ private:
     QAudioOutput *audioOutput = new QAudioOutput(this);
     void startPlayback(const SongInfo &song);
     void fetchSongUrl(const QString &hash, std::function<void(QString)> callback);
-    QNetworkAccessManager m_networkManager;
     void showplaylist();
     float m_percent = 0.0;
     QString m_percentstr = "00:00";
@@ -192,6 +197,8 @@ private:
     Recommendation *m_recommendation = nullptr; // 改为指针
     QString m_currentTogetherSongHash;
     QList<SongInfo> convertToSongInfoList(const QVariantList &variantList);
+    static SongInfo songFromMap(const QVariantMap &map);
+    void doAddSong(const SongInfo &song, bool toHead, bool playNow);
     bool m_isRepairing = false;        // 添加修复状态标志
     float m_restorePercent = -1.0f;
     int m_repairCount = 0;             // 修复次数计数
@@ -224,6 +231,11 @@ private:
     void ensureCacheDir() const;
     QString getPlaylistCachePath() const;
     QString getRecentCachePath() const;
+
+    // 主色调提取：异步后台线程 + 内存 LRU 缓存
+    QHash<QString, QString> m_colorCache;       // URL -> hex color
+    QSet<QString> m_pendingColorRequests;      // 去重：避免重复提交
+    QMutex m_colorCacheMutex;
 };
 Q_DECLARE_METATYPE(SongInfo)
 

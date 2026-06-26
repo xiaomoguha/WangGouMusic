@@ -1,13 +1,16 @@
 #ifndef GETHOSTSEARCH_H
 #define GETHOSTSEARCH_H
-#include <QNetworkAccessManager>
 #include <QObject>
-#include <QNetworkReply>
-#include <QJsonDocument>
-#include <QJsonArray>
-#include <QJsonObject>
-#include <QDebug>
 #include <QString>
+#include <QVariantList>
+#include <functional>
+
+/**
+ * @brief 热搜词获取
+ *
+ * 内部已迁移到 ApiClient 单例，不再持有 QNetworkAccessManager。
+ * 外部信号/属性保持不变。
+ */
 class GetHostSearch : public QObject
 {
     Q_OBJECT
@@ -20,12 +23,8 @@ public:
 signals:
     void hostsearchitemsChanged();
 
-private slots:
-    void onReplyFinished(QNetworkReply *reply); // 处理网络响应
-
 private:
-    QNetworkAccessManager m_manager; // Qt内置网络请求管理器
-    QVariantList m_items;            // 提供给 QML 的模型数据
+    QVariantList m_items;
 };
 
 #endif // GETHOSTSEARCH_H

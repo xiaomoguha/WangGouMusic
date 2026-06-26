@@ -2,49 +2,52 @@
 #define HTTPGETREQUESTER_H
 
 #include <QObject>
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
-#include <QUrl>
-#include <QTimer>
+#include <QString>
+#include <QByteArray>
+#include <functional>
 
+class QNetworkReply;
+
+/**
+ * @brief 通用 HTTP GET 请求封装
+ *
+ * 外部接口（信号/槽）保持向后兼容，内部实现已迁移到 ApiClient 单例。
+ * 主要使用者：recommendation 的 4 个 requester 实例（m_topSongsRequester /
+ * m_topPlaylistsRequester / m_playlistTracksRequester / m_lazyRequester）。
+ *
+ * 单实例只持有一个活跃 reply：fetchData 时若已有未完成请求会被 abort。
+ */
 class HttpGetRequester : public QObject
 {
     Q_OBJECT
 public:
-    // 构造函数，可以设置超时时间（单位：毫秒）
     explicit HttpGetRequester(int timeoutMs = 10000, QObject *parent = nullptr);
 
-    // 设置请求超时时间
+    /// 设置请求超时（毫秒）
     Q_INVOKABLE void setTimeout(int milliseconds);
 
-    // 异步GET请求方法
+    /// 发起异步 GET 请求
     Q_INVOKABLE void fetchData(const QString &url);
 
-    // 设置自定义HTTP头
+    /// 设置自定义 HTTP 头（仅追加到 User-Agent 后；不影响全局默认头）
     Q_INVOKABLE void setHeader(const QByteArray &name, const QByteArray &value);
 
-    // 清除所有自定义头
+    /// 清除所有自定义头
     Q_INVOKABLE void clearHeaders();
 
 signals:
-    // 数据获取成功的信号
     void dataReceived(const QByteArray &data);
-    // 请求失败的信号
     void requestFailed(const QString &error);
-    // 请求超时的信号
     void requestTimeout();
 
-private slots:
-    void handleFinished();
-    void handleTimeout();
-
 private:
-    QNetworkAccessManager *m_networkManager;
-    QTimer *m_timeoutTimer;
-    QMap<QByteArray, QByteArray> m_customHeaders;
-    QNetworkReply *m_currentReply = nullptr;
+    void startRequest(const QString &url);
+    void abortCurrent();
 
-    void cleanupReply();
+    int m_timeoutMs;
+    QNetworkReply *m_currentReply = nullptr;
+    // 自定义请求头（仅本实例生效，不写入 ApiClient 全局）
+    QList<QPair<QByteArray, QByteArray>> m_customHeaders;
 };
 
 #endif // HTTPGETREQUESTER_H

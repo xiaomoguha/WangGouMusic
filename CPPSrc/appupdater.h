@@ -2,11 +2,19 @@
 #define APPUPDATER_H
 
 #include <QObject>
-#include <QNetworkAccessManager>
+#include <QString>
 #include <QNetworkReply>
-#include <QFile>
-#include <QJsonObject>
+#include <functional>
 
+class QNetworkAccessManager;
+class QFile;
+
+/**
+ * @brief 应用自动更新
+ *
+ * 检查更新通过 ApiClient 完成；下载与安装保留独立的 QNetworkAccessManager
+ * （需要流式传输 + downloadProgress 信号，ApiClient 不支持）。
+ */
 class AppUpdater : public QObject
 {
     Q_OBJECT
@@ -47,15 +55,17 @@ signals:
     void installStarted();
 
 private slots:
-    void onCheckReplyFinished();
     void onDownloadProgress(qint64 bytesReceived, qint64 bytesTotal);
     void onDownloadFinished();
 
 private:
-    // 比较版本号，返回 >0 表示 v1 > v2
     static int compareVersions(const QString &v1, const QString &v2);
 
-    QNetworkAccessManager *m_networkManager;
+    // 仅用于文件下载（流式 + 进度）
+    QNetworkAccessManager* m_downloadManager;
+    QNetworkReply *m_downloadReply = nullptr;
+    QFile *m_downloadFile = nullptr;
+    QString m_downloadedFilePath;
 
     // 版本信息
     QString m_currentVersion;
@@ -65,14 +75,9 @@ private:
     QString m_fileMd5;
     bool m_updateAvailable = false;
 
-    // 下载状态
-    QNetworkReply *m_downloadReply = nullptr;
-    QFile *m_downloadFile = nullptr;
-    QString m_downloadedFilePath;
     double m_downloadProgress = 0.0;
     bool m_downloading = false;
 
-    // 配置
     QString m_checkUrl;
 };
 

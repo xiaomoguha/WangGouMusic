@@ -1,5 +1,9 @@
 #include "playlistmanager.h"
+#include "ApiClient.h"
 #include <QDebug>
+#include <QEventLoop>
+#include <QRunnable>
+#include <QThreadPool>
 #include <QTimer>
 #include <memory>
 PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent) : QObject(parent), m_recommendation(recommendation)
@@ -42,42 +46,52 @@ PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent
     connect(&lyricParser, &LyricParser::parselyricsuc, this, &PlaylistManager::parselyricsuc);
 }
 
-void PlaylistManager::addSong(const QString &title, const QString &songhash, const QString &singername, const QString &union_cover, const QString &album_name, const QString &duration)
+// 静态：从 QVariantMap 构造 SongInfo。统一字段映射（hash→songhash, cover→union_cover 等）
+SongInfo PlaylistManager::songFromMap(const QVariantMap &map)
 {
-    for (int index = 0; index < (*m_curplaylist).size(); index++)
-    {
-        if ((*m_curplaylist)[index].songhash == songhash)
-        {
-            return;
-        }
-    }
-    (*m_curplaylist).append({title, songhash, "", singername, union_cover, album_name, duration, ""});
-    showplaylist();
-    if (type == LOCAL)
-    {
-        savePlaylistToCache();
-        emit playlistUpdated();
-    }
-    else if (type == TOGETHER)
-    {
-        emit togetherplaylistUpdated();
-    }
+    SongInfo song;
+    song.title       = map.value("title", map.value("songname")).toString();
+    song.songhash    = map.value("songhash", map.value("hash")).toString();
+    song.url         = map.value("url").toString();
+    song.singername  = map.value("singername").toString();
+    song.union_cover = map.value("union_cover", map.value("cover")).toString();
+    song.album_name  = map.value("album_name").toString();
+    song.duration    = map.value("duration").toString();
+    song.lyric       = map.value("lyric").toString();
+    return song;
 }
 
-void PlaylistManager::addSongNext(const QString &title, const QString &songhash, const QString &singername, const QString &union_cover, const QString &album_name, const QString &duration)
+void PlaylistManager::addSong(const SongInfo &song)
 {
+    doAddSong(song, /*toHead=*/false, /*playNow=*/false);
+}
+
+void PlaylistManager::addSong(const QVariantMap &songMap)
+{
+    addSong(songFromMap(songMap));
+}
+
+void PlaylistManager::addSongNext(const SongInfo &song)
+{
+    if (type != LOCAL) return;
+    // 去重
     for (int i = 0; i < m_playlist.size(); i++) {
-        if (m_playlist[i].songhash == songhash)
-            return;
+        if (m_playlist[i].songhash == song.songhash) return;
     }
-    SongInfo song = {title, songhash, "", singername, union_cover, album_name, duration, ""};
-    int insertIndex = m_currentIndex + 1;
+    SongInfo copy = song;
+    copy.url.clear();
+    const int insertIndex = m_currentIndex + 1;
     if (insertIndex >= m_playlist.size())
-        m_playlist.append(song);
+        m_playlist.append(copy);
     else
-        m_playlist.insert(insertIndex, song);
+        m_playlist.insert(insertIndex, copy);
     savePlaylistToCache();
     emit playlistUpdated();
+}
+
+void PlaylistManager::addSongNext(const QVariantMap &songMap)
+{
+    addSongNext(songFromMap(songMap));
 }
 void PlaylistManager::removeSong(int index)
 {
@@ -561,11 +575,54 @@ void PlaylistManager::playstop()
     }
 }
 
-// 添加到播放列表并且立即播放
-void PlaylistManager::addandplay(const QString &title, const QString &songhash, const QString &singername, const QString &union_cover, const QString &album_name, const QString &duration)
+// 插到当前播放歌曲的下一首并立即播放这首
+void PlaylistManager::playNextAndPlay(const SongInfo &song)
 {
-    addSong(title, songhash, singername, union_cover, album_name, duration);
-    playSongbyhasg(songhash);
+    if (type != LOCAL) return;   // 一起听模式不处理
+    // 去重：若已在队列则直接切过去播
+    for (int i = 0; i < m_playlist.size(); i++) {
+        if (m_playlist[i].songhash == song.songhash) {
+            playSongbyindex(i);
+            return;
+        }
+    }
+    // 插到 currentIndex+1
+    SongInfo copy = song;
+    copy.url.clear();
+    const int insertIndex = m_currentIndex + 1;
+    if (insertIndex >= m_playlist.size())
+        m_playlist.append(copy);
+    else
+        m_playlist.insert(insertIndex, copy);
+    savePlaylistToCache();
+    emit playlistUpdated();
+    // 立即播放刚插入的这首
+    playSongbyindex(insertIndex);
+}
+
+void PlaylistManager::playNextAndPlay(const QVariantMap &songMap)
+{
+    playNextAndPlay(songFromMap(songMap));
+}
+
+// 内部复用：把歌曲加入当前 curplaylist 末尾（不再对外暴露）
+void PlaylistManager::doAddSong(const SongInfo &song, bool /*toHead*/, bool /*playNow*/)
+{
+    QList<SongInfo> &list = *m_curplaylist;
+    for (int index = 0; index < list.size(); index++) {
+        if (list[index].songhash == song.songhash) return;
+    }
+    SongInfo copy = song;
+    copy.url.clear();
+    copy.lyric.clear();
+    list.append(copy);
+    showplaylist();
+    if (type == LOCAL) {
+        savePlaylistToCache();
+        emit playlistUpdated();
+    } else if (type == TOGETHER) {
+        emit togetherplaylistUpdated();
+    }
 }
 
 void PlaylistManager::setposistion(float positionvalue)
@@ -1070,122 +1127,67 @@ QString PlaylistManager::loadLyricFromCache(const QString &songhash)
 
 void PlaylistManager::fetchSongUrl(const QString &hash, std::function<void(QString)> callback)
 {
-    QNetworkRequest request(QUrl("http://xjt-togethertracks.top/api/song/url?hash=" + hash));
-    QNetworkReply *reply = m_networkManager.get(request);
-
-    connect(reply, &QNetworkReply::finished, this, [reply, callback]()
-            {
-        if (reply->error() != QNetworkReply::NoError)
-        {
-            qWarning() << "请求失败:" << reply->errorString();
+    ApiClient::instance().get(QString("http://xjt-togethertracks.top/api/song/url?hash=%1").arg(hash),
+        [callback](QByteArray body) {
+            const QJsonDocument doc = QJsonDocument::fromJson(body);
+            if (doc.isObject()) {
+                const QJsonArray urlarray = doc.object()["url"].toArray();
+                callback(urlarray.isEmpty() ? QString() : urlarray[0].toString());
+            } else {
+                callback(QString());
+            }
+        },
+        [callback](QString err, int) {
+            Q_UNUSED(err);
             callback(QString());
-            reply->deleteLater();
-            return;
-        }
-
-        QByteArray response = reply->readAll();
-        QJsonDocument doc = QJsonDocument::fromJson(response);
-
-        if (doc.isObject())
-        {
-            QJsonObject root = doc.object();
-            QJsonArray urlarray = root["url"].toArray();
-            callback(urlarray[0].toString());
-        } else
-        {
-            callback(QString());  // 失败
-        }
-        reply->deleteLater(); });
+        },
+        10000);
 }
 
 void PlaylistManager::fetchLyricData(const QString &hash, std::function<void(QString)> callback)
 {
-    // 第一步：根据hash获取歌词信息
-    QNetworkRequest request(QUrl("https://xjt-togethertracks.top/api/search/lyric?hash=" + hash));
-    QNetworkReply *reply = m_networkManager.get(request);
-
-    connect(reply, &QNetworkReply::finished, this, [this, reply, hash, callback]()
-            {
-        if (reply->error() != QNetworkReply::NoError)
-        {
-            qWarning() << "歌词信息请求失败:" << reply->errorString();
-            callback(QString());
-            reply->deleteLater();
-            return;
-        }
-
-        QByteArray response = reply->readAll();
-        QJsonDocument doc = QJsonDocument::fromJson(response);
-        reply->deleteLater();
-
-        if (!doc.isObject())
-        {
-            qWarning() << "返回数据不是JSON对象";
-            callback(QString());
-            return;
-        }
-
-        QJsonObject root = doc.object();
-
-        QJsonArray candidates = root["candidates"].toArray();
-
-        if (!candidates.isEmpty() && candidates[0].isObject())
-        {
-            QJsonObject lyricInfo = candidates[0].toObject();
-            // 提取id和accesskey
-            QString id = lyricInfo["id"].toString();
-            QString accesskey = lyricInfo["accesskey"].toString();
-            if (!id.isEmpty() && !accesskey.isEmpty())
-            {
-                // 第二步：使用id和accesskey获取具体歌词内容
+    // 第一步：根据 hash 获取歌词信息
+    ApiClient::instance().getJson(
+        QString("https://xjt-togethertracks.top/api/search/lyric?hash=%1").arg(hash),
+        [this, hash, callback](QJsonObject root) {
+            const QJsonArray candidates = root["candidates"].toArray();
+            if (candidates.isEmpty() || !candidates[0].isObject()) {
+                callback(QString());
+                return;
+            }
+            const QJsonObject lyricInfo = candidates[0].toObject();
+            const QString id        = lyricInfo["id"].toString();
+            const QString accesskey = lyricInfo["accesskey"].toString();
+            if (!id.isEmpty() && !accesskey.isEmpty()) {
+                // 第二步：使用 id 和 accesskey 获取具体歌词内容
                 fetchLyricContent(id, accesskey, callback);
                 return;
             }
-            else
-            {
-                qWarning() << "未找到有效的id或accesskey";
-            }
-            qWarning() << "解析歌词信息失败";
+            qWarning() << "未找到有效的id或accesskey";
             callback(QString());
-        } });
+        },
+        [callback](QString err, int) {
+            Q_UNUSED(err);
+            callback(QString());
+        },
+        10000);
 }
 
 void PlaylistManager::fetchLyricContent(const QString &id, const QString &accesskey, std::function<void(QString)> callback)
 {
-    // 构建歌词内容请求URL
-    QString urlStr = QString("https://xjt-togethertracks.top/api/lyric?id=%1&accesskey=%2&fmt=krc&decode=true").arg(id).arg(accesskey);
+    const QString urlStr = QString("https://xjt-togethertracks.top/api/lyric?id=%1&accesskey=%2&fmt=krc&decode=true")
+                             .arg(id).arg(accesskey);
 
-    QUrl contentUrl(urlStr);
-    QNetworkRequest request;
-    request.setUrl(contentUrl);
-
-    QNetworkReply *reply = m_networkManager.get(request);
-
-    connect(reply, &QNetworkReply::finished, this, [reply, callback]()
-            {
-        if (reply->error() != QNetworkReply::NoError)
-        {
-            qWarning() << "歌词内容请求失败:" << reply->errorString();
+    ApiClient::instance().getJson(urlStr,
+        [callback](QJsonObject root) {
+            const QString decodeContent = root["decodeContent"].toString();
+            callback(decodeContent);
+        },
+        [callback](QString err, int) {
+            Q_UNUSED(err);
             callback(QString());
-            reply->deleteLater();
-            return;
-        }
-
-        QByteArray response = reply->readAll();
-        QJsonDocument doc = QJsonDocument::fromJson(response);
-        reply->deleteLater();
-
-        if (!doc.isObject())
-        {
-            qWarning() << "歌词内容返回数据不是JSON对象";
-            callback(QString());
-            return;
-        }
-
-        QJsonObject root = doc.object();
-
-        QString decodeContent = root["decodeContent"].toString();
-        callback(decodeContent); });
+        },
+        10000);
 }
 
 void PlaylistManager::showplaylist()
@@ -1368,52 +1370,154 @@ QString PlaylistManager::dominantColor() const
     return m_dominantColor;
 }
 
-// 提取图片主色调
+// ──────────────────────────────────────────────
+// 主色调提取：后台线程任务（私有）
+// ──────────────────────────────────────────────
+namespace {
+
+class ColorExtractTask : public QRunnable {
+public:
+    ColorExtractTask(const QString& url,
+                     std::function<void(const QString&, const QString&)> cb)
+        : m_url(url), m_cb(std::move(cb)) {}
+
+    void run() override
+    {
+        QString resultColor = QStringLiteral("#FF6B6B");
+        QNetworkAccessManager nam;
+        QNetworkReply* reply = nam.get(QNetworkRequest(QUrl(m_url)));
+        if (!reply) { m_cb(m_url, resultColor); return; }
+
+        QEventLoop loop;
+        QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+        loop.exec();
+
+        if (reply->error() == QNetworkReply::NoError) {
+            QImage image = QImage::fromData(reply->readAll());
+            if (!image.isNull()) {
+                resultColor = computeColor(image);
+            }
+        }
+        reply->deleteLater();
+        m_cb(m_url, resultColor);
+    }
+
+private:
+    static QString computeColor(const QImage& image)
+    {
+        if (image.isNull()) return QStringLiteral("#FF6B6B");
+        QImage smallImage = image.scaled(50, 50, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+
+        long totalR = 0, totalG = 0, totalB = 0;
+        int pixelCount = 0;
+        for (int y = 0; y < smallImage.height(); ++y) {
+            for (int x = 0; x < smallImage.width(); ++x) {
+                QColor color = smallImage.pixelColor(x, y);
+                int brightness = (color.red() + color.green() + color.blue()) / 3;
+                if (brightness > 20 && brightness < 235) {
+                    totalR += color.red();
+                    totalG += color.green();
+                    totalB += color.blue();
+                    pixelCount++;
+                }
+            }
+        }
+        if (pixelCount == 0) return QStringLiteral("#FF6B6B");
+
+        int avgR = totalR / pixelCount;
+        int avgG = totalG / pixelCount;
+        int avgB = totalB / pixelCount;
+
+        QColor avgColor(avgR, avgG, avgB);
+        int h, s, v;
+        avgColor.getHsv(&h, &s, &v);
+        s = qMin(255, s + 50);
+        v = qMin(255, v + 30);
+        QColor finalColor;
+        finalColor.setHsv(h, s, v);
+        return finalColor.name(QColor::HexRgb).toUpper();
+    }
+
+    QString m_url;
+    std::function<void(const QString&, const QString&)> m_cb;
+};
+
+}  // namespace
+
+// 提取图片主色调（异步：后台线程 + LRU 缓存 + 去重）
 void PlaylistManager::extractDominantColor(const QString &imageUrl)
 {
-    // 如果是本地资源或网络图片
-    if (imageUrl.startsWith("qrc:/"))
+    if (imageUrl.isEmpty()) {
+        m_dominantColor = QStringLiteral("#FF6B6B");
+        emit dominantColorChanged();
+        return;
+    }
+
+    // 1. LRU 命中
     {
-        // 本地资源
+        QMutexLocker lock(&m_colorCacheMutex);
+        if (m_colorCache.contains(imageUrl)) {
+            m_dominantColor = m_colorCache.value(imageUrl);
+            emit dominantColorChanged();
+            return;
+        }
+    }
+
+    // 2. 已在进行中的请求：跳过
+    {
+        QMutexLocker lock(&m_colorCacheMutex);
+        if (m_pendingColorRequests.contains(imageUrl)) return;
+        m_pendingColorRequests.insert(imageUrl);
+    }
+
+    // 3. 本地资源：直接读（同步很快，不放后台）
+    if (imageUrl.startsWith("qrc:/")) {
         QString path = imageUrl;
         path.remove("qrc:");
         QImage image(path);
-        if (!image.isNull())
+        QString color = image.isNull() ? QStringLiteral("#FF6B6B")
+                                         : QColor(getAverageColor(image)).name(QColor::HexRgb).toUpper();
         {
-            QColor color = getAverageColor(image);
-            m_dominantColor = color.name(QColor::HexRgb).toUpper();
-            emit dominantColorChanged();
+            QMutexLocker lock(&m_colorCacheMutex);
+            m_pendingColorRequests.remove(imageUrl);
+            if (m_colorCache.size() >= 64) m_colorCache.erase(m_colorCache.begin());
+            m_colorCache.insert(imageUrl, color);
         }
+        m_dominantColor = color;
+        emit dominantColorChanged();
+        return;
     }
-    else if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://"))
-    {
-        // 网络图片 - 异步下载
-        QNetworkRequest request{QUrl(imageUrl)};
-        QNetworkReply *reply = m_networkManager.get(request);
-        connect(reply, &QNetworkReply::finished, this, [this, reply]()
-                {
-            if (reply->error() == QNetworkReply::NoError) {
-                QByteArray data = reply->readAll();
-                QImage image = QImage::fromData(data);
-                if (!image.isNull()) {
-                    QColor color = getAverageColor(image);
-                    m_dominantColor = color.name(QColor::HexRgb).toUpper();
-                    emit dominantColorChanged();
-                }
-            }
-            reply->deleteLater(); });
-    }
-    else
-    {
-        // 尝试作为本地文件路径
+
+    // 4. 本地文件路径：直接读
+    if (!imageUrl.startsWith("http://") && !imageUrl.startsWith("https://")) {
         QImage image(imageUrl);
-        if (!image.isNull())
+        QString color = image.isNull() ? QStringLiteral("#FF6B6B")
+                                         : QColor(getAverageColor(image)).name(QColor::HexRgb).toUpper();
         {
-            QColor color = getAverageColor(image);
-            m_dominantColor = color.name(QColor::HexRgb).toUpper();
-            emit dominantColorChanged();
+            QMutexLocker lock(&m_colorCacheMutex);
+            m_pendingColorRequests.remove(imageUrl);
+            if (m_colorCache.size() >= 64) m_colorCache.erase(m_colorCache.begin());
+            m_colorCache.insert(imageUrl, color);
         }
+        m_dominantColor = color;
+        emit dominantColorChanged();
+        return;
     }
+
+    // 5. 网络图片：丢到后台线程池
+    auto* task = new ColorExtractTask(imageUrl,
+        [this](const QString& url, const QString& color) {
+            // 回到主线程
+            QMutexLocker lock(&m_colorCacheMutex);
+            m_pendingColorRequests.remove(url);
+            if (m_colorCache.size() >= 64) m_colorCache.erase(m_colorCache.begin());
+            m_colorCache.insert(url, color);
+            QMetaObject::invokeMethod(this, [this, color]() {
+                m_dominantColor = color;
+                emit dominantColorChanged();
+            }, Qt::QueuedConnection);
+        });
+    QThreadPool::globalInstance()->start(task);
 }
 
 // 计算图片的平均颜色

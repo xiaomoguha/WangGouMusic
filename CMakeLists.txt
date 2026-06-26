@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(网狗音乐 VERSION 0.5.6 LANGUAGES CXX)
+project(网狗音乐 VERSION 0.5.8 LANGUAGES CXX)
 
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
@@ -27,7 +27,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
         qml.qrc
-        CPPSrc/httpgetrequester.cpp CPPSrc/HttpGetRequester.h CPPSrc/lyricparser.cpp CPPSrc/lyricparser.h CPPSrc/playlistmanager.cpp CPPSrc/playlistmanager.h CPPSrc/recommendation.cpp CPPSrc/recommendation.h CPPSrc/searchcomplex.cpp CPPSrc/searchcomplex.h CPPSrc/trayhandler.cpp CPPSrc/trayhandler.h CPPSrc/WebSocketClient.cpp CPPSrc/WebSocketClient.h
+        CPPSrc/ApiClient.cpp CPPSrc/ApiClient.h CPPSrc/httpgetrequester.cpp CPPSrc/HttpGetRequester.h CPPSrc/lyricparser.cpp CPPSrc/lyricparser.h CPPSrc/playlistmanager.cpp CPPSrc/playlistmanager.h CPPSrc/recommendation.cpp CPPSrc/recommendation.h CPPSrc/searchcomplex.cpp CPPSrc/searchcomplex.h CPPSrc/trayhandler.cpp CPPSrc/trayhandler.h CPPSrc/WebSocketClient.cpp CPPSrc/WebSocketClient.h
         CPPSrc/gethostsearch.cpp CPPSrc/gethostsearch.h
         CPPSrc/lyricsconfigmanager.cpp CPPSrc/lyricsconfigmanager.h
         CPPSrc/appupdater.cpp CPPSrc/appupdater.h

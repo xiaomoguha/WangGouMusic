@@ -640,7 +640,14 @@ Item {
                                 var songsToPlay = searchKeyword.trim() === "" ? currentSongs : filteredSongs
                                 for (var i = 0; i < songsToPlay.length; i++) {
                                     var s = songsToPlay[i]
-                                    playlistmanager.addSong(s.songname, s.hash, s.singername, s.cover, s.album_name, s.duration)
+                                    playlistmanager.addSong({
+                                        "songname": s.songname,
+                                        "songhash": s.hash,
+                                        "singername": s.singername,
+                                        "union_cover": s.cover,
+                                        "album_name": s.album_name,
+                                        "duration": s.duration
+                                    })
                                 }
                                 playlistmanager.playSongbyindex(0)
                             }
@@ -900,7 +907,14 @@ Item {
                                                     onTapped: {
                                                         if (!playlistmanager) return
                                                         var s = filteredSongs[index]
-                                                        playlistmanager.addandplay(s.songname, s.hash, s.singername, s.cover, s.album_name, s.duration)
+                                                        playlistmanager.playNextAndPlay({
+                                                            "songname": s.songname,
+                                                            "songhash": s.hash,
+                                                            "singername": s.singername,
+                                                            "union_cover": s.cover,
+                                                            "album_name": s.album_name,
+                                                            "duration": s.duration
+                                                        })
                                                     }
                                                 }
                                                 Behavior on color { ColorAnimation { duration: 150 } }
@@ -930,7 +944,14 @@ Item {
                                                     onTapped: {
                                                         if (!playlistmanager) return
                                                         var s = filteredSongs[index]
-                                                        playlistmanager.addSong(s.songname, s.hash, s.singername, s.cover, s.album_name, s.duration)
+                                                        playlistmanager.addSong({
+                                                            "songname": s.songname,
+                                                            "songhash": s.hash,
+                                                            "singername": s.singername,
+                                                            "union_cover": s.cover,
+                                                            "album_name": s.album_name,
+                                                            "duration": s.duration
+                                                        })
                                                         BasicConfig.emitSongAdded()
                                                     }
                                                 }
