@@ -12,10 +12,7 @@
         <file>Src/BasicConfig/AppTheme.qml</file>
         <file>Src/BasicConfig/qmldir</file>
         <file>Src/ComponentPage/ComplexPage.qml</file>
-        <file>Src/ComponentPage/Danqv.qml</file>
-        <file>Src/ComponentPage/AlbumPage.qml</file>
         <file>Src/ComponentPage/PlaylistDetailPage.qml</file>
-        <file>Src/ComponentPage/LyricPage.qml</file>
         <file>Src/ComponentPage/SearchresultPage.qml</file>
         <file>Src/ComponentPage/musictogether.qml</file>
         <file>Src/ComponentPage/RecentlyPlayed.qml</file>
