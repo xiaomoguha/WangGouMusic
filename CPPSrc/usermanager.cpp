@@ -1,7 +1,14 @@
 #include "usermanager.h"
-#include <QUrlQuery>
+#include "ApiClient.h"
+
 #include <QDir>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QStandardPaths>
+#include <QUrl>
+#include <QUrlQuery>
+#include <QDebug>
 
 static const QString API_BASE = "https://xjt-togethertracks.top/api";
 
@@ -9,6 +16,7 @@ UserManager::UserManager(QObject *parent)
     : QObject(parent)
 {
     loadFromSettings();
+    syncTokenToApiClient();
 }
 
 bool UserManager::isLoggedIn() const { return !m_token.isEmpty() && !m_userid.isEmpty(); }
@@ -27,6 +35,11 @@ void UserManager::setIsLoading(bool loading)
     }
 }
 
+void UserManager::syncTokenToApiClient() const
+{
+    ApiClient::instance().setAuthToken(m_token);
+}
+
 void UserManager::login(const QString &username, const QString &password)
 {
     if (username.isEmpty() || password.isEmpty()) {
@@ -34,8 +47,35 @@ void UserManager::login(const QString &username, const QString &password)
         return;
     }
     setIsLoading(true);
-    sendPostRequest("/login", {{"username", username}, {"password", password}},
-                    [this](QNetworkReply *reply) { handleLoginReply(reply); });
+    postForm("/login", {{"username", username}, {"password", password}},
+        [this](QJsonObject root) {
+            setIsLoading(false);
+            const int status = root["status"].toInt();
+            if (status != 1) {
+                const int errCode = root["error_code"].toInt();
+                QString msg = root["message"].toString();
+                if (msg.isEmpty()) msg = QString("登录失败 (错误码: %1)").arg(errCode);
+                emit loginFailed(msg);
+                return;
+            }
+            const QJsonObject data = root["data"].toObject();
+            m_token      = data["token"].toString();
+            m_userid     = QString::number(data["userid"].toInt());
+            m_nickname   = data["nickname"].toString();
+            m_avatarUrl  = data["pic"].toString();
+            m_isVip      = data["is_vip"].toInt() == 1;
+            m_vipType    = data["vip_type"].toInt();
+            m_vipToken   = data["vip_token"].toString();
+            saveToSettings();
+            syncTokenToApiClient();
+            emit loginStatusChanged();
+            emit userInfoUpdated();
+            emit loginSuccess();
+        },
+        [this](QString err, int) {
+            setIsLoading(false);
+            emit loginFailed(QString("网络错误: %1").arg(err));
+        });
 }
 
 void UserManager::sendCaptcha(const QString &mobile)
@@ -44,8 +84,21 @@ void UserManager::sendCaptcha(const QString &mobile)
         emit captchaSent(false, "手机号不能为空");
         return;
     }
-    sendPostRequest("/captcha/sent", {{"mobile", mobile}},
-                    [this](QNetworkReply *reply) { handleCaptchaReply(reply); });
+    postForm("/captcha/sent", {{"mobile", mobile}},
+        [this](QJsonObject root) {
+            const int status = root["status"].toInt();
+            const int errCode = root["error_code"].toInt();
+            if (status == 1 || errCode == 0) {
+                emit captchaSent(true, "验证码已发送");
+            } else {
+                QString msg = root["message"].toString();
+                if (msg.isEmpty()) msg = QString("发送失败 (错误码: %1)").arg(errCode);
+                emit captchaSent(false, msg);
+            }
+        },
+        [this](QString err, int) {
+            emit captchaSent(false, QString("网络错误: %1").arg(err));
+        });
 }
 
 void UserManager::loginByPhone(const QString &mobile, const QString &code)
@@ -55,8 +108,35 @@ void UserManager::loginByPhone(const QString &mobile, const QString &code)
         return;
     }
     setIsLoading(true);
-    sendPostRequest("/login/cellphone", {{"mobile", mobile}, {"code", code}},
-                    [this](QNetworkReply *reply) { handlePhoneLoginReply(reply); });
+    postForm("/login/cellphone", {{"mobile", mobile}, {"code", code}},
+        [this](QJsonObject root) {
+            setIsLoading(false);
+            const int status = root["status"].toInt();
+            if (status != 1) {
+                const int errCode = root["error_code"].toInt();
+                QString msg = root["message"].toString();
+                if (msg.isEmpty()) msg = QString("登录失败 (错误码: %1)").arg(errCode);
+                emit loginFailed(msg);
+                return;
+            }
+            const QJsonObject data = root["data"].toObject();
+            m_token      = data["token"].toString();
+            m_userid     = QString::number(data["userid"].toInt());
+            m_nickname   = data["nickname"].toString();
+            m_avatarUrl  = data["pic"].toString();
+            m_isVip      = data["is_vip"].toInt() == 1;
+            m_vipType    = data["vip_type"].toInt();
+            m_vipToken   = data["vip_token"].toString();
+            saveToSettings();
+            syncTokenToApiClient();
+            emit loginStatusChanged();
+            emit userInfoUpdated();
+            emit loginSuccess();
+        },
+        [this](QString err, int) {
+            setIsLoading(false);
+            emit loginFailed(QString("网络错误: %1").arg(err));
+        });
 }
 
 void UserManager::refreshToken()
@@ -66,8 +146,40 @@ void UserManager::refreshToken()
         return;
     }
     setIsLoading(true);
-    sendPostRequest("/login/token", {{"token", m_token}, {"userid", m_userid}},
-                    [this](QNetworkReply *reply) { handleRefreshReply(reply); });
+    postForm("/login/token", {{"token", m_token}, {"userid", m_userid}},
+        [this](QJsonObject root) {
+            setIsLoading(false);
+            const int status = root["status"].toInt();
+            if (status != 1) {
+                clearSettings();
+                m_token.clear();
+                m_userid.clear();
+                emit loginStatusChanged();
+                emit tokenRefreshResult(false);
+                return;
+            }
+            const QJsonObject data = root["data"].toObject();
+            m_token      = data["token"].toString();
+            m_userid     = QString::number(data["userid"].toInt());
+            m_nickname   = data["nickname"].toString();
+            m_avatarUrl  = data["pic"].toString();
+            m_isVip      = data["is_vip"].toInt() == 1;
+            m_vipType    = data["vip_type"].toInt();
+            m_vipToken   = data["vip_token"].toString();
+            saveToSettings();
+            syncTokenToApiClient();
+            emit loginStatusChanged();
+            emit userInfoUpdated();
+            emit tokenRefreshResult(true);
+        },
+        [this](QString err, int) {
+            setIsLoading(false);
+            clearSettings();
+            m_token.clear();
+            m_userid.clear();
+            emit loginStatusChanged();
+            emit tokenRefreshResult(false);
+        });
 }
 
 void UserManager::logout()
@@ -80,6 +192,7 @@ void UserManager::logout()
     m_vipType = 0;
     m_vipToken.clear();
     clearSettings();
+    syncTokenToApiClient();
     emit loginStatusChanged();
     emit userInfoUpdated();
 }
@@ -87,211 +200,39 @@ void UserManager::logout()
 void UserManager::fetchUserDetail()
 {
     if (!isLoggedIn()) return;
-    sendPostRequest("/user/detail", {{"token", m_token}, {"userid", m_userid}},
-                    [this](QNetworkReply *reply) { handleUserDetailReply(reply); });
+    postForm("/user/detail", {{"token", m_token}, {"userid", m_userid}},
+        [this](QJsonObject root) {
+            writeCacheFile("user_detail_cache.json", QJsonDocument(root));
+            emit userDetailReceived(root.toVariantMap());
+        },
+        [](QString, int) {});
 }
 
 void UserManager::fetchUserPlaylist(int page, int pagesize)
 {
     if (!isLoggedIn()) return;
     qDebug() << "[UserManager] fetchUserPlaylist called, token:" << m_token.left(10) << "userid:" << m_userid;
-    sendPostRequest("/user/playlist",
-                    {{"token", m_token}, {"userid", m_userid},
-                     {"page", QString::number(page)}, {"pagesize", QString::number(pagesize)}},
-                    [this](QNetworkReply *reply) { handleUserPlaylistReply(reply); });
+    postForm("/user/playlist",
+        {{"token", m_token}, {"userid", m_userid},
+         {"page", QString::number(page)}, {"pagesize", QString::number(pagesize)}},
+        [this](QJsonObject root) {
+            writeCacheFile("playlists_cache.json", QJsonDocument(root));
+            emit userPlaylistReceived(root.toVariantMap());
+        },
+        [](QString, int) {});
 }
 
 void UserManager::fetchPlaylistDetail(const QString &globalCollectionId, int page, int pagesize)
 {
     if (!isLoggedIn()) return;
-    sendPostRequest("/playlist/track/all",
-                    {{"id", globalCollectionId}, {"token", m_token}, {"userid", m_userid},
-                     {"page", QString::number(page)}, {"pagesize", QString::number(pagesize)}},
-                    [this](QNetworkReply *reply) { handlePlaylistDetailReply(reply); });
-}
-
-void UserManager::handleLoginReply(QNetworkReply *reply)
-{
-    setIsLoading(false);
-    if (reply->error() != QNetworkReply::NoError) {
-        emit loginFailed("网络错误: " + reply->errorString());
-        reply->deleteLater();
-        return;
-    }
-    QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
-    reply->deleteLater();
-    if (!doc.isObject()) {
-        emit loginFailed("服务器返回数据格式错误");
-        return;
-    }
-    QJsonObject root = doc.object();
-    if (root["status"].toInt() != 1) {
-        int errorCode = root["error_code"].toInt();
-        QString msg = root["message"].toString();
-        if (msg.isEmpty()) msg = QString("登录失败 (错误码: %1)").arg(errorCode);
-        emit loginFailed(msg);
-        return;
-    }
-    QJsonObject data = root["data"].toObject();
-    m_token = data["token"].toString();
-    m_userid = QString::number(data["userid"].toInt());
-    m_nickname = data["nickname"].toString();
-    m_avatarUrl = data["pic"].toString();
-    m_isVip = data["is_vip"].toInt() == 1;
-    m_vipType = data["vip_type"].toInt();
-    m_vipToken = data["vip_token"].toString();
-    saveToSettings();
-    emit loginStatusChanged();
-    emit userInfoUpdated();
-    emit loginSuccess();
-}
-
-void UserManager::handleCaptchaReply(QNetworkReply *reply)
-{
-    if (reply->error() != QNetworkReply::NoError) {
-        emit captchaSent(false, "网络错误: " + reply->errorString());
-        reply->deleteLater();
-        return;
-    }
-    QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
-    reply->deleteLater();
-    if (!doc.isObject()) {
-        emit captchaSent(false, "服务器返回数据格式错误");
-        return;
-    }
-    QJsonObject root = doc.object();
-    if (root["status"].toInt() == 1 || root["error_code"].toInt() == 0) {
-        emit captchaSent(true, "验证码已发送");
-    } else {
-        QString msg = root["message"].toString();
-        if (msg.isEmpty()) msg = QString("发送失败 (错误码: %1)").arg(root["error_code"].toInt());
-        emit captchaSent(false, msg);
-    }
-}
-
-void UserManager::handlePhoneLoginReply(QNetworkReply *reply)
-{
-    setIsLoading(false);
-    if (reply->error() != QNetworkReply::NoError) {
-        emit loginFailed("网络错误: " + reply->errorString());
-        reply->deleteLater();
-        return;
-    }
-    QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
-    reply->deleteLater();
-    if (!doc.isObject()) {
-        emit loginFailed("服务器返回数据格式错误");
-        return;
-    }
-    QJsonObject root = doc.object();
-    if (root["status"].toInt() != 1) {
-        int errorCode = root["error_code"].toInt();
-        QString msg = root["message"].toString();
-        if (msg.isEmpty()) msg = QString("登录失败 (错误码: %1)").arg(errorCode);
-        emit loginFailed(msg);
-        return;
-    }
-    QJsonObject data = root["data"].toObject();
-    m_token = data["token"].toString();
-    m_userid = QString::number(data["userid"].toInt());
-    m_nickname = data["nickname"].toString();
-    m_avatarUrl = data["pic"].toString();
-    m_isVip = data["is_vip"].toInt() == 1;
-    m_vipType = data["vip_type"].toInt();
-    m_vipToken = data["vip_token"].toString();
-    saveToSettings();
-    emit loginStatusChanged();
-    emit userInfoUpdated();
-    emit loginSuccess();
-}
-
-void UserManager::handleRefreshReply(QNetworkReply *reply)
-{
-    setIsLoading(false);
-    if (reply->error() != QNetworkReply::NoError) {
-        clearSettings();
-        m_token.clear();
-        m_userid.clear();
-        emit loginStatusChanged();
-        emit tokenRefreshResult(false);
-        reply->deleteLater();
-        return;
-    }
-    QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
-    reply->deleteLater();
-    if (!doc.isObject()) {
-        emit tokenRefreshResult(false);
-        return;
-    }
-    QJsonObject root = doc.object();
-    if (root["status"].toInt() != 1) {
-        clearSettings();
-        m_token.clear();
-        m_userid.clear();
-        emit loginStatusChanged();
-        emit tokenRefreshResult(false);
-        return;
-    }
-    QJsonObject data = root["data"].toObject();
-    m_token = data["token"].toString();
-    m_userid = QString::number(data["userid"].toInt());
-    m_nickname = data["nickname"].toString();
-    m_avatarUrl = data["pic"].toString();
-    m_isVip = data["is_vip"].toInt() == 1;
-    m_vipType = data["vip_type"].toInt();
-    m_vipToken = data["vip_token"].toString();
-    saveToSettings();
-    emit loginStatusChanged();
-    emit userInfoUpdated();
-    emit tokenRefreshResult(true);
-}
-
-void UserManager::handleUserDetailReply(QNetworkReply *reply)
-{
-    if (reply->error() != QNetworkReply::NoError) {
-        reply->deleteLater();
-        return;
-    }
-    QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
-    reply->deleteLater();
-    if (doc.isObject()) {
-        writeCacheFile("user_detail_cache.json", doc);
-        emit userDetailReceived(doc.object().toVariantMap());
-    }
-}
-
-void UserManager::handleUserPlaylistReply(QNetworkReply *reply)
-{
-    if (reply->error() != QNetworkReply::NoError) {
-        reply->deleteLater();
-        return;
-    }
-    QByteArray response = reply->readAll();
-    reply->deleteLater();
-    QJsonDocument doc = QJsonDocument::fromJson(response);
-    if (doc.isObject()) {
-        writeCacheFile("playlists_cache.json", doc);
-        emit userPlaylistReceived(doc.object().toVariantMap());
-    }
-}
-
-void UserManager::handlePlaylistDetailReply(QNetworkReply *reply)
-{
-    if (reply->error() != QNetworkReply::NoError) {
-        reply->deleteLater();
-        return;
-    }
-    QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
-    reply->deleteLater();
-    if (doc.isObject()) {
-        // 用当前请求的 ID 作为文件名（从 reply URL 中提取 id 参数）
-        QUrl url = reply->url();
-        QString gid = QUrlQuery(url).queryItemValue("id");
-        if (!gid.isEmpty()) {
-            writeCacheFile("playlist_" + gid + ".json", doc);
-        }
-        emit playlistDetailReceived(doc.object().toVariantMap());
-    }
+    postForm("/playlist/track/all",
+        {{"id", globalCollectionId}, {"token", m_token}, {"userid", m_userid},
+         {"page", QString::number(page)}, {"pagesize", QString::number(pagesize)}},
+        [this, globalCollectionId](QJsonObject root) {
+            writeCacheFile("playlist_" + globalCollectionId + ".json", QJsonDocument(root));
+            emit playlistDetailReceived(root.toVariantMap());
+        },
+        [](QString, int) {});
 }
 
 // ── 缓存相关 ──
@@ -301,6 +242,8 @@ QString UserManager::getCacheDir() const
 #ifdef Q_OS_WIN
     return "C:/网狗音乐缓存目录";
 #elif defined(Q_OS_MAC)
+    return QStandardPaths::writableLocation(QStandardPaths::DownloadLocation) + "/网狗音乐缓存目录";
+#else
     return QStandardPaths::writableLocation(QStandardPaths::DownloadLocation) + "/网狗音乐缓存目录";
 #endif
 }
@@ -360,24 +303,21 @@ QVariantMap UserManager::loadCachedUserDetail()
     return QVariantMap();
 }
 
-void UserManager::sendPostRequest(const QString &path, const QList<QPair<QString, QString>> &params,
-                                   std::function<void(QNetworkReply *)> callback)
+void UserManager::postForm(const QString &path,
+                           const QList<QPair<QString, QString>> &params,
+                           std::function<void(QJsonObject)> onSuccess,
+                           std::function<void(QString, int)> onError,
+                           int timeoutMs)
 {
-    QUrl url(API_BASE + path);
+    // 旧接口语义：URL query + JSON body（与原 sendPostRequest 一致）
     QUrlQuery query;
-    for (const auto &p : params) {
+    for (const auto& p : params) {
         query.addQueryItem(p.first, p.second);
     }
-    url.setQuery(query);
+    const QJsonObject body;  // 原实现是空 body（POST 表单无 JSON body）
+    const QString url = API_BASE + path + "?" + query.toString();
 
-    QNetworkRequest request(url);
-    request.setHeader(QNetworkRequest::UserAgentHeader, "MyApp/1.0");
-    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
-
-    QNetworkReply *reply = m_networkManager.post(request, QByteArray());
-    connect(reply, &QNetworkReply::finished, this, [reply, cb = std::move(callback)]() {
-        cb(reply);
-    });
+    ApiClient::instance().postJson(url, body, std::move(onSuccess), std::move(onError), timeoutMs);
 }
 
 void UserManager::saveToSettings()
@@ -393,13 +333,13 @@ void UserManager::saveToSettings()
 
 void UserManager::loadFromSettings()
 {
-    m_token = m_settings.value("token").toString();
-    m_userid = m_settings.value("userid").toString();
-    m_nickname = m_settings.value("nickname").toString();
+    m_token     = m_settings.value("token").toString();
+    m_userid    = m_settings.value("userid").toString();
+    m_nickname  = m_settings.value("nickname").toString();
     m_avatarUrl = m_settings.value("avatarUrl").toString();
-    m_isVip = m_settings.value("isVip").toBool();
-    m_vipType = m_settings.value("vipType").toInt();
-    m_vipToken = m_settings.value("vipToken").toString();
+    m_isVip     = m_settings.value("isVip").toBool();
+    m_vipType   = m_settings.value("vipType").toInt();
+    m_vipToken  = m_settings.value("vipToken").toString();
 }
 
 void UserManager::clearSettings()

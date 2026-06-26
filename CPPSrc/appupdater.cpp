@@ -1,14 +1,17 @@
 #include "appupdater.h"
+#include "ApiClient.h"
+
 #include <QCoreApplication>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QStandardPaths>
 #include <QDir>
 #include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QProcess>
 #include <QCryptographicHash>
-#include <QUrlQuery>
+#include <QStandardPaths>
 #include <QTimer>
+#include <QUrl>
+#include <QUrlQuery>
 #include <QDebug>
 
 // APP_VERSION 通过 CMake 注入，未定义时使用默认值
@@ -16,12 +19,15 @@
 #define APP_VERSION "0.1"
 #endif
 
-// 版本检测 API 地址，可根据实际后端修改
+// 版本检测 API 地址
 static const QString CHECK_UPDATE_URL =
     QStringLiteral("https://xjt-togethertracks.top/api/app/checkupdate");
 
 AppUpdater::AppUpdater(QObject *parent)
-    : QObject(parent), m_networkManager(new QNetworkAccessManager(this)), m_currentVersion(QStringLiteral(APP_VERSION)), m_checkUrl(CHECK_UPDATE_URL)
+    : QObject(parent),
+      m_downloadManager(new QNetworkAccessManager(this)),
+      m_currentVersion(QStringLiteral(APP_VERSION)),
+      m_checkUrl(CHECK_UPDATE_URL)
 {
 }
 
@@ -40,7 +46,6 @@ double AppUpdater::downloadProgress() const { return m_downloadProgress; }
 bool AppUpdater::downloading() const { return m_downloading; }
 
 // ─── 版本号比较 ──────────────────────────────────────
-// 支持形如 "1.2.3" 的版本号，逐段比较
 int AppUpdater::compareVersions(const QString &v1, const QString &v2)
 {
     QStringList parts1 = v1.split('.');
@@ -57,7 +62,7 @@ int AppUpdater::compareVersions(const QString &v1, const QString &v2)
     return 0;
 }
 
-// ─── 1. 检查更新 ─────────────────────────────────────
+// ─── 1. 检查更新（用 ApiClient） ─────────────────────
 void AppUpdater::checkForUpdate()
 {
     QUrl url(m_checkUrl);
@@ -66,60 +71,38 @@ void AppUpdater::checkForUpdate()
     query.addQueryItem("current_version", m_currentVersion);
     url.setQuery(query);
 
-    QNetworkRequest request(url);
-    request.setHeader(QNetworkRequest::UserAgentHeader,
-                      QStringLiteral("WangGouMusic/%1").arg(m_currentVersion));
+    ApiClient::instance().setUserAgent(QStringLiteral("WangGouMusic/%1").arg(m_currentVersion));
 
-    QNetworkReply *reply = m_networkManager->get(request);
-    connect(reply, &QNetworkReply::finished, this, &AppUpdater::onCheckReplyFinished);
+    ApiClient::instance().getJson(url.toString(),
+        [this](QJsonObject obj) {
+            // 兼容 { code, data: { ... } } 格式
+            if (obj.contains("data") && obj.value("data").isObject())
+                obj = obj.value("data").toObject();
+
+            m_latestVersion = obj.value("latest_version").toString();
+            m_downloadUrl   = obj.value("download_url").toString();
+            m_releaseNotes  = obj.value("release_notes").toString();
+            m_fileMd5       = obj.value("md5").toString();
+
+            const bool hasUpdate = compareVersions(m_latestVersion, m_currentVersion) > 0;
+            m_updateAvailable = hasUpdate;
+            emit updateInfoChanged();
+            emit checkFinished(hasUpdate);
+        },
+        [this](QString err, int) {
+            emit checkFailed(err);
+        },
+        10000);
 }
 
-void AppUpdater::onCheckReplyFinished()
-{
-    QNetworkReply *reply = qobject_cast<QNetworkReply *>(sender());
-    if (!reply)
-        return;
-    reply->deleteLater();
-
-    if (reply->error() != QNetworkReply::NoError)
-    {
-        emit checkFailed(reply->errorString());
-        return;
-    }
-
-    QByteArray data = reply->readAll();
-    QJsonDocument doc = QJsonDocument::fromJson(data);
-    if (!doc.isObject())
-    {
-        emit checkFailed(QStringLiteral("Invalid response format"));
-        return;
-    }
-
-    QJsonObject obj = doc.object();
-
-    // 兼容 { "code":0, "data": { ... } } 格式：如果有 data 字段则进入内层
-    if (obj.contains("data") && obj.value("data").isObject())
-        obj = obj.value("data").toObject();
-
-    m_latestVersion = obj.value("latest_version").toString();
-    m_downloadUrl = obj.value("download_url").toString();
-    m_releaseNotes = obj.value("release_notes").toString();
-    m_fileMd5 = obj.value("md5").toString();
-
-    bool hasUpdate = compareVersions(m_latestVersion, m_currentVersion) > 0;
-    m_updateAvailable = hasUpdate;
-    emit updateInfoChanged();
-    emit checkFinished(hasUpdate);
-}
-
-// ─── 2. 下载更新文件 ─────────────────────────────────
+// ─── 2. 下载更新文件（保留独立 m_downloadManager，需要流式） ─────
 void AppUpdater::downloadUpdate()
 {
     if (m_downloadUrl.isEmpty() || m_downloading)
         return;
 
     // 下载到临时目录
-    QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+    const QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
     QDir dir(tempDir);
     m_downloadedFilePath = dir.filePath(
         QStringLiteral("WangGouMusic_%1_setup.exe").arg(m_latestVersion));
@@ -143,7 +126,7 @@ void AppUpdater::downloadUpdate()
     request.setHeader(QNetworkRequest::UserAgentHeader,
                       QStringLiteral("WangGouMusic/%1").arg(m_currentVersion));
 
-    m_downloadReply = m_networkManager->get(request);
+    m_downloadReply = m_downloadManager->get(request);
     connect(m_downloadReply, &QNetworkReply::downloadProgress,
             this, &AppUpdater::onDownloadProgress);
     connect(m_downloadReply, &QNetworkReply::finished,
@@ -175,17 +158,12 @@ void AppUpdater::onDownloadFinished()
     QString errorMsg;
 
     if (!success)
-    {
         errorMsg = m_downloadReply->errorString();
-    }
 
-    // 关闭文件
     if (m_downloadFile)
-    {
         m_downloadFile->close();
-    }
 
-    // 校验 MD5（如果服务端提供了）
+    // 校验 MD5
     if (success && !m_fileMd5.isEmpty())
     {
         QFile file(m_downloadedFilePath);
@@ -193,7 +171,7 @@ void AppUpdater::onDownloadFinished()
         {
             QCryptographicHash hash(QCryptographicHash::Md5);
             hash.addData(&file);
-            QString fileMd5 = hash.result().toHex().toLower();
+            const QString fileMd5 = hash.result().toHex().toLower();
             file.close();
 
             if (fileMd5 != m_fileMd5.toLower())
@@ -205,7 +183,6 @@ void AppUpdater::onDownloadFinished()
         }
     }
 
-    // 清理
     m_downloadReply->deleteLater();
     m_downloadReply = nullptr;
     delete m_downloadFile;
@@ -228,7 +205,7 @@ void AppUpdater::onDownloadFinished()
     }
 }
 
-// ─── 3. 启动安装器并退出应用 ──────────────────────────
+// ─── 3. 启动安装器并退出应用 ────────────────────────
 void AppUpdater::installUpdate()
 {
     if (m_downloadedFilePath.isEmpty())
@@ -241,23 +218,18 @@ void AppUpdater::installUpdate()
         return;
     }
 
-    // InnoSetup 静默安装参数:
-    //   /SILENT              - 静默安装（只显示进度条，不显示向导页面）
-    //   /CLOSEAPPLICATIONS   - 自动关闭正在运行的旧版本
-    //   /RESTARTAPPLICATIONS - 安装完成后重新启动应用
-    //   /NORESTART           - 不重启系统
+    // InnoSetup 静默安装参数
     QStringList args;
     args << "/SILENT"
          << "/CLOSEAPPLICATIONS"
          << "/RESTARTAPPLICATIONS"
          << "/NORESTART";
 
-    bool started = QProcess::startDetached(m_downloadedFilePath, args);
+    const bool started = QProcess::startDetached(m_downloadedFilePath, args);
 
     if (started)
     {
         emit installStarted();
-        // 给 QML 一点时间处理 installStarted 信号后再退出
         QTimer::singleShot(500, qApp, &QCoreApplication::quit);
     }
     else

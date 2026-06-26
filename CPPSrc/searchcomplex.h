@@ -2,14 +2,17 @@
 #define SEARCHCOMPLEX_H
 
 #include <QObject>
-#include <QNetworkAccessManager>
-#include <QObject>
-#include <QNetworkReply>
-#include <QJsonDocument>
-#include <QJsonArray>
 #include <QJsonObject>
-#include <QDebug>
 #include <QString>
+#include <QVariantList>
+#include <functional>
+
+/**
+ * @brief 复杂搜索（关键词搜索歌曲）
+ *
+ * 内部已迁移到 ApiClient 单例，不再持有 QNetworkAccessManager。
+ * 外部信号/属性保持不变。
+ */
 class SearchComplex : public QObject
 {
     Q_OBJECT
@@ -27,6 +30,7 @@ public:
     int getPage() const;
     bool getHasMore() const;
     bool getIsLoading() const;
+
 signals:
     void complexsearchitemsChanged();
     void totalChanged();
@@ -35,12 +39,10 @@ signals:
     void isLoadingChanged();
     void loadFinished();
 
-private slots:
-    void onReplyFinished(QNetworkReply *reply);
-
 private:
-    QString secondsToMinutesSeconds(int totalSeconds);
-    QNetworkAccessManager m_manager;
+    void parseAndAppend(const QJsonObject &root, bool isAppend);
+    static QString secondsToMinutesSeconds(int totalSeconds);
+
     QVariantList m_items;
     int m_total = 0;
     int m_page = 1;

@@ -107,7 +107,14 @@ Item {
                                     playlistmanager.clearPlaylist()
                                     for (var i = 0; i < songs.length; i++) {
                                         var s = songs[i]
-                                        playlistmanager.addSong(s.songname, s.songhash, s.singername, s.union_cover, s.album_name, s.duration)
+                                        playlistmanager.addSong({
+                                            "songname": s.songname,
+                                            "songhash": s.songhash,
+                                            "singername": s.singername,
+                                            "union_cover": s.union_cover,
+                                            "album_name": s.album_name,
+                                            "duration": s.duration
+                                        })
                                     }
                                     playlistmanager.playSongbyindex(0)
                                     BasicConfig.emitSongAdded("正在播放热门推荐")
@@ -419,9 +426,14 @@ Item {
                                                 songData.duration, songData.union_cover)
                                         }
                                     } else {
-                                        playlistmanager.addandplay(songData.songname, songData.songhash,
-                                                                   songData.singername, songData.union_cover,
-                                                                   songData.album_name, songData.duration)
+                                        playlistmanager.playNextAndPlay({
+                                            "songname": songData.songname,
+                                            "songhash": songData.songhash,
+                                            "singername": songData.singername,
+                                            "union_cover": songData.union_cover,
+                                            "album_name": songData.album_name,
+                                            "duration": songData.duration
+                                        })
                                         BasicConfig.emitSongAdded("正在播放: " + songData.songname)
                                     }
                                 }

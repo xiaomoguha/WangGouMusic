@@ -211,7 +211,14 @@ Page {
                             TapHandler {
                                 cursorShape: Qt.PointingHandCursor
                                 onTapped: {
-                                    playlistmanager.addandplay(modelData.songname, modelData.songhash, modelData.singername, modelData.union_cover, modelData.album_name, modelData.duration);
+                                    playlistmanager.playNextAndPlay({
+                                        "songname": modelData.songname,
+                                        "songhash": modelData.songhash,
+                                        "singername": modelData.singername,
+                                        "union_cover": modelData.union_cover,
+                                        "album_name": modelData.album_name,
+                                        "duration": modelData.duration
+                                    });
                                     BasicConfig.emitSongAdded("正在播放: " + modelData.songname);
                                 }
                             }
@@ -237,7 +244,14 @@ Page {
                             TapHandler {
                                 cursorShape: Qt.PointingHandCursor
                                 onTapped: {
-                                    playlistmanager.addSong(modelData.songname, modelData.songhash, modelData.singername, modelData.union_cover, modelData.album_name, modelData.duration);
+                                    playlistmanager.addSong({
+                                        "songname": modelData.songname,
+                                        "songhash": modelData.songhash,
+                                        "singername": modelData.singername,
+                                        "union_cover": modelData.union_cover,
+                                        "album_name": modelData.album_name,
+                                        "duration": modelData.duration
+                                    });
                                     BasicConfig.emitSongAdded();
                                 }
                             }

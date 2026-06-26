@@ -93,7 +93,14 @@ Item {
                         playlistmanager.clearPlaylist()
                         for (var i = 0; i < songs.length; i++) {
                             var s = songs[i]
-                            playlistmanager.addSong(s.songname, s.songhash, s.singername, s.union_cover, s.album_name, s.duration)
+                            playlistmanager.addSong({
+                                "songname": s.songname,
+                                "songhash": s.songhash,
+                                "singername": s.singername,
+                                "union_cover": s.union_cover,
+                                "album_name": s.album_name,
+                                "duration": s.duration
+                            })
                         }
                         playlistmanager.playSongbyindex(0)
                         BasicConfig.emitSongAdded("正在播放: " + playlistName)
@@ -251,7 +258,6 @@ Item {
                                 onTapped: {
                                     if (!recommendation) return
                                     var songs = recommendation.playlistTracksQml
-                                    // 未全量加载时，先全量；全量后由 onTracksChanged 触发播放
                                     if (recommendation.playlistHasMore) {
                                         _pendingPlayAll = true
                                         recommendation.loadAllPlaylistTracks()
@@ -261,7 +267,14 @@ Item {
                                         playlistmanager.clearPlaylist()
                                         for (var i = 0; i < songs.length; i++) {
                                             var s = songs[i]
-                                            playlistmanager.addSong(s.songname, s.songhash, s.singername, s.union_cover, s.album_name, s.duration)
+                                            playlistmanager.addSong({
+                                                "songname": s.songname,
+                                                "songhash": s.songhash,
+                                                "singername": s.singername,
+                                                "union_cover": s.union_cover,
+                                                "album_name": s.album_name,
+                                                "duration": s.duration
+                                            })
                                         }
                                         playlistmanager.playSongbyindex(0)
                                         BasicConfig.emitSongAdded("正在播放: " + playlistName)
@@ -423,9 +436,14 @@ Item {
                                     TapHandler {
                                         cursorShape: Qt.PointingCursor
                                         onTapped: {
-                                            playlistmanager.addandplay(modelData.songname, modelData.songhash,
-                                                                       modelData.singername, modelData.union_cover,
-                                                                       modelData.album_name, modelData.duration)
+                                            playlistmanager.playNextAndPlay({
+                                                "songname": modelData.songname,
+                                                "songhash": modelData.songhash,
+                                                "singername": modelData.singername,
+                                                "union_cover": modelData.union_cover,
+                                                "album_name": modelData.album_name,
+                                                "duration": modelData.duration
+                                            })
                                             BasicConfig.emitSongAdded("正在播放: " + modelData.songname)
                                         }
                                     }
@@ -452,9 +470,14 @@ Item {
                                     TapHandler {
                                         cursorShape: Qt.PointingCursor
                                         onTapped: {
-                                            playlistmanager.addSongNext(modelData.songname, modelData.songhash,
-                                                                        modelData.singername, modelData.union_cover,
-                                                                        modelData.album_name, modelData.duration)
+                                            playlistmanager.addSongNext({
+                                                "songname": modelData.songname,
+                                                "songhash": modelData.songhash,
+                                                "singername": modelData.singername,
+                                                "union_cover": modelData.union_cover,
+                                                "album_name": modelData.album_name,
+                                                "duration": modelData.duration
+                                            })
                                             BasicConfig.emitSongAdded("已添加到下一首: " + modelData.songname)
                                         }
                                     }

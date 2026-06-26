@@ -205,7 +205,14 @@ Page {
                                 TapHandler {
                                     cursorShape: Qt.PointingHandCursor
                                     onTapped: {
-                                        playlistmanager.addandplay(modelData.title, modelData.songhash, modelData.singername, modelData.union_cover, modelData.album_name, modelData.duration);
+                                        playlistmanager.playNextAndPlay({
+                                            "songname": modelData.title,
+                                            "songhash": modelData.songhash,
+                                            "singername": modelData.singername,
+                                            "union_cover": modelData.union_cover,
+                                            "album_name": modelData.album_name,
+                                            "duration": modelData.duration
+                                        });
                                         BasicConfig.emitSongAdded("正在播放: " + modelData.title);
                                     }
                                 }
@@ -235,7 +242,14 @@ Page {
                                 TapHandler {
                                     cursorShape: Qt.PointingHandCursor
                                     onTapped: {
-                                        playlistmanager.addSong(modelData.title, modelData.songhash, modelData.singername, modelData.union_cover, modelData.album_name, modelData.duration);
+                                        playlistmanager.addSong({
+                                            "songname": modelData.title,
+                                            "songhash": modelData.songhash,
+                                            "singername": modelData.singername,
+                                            "union_cover": modelData.union_cover,
+                                            "album_name": modelData.album_name,
+                                            "duration": modelData.duration
+                                        });
                                         BasicConfig.emitSongAdded();
                                     }
                                 }
