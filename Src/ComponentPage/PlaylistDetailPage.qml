@@ -19,8 +19,8 @@ Item {
     property string searchKeyword: ""
     property var filteredTracks: []
     property bool isSearchAllLoaded: false   // 是否已为搜索全量加载
-    property var searchTimer: null
     property bool _pendingPlayAll: false
+    readonly property bool pageActive: parent && parent.visible && opacity > 0
 
     Component.onCompleted: {
         if (recommendation && playlistId !== "")
@@ -35,9 +35,11 @@ Item {
             if (recommendation && playlistId !== "") {
                 tracksListView.contentY = 0
                 searchKeyword = ""
+                searchInput.text = ""
                 filteredTracks = []
                 isSearchAllLoaded = false
                 _pendingPlayAll = false
+                searchDebounceTimer.stop()
                 recommendation.fetchPlaylistTracks(playlistId)
             }
         }
@@ -45,6 +47,7 @@ Item {
 
     // 搜索：输入时防抖，触发全量加载后客户端过滤
     function doSearch() {
+        if (!pageActive && searchKeyword.trim() === "") return  // 页面已隐藏
         var kw = searchKeyword.trim()
         if (kw === "") {
             filteredTracks = []
@@ -77,7 +80,7 @@ Item {
     Connections {
         target: recommendation
         function onPlaylistTracksChanged() {
-            if (!recommendation) return
+            if (!recommendation || !pageActive) return
             // 全量加载完成（hasMore=false）
             if (!recommendation.playlistHasMore) {
                 // 搜索触发的全量
@@ -206,35 +209,31 @@ Item {
                         font.family: AppTheme.fontFamily
                     }
 
-                    // 搜索框
-                    TextField {
-                        id: searchInput
-                        width: 180
-                        height: 32
-                        placeholderText: "搜索歌单内歌曲"
-                        font.pixelSize: 12
-                        font.family: AppTheme.fontFamily
-                        color: AppTheme.textPrimary
-                        background: Rectangle {
-                            radius: 16
-                            color: AppTheme.bgCard
-                            border.color: searchInput.activeFocus ? AppTheme.accent : AppTheme.borderDefault
-                            border.width: 1
-                        }
-                        onTextChanged: {
-                            searchKeyword = text
-                            if (text.trim() === "") isSearchAllLoaded = false
-                            if (!searchTimer) {
-                                searchTimer = Qt.createQmlObject('import QtQuick 2.15; Timer { interval: 400; repeat: false }', searchInput)
-                                searchTimer.triggered.connect(function(){ doSearch() })
-                            }
-                            searchTimer.restart()
-                        }
-                    }
-
+                    // 搜索框 + 播放全部（同一行）
                     Row {
                         spacing: 12
                         visible: !isTogetherMode
+
+                        TextField {
+                            id: searchInput
+                            width: 180
+                            height: 32
+                            placeholderText: "搜索歌单内歌曲"
+                            font.pixelSize: 12
+                            font.family: AppTheme.fontFamily
+                            color: AppTheme.textPrimary
+                            background: Rectangle {
+                                radius: 16
+                                color: AppTheme.bgCard
+                                border.color: searchInput.activeFocus ? AppTheme.accent : AppTheme.borderDefault
+                                border.width: 1
+                            }
+                            onTextChanged: {
+                                searchKeyword = text
+                                if (text.trim() === "") isSearchAllLoaded = false
+                                searchDebounceTimer.restart()
+                            }
+                        }
 
                         Rectangle {
                             width: 100
@@ -283,6 +282,14 @@ Item {
                             }
                             Behavior on color { ColorAnimation { duration: 150 } }
                         }
+                    }
+
+                    // 搜索防抖 Timer（声明式，页面销毁/隐藏时自动停止）
+                    Timer {
+                        id: searchDebounceTimer
+                        interval: 400
+                        repeat: false
+                        onTriggered: { if (pageActive) doSearch() }
                     }
                 }
             }

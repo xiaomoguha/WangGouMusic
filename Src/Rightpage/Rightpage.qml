@@ -113,6 +113,8 @@ Rectangle {
 
         if (target === "") {
             hideOverlay();
+            // 回到首页，左栏导航高亮同步到"云音乐精选"
+            BasicConfig.indexchange(0);
         } else {
             showOverlay(target);
         }

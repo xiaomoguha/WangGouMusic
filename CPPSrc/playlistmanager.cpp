@@ -1311,6 +1311,13 @@ void PlaylistManager::handlePlayerError(QMediaPlayer::Error error, const QString
         qDebug() << "尝试第" << m_repairCount << "次重新播放...";
 
         qint64 lastPos = player->position();
+        // 修复：m_currentIndex 可能为 -1（无歌曲加载时任意时刻都可能报错），
+        // 导致 m_playlist[-1] 越界崩溃
+        if (m_currentIndex < 0 || m_currentIndex >= m_playlist.size()) {
+            m_isRepairing = false;
+            m_repairCount = MAX_REPAIR_ATTEMPTS;
+            return;
+        }
         QString currentUrl = m_playlist[m_currentIndex].url;
 
         // 先停止并清空当前播放
