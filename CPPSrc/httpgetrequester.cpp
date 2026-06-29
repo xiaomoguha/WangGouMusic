@@ -45,30 +45,19 @@ void HttpGetRequester::fetchData(const QString &url)
 
 void HttpGetRequester::startRequest(const QString &url)
 {
-    // 构造带自定义头的 URL：仅对不常变场景做 URL 拼接不可控，
-    // 这里改用 ApiClient 但为每个实例保留一份私有 header 临时插入。
-    // 简化：把 customHeaders 暂存到 ApiClient 全局（fetchData 结束恢复）。
     ApiClient& api = ApiClient::instance();
-    for (const auto& h : m_customHeaders) {
-        api.setBaseHeader(QString::fromUtf8(h.first), QString::fromUtf8(h.second));
-    }
 
+    // ⚠️ 修复：请求完成回调中必须将 m_currentReply 置 null，
+    // 否则 ApiClient 内部的 deleteLater 会留下悬空指针，
+    // 下次 fetchData → abortCurrent() 访问 m_currentReply 时段错误。
     auto onSuccess = [this](QByteArray data) {
+        m_currentReply = nullptr;   // ApiClient 已完成删除
         emit dataReceived(data);
-        // 恢复：清掉本次追加的自定义头
-        ApiClient& a = ApiClient::instance();
-        for (const auto& h : m_customHeaders) {
-            a.clearBaseHeaders();  // 简单：直接清空（其他 manager 头会被影响，
-                                   // 但 recommendation 的 4 个 requester 不会同时跑且都用同样默认头）
-        }
     };
     auto onError = [this](QString err, int /*code*/) {
-        // ApiClient 已统一发出 globalErrorOccurred；这里只对调用方透传
+        m_currentReply = nullptr;   // ApiClient 已完成删除
         emit requestFailed(err);
     };
 
     m_currentReply = api.get(url, onSuccess, onError, m_timeoutMs);
-    // 注意：ApiClient 自己管理超时 timer，外部不再需要重复处理
-    // 但保留兼容语义：用户原本依赖 onFinished 流程，这里通过 ApiClient 的回调
-    // 走 onSuccess / onError 路径。
 }
