@@ -360,9 +360,19 @@ Window {
                             Text {
                                 required property int index
                                 property string currentChar: verticalTextContainer.lyricText.charAt(index)
-                                property bool isAscii: currentChar.charCodeAt(0) < 128 && currentChar !== ' '
+                                property int code: currentChar.charCodeAt(0)
+                                property bool isAscii: code < 128 && currentChar !== ' '
                                 property bool isLetterOrNumber: (currentChar >= 'a' && currentChar <= 'z') || (currentChar >= 'A' && currentChar <= 'Z') || (currentChar >= '0' && currentChar <= '9')
-                                property bool isCJKPunctuation: "，。！？：；、（）—…“”‘’".indexOf(currentChar) >= 0
+                                // 竖排时 CJK 标点/括号需旋转 90° 才不突兀。按 Unicode 区间判定，
+                                // 覆盖 、。《》「」『』【】〔〕〈〉、全角标点（！？：；（）等）、
+                                // 破折号/省略号/引号（—…""''）等，避免枚举遗漏（原白名单漏了《》等）。
+                                property bool isCJKPunctuation: (code >= 0x3000 && code <= 0x303F)
+                                        || (code >= 0xFF01 && code <= 0xFF0F)
+                                        || (code >= 0xFF1A && code <= 0xFF20)
+                                        || (code >= 0xFF3B && code <= 0xFF40)
+                                        || (code >= 0xFF5B && code <= 0xFF65)
+                                        || (code >= 0x2010 && code <= 0x2027)
+                                        || (code >= 0x2030 && code <= 0x205E)
                                 property bool isPunctuation: (isAscii && !isLetterOrNumber) || isCJKPunctuation
 
                                 text: currentChar
@@ -402,9 +412,19 @@ Window {
                                 Text {
                                     required property int index
                                     property string currentChar: verticalTextContainer.lyricText.charAt(index)
-                                    property bool isAscii: currentChar.charCodeAt(0) < 128 && currentChar !== ' '
+                                    property int code: currentChar.charCodeAt(0)
+                                    property bool isAscii: code < 128 && currentChar !== ' '
                                     property bool isLetterOrNumber: (currentChar >= 'a' && currentChar <= 'z') || (currentChar >= 'A' && currentChar <= 'Z') || (currentChar >= '0' && currentChar <= '9')
-                                    property bool isCJKPunctuation: "，。！？：；、（）—…“”‘’".indexOf(currentChar) >= 0
+                                    // 竖排时 CJK 标点/括号需旋转 90° 才不突兀。按 Unicode 区间判定，
+                                    // 覆盖 、。《》「」『』【】〔〕〈〉、全角标点（！？：；（）等）、
+                                    // 破折号/省略号/引号（—…""''）等，避免枚举遗漏（原白名单漏了《》等）。
+                                    property bool isCJKPunctuation: (code >= 0x3000 && code <= 0x303F)
+                                            || (code >= 0xFF01 && code <= 0xFF0F)
+                                            || (code >= 0xFF1A && code <= 0xFF20)
+                                            || (code >= 0xFF3B && code <= 0xFF40)
+                                            || (code >= 0xFF5B && code <= 0xFF65)
+                                            || (code >= 0x2010 && code <= 0x2027)
+                                            || (code >= 0x2030 && code <= 0x205E)
                                     property bool isPunctuation: (isAscii && !isLetterOrNumber) || isCJKPunctuation
 
                                     text: currentChar

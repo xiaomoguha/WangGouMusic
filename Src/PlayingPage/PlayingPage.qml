@@ -44,8 +44,8 @@ Rectangle {
         id: blurredImage
         anchors.fill: parent
         source: originalImage
-        radius: Math.min(parent.width, parent.height) * 0.4
-        samples: 120
+        radius: 80  // 固定值：避免随窗口 resize 重算；80px 背景模糊足够柔和
+        samples: 81  // 略大于 radius 即可（原 120 过高），降低 GPU 采样开销
         transparentBorder: true  // 重要！
         visible: false  // 隐藏模糊结果
     }

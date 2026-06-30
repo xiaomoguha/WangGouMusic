@@ -5,8 +5,10 @@
 
 class PlaylistManager;
 
-#ifdef Q_OS_MAC
-// macOS 媒体控制：耳机按键、键盘媒体键、通知中心"正在播放"
+// macOS 与 Windows 都有真实实现（macOS 在 .mm、Windows 在 _win.cpp），
+// 通过 void* m_impl 指向各自的平台 impl；其余平台走下面的空实现。
+#if defined(Q_OS_MAC) || defined(Q_OS_WIN)
+// 媒体控制：耳机按键、键盘媒体键、系统媒体控件（macOS 通知中心 / Windows SMTC）
 class NowPlayingMediaController : public QObject
 {
     Q_OBJECT
@@ -22,7 +24,7 @@ private:
     void *m_impl;
 };
 #else
-// 非 macOS 平台空实现
+// 其它平台（Linux 等）空实现
 class NowPlayingMediaController : public QObject
 {
     Q_OBJECT

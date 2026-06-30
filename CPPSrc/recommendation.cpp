@@ -49,8 +49,8 @@ void Recommendation::onTopSongsData(const QByteArray &data)
     }
 
     QJsonArray songs = doc.object()["data"].toArray();
-    m_topSongs.clear();
 
+    QVariantList parsed;
     for (const QJsonValue &val : songs) {
         QJsonObject s = val.toObject();
         QString hash = s["hash"].toString();
@@ -77,8 +77,16 @@ void Recommendation::onTopSongsData(const QByteArray &data)
         item["union_cover"] = cover;
         item["album_name"] = albumName;
         item["duration"] = duration;
-        m_topSongs.append(item);
+        parsed.append(item);
     }
+
+    // 接口偶发返回空 data 数组时保留上一次的数据，避免首页热门歌曲被清空。
+    if (parsed.isEmpty()) {
+        qWarning() << "热门推荐响应为空，保留现有" << m_topSongs.size() << "首";
+        return;
+    }
+
+    m_topSongs = parsed;
     emit topSongsChanged();
     qDebug() << "热门推荐加载完成，共" << m_topSongs.size() << "首";
 }
@@ -93,8 +101,8 @@ void Recommendation::onTopPlaylistsData(const QByteArray &data)
     }
 
     QJsonArray list = doc.object()["data"].toObject()["special_list"].toArray();
-    m_topPlaylists.clear();
 
+    QVariantList parsed;
     for (const QJsonValue &val : list) {
         QJsonObject pl = val.toObject();
         QString imgurl = pl["imgurl"].toString();
@@ -114,8 +122,17 @@ void Recommendation::onTopPlaylistsData(const QByteArray &data)
         item["global_collection_id"] = pl["global_collection_id"].toString();
         item["specialid"] = pl["specialid"].toInt();
         item["tags"] = tagNames.join(" / ");
-        m_topPlaylists.append(item);
+        parsed.append(item);
     }
+
+    // 接口偶发返回空 special_list（仅 OlexpIds 等，status 仍为 1）。
+    // 此时保留上一次的数据，避免刷新把首页歌单清空。
+    if (parsed.isEmpty()) {
+        qWarning() << "精选歌单响应为空，保留现有" << m_topPlaylists.size() << "个歌单";
+        return;
+    }
+
+    m_topPlaylists = parsed;
     emit topPlaylistsChanged();
     qDebug() << "精选歌单加载完成，共" << m_topPlaylists.size() << "个";
 }

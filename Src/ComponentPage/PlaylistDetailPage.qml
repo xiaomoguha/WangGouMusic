@@ -20,11 +20,32 @@ Item {
     property var filteredTracks: []
     property bool isSearchAllLoaded: false   // 是否已为搜索全量加载
     property bool _pendingPlayAll: false
+    property int currentSongIndex: -1        // 当前播放在列表中的下标，-1 = 不在
+    property bool _autoLocated: false        // 是否已自动定位过一次
     readonly property bool pageActive: parent && parent.visible && opacity > 0
 
     Component.onCompleted: {
         if (recommendation && playlistId !== "")
             recommendation.fetchPlaylistTracks(playlistId)
+    }
+
+    // 计算当前播放在当前列表中的下标（搜索态用 filteredTracks，否则用后端已加载列表）
+    function recomputeCurrentSongIndex() {
+        currentSongIndex = -1
+        if (!playlistmanager) return
+        var csh = playlistmanager.currentSonghash
+        if (!csh) return
+        var list = searchKeyword.trim() !== "" ? filteredTracks
+                  : (recommendation ? recommendation.playlistTracksQml : [])
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].songhash === csh) { currentSongIndex = i; break }
+        }
+    }
+
+    // 当前播放变化时重算下标（驱动浮动按钮显隐），但不自动滚动
+    Connections {
+        target: playlistmanager
+        function onCurrentSongChanged() { recomputeCurrentSongIndex() }
     }
 
     // 歌单详情页会被 Rightpage 的 Loader 缓存复用，切换不同歌单时
@@ -39,6 +60,8 @@ Item {
                 filteredTracks = []
                 isSearchAllLoaded = false
                 _pendingPlayAll = false
+                _autoLocated = false
+                currentSongIndex = -1
                 searchDebounceTimer.stop()
                 recommendation.fetchPlaylistTracks(playlistId)
             }
@@ -81,6 +104,12 @@ Item {
         target: recommendation
         function onPlaylistTracksChanged() {
             if (!recommendation || !pageActive) return
+            recomputeCurrentSongIndex()
+            // 首次数据到达且用户未滚动时，自动定位到当前播放（仅一次）
+            if (!_autoLocated && tracksListView.contentY < 10 && currentSongIndex >= 0) {
+                _autoLocated = true
+                tracksListView.positionViewAtIndex(currentSongIndex, ListView.Contain)
+            }
             // 全量加载完成（hasMore=false）
             if (!recommendation.playlistHasMore) {
                 // 搜索触发的全量
@@ -304,6 +333,17 @@ Item {
         }
     }
 
+    // 右下角浮动「定位到正在播放」按钮（当前歌不在视口内时出现）
+    LocateCurrentButton {
+        target: tracksListView
+        currentSongIndex: parent.currentSongIndex
+        anchors.right: parent.right
+        anchors.rightMargin: 24
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 24
+        z: 10
+    }
+
     // 歌曲列表
     ListView {
         id: tracksListView
@@ -313,6 +353,7 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
         clip: true
+        cacheBuffer: 2000
         // 搜索时显示过滤结果，否则显示全部已加载
         model: searchKeyword.trim() !== "" ? filteredTracks
               : (recommendation ? recommendation.playlistTracksQml : [])

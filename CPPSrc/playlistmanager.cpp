@@ -10,8 +10,12 @@ PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent
 {
     player->setAudioOutput(audioOutput);
     audioOutput->setVolume(1.0);
-    loadPlaylistFromCache();
-    loadRecentFromCache();
+    // 延迟到事件循环空闲时加载缓存，避免主线程同步 readAll + JSON 解析阻塞 QML 首屏
+    // loadPlaylistFromCache 末尾会 emit playlistUpdated()，QML 绑定会自动刷新
+    QTimer::singleShot(0, this, [this]() {
+        loadPlaylistFromCache();
+        loadRecentFromCache();
+    });
     // lyricParser();
     //  连接 mediaStatusChanged 信号
     QObject::connect(player, &QMediaPlayer::mediaStatusChanged, this, [this](QMediaPlayer::MediaStatus status)
@@ -254,6 +258,12 @@ int PlaylistManager::is_have_cache(const SongInfo &song, const int index)
         m_currentIndex = index;
         // 提取专辑封面主色调
         extractDominantColor(song.union_cover);
+        // 重置进度：缓存命中的新歌也从 0 开始（与 startPlayback 一致）。
+        // 上一首自然播完时 m_percent 冻在 ~1.0（updatePlaybackProgress 在 EndOfMedia 跳过更新），
+        // 不重置的话媒体控制栏（currentSongChanged 触发 getpercent）会把本曲显示在末尾。
+        m_percent = 0.0f;
+        m_percentstr = "00:00";
+        emit percentChanged();
         emit currentIndexChanged(index);
         emit currentSongChanged();
         emit isPausedChanged();
@@ -437,10 +447,23 @@ void PlaylistManager::playPlaylistFromSource(const QString &sourceId, int totalC
 
 void PlaylistManager::tryLazyLoadMore()
 {
-    // 仅懒加载模式；非一起听；未在拉取；源还有更多；距末尾 ≤ 5
+    // 仅懒加载模式；非一起听；未在拉取；源还有更多；距末尾 ≤ 5（播放预取）
     if (m_lazySourceId.isEmpty() || type != LOCAL || m_lazyFetching) return;
     if (m_lazyPage * m_lazyPageSize >= m_lazyTotal) return;   // 源已全加载
     if (m_playlist.size() - m_currentIndex > 5) return;       // 余量充足
+    fetchNextSourcePage();
+}
+
+void PlaylistManager::requestMoreSourceTracks()
+{
+    // 弹窗滚动按需加载：与 tryLazyLoadMore 共用前置守卫，但不受「距末尾 ≤ 5」限制。
+    if (m_lazySourceId.isEmpty() || type != LOCAL || m_lazyFetching) return;
+    if (m_lazyPage * m_lazyPageSize >= m_lazyTotal) return;   // 源已全加载
+    fetchNextSourcePage();
+}
+
+void PlaylistManager::fetchNextSourcePage()
+{
     m_lazyFetching = true;
     int nextPage = m_lazyPage + 1;
     if (m_recommendation) {
@@ -454,6 +477,12 @@ void PlaylistManager::tryLazyLoadMore()
                 m_lazyPage += 1;
                 savePlaylistToCache();
                 emit playlistUpdated();
+                // playNext 在已加载末尾触发拉取时，下一批到位后续播下一首
+                if (m_pendingNextAfterLoad) {
+                    m_pendingNextAfterLoad = false;
+                    if (m_currentIndex + 1 < m_playlist.size())
+                        playSongbyindex(m_currentIndex + 1);
+                }
             });
     }
 }
@@ -530,6 +559,12 @@ void PlaylistManager::playNext()
     if (m_currentIndex + 1 < (*m_curplaylist).size())
     {
         playSongbyindex(m_currentIndex + 1);
+    }
+    else if (!m_lazySourceId.isEmpty() && m_lazyPage * m_lazyPageSize < m_lazyTotal)
+    {
+        // 已到已加载队列末尾，但源歌单还有更多：拉取下一批，到位后续播下一首（而非回到第一首）
+        m_pendingNextAfterLoad = true;
+        if (!m_lazyFetching) fetchNextSourcePage();
     }
     else
     {
@@ -853,6 +888,12 @@ void PlaylistManager::startPlayback(const SongInfo &song)
     m_totalDownloadBytes = 0;
     emit downloadProgressChanged();
     emit isBufferingChanged();
+
+    // 重置进度：新歌从 0 开始。避免上一首自然播完时的 ~1.0 残留，
+    // 导致媒体控制栏(currentSongChanged 触发)把下一首进度显示在末尾。
+    m_percent = 0.0f;
+    m_percentstr = "00:00";
+    emit percentChanged();
 
     // 初始播放阈值（字节），例如 500KB
     const qint64 startThreshold = 500 * 1024;
