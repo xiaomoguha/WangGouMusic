@@ -48,9 +48,26 @@ Item {
     property string searchKeyword: ""
     property var filteredSongs: []
     property bool isSearchAllLoaded: false   // 搜索是否已全量加载
+    property bool _songsAppending: false     // 加载更多时为 true：songsModel 走追加而非清空重建，保留 contentY
+    property int currentSongIndex: -1        // 当前播放在 filteredSongs 中的下标，-1 = 不在此列表
+    property bool _autoLocated: false        // 进入歌单后是否已自动定位过一次
 
     onSearchKeywordChanged: triggerSearch()
     onCurrentSongsChanged: updateFilteredSongs()
+
+    // 歌单内搜索防抖：停止输入 250ms 后再过滤，避免每键都全量 O(n) 扫描
+    Timer {
+        id: detailSearchDebounce
+        interval: 250
+        repeat: false
+        onTriggered: searchKeyword = detailSearchField.text
+    }
+
+    // ListView 的稳定 model：append() 增长不会重置 contentY（只有整表替换/重绑 model 才会清零）。
+    // delegate 仍直接读 filteredSongs[index]，这里只负责随内容增长提供行数。
+    ListModel {
+        id: songsModel
+    }
 
     // 搜索总入口
     function triggerSearch() {
@@ -92,6 +109,24 @@ Item {
                 }
             }
             filteredSongs = result
+        }
+        // 同步 ListView 的行数。加载更多走追加（不清空 → contentY 不变）；
+        // 其余（初次加载 / 搜索 / 清空）走清空重建。
+        if (_songsAppending) {
+            _songsAppending = false
+            var added = filteredSongs.length - songsModel.count
+            for (var a = 0; a < added; a++) songsModel.append({})
+        } else {
+            songsModel.clear()
+            for (var b = 0; b < filteredSongs.length; b++) songsModel.append({})
+        }
+        // 计算当前播放在此列表中的下标（-1 = 不在），供定位按钮 / 自动定位使用
+        currentSongIndex = -1
+        if (playlistmanager) {
+            var csh = playlistmanager.currentSonghash
+            for (var c = 0; csh && c < filteredSongs.length; c++) {
+                if (filteredSongs[c].hash === csh) { currentSongIndex = c; break }
+            }
         }
     }
 
@@ -205,8 +240,16 @@ Item {
             if (detailPage === 1) {
                 currentSongs = normalized
             } else {
+                // 加载更多：置追加模式，updateFilteredSongs 只往 songsModel 追加差量行，
+                // 不清空重建 → contentY 保持不变，彻底消除弹回顶部 + 闪烁。
+                _songsAppending = true
                 var combined = Array.prototype.slice.call(currentSongs).concat(normalized)
                 currentSongs = combined
+            }
+            // 进入歌单后首次数据到达：若当前播放已在此列表（已加载页命中），自动定位一次
+            if (detailPage === 1 && !_autoLocated && currentSongIndex >= 0) {
+                _autoLocated = true
+                songsListView.positionViewAtIndex(currentSongIndex, ListView.Contain)
             }
             hasMoreSongs = normalized.length >= detailPageSize && currentSongs.length < currentListCount
             // 搜索全量加载完成后执行过滤
@@ -454,6 +497,7 @@ Item {
                                             }
                                         }
 
+                                        _autoLocated = false
                                         isLoadingDetail = currentSongs.length === 0
                                         viewState = "detail"
                                         userManager.fetchPlaylistDetail(gid, 1, detailPageSize)
@@ -515,6 +559,17 @@ Item {
 
             Behavior on detailOpacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
             Behavior on detailSlideX { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+
+            // 右下角浮动「定位到正在播放」按钮（当前歌不在视口内时出现）
+            LocateCurrentButton {
+                target: songsListView
+                currentSongIndex: userPlaylistPage.currentSongIndex
+                anchors.right: parent.right
+                anchors.rightMargin: 18
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 18
+                z: 10
+            }
 
             Column {
                 anchors.fill: parent
@@ -718,7 +773,7 @@ Item {
                                 font.family: AppTheme.fontFamily
                                 background: Rectangle { color: "transparent" }
                                 onTextChanged: {
-                                    searchKeyword = text
+                                    detailSearchDebounce.restart()
                                 }
                             }
 
@@ -758,50 +813,73 @@ Item {
                     }
                 }
 
-                // 歌曲列表
-                Flickable {
-                    id: detailFlickable
-                    width: parent.width
-                    height: parent.height - 60 - detailActions.height - 12
-                    anchors.topMargin: 12
-                    clip: true
-                    contentHeight: detailListColumn.height
-
-                    onContentYChanged: {
-                        if (isLoadingMoreSongs || !hasMoreSongs) return
-                        if (contentY >= contentHeight - height - 200) {
-                            isLoadingMoreSongs = true
-                            detailPage += 1
-                            userManager.fetchPlaylistDetail(currentListId, detailPage, detailPageSize)
-                        }
-                    }
-
-                    ScrollBar.vertical: ScrollBar {
-                        anchors.right: parent.right
-                        anchors.rightMargin: 5
-                        width: 10
-                        contentItem: Rectangle {
-                            visible: parent.active
-                            width: 10
-                            radius: 4
-                            color: AppTheme.scrollbarColor
-                        }
-                    }
-
-                    Column {
-                        id: detailListColumn
-                        width: parent.width
-
+                // 歌曲列表：直接作为外层 Column 子项，ListView 自身滚动 + 虚拟化。
+                // 去掉原先 Flickable+Column 包裹：Column 管理可滚动 ListView 会干扰其 contentY（滚到底弹回顶部）。
+                // 注意：height 必须是定值（不能绑 contentHeight），否则会随内容增长撑爆布局。
                         ListView {
                             id: songsListView
                             width: parent.width
-                            height: contentHeight
-                            interactive: false
+                            height: parent.height - 60 - detailActions.height - 12
+                            clip: true
+                            interactive: true
+                            cacheBuffer: 1500
                             spacing: 0
-                            model: filteredSongs.length
+                            model: songsModel
+
+                            // 滚动接近底部加载下一页（原挂在 Flickable 上）
+                            onContentYChanged: {
+                                if (isLoadingMoreSongs || !hasMoreSongs) return
+                                if (contentY >= contentHeight - height - 200) {
+                                    isLoadingMoreSongs = true
+                                    detailPage += 1
+                                    userManager.fetchPlaylistDetail(currentListId, detailPage, detailPageSize)
+                                }
+                            }
+
+                            ScrollBar.vertical: ScrollBar {
+                                anchors.right: parent.right
+                                anchors.rightMargin: 5
+                                width: 10
+                                contentItem: Rectangle {
+                                    visible: parent.active
+                                    width: 10
+                                    radius: 4
+                                    color: AppTheme.scrollbarColor
+                                }
+                            }
+
+                            // 加载提示作为 ListView 的 footer：随内容滚动，滚到底部可见。
+                            // (重构去掉 Flickable 后这个 Item 曾变成 ListView 的兄弟节点，被挤出页面外。)
+                            footer: Component {
+                                Item {
+                                    width: songsListView.width
+                                    // height 与 visible 都读 showFooter，互不引用，避免绑定循环
+                                    readonly property bool showFooter: isLoadingMoreSongs || (!hasMoreSongs && currentSongs.length > 0)
+                                    height: showFooter ? 50 : 0
+                                    visible: showFooter
+                                
+                                    Text {
+                                        visible: isLoadingMoreSongs
+                                        text: "加载更多歌曲..."
+                                        color: AppTheme.textMuted
+                                        font.pixelSize: 12
+                                        font.family: AppTheme.fontFamily
+                                        anchors.centerIn: parent
+                                    }
+                                
+                                    Text {
+                                        visible: !hasMoreSongs && currentSongs.length > 0 && !isLoadingMoreSongs
+                                        text: "已加载全部 " + currentSongs.length + " 首"
+                                        color: AppTheme.textDim
+                                        font.pixelSize: 12
+                                        font.family: AppTheme.fontFamily
+                                        anchors.centerIn: parent
+                                    }
+                                }
+                            }
 
                             delegate: Rectangle {
-                                width: detailListColumn.width
+                                width: songsListView.width
                                 height: 60
                                 radius: 5
                                 color: {
@@ -810,7 +888,7 @@ Item {
                                     return "transparent"
                                 }
 
-                                readonly property bool isPlaying: playlistmanager && filteredSongs[index] && filteredSongs[index].hash && playlistmanager.currentSonghash === filteredSongs[index].hash
+                                readonly property bool isPlaying: !!(playlistmanager && filteredSongs[index] && filteredSongs[index].hash && playlistmanager.currentSonghash === filteredSongs[index].hash)
 
                                 Row {
                                     anchors.fill: parent
@@ -1042,35 +1120,8 @@ Item {
                                 HoverHandler { id: songMouse }
                             }
                         }
-
-                        // 加载更多歌曲
-                        Item {
-                            width: parent.width
-                            height: 50
-                            visible: isLoadingMoreSongs || (!hasMoreSongs && currentSongs.length > 0)
-
-                            Text {
-                                visible: isLoadingMoreSongs
-                                text: "加载更多歌曲..."
-                                color: AppTheme.textMuted
-                                font.pixelSize: 12
-                                font.family: AppTheme.fontFamily
-                                anchors.centerIn: parent
-                            }
-
-                            Text {
-                                visible: !hasMoreSongs && currentSongs.length > 0 && !isLoadingMoreSongs
-                                text: "已加载全部 " + currentSongs.length + " 首"
-                                color: AppTheme.textDim
-                                font.pixelSize: 12
-                                font.family: AppTheme.fontFamily
-                                anchors.centerIn: parent
-                            }
-                        }
                     }
                 }
-            }
-        }
     }
 
     // 返回后延迟清理数据

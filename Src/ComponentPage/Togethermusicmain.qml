@@ -314,7 +314,7 @@ Item {
         anchors.bottomMargin: 6
         clip: true
         spacing: 6
-        cacheBuffer: 9999
+        cacheBuffer: 320
         model: messages
 
         onContentHeightChanged: positionViewAtEnd()
@@ -763,6 +763,7 @@ Item {
                     height: parent.height - 62
                     clip: true
                     spacing: 2
+                    cacheBuffer: 1200
                     model: playlistmanager ? playlistmanager.togetherplaylist : 0
 
                     delegate: Rectangle {

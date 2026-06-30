@@ -7,6 +7,39 @@ Rectangle {
     id: controlBar
     color: AppTheme.bgBottomBarInner
 
+    // 播放列表弹窗的队列镜像同步：加载更多时增量 append，保留滚动位置（不弹回/不闪）
+    function makeQueueItem(s) {
+        return {
+            "title": s.title,
+            "singername": s.singername,
+            "duration": s.duration,
+            "songhash": s.songhash
+        }
+    }
+    function syncQueueModel() {
+        if (!playlistmanager) {
+            queueModel.clear()
+            return
+        }
+        var q = playlistmanager.type === 1 ? playlistmanager.togetherplaylist : playlistmanager.playlist
+        // 前缀一致（末尾追加）→ 只 append 差量，保留 contentY；否则整体重建
+        var prefixOk = queueModel.count > 0 && q.length >= queueModel.count
+        if (prefixOk) {
+            for (var i = 0; i < queueModel.count; i++) {
+                if (queueModel.get(i).songhash !== q[i].songhash) {
+                    prefixOk = false
+                    break
+                }
+            }
+        }
+        if (prefixOk) {
+            for (var j = queueModel.count; j < q.length; j++) queueModel.append(makeQueueItem(q[j]))
+        } else {
+            queueModel.clear()
+            for (var k = 0; k < q.length; k++) queueModel.append(makeQueueItem(q[k]))
+        }
+    }
+
     // 顶部渐变分隔线
     Rectangle {
         anchors.top: parent.top
@@ -657,6 +690,17 @@ Rectangle {
             layoutDirection: Qt.RightToLeft
             anchors.verticalCenter: parent.verticalCenter
 
+            // 播放列表弹窗：本地 ListModel 镜像 C++ 队列（同步函数定义在根 controlBar 上，全文档可见）
+            ListModel {
+                id: queueModel
+            }
+            Connections {
+                target: playlistmanager
+                function onPlaylistUpdated() { controlBar.syncQueueModel() }
+                function onTogetherplaylistUpdated() { controlBar.syncQueueModel() }
+                function onPlaylist_typeChanged() { controlBar.syncQueueModel() }
+            }
+
             // 播放列表
             Rectangle {
                 id: playlistBtn
@@ -699,6 +743,14 @@ Rectangle {
                     padding: 0
                     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
+                    onOpened: {
+                        controlBar.syncQueueModel()
+                        // 队列必含当前歌，打开即定位到正在播放
+                        if (playlistmanager && playlistmanager.currentIndex >= 0
+                            && playlistmanager.currentIndex < queueModel.count)
+                            playlistView.positionViewAtIndex(playlistmanager.currentIndex, ListView.Center)
+                    }
+
                     background: Rectangle {
                         radius: 12
                         color: AppTheme.bgCard
@@ -740,7 +792,7 @@ Rectangle {
                                     anchors.verticalCenter: parent.verticalCenter
                                 }
                                 Text {
-                                    text: "(" + (playlistmanager ? playlistmanager.playlistTotalCount : playlistView.count) + ")"
+                                    text: "(" + playlistView.count + ")"
                                     font.pixelSize: 12
                                     font.family: AppTheme.fontFamily
                                     color: AppTheme.textMuted
@@ -785,8 +837,39 @@ Rectangle {
                             height: parent.height - 44
                             clip: true
                             spacing: 0
+                            cacheBuffer: 1500
 
-                            model: playlistmanager ? (playlistmanager.type === 1 ? playlistmanager.togetherplaylist : playlistmanager.playlist) : []
+                            model: queueModel
+
+                            // 滚到底按需加载更多源数据（仅本地懒加载模式）
+                            onContentYChanged: {
+                                if (playlistmanager && playlistmanager.type === 0
+                                    && contentHeight > height
+                                    && contentY >= contentHeight - height - 120) {
+                                    playlistmanager.requestMoreSourceTracks()
+                                }
+                            }
+
+                            footer: Component {
+                                Item {
+                                    width: playlistView.width
+                                    height: visible ? 32 : 0
+                                    visible: playlistmanager && playlistmanager.type === 0 && playlistmanager.playlistTotalCount > 0
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        font.pixelSize: 11
+                                        font.family: AppTheme.fontFamily
+                                        color: AppTheme.textDim
+                                        text: {
+                                            var loaded = playlistmanager ? playlistmanager.playlistcount : 0
+                                            var total = playlistmanager ? playlistmanager.playlistTotalCount : 0
+                                            return loaded >= total ? ("共 " + total + " 首")
+                                                                   : ("已加载 " + loaded + " / " + total)
+                                        }
+                                    }
+                                }
+                            }
 
                             delegate: Rectangle {
                                 width: playlistView.width
@@ -821,7 +904,7 @@ Rectangle {
                                         clip: true
 
                                         Text {
-                                            text: modelData.title
+                                            text: model.title
                                             font.pixelSize: 13
                                             font.family: AppTheme.fontFamily
                                             color: index === playlistmanager.currentIndex ? AppTheme.accent : AppTheme.textPrimary
@@ -829,7 +912,7 @@ Rectangle {
                                             width: parent.width
                                         }
                                         Text {
-                                            text: modelData.singername
+                                            text: model.singername
                                             font.pixelSize: 10
                                             font.family: AppTheme.fontFamily
                                             color: AppTheme.textMuted
@@ -841,7 +924,7 @@ Rectangle {
                                     // 时长
                                     Text {
                                         text: {
-                                            var d = modelData.duration
+                                            var d = model.duration
                                             if (d.indexOf(":") >= 0) return d
                                             var sec = parseInt(d) || 0
                                             var m = Math.floor(sec / 60)
@@ -893,6 +976,17 @@ Rectangle {
                                 }
                             }
                         }
+                    }
+
+                    // 右下角浮动「定位到正在播放」按钮
+                    LocateCurrentButton {
+                        target: playlistView
+                        currentSongIndex: playlistmanager ? playlistmanager.currentIndex : -1
+                        anchors.right: parent.right
+                        anchors.rightMargin: 12
+                        anchors.bottom: parent.bottom
+                        anchors.bottomMargin: 12
+                        z: 10
                     }
                 }
 

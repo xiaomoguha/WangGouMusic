@@ -36,9 +36,12 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         CPPSrc/NowPlayingMediaController.h
         image.qrc
     )
-    # Windows 应用程序图标
+    # Windows 应用程序图标 + 系统媒体传输控件(SMTC)
     if(WIN32)
-        target_sources(WangGouMusic PRIVATE app.rc)
+        target_sources(WangGouMusic PRIVATE app.rc
+                        CPPSrc/NowPlayingMediaController_win.cpp)
+        # C++/WinRT 激活符号(RoActivateInstance 等)在 runtimeobject.lib
+        target_link_libraries(WangGouMusic PRIVATE runtimeobject)
     endif()
     # 非 macOS 平台也需要头文件以触发 AUTOMOC（#else 分支有 Q_OBJECT）
     if(NOT APPLE)
@@ -107,6 +110,14 @@ include(GNUInstallDirs)
 install(TARGETS WangGouMusic
     BUNDLE DESTINATION .
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+# Release/RelWithDebInfo 启用 LTO 与隐藏符号：减小二进制体积、加快加载
+if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    set_target_properties(WangGouMusic PROPERTIES
+        INTERPROCEDURAL_OPTIMIZATION TRUE
+        CXX_VISIBILITY_PRESET hidden
+        VISIBILITY_INLINES_HIDDEN ON)
+endif()
 
 if(QT_VERSION_MAJOR EQUAL 6)
     qt_import_qml_plugins(WangGouMusic)

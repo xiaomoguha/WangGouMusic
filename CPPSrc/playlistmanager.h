@@ -101,6 +101,7 @@ public:
     Q_INVOKABLE void addSongNext(const SongInfo &song);
     Q_INVOKABLE void addSongNext(const QVariantMap &songMap);
     Q_INVOKABLE void playPlaylistFromSource(const QString &sourceId, int totalCount, int startIndexInSource, const QVariantList &firstBatch);
+    Q_INVOKABLE void requestMoreSourceTracks();   // 弹窗滚动按需加载下一批（不受播放邻近守卫限制）
     Q_INVOKABLE void setposistion(float positionvalue);
 
     int currentIndex() const;
@@ -211,7 +212,9 @@ private:
     int m_lazyPage = 0;                // 已加载到第几页
     int m_lazyPageSize = 30;
     bool m_lazyFetching = false;       // 是否正在拉取下一批
+    bool m_pendingNextAfterLoad = false; // 到已加载末尾点下一首时，等下一批到位后续播
     void tryLazyLoadMore();            // 接近队列末尾时自动拉下一批
+    void fetchNextSourcePage();        // 拉取下一页源数据并 append 到队列（供上面两个入口共用）
     void fetchLyricData(const QString &hash, std::function<void(QString)> callback);
     void fetchLyricContent(const QString &id, const QString &accesskey, std::function<void(QString)> callback);
     QString currlyric = "网狗音乐！";

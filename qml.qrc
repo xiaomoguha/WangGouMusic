@@ -11,6 +11,7 @@
         <file>Src/BasicConfig/BasicConfig.qml</file>
         <file>Src/BasicConfig/AppTheme.qml</file>
         <file>Src/BasicConfig/qmldir</file>
+        <file>Src/BasicConfig/LocateCurrentButton.qml</file>
         <file>Src/ComponentPage/ComplexPage.qml</file>
         <file>Src/ComponentPage/PlaylistDetailPage.qml</file>
         <file>Src/ComponentPage/SearchresultPage.qml</file>

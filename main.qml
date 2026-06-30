@@ -17,7 +17,7 @@ ApplicationWindow {
     height: 752
     minimumWidth: 960
     minimumHeight: 680
-    visible: true
+    visible: false  // 延迟到 Component.onCompleted 计算居中后再显示，避免 (0,0) 闪烁
     title: qsTr("WYYMUSIC")
     color: "transparent"
     flags: Qt.FramelessWindowHint | Qt.Window
@@ -59,21 +59,32 @@ ApplicationWindow {
     // 当前是否展开歌词
     property bool lyricsOpened: false
 
+    // 启动后延迟拉取热搜与推荐数据，让首屏先渲染完
+    Timer {
+        id: startupFetchTimer
+        interval: 250
+        running: true
+        repeat: false
+        onTriggered: {
+            //获取热搜数据
+            if (hostSearch)
+                hostSearch.fetchhostserachData("https://xjt-togethertracks.top/api/search/hot")
+            //启动时加载推荐数据（仅首次，后续由 C++ 缓存）
+            if (recommendation) {
+                if (recommendation.topSongsQml.length === 0)
+                    recommendation.fetchTopSongs()
+                if (recommendation.topPlaylistsQml.length === 0)
+                    recommendation.fetchTopPlaylists()
+            }
+        }
+    }
+
     // 窗口启动时计算居中位置
     Component.onCompleted: {
         root.x = (Screen.width - root.width) / 2;
         root.y = (Screen.height - root.height) / 2;
-        //获取热搜数据
-        if (hostSearch) {
-            hostSearch.fetchhostserachData("https://xjt-togethertracks.top/api/search/hot");
-        }
-        //启动时加载推荐数据（仅首次，后续由 C++ 缓存）
-        if (recommendation) {
-            if (recommendation.topSongsQml.length === 0)
-                recommendation.fetchTopSongs()
-            if (recommendation.topPlaylistsQml.length === 0)
-                recommendation.fetchTopPlaylists()
-        }
+        // 首帧直接以居中位置显示，消除启动闪烁
+        root.visible = true
     }
     // 注意：关闭事件已被 TrayHandler 拦截，这里不会执行
     // 真正退出时由 TrayHandler 处理关闭桌面歌词

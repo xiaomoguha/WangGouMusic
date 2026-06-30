@@ -130,38 +130,41 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("userManager", &userManager);
 
     // 加载 DesktopLyrics.qml 独立窗口（跨平台）
-    QQmlComponent comp(&engine, QUrl("qrc:/Src/ComponentPage/DesktopLyrics.qml"));
-    QObject *desktopLyricsObj = comp.create();
-    QWindow *desktopLyricsWindow = qobject_cast<QWindow *>(desktopLyricsObj);
+    // 延迟到主窗口 QML 加载后再创建，避免 1079 行 DesktopLyrics.qml 的解析阻塞首屏
+    QTimer::singleShot(0, &engine, [&engine]() {
+        QQmlComponent comp(&engine, QUrl("qrc:/Src/ComponentPage/DesktopLyrics.qml"));
+        QObject *desktopLyricsObj = comp.create();
+        QWindow *desktopLyricsWindow = qobject_cast<QWindow *>(desktopLyricsObj);
 
-    if (desktopLyricsWindow) {
-        desktopLyricsWindow->show();
+        if (desktopLyricsWindow) {
+            desktopLyricsWindow->show();
 
 #ifdef Q_OS_WIN
-        // Windows 特有：每次显示时设置置顶和鼠标不抢焦点
-        QObject::connect(desktopLyricsWindow, &QWindow::visibleChanged, [desktopLyricsWindow]() {
-            if (!desktopLyricsWindow->isVisible())
-                return;
+            // Windows 特有：每次显示时设置置顶和鼠标不抢焦点
+            QObject::connect(desktopLyricsWindow, &QWindow::visibleChanged, [desktopLyricsWindow]() {
+                if (!desktopLyricsWindow->isVisible())
+                    return;
 
-            HWND hwnd = (HWND) desktopLyricsWindow->winId();
+                HWND hwnd = (HWND) desktopLyricsWindow->winId();
 
-            // 总在最上层、不抢焦点
-            SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+                // 总在最上层、不抢焦点
+                SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 
-            // 不在任务栏，点击不激活主窗口
-            LONG exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
-            SetWindowLong(hwnd, GWL_EXSTYLE, exStyle | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE);
-        });
+                // 不在任务栏，点击不激活主窗口
+                LONG exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
+                SetWindowLong(hwnd, GWL_EXSTYLE, exStyle | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE);
+            });
 #endif
 
 #ifdef Q_OS_MAC
-        // macOS: 使用 Cocoa API 设置窗口层级
-        setupMacOSDesktopLyricsWindow(desktopLyricsWindow);
+            // macOS: 使用 Cocoa API 设置窗口层级
+            setupMacOSDesktopLyricsWindow(desktopLyricsWindow);
 #endif
-    }
+        }
 
-    // 把桌面歌词对象暴露给主窗口 QML
-    engine.rootContext()->setContextProperty("desktopLyricsWindow", desktopLyricsObj);
+        // 把桌面歌词对象暴露给主窗口 QML
+        engine.rootContext()->setContextProperty("desktopLyricsWindow", desktopLyricsObj);
+    });
 
     // ---------------- 加载 QML ----------------
     engine.load(url);
