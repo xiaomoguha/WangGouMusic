@@ -9,7 +9,6 @@
 #include <QJsonObject>
 #include <QJsonDocument>
 #include <QTimer>
-#include <QMutex>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QVariantList>
@@ -57,7 +56,6 @@ public:
         Disconnected = 0,  // 未连接
         Connecting,        // 连接中
         Connected,         // 已连接
-        Reconnecting       // 重连中
     };
     Q_ENUM(ConnectionState)
 
@@ -75,7 +73,6 @@ public:
     QString Getroomid() const;
 
     // 配置
-    Q_INVOKABLE void setAutoReconnect(bool enable);      // 设置自动重连
     Q_INVOKABLE void setHeartbeatInterval(int seconds);  // 设置心跳间隔
 
     // 一起听操作命令（QML 可调用）
@@ -136,7 +133,6 @@ private slots:
     void onError(QAbstractSocket::SocketError error);
 
     void sendHeartbeat();
-    void tryReconnect();
     void checkHeartbeatTimeout();
     void checkAddSongTimeout();
 
@@ -154,16 +150,11 @@ private:
 
     // JSON 工具方法
     QJsonObject parseJson(const QString &jsonString);
-    QString jsonToString(const QJsonObject &json);
 
     // 私有成员变量
     QWebSocket *m_webSocket;
     QUrl m_serverUrl;
     ConnectionState m_connectionState;
-    bool m_autoReconnect;
-    int m_reconnectBaseInterval;    // 初始重连间隔(ms)
-    int m_reconnectAttempts;
-    int m_maxReconnectAttempts;
     QString Roomid;
     QString m_userId;
 
@@ -176,9 +167,6 @@ private:
     int m_heartbeatInterval;
     QElapsedTimer m_lastMessageTime;
     static constexpr int HEARTBEAT_TIMEOUT_FACTOR = 5; // 超过 N 倍心跳间隔无响应则断开
-
-    // 线程安全
-    QMutex m_mutex;
 
     // 房间列表
     QNetworkAccessManager m_httpManager;

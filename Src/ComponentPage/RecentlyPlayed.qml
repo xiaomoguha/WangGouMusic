@@ -28,7 +28,7 @@ Page {
         }
 
         Text {
-            text: playlistmanager ? playlistmanager.recentPlaylist.length + "首" : "0首"
+            text: playlistmanager ? playlistmanager.recentPlaylist.count + "首" : "0首"
             font.pixelSize: 13
             color: AppTheme.textMuted
             font.family: AppTheme.fontFamily
@@ -38,7 +38,7 @@ Page {
 
     // ===== 空状态 =====
     Column {
-        visible: !playlistmanager || playlistmanager.recentPlaylist.length === 0
+        visible: !playlistmanager || playlistmanager.recentPlaylist.count === 0
         anchors.centerIn: parent
         spacing: 10
 
@@ -75,7 +75,7 @@ Page {
     // ===== 歌曲列表 =====
     Flickable {
         id: recentFlick
-        visible: playlistmanager && playlistmanager.recentPlaylist.length > 0
+        visible: playlistmanager && playlistmanager.recentPlaylist.count > 0
         anchors.top: headerRow.bottom
         anchors.topMargin: 12
         anchors.left: parent.left

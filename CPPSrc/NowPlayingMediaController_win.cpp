@@ -5,6 +5,16 @@
 // 链接 runtimeobject.lib（已在 CMakeLists 的 WIN32 块配置）。
 #ifdef Q_OS_WIN
 
+// C++/WinRT 要求在包含 winrt/base.h 之前定义 NOMINMAX：否则 windows.h 的
+// min/max 宏会污染全局，破坏 winrt 模板里的 std::min/std::max 导致编译失败。
+// 同样需要 WIN32_LEAN_AND_MEAN 减少不必要的 windows.h 子集。
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+
 #include "NowPlayingMediaController.h"
 #include "playlistmanager.h"
 

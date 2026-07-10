@@ -18,6 +18,40 @@ Recommendation::Recommendation(QObject *parent)
     connect(&m_topPlaylistsRequester, &HttpGetRequester::dataReceived, this, &Recommendation::onTopPlaylistsData);
     connect(&m_playlistTracksRequester, &HttpGetRequester::dataReceived, this, &Recommendation::onPlaylistTracksData);
     connect(&m_lazyRequester, &HttpGetRequester::dataReceived, this, &Recommendation::onLazyTracksData);
+
+    // 分页/全量加载失败时必须重置 loading 态，否则 QML「加载更多」按钮会永久失效。
+    // topSongs/topPlaylists 无 loading 态，失败静默即可（数据保留上次结果）。
+    connect(&m_playlistTracksRequester, &HttpGetRequester::requestFailed, this, [this](const QString &) {
+        onPlaylistTracksFailed();
+    });
+    connect(&m_playlistTracksRequester, &HttpGetRequester::requestTimeout, this, [this]() {
+        onPlaylistTracksFailed();
+    });
+    connect(&m_lazyRequester, &HttpGetRequester::requestFailed, this, [this](const QString &) {
+        onLazyTracksFailed();
+    });
+    connect(&m_lazyRequester, &HttpGetRequester::requestTimeout, this, [this]() {
+        onLazyTracksFailed();
+    });
+}
+
+void Recommendation::onPlaylistTracksFailed()
+{
+    if (m_playlistIsLoading) {
+        m_playlistIsLoading = false;
+        emit playlistIsLoadingChanged();
+    }
+    qDebug() << "歌单曲目加载失败，已重置 loading 态";
+}
+
+void Recommendation::onLazyTracksFailed()
+{
+    // 懒加载回调若未触发，调用方会一直等待；这里兜底通知空结果
+    if (m_pendingLazyCallback) {
+        auto cb = m_pendingLazyCallback;
+        m_pendingLazyCallback = nullptr;
+        cb(QVariantList());
+    }
 }
 
 void Recommendation::fetchTopSongs()

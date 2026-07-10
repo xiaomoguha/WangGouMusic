@@ -42,12 +42,6 @@ public:
     void setUserAgent(const QString& ua);
     /// 设置鉴权 Token（自动以 "Authorization: Bearer <token>" 注入到所有请求）
     void setAuthToken(const QString& token);
-    /// 设置默认超时（毫秒）
-    void setDefaultTimeout(int ms);
-    /// 添加基础请求头（影响所有后续请求）
-    void setBaseHeader(const QString& name, const QString& value);
-    /// 清空基础请求头
-    void clearBaseHeaders();
 
     // ── 原始 HTTP ────────────────────────────────────────
     /// GET 请求。timeoutMs <= 0 表示用 defaultTimeout
@@ -74,10 +68,6 @@ public:
                             JsonSuccessCb   onSuccess,
                             JsonErrorCb     onError    = nullptr,
                             int             timeoutMs  = -1);
-
-signals:
-    /// 任何请求失败时统一发出（便于埋点/日志）
-    void globalErrorOccurred(const QString& url, const QString& error, int httpStatus);
 
 private:
     explicit ApiClient(QObject* parent = nullptr);

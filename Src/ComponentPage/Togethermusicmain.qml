@@ -691,7 +691,7 @@ Item {
                     }
 
                     Text {
-                        text: (playlistmanager ? playlistmanager.togetherplaylist.length : 0) + "首"
+                        text: (playlistmanager ? playlistmanager.togetherplaylist.count : 0) + "首"
                         font.pixelSize: 12; font.family: AppTheme.fontFamily
                         color: AppTheme.textDim
                         anchors.verticalCenter: parent.verticalCenter
@@ -808,19 +808,19 @@ Item {
 
                                 Image {
                                     width: 30; height: 30
-                                    source: modelData.union_cover
+                                    source: model.union_cover
                                     asynchronous: true
                                 }
 
                                 // 添加人头像（右下角小图标）
                                 Image {
-                                    visible: modelData.added_by_avatar.length > 0
+                                    visible: model.added_by_avatar.length > 0
                                     width: 14; height: 14
                                     anchors.right: parent.right
                                     anchors.bottom: parent.bottom
                                     anchors.rightMargin: -3
                                     anchors.bottomMargin: -3
-                                    source: modelData.added_by_avatar
+                                    source: model.added_by_avatar
                                     asynchronous: true
                                     layer.enabled: true
                                     layer.effect: OpacityMask {
@@ -846,14 +846,14 @@ Item {
                                 anchors.verticalCenter: parent.verticalCenter
                                 spacing: 1
                                 Text {
-                                    text: modelData.title
+                                    text: model.title
                                     font.pixelSize: 12
                                     color: playlistmanager && playlistmanager.currentIndex === index ? AppTheme.accentPlaying : AppTheme.textPrimary
                                     elide: Text.ElideRight
                                     width: 140
                                 }
                                 Text {
-                                    text: modelData.singername
+                                    text: model.singername
                                     font.pixelSize: 10
                                     color: AppTheme.textMuted
                                     elide: Text.ElideRight
@@ -877,7 +877,7 @@ Item {
                                     color: iPlayBtnHover.hovered ? AppTheme.iconButtonHover : "transparent"
                                     Image { id: iPlayIco; anchors.centerIn: parent; source: "qrc:/image/playnow.png"; width: 10; height: 10; fillMode: Image.PreserveAspectFit; layer.enabled: true; layer.effect: ColorOverlay { source: iPlayIco; color: AppTheme.textSecondary } }
                                     HoverHandler { id: iPlayBtnHover }
-                                    TapHandler { cursorShape: Qt.PointingHandCursor; onTapped: websocket.playTogetherByHash(modelData.songhash) }
+                                    TapHandler { cursorShape: Qt.PointingHandCursor; onTapped: websocket.playTogetherByHash(model.songhash) }
                                 }
                                 // 置顶按钮（当前歌曲隐藏）
                                 Rectangle {
@@ -912,7 +912,7 @@ Item {
                                         }
                                     }
                                     HoverHandler { id: iUpBtnHover }
-                                    TapHandler { cursorShape: Qt.PointingHandCursor; onTapped: websocket.upSongByHash(modelData.songhash) }
+                                    TapHandler { cursorShape: Qt.PointingHandCursor; onTapped: websocket.upSongByHash(model.songhash) }
                                 }
                                 // 删除按钮（当前歌曲隐藏）
                                 Rectangle {
@@ -921,7 +921,7 @@ Item {
                                     color: iDelBtnHover.hovered ? AppTheme.iconButtonHover : "transparent"
                                     Image { id: iDelIco; anchors.centerIn: parent; source: "qrc:/image/delete_line.png"; width: 10; height: 10; fillMode: Image.PreserveAspectFit; layer.enabled: true; layer.effect: ColorOverlay { source: iDelIco; color: AppTheme.textSecondary } }
                                     HoverHandler { id: iDelBtnHover }
-                                    TapHandler { cursorShape: Qt.PointingHandCursor; onTapped: websocket.removeSongFromTogether(modelData.songhash) }
+                                    TapHandler { cursorShape: Qt.PointingHandCursor; onTapped: websocket.removeSongFromTogether(model.songhash) }
                                 }
                             }
                         }
@@ -931,7 +931,7 @@ Item {
                             anchors.right: parent.right
                             anchors.rightMargin: 8
                             anchors.verticalCenter: parent.verticalCenter
-                            text: modelData.duration
+                            text: model.duration
                             font.pixelSize: 11; font.family: AppTheme.fontFamily
                             color: AppTheme.textDim
                         }
@@ -944,13 +944,8 @@ Item {
     }
 
     // ========== 信号连接 ==========
-    Connections {
-        target: playlistmanager
-        function onTogetherplaylistUpdated() {
-            playlistView.model = null;
-            playlistView.model = playlistmanager ? playlistmanager.togetherplaylist : 0;
-        }
-    }
+    // togetherplaylist 现为 QAbstractListModel，列表变化由 model 自身信号驱动，
+    // 不再需要手动 model=null 重置（原置换会丢失滚动位置并触发入场动画）。
 
     Connections {
         target: websocket

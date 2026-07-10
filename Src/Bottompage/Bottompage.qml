@@ -22,21 +22,22 @@ Rectangle {
             return
         }
         var q = playlistmanager.type === 1 ? playlistmanager.togetherplaylist : playlistmanager.playlist
+        var qCount = q.count   // SongListModel::count()，替代原 QVariantList.length
         // 前缀一致（末尾追加）→ 只 append 差量，保留 contentY；否则整体重建
-        var prefixOk = queueModel.count > 0 && q.length >= queueModel.count
+        var prefixOk = queueModel.count > 0 && qCount >= queueModel.count
         if (prefixOk) {
             for (var i = 0; i < queueModel.count; i++) {
-                if (queueModel.get(i).songhash !== q[i].songhash) {
+                if (queueModel.get(i).songhash !== q.get(i).songhash) {
                     prefixOk = false
                     break
                 }
             }
         }
         if (prefixOk) {
-            for (var j = queueModel.count; j < q.length; j++) queueModel.append(makeQueueItem(q[j]))
+            for (var j = queueModel.count; j < qCount; j++) queueModel.append(makeQueueItem(q.get(j)))
         } else {
             queueModel.clear()
-            for (var k = 0; k < q.length; k++) queueModel.append(makeQueueItem(q[k]))
+            for (var k = 0; k < qCount; k++) queueModel.append(makeQueueItem(q.get(k)))
         }
     }
 
@@ -120,6 +121,8 @@ Rectangle {
                     mipmap: true
                     sourceSize.width: 130
                     sourceSize.height: 130
+                    // Rectangle.clip 不裁圆角，圆形需 OpacityMask。
+                    // 此处为静态单实例（非 delegate），离屏 FBO 开销可接受。
                     layer.enabled: true
                     layer.effect: OpacityMask {
                         maskSource: Rectangle {
@@ -874,8 +877,11 @@ Rectangle {
                             delegate: Rectangle {
                                 width: playlistView.width
                                 height: 44
+                                // 防护：Popup 首次实例化时 playlistmanager 可能尚未就绪
+                                readonly property int curIdx: playlistmanager ? curIdx : -1
+                                readonly property bool isCurrent: index === curIdx
                                 color: {
-                                    if (index === playlistmanager.currentIndex) return AppTheme.accentDim
+                                    if (isCurrent) return AppTheme.accentDim
                                     return songItemMA.containsMouse ? AppTheme.bgCardHover : "transparent"
                                 }
 
@@ -889,10 +895,10 @@ Rectangle {
                                     Text {
                                         width: 24
                                         height: parent.height
-                                        text: index === playlistmanager.currentIndex ? "♪" : (index + 1)
-                                        font.pixelSize: index === playlistmanager.currentIndex ? 14 : 12
+                                        text: index === curIdx ? "♪" : (index + 1)
+                                        font.pixelSize: index === curIdx ? 14 : 12
                                         font.family: AppTheme.fontFamily
-                                        color: index === playlistmanager.currentIndex ? AppTheme.accent : AppTheme.textMuted
+                                        color: index === curIdx ? AppTheme.accent : AppTheme.textMuted
                                         verticalAlignment: Text.AlignVCenter
                                         horizontalAlignment: Text.AlignHCenter
                                     }
@@ -907,7 +913,7 @@ Rectangle {
                                             text: model.title
                                             font.pixelSize: 13
                                             font.family: AppTheme.fontFamily
-                                            color: index === playlistmanager.currentIndex ? AppTheme.accent : AppTheme.textPrimary
+                                            color: index === curIdx ? AppTheme.accent : AppTheme.textPrimary
                                             elide: Text.ElideRight
                                             width: parent.width
                                         }
@@ -1016,7 +1022,7 @@ Rectangle {
                     layer.enabled: true
                     layer.effect: ColorOverlay {
                         source: lyricsIcon
-                        color: desktopLyricsWindow && desktopLyricsWindow.visible ? AppTheme.accent : (lyricsBtnHandler.hovered ? AppTheme.iconHover : AppTheme.textMuted)
+                        color: (typeof desktopLyricsWindow !== "undefined" && desktopLyricsWindow && desktopLyricsWindow.visible) ? AppTheme.accent : (lyricsBtnHandler.hovered ? AppTheme.iconHover : AppTheme.textMuted)
                     }
                 }
 

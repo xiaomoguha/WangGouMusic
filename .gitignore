@@ -1,4 +1,33 @@
+# 构建产物
 build/
-.vscode/launch.json
-.qtcreator/CMakeLists.txt.user
+out/
+*.o
+*.obj
+*.exe
+*.app/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+*.cmake.user
+
+# Qt Creator / VS Code 个人配置（含本机绝对路径，不应入库）
+*.user
+*.user.*
+.vscode/
+.qtcreator/
+
+# QML 编译缓存
+*.qmlc
+*.jsc
+qml_jit_*
+
+# macOS / Windows / Linux 系统垃圾
 .DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vs/

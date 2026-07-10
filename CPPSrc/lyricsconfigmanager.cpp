@@ -1,4 +1,5 @@
 #include "lyricsconfigmanager.h"
+#include "PlaylistCacheStore.h"
 #include <QGuiApplication>
 #include <QScreen>
 
@@ -35,30 +36,12 @@ LyricsConfigManager::~LyricsConfigManager()
 
 QString LyricsConfigManager::getConfigFilePath()
 {
-    QString cacheDir;
-#ifdef Q_OS_WIN
-    cacheDir = "C:/网狗音乐缓存目录";
-#elif defined(Q_OS_MAC)
-    QString downloadsPath = QStandardPaths::writableLocation(QStandardPaths::DownloadLocation);
-    cacheDir = downloadsPath + "/网狗音乐缓存目录";
-#endif
-    return cacheDir + "/lyrics_config.json";
+    return PlaylistCacheStore::cacheDir() + "/lyrics_config.json";
 }
 
 void LyricsConfigManager::ensureConfigDirExists()
 {
-    QString cacheDir;
-#ifdef Q_OS_WIN
-    cacheDir = "C:/网狗音乐缓存目录";
-#elif defined(Q_OS_MAC)
-    QString downloadsPath = QStandardPaths::writableLocation(QStandardPaths::DownloadLocation);
-    cacheDir = downloadsPath + "/网狗音乐缓存目录";
-#endif
-    QDir dir(cacheDir);
-    if (!dir.exists())
-    {
-        dir.mkpath(".");
-    }
+    PlaylistCacheStore::ensureCacheDir();
 }
 
 void LyricsConfigManager::saveConfig()

@@ -1,10 +1,12 @@
 #ifndef PLAYLISTMANAGER_H
 #define PLAYLISTMANAGER_H
 #include "lyricparser.h"
+#include "SongInfo.h"
+#include "models/SongListModel.h"
 #include <QObject>
+#include <functional>
 #include <QHash>
 #include <QList>
-#include <QMutex>
 #include <QSet>
 #include <QString>
 #include <QMediaPlayer>
@@ -24,32 +26,9 @@
 #include <QColor>
 #include <QNetworkRequest>
 #include "recommendation.h"
-struct SongInfo
-{
-Q_GADGET
-Q_PROPERTY(QString title MEMBER title)
-Q_PROPERTY(QString songhash MEMBER songhash)
-Q_PROPERTY(QString url MEMBER url)
-Q_PROPERTY(QString singername MEMBER singername)
-Q_PROPERTY(QString union_cover MEMBER union_cover)
-Q_PROPERTY(QString album_name MEMBER album_name)
-Q_PROPERTY(QString duration MEMBER duration)
-Q_PROPERTY(QString lyric MEMBER lyric)
-Q_PROPERTY(QString added_by_nickname MEMBER added_by_nickname)
-Q_PROPERTY(QString added_by_avatar MEMBER added_by_avatar)
 
-public:
-    QString title;
-    QString songhash;
-    QString url;
-    QString singername;
-    QString union_cover;
-    QString album_name;
-    QString duration;
-    QString lyric;
-    QString added_by_nickname;
-    QString added_by_avatar;
-};
+class DominantColorExtractor;
+
 enum playlist_type
 {
     LOCAL,
@@ -69,13 +48,13 @@ class PlaylistManager : public QObject
     Q_PROPERTY(float percent READ getpercent NOTIFY percentChanged)
     Q_PROPERTY(QString percentstr READ getpercentstr NOTIFY percentChanged)
     Q_PROPERTY(QString duration READ durationstr NOTIFY durationChanged)
-    Q_PROPERTY(QList<SongInfo> playlist READ playlist NOTIFY playlistUpdated)
+    Q_PROPERTY(SongListModel* playlist READ playlistModel NOTIFY playlistUpdated)
     Q_PROPERTY(int playlistcount READ playlistcount NOTIFY playlistUpdated)
     Q_PROPERTY(int playlistTotalCount READ playlistTotalCount NOTIFY playlistUpdated)
     Q_PROPERTY(QString currlyric READ getcurrlyric NOTIFY currlyricChanged)
     Q_PROPERTY(enum playlist_type type READ getplaylist_type NOTIFY playlist_typeChanged)
-    Q_PROPERTY(QList<SongInfo> togetherplaylist READ togetherplaylist NOTIFY togetherplaylistUpdated)
-    Q_PROPERTY(QList<SongInfo> recentPlaylist READ recentPlaylist NOTIFY recentPlaylistUpdated)
+    Q_PROPERTY(SongListModel* togetherplaylist READ togetherplaylistModel NOTIFY togetherplaylistUpdated)
+    Q_PROPERTY(SongListModel* recentPlaylist READ recentPlaylistModel NOTIFY recentPlaylistUpdated)
     Q_PROPERTY(QVector<LyricLine> m_lyrics READ LyricLine_get NOTIFY parlyricsuc)
     Q_PROPERTY(qint64 lyricsindex READ lyricsindexget NOTIFY currlyricChanged)
     Q_PROPERTY(int lyricCharIndex READ lyricCharIndexget NOTIFY currlyricChanged)
@@ -116,14 +95,16 @@ public:
     QString getpercentstr() const;
     QString durationstr();
     qint64 playerDuration() const;
+    SongListModel *playlistModel();
     QList<SongInfo> playlist();
+    SongListModel *togetherplaylistModel();
     QList<SongInfo> togetherplaylist();
+    SongListModel *recentPlaylistModel();
     QList<SongInfo> recentPlaylist() const;
     void addToRecent(const SongInfo &song);
     void clearTogetherSongHash();
     int playlistcount() const;
     int playlistTotalCount() const;
-    int getnowplaylistrange() const;
     QString getcurrlyric() const;
     enum playlist_type getplaylist_type() const;
     void changeplaylisttype(enum playlist_type type);
@@ -178,6 +159,10 @@ private:
     QList<SongInfo> m_playlist;
     QList<SongInfo> m_togetherplaylist;
     QList<SongInfo> m_recentPlaylist;
+    // QML 视图 model：与上面三个 QList 同步，供 QML ListView 直接绑定
+    SongListModel *m_playlistModel;
+    SongListModel *m_togetherplaylistModel;
+    SongListModel *m_recentPlaylistModel;
     static const int MAX_RECENT_SIZE = 300;
     QList<SongInfo> *m_curplaylist = &m_playlist;
     int m_currentIndex = -1;
@@ -217,6 +202,13 @@ private:
     void fetchNextSourcePage();        // 拉取下一页源数据并 append 到队列（供上面两个入口共用）
     void fetchLyricData(const QString &hash, std::function<void(QString)> callback);
     void fetchLyricContent(const QString &id, const QString &accesskey, std::function<void(QString)> callback);
+    // 边下边播共享逻辑：下载 songUrl 到 cacheFilePath，达到阈值后开始播放。
+    // seekPercent > 0 时在 LoadedMedia 后 seek；onStreamStart 在首次开播时调用
+    // （startPlayback 用于 emit currentSongChanged，一起听路径不需要）。
+    // 抽出以消除 startPlayback 与 playTogetherSongFromServer 的重复下载代码。
+    void downloadAndStream(const QString &songUrl, const QString &cacheFilePath,
+                           const QString &coverUrlForColor, double seekPercent,
+                           std::function<void()> onStreamStart);
     QString currlyric = "网狗音乐！";
     QString m_dominantColor = "#FF6B6B";
     int m_lyricCharIndex = -1;
@@ -228,18 +220,11 @@ private:
     bool m_isBuffering = false;
     qint64 m_downloadedBytes = 0;
     qint64 m_totalDownloadBytes = 0;
-    void extractDominantColor(const QString &imageUrl);
-    QColor getAverageColor(const QImage &image);
+    // 缓存目录访问（转发到 PlaylistCacheStore，保留供内部使用）
     QString getCacheDir() const;
-    void ensureCacheDir() const;
-    QString getPlaylistCachePath() const;
-    QString getRecentCachePath() const;
 
-    // 主色调提取：异步后台线程 + 内存 LRU 缓存
-    QHash<QString, QString> m_colorCache;       // URL -> hex color
-    QSet<QString> m_pendingColorRequests;      // 去重：避免重复提交
-    QMutex m_colorCacheMutex;
+    // 主色调提取（独立模块）：异步后台线程 + 内存 LRU 缓存
+    DominantColorExtractor *m_colorExtractor;
 };
-Q_DECLARE_METATYPE(SongInfo)
 
 #endif // PLAYLISTMANAGER_H

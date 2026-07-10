@@ -48,6 +48,9 @@ private slots:
     void onLazyTracksData(const QByteArray &data);
 
 private:
+    // 网络失败/超时兜底：重置 loading 态，避免 QML 永久卡在加载中
+    void onPlaylistTracksFailed();
+    void onLazyTracksFailed();
     HttpGetRequester m_topSongsRequester;
     HttpGetRequester m_topPlaylistsRequester;
     HttpGetRequester m_playlistTracksRequester;

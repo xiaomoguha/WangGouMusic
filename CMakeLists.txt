@@ -1,12 +1,18 @@
 cmake_minimum_required(VERSION 3.16)
-project(网狗音乐 VERSION 0.5.8 LANGUAGES CXX)
+project(网狗音乐 VERSION 0.5.9 LANGUAGES CXX)
 
-set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# MSVC：源文件是无 BOM 的 UTF-8（含中文注释/字面量），必须显式告知编译器，
+# 否则 MSVC 按系统代码页（中文 Windows 为 GBK）解析，触发 C4819 警告甚至
+# C2001 错误，运行时中文字符串也会乱码。MinGW/Clang 默认即 UTF-8，不受影响。
+if(MSVC)
+    add_compile_options(/utf-8)
+endif()
 
 # macOS 上启用 Objective-C++
 if(APPLE)
@@ -33,7 +39,11 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         CPPSrc/appupdater.cpp CPPSrc/appupdater.h
         CPPSrc/usermanager.cpp CPPSrc/usermanager.h
         CPPSrc/singleapplication.cpp CPPSrc/singleapplication.h
-        CPPSrc/NowPlayingMediaController.h
+        CPPSrc/DominantColorExtractor.cpp CPPSrc/DominantColorExtractor.h
+        CPPSrc/PlaylistCacheStore.cpp CPPSrc/PlaylistCacheStore.h
+        CPPSrc/models/SongListModel.cpp CPPSrc/models/SongListModel.h
+        CPPSrc/models/VariantMapListModel.cpp CPPSrc/models/VariantMapListModel.h CPPSrc/models/SpecializedModels.h
+        CPPSrc/SongInfo.cpp CPPSrc/SongInfo.h
         image.qrc
     )
     # Windows 应用程序图标 + 系统媒体传输控件(SMTC)
@@ -88,15 +98,14 @@ if(APPLE)
     target_link_libraries(WangGouMusic PRIVATE ${COCOA_FRAMEWORK} ${MEDIAPLAYER_FRAMEWORK} ${COREAUDIO_FRAMEWORK} ${COREIMAGE_FRAMEWORK})
 endif()
 
-# Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
-# If you are developing for iOS or macOS you should consider setting an
-# explicit, fixed bundle identifier manually though.
-if(${QT_VERSION} VERSION_LESS 6.1.0)
-  set(BUNDLE_ID_OPTION MACOSX_BUNDLE_GUI_IDENTIFIER com.example.WangGouMusic)
-endif()
+# 固定、明确的 Bundle Identifier。
+# 必须无条件设置：否则 Qt 默认填 com.yourcompany.WangGouMusic（占位值），
+# macOS 系统（媒体控制栏右下角 app 图标、LaunchServices 关联等）无法用占位 id
+# 解析 app identity，会显示灰色占位图标。
 set_target_properties(WangGouMusic PROPERTIES
-    ${BUNDLE_ID_OPTION}
+    MACOSX_BUNDLE_GUI_IDENTIFIER top.xjt-togethertracks.WangGouMusic
     OUTPUT_NAME "网狗音乐"
+    MACOSX_BUNDLE_BUNDLE_NAME "网狗音乐"
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
