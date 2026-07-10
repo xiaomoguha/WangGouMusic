@@ -169,11 +169,40 @@ Page {
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: 3
 
-                            Text {
-                                text: modelData.songname
-                                font.pixelSize: 13; font.family: AppTheme.fontFamily
-                                color: AppTheme.textPrimary
-                                elide: Text.ElideRight; width: parent.width; wrapMode: Text.NoWrap
+                            // 歌名：超出列宽时连续向左滚动（贪吃蛇穿墙式：滚出左边从右边接上，间隔若干空格），
+                            // 列宽即最大长度限制；不超出则静止显示一份。
+                            Item {
+                                id: songNameClip
+                                width: parent.width
+                                height: songNameText.implicitHeight
+                                clip: true
+                                property real gap: 28                                   // 重复之间的间隔（约几个空格）
+                                property bool overflow: songNameText.implicitWidth > width
+                                property real unitWidth: songNameText.implicitWidth + gap // 一个「文字+间隔」周期
+                                Row {
+                                    id: songNameRow
+                                    spacing: songNameClip.gap
+                                    Text {
+                                        id: songNameText
+                                        text: modelData.songname
+                                        font.pixelSize: 13; font.family: AppTheme.fontFamily
+                                        color: AppTheme.textPrimary
+                                    }
+                                    // 第二份副本：仅超出时显示，配合 x 滚到 -unitWidth 实现无缝循环
+                                    Text {
+                                        text: modelData.songname
+                                        font.pixelSize: 13; font.family: AppTheme.fontFamily
+                                        color: AppTheme.textPrimary
+                                        visible: songNameClip.overflow
+                                    }
+                                    NumberAnimation on x {
+                                        running: songNameClip.overflow
+                                        from: 0; to: -songNameClip.unitWidth
+                                        duration: Math.max(3000, songNameClip.unitWidth * 20)
+                                        loops: Animation.Infinite
+                                        easing.type: Easing.Linear
+                                    }
+                                }
                             }
                             Text {
                                 text: modelData.singername
@@ -187,7 +216,7 @@ Page {
                     // 操作按钮（悬停显示，固定位置，不影响布局）
                     Row {
                         visible: songItem.showActions
-                        x: 0.28 * root.width
+                        x: 0.35 * root.width
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 4
                         z: 1

@@ -15,10 +15,6 @@ Item {
     property string playlistIntro: BasicConfig.playlistDetailIntro
     readonly property bool isTogetherMode: playlistmanager && playlistmanager.type === 1
 
-    // 搜索状态
-    property string searchKeyword: ""
-    property var filteredTracks: []
-    property bool isSearchAllLoaded: false   // 是否已为搜索全量加载
     property bool _pendingPlayAll: false
     property int currentSongIndex: -1        // 当前播放在列表中的下标，-1 = 不在
     property bool _autoLocated: false        // 是否已自动定位过一次
@@ -29,14 +25,13 @@ Item {
             recommendation.fetchPlaylistTracks(playlistId)
     }
 
-    // 计算当前播放在当前列表中的下标（搜索态用 filteredTracks，否则用后端已加载列表）
+    // 计算当前播放在当前列表中的下标
     function recomputeCurrentSongIndex() {
         currentSongIndex = -1
         if (!playlistmanager) return
         var csh = playlistmanager.currentSonghash
         if (!csh) return
-        var list = searchKeyword.trim() !== "" ? filteredTracks
-                  : (recommendation ? recommendation.playlistTracksQml : [])
+        var list = recommendation ? recommendation.playlistTracksQml : []
         for (var i = 0; i < list.length; i++) {
             if (list[i].songhash === csh) { currentSongIndex = i; break }
         }
@@ -55,51 +50,16 @@ Item {
         function onPlaylistDetailIdChanged() {
             if (recommendation && playlistId !== "") {
                 tracksListView.contentY = 0
-                searchKeyword = ""
-                searchInput.text = ""
-                filteredTracks = []
-                isSearchAllLoaded = false
                 _pendingPlayAll = false
                 _autoLocated = false
                 currentSongIndex = -1
-                searchDebounceTimer.stop()
                 recommendation.fetchPlaylistTracks(playlistId)
             }
         }
     }
 
-    // 搜索：输入时防抖，触发全量加载后客户端过滤
-    function doSearch() {
-        if (!pageActive && searchKeyword.trim() === "") return  // 页面已隐藏
-        var kw = searchKeyword.trim()
-        if (kw === "") {
-            filteredTracks = []
-            // 清空搜索后恢复分页（重新拉第 1 页）
-            if (recommendation) {
-                recommendation.fetchPlaylistTracks(playlistId)
-            }
-            return
-        }
-        // 尚未全量加载时，先触发全量；加载完成后由 onTracksChanged 再过滤
-        if (!isSearchAllLoaded) {
-            if (recommendation) recommendation.loadAllPlaylistTracks()
-            return
-        }
-        var lower = kw.toLowerCase()
-        var src = recommendation ? recommendation.playlistTracksQml : []
-        var result = []
-        for (var i = 0; i < src.length; i++) {
-            var s = src[i]
-            if ((s.songname && s.songname.toLowerCase().indexOf(lower) >= 0) ||
-                (s.singername && s.singername.toLowerCase().indexOf(lower) >= 0) ||
-                (s.album_name && s.album_name.toLowerCase().indexOf(lower) >= 0)) {
-                result.push(s)
-            }
-        }
-        filteredTracks = result
-    }
 
-    // 监听后端歌曲列表变化：全量加载完成后执行搜索过滤 / 播放全部
+    // 监听后端歌曲列表变化：全量加载完成后执行播放全部
     Connections {
         target: recommendation
         function onPlaylistTracksChanged() {
@@ -112,11 +72,6 @@ Item {
             }
             // 全量加载完成（hasMore=false）
             if (!recommendation.playlistHasMore) {
-                // 搜索触发的全量
-                if (searchKeyword.trim() !== "" && !isSearchAllLoaded) {
-                    isSearchAllLoaded = true
-                    doSearch()
-                }
                 // 播放全部触发的全量
                 if (_pendingPlayAll) {
                     _pendingPlayAll = false
@@ -238,31 +193,10 @@ Item {
                         font.family: AppTheme.fontFamily
                     }
 
-                    // 搜索框 + 播放全部（同一行）
+                    // 播放全部
                     Row {
                         spacing: 12
                         visible: !isTogetherMode
-
-                        TextField {
-                            id: searchInput
-                            width: 180
-                            height: 32
-                            placeholderText: "搜索歌单内歌曲"
-                            font.pixelSize: 12
-                            font.family: AppTheme.fontFamily
-                            color: AppTheme.textPrimary
-                            background: Rectangle {
-                                radius: 16
-                                color: AppTheme.bgCard
-                                border.color: searchInput.activeFocus ? AppTheme.accent : AppTheme.borderDefault
-                                border.width: 1
-                            }
-                            onTextChanged: {
-                                searchKeyword = text
-                                if (text.trim() === "") isSearchAllLoaded = false
-                                searchDebounceTimer.restart()
-                            }
-                        }
 
                         Rectangle {
                             width: 100
@@ -312,14 +246,6 @@ Item {
                             Behavior on color { ColorAnimation { duration: 150 } }
                         }
                     }
-
-                    // 搜索防抖 Timer（声明式，页面销毁/隐藏时自动停止）
-                    Timer {
-                        id: searchDebounceTimer
-                        interval: 400
-                        repeat: false
-                        onTriggered: { if (pageActive) doSearch() }
-                    }
                 }
             }
         }
@@ -354,9 +280,8 @@ Item {
         anchors.right: parent.right
         clip: true
         cacheBuffer: 2000
-        // 搜索时显示过滤结果，否则显示全部已加载
-        model: searchKeyword.trim() !== "" ? filteredTracks
-              : (recommendation ? recommendation.playlistTracksQml : [])
+        // 显示全部已加载歌曲
+        model: recommendation ? recommendation.playlistTracksQml : []
         spacing: 2
         leftMargin: 30
         rightMargin: 30
@@ -373,9 +298,8 @@ Item {
             }
         }
 
-        // 滚动到底加载下一页（仅非搜索状态）
+        // 滚动到底加载下一页
         onContentYChanged: {
-            if (searchKeyword.trim() !== "") return
             if (recommendation && !recommendation.playlistIsLoading
                 && recommendation.playlistHasMore
                 && contentHeight > height
@@ -590,8 +514,6 @@ Item {
                     }
 
                     HoverHandler { id: songHover }
-
-                    Behavior on color { ColorAnimation { duration: 100 } }
                 }
 
         // footer：总数 / 加载中 / 已加载全部
@@ -605,9 +527,6 @@ Item {
                 font.family: AppTheme.fontFamily
                 text: {
                     if (!recommendation) return ""
-                    if (searchKeyword.trim() !== "") {
-                        return "找到 " + filteredTracks.length + " 首"
-                    }
                     if (recommendation.playlistIsLoading) return "加载中..."
                     var loaded = recommendation.playlistTracksQml ? recommendation.playlistTracksQml.length : 0
                     if (!recommendation.playlistHasMore)

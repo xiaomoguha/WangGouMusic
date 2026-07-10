@@ -14,6 +14,11 @@ Window {
     property real scale: lyricsConfig ? lyricsConfig.scale : 1.0
     property int fontSize: lyricsConfig ? lyricsConfig.fontSize : 22
 
+    // 竖排歌词可视区固定高度上限（px）：长歌词不再顶满 80% 屏幕高，超出部分裁剪+滚动
+    property int verticalHeightLimit: 350
+    // 横排歌词可视区固定宽度上限（px）：长歌词在固定宽度内裁剪+滚动
+    property int horizontalWidthLimit: 400
+
     // 窗口大小 - 保证最小能显示所有控制按钮，歌词居中
     width: desktopLyrics.isVertical ? Math.max(background.width + 70, 44 * desktopLyrics.scale + 16) : Math.max(background.width + 20, controlPanelHorizontal.implicitWidth + 20)
     height: desktopLyrics.isVertical ? Math.max(background.height + 20, controlPanelVertical.implicitHeight + 20) : Math.max(background.height + 70, 28 * desktopLyrics.scale + 16 + 8 * desktopLyrics.scale)
@@ -191,7 +196,7 @@ Window {
                 Item {
                     id: horizontalLyricContainer
                     anchors.verticalCenter: parent.verticalCenter
-                    width: Math.min(bgTextHorizontal.implicitWidth, Screen.desktopAvailableWidth * 0.8 - 30)
+                    width: Math.min(bgTextHorizontal.implicitWidth, Screen.desktopAvailableWidth * 0.8 - 30, desktopLyrics.horizontalWidthLimit)
                     height: bgTextHorizontal.implicitHeight
                     clip: true
 
@@ -298,7 +303,7 @@ Window {
                     id: verticalTextContainer
                     anchors.horizontalCenter: parent.horizontalCenter
                     width: verticalBgColumn.width
-                    height: Math.min(verticalBgColumn.height, Screen.desktopAvailableHeight * 0.8 - 30)
+                    height: Math.min(verticalBgColumn.height, Screen.desktopAvailableHeight * 0.8 - 30, desktopLyrics.verticalHeightLimit)
                     clip: true
 
                     property string lyricText: {

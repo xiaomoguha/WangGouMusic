@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import QtQuick.Window 2.15
 import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
 
@@ -82,7 +83,7 @@ Rectangle {
         // ========== 左侧：歌曲信息 ==========
         Row {
             id: leftSection
-            width: 155
+            width: albumCoverContainer.width + spacing + songInfoColumn.width
             height: parent.height
             spacing: 5
 
@@ -141,33 +142,30 @@ Rectangle {
                         to: 360
                         duration: 20000
                         loops: Animation.Infinite
-                        running: playlistmanager && !playlistmanager.isPaused && root.visible
+                        running: true  // 创建即转；下面用 pause/resume 控制启停
                     }
-
+                    // pause/resume（而非 stop/start）：保留角度、恢复不跳变（不闪角）；
+                    // 最小化时暂停，避免底栏封面持续旋转驱动整窗渲染拉高 CPU。
+                    function updateRotation() {
+                        const active = playlistmanager && !playlistmanager.isPaused
+                                       && root.visible && root.visibility !== Window.Minimized;
+                        if (active) {
+                            if (rotationAnim.paused)
+                                rotationAnim.resume();
+                        } else {
+                            if (!rotationAnim.paused)
+                                rotationAnim.pause();
+                        }
+                    }
+                    Component.onCompleted: albumCover.updateRotation()
                     Connections {
                         target: playlistmanager
-                        function onIsPausedChanged() {
-                            if (!playlistmanager.isPaused && root.visible) {
-                                rotationAnim.from = albumCover.currentRotation % 360;
-                                rotationAnim.to = rotationAnim.from + 360;
-                                rotationAnim.start();
-                            } else {
-                                rotationAnim.stop();
-                            }
-                        }
+                        function onIsPausedChanged() { albumCover.updateRotation(); }
                     }
-
                     Connections {
                         target: root
-                        function onVisibleChanged() {
-                            if (playlistmanager && !playlistmanager.isPaused && root.visible) {
-                                rotationAnim.from = albumCover.currentRotation % 360;
-                                rotationAnim.to = rotationAnim.from + 360;
-                                rotationAnim.start();
-                            } else {
-                                rotationAnim.stop();
-                            }
-                        }
+                        function onVisibleChanged() { albumCover.updateRotation(); }
+                        function onVisibilityChanged() { albumCover.updateRotation(); }
                     }
 
                     MouseArea {
@@ -180,31 +178,80 @@ Rectangle {
 
             // 歌曲名称和歌手
             Column {
+                id: songInfoColumn
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 2
-                width: 80
+                // 宽度贴合实际文字（短歌名不留空，让歌词紧跟歌名尾端）；长名上限 80 省略号
+                width: Math.min(Math.max(songNameText.implicitWidth, singerNameText.implicitWidth), 80)
 
-                Text {
-                    id: songNameText
-                    text: playlistmanager ? (playlistmanager.currentTitle === "" ? "默认歌曲" : playlistmanager.currentTitle) : "........"
-                    font.family: AppTheme.fontFamily
-                    font.pixelSize: 14
-                    font.bold: true
-                    color: AppTheme.textPrimary
-                    elide: Text.ElideRight
+                // 歌名（超出列宽时连续向左滚动，穿墙式无缝循环）
+                Item {
+                    id: songNameClip
                     width: parent.width
-                    wrapMode: Text.NoWrap
+                    height: songNameText.implicitHeight
+                    clip: true
+                    property real unitWidth: songNameText.implicitWidth + 28
+                    property bool overflow: songNameText.implicitWidth > width
+                    Row {
+                        spacing: 28
+                        Text {
+                            id: songNameText
+                            text: playlistmanager ? (playlistmanager.currentTitle === "" ? "默认歌曲" : playlistmanager.currentTitle) : "........"
+                            font.family: AppTheme.fontFamily
+                            font.pixelSize: 14
+                            font.bold: true
+                            color: AppTheme.textPrimary
+                        }
+                        Text {
+                            text: songNameText.text
+                            font.family: AppTheme.fontFamily
+                            font.pixelSize: 14
+                            font.bold: true
+                            color: AppTheme.textPrimary
+                            visible: songNameClip.overflow
+                        }
+                        NumberAnimation on x {
+                            running: songNameClip.overflow
+                            from: 0; to: -songNameClip.unitWidth
+                            duration: Math.max(3000, songNameClip.unitWidth * 20)
+                            loops: Animation.Infinite
+                            easing.type: Easing.Linear
+                        }
+                    }
                 }
 
-                Text {
-                    id: singerNameText
-                    text: playlistmanager ? (playlistmanager.currentsingername === "" ? "默认歌手" : playlistmanager.currentsingername) : "....."
-                    font.family: AppTheme.fontFamily
-                    font.pixelSize: 12
-                    color: AppTheme.textMuted
-                    elide: Text.ElideRight
+                // 歌手名（超出列宽时连续向左滚动）
+                Item {
+                    id: singerNameClip
                     width: parent.width
-                    wrapMode: Text.NoWrap
+                    height: singerNameText.implicitHeight
+                    clip: true
+                    property real unitWidth: singerNameText.implicitWidth + 28
+                    property bool overflow: singerNameText.implicitWidth > width
+                    Row {
+                        spacing: 28
+                        Text {
+                            id: singerNameText
+                            text: playlistmanager ? (playlistmanager.currentsingername === "" ? "默认歌手" : playlistmanager.currentsingername) : "....."
+                            font.family: AppTheme.fontFamily
+                            font.pixelSize: 12
+                            color: AppTheme.textMuted
+                        }
+                        Text {
+                            text: singerNameText.text
+                            font.family: AppTheme.fontFamily
+                            font.pixelSize: 12
+                            color: AppTheme.textMuted
+                            visible: singerNameClip.overflow
+                        }
+                        NumberAnimation on x {
+                            running: singerNameClip.overflow
+                            from: 0; to: -singerNameClip.unitWidth
+                            duration: Math.max(3000, singerNameClip.unitWidth * 20)
+                            loops: Animation.Infinite
+                            easing.type: Easing.Linear
+                        }
+                    }
                 }
             }
         }
@@ -212,7 +259,7 @@ Rectangle {
         // ========== 中间：播放控制（歌词/按钮切换）==========
         Item {
             id: lyricsControlContainer
-            width: 260
+            width: 220
             height: parent.height
             anchors.verticalCenter: parent.verticalCenter
 
@@ -262,7 +309,9 @@ Rectangle {
             Item {
                 id: lyricsScrollLayer
                 anchors.centerIn: parent
-                width: parent.width
+                // 比容器窄 40px（两侧各留 20px 内边距）：长歌词不顶到容器边缘，
+                // 离歌名/已播放时间有留白；最大显示长度也相应变短。滚动按 lyricsContainer.width 自动适配。
+                width: parent.width - 40
                 height: parent.height
                 opacity: lyricsControlContainer.showControls ? 0 : 1.0
 
@@ -558,7 +607,8 @@ Rectangle {
             Item {
                 id: progressContainer
                 height: parent.height
-                width: root.width - 640
+                // 弹性填充剩余宽度：随 leftSection(贴合歌名)/歌词容器宽度动态变化，保证右端按钮始终贴右
+                width: controlBar.width - leftSection.width - lyricsControlContainer.width - rightSection.width - currentTimeText.implicitWidth - totalTimeText.implicitWidth - 56
 
                 // 底层轨道
                 Rectangle {
