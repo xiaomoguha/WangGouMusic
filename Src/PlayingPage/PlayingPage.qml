@@ -455,6 +455,8 @@ Rectangle {
                     cache: true
                     mipmap: true
                     sourceSize: Qt.size(720, 720)
+                    // Rectangle.clip 不裁圆角，圆形封面需 OpacityMask。
+                    // 静态单实例（非 delegate），离屏 FBO 开销可接受。
                     layer.enabled: true
                     layer.textureSize: Qt.size(720, 720)
                     layer.effect: OpacityMask {

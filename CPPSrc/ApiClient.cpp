@@ -47,21 +47,6 @@ void ApiClient::setAuthToken(const QString& token)
     m_authToken = token;
 }
 
-void ApiClient::setDefaultTimeout(int ms)
-{
-    if (ms > 0) m_defaultTimeout = ms;
-}
-
-void ApiClient::setBaseHeader(const QString& name, const QString& value)
-{
-    m_baseHeaders.insert(name, value);
-}
-
-void ApiClient::clearBaseHeaders()
-{
-    m_baseHeaders.clear();
-}
-
 void ApiClient::setupReply(QNetworkReply* reply,
                            int timeoutMs,
                            const QString& url,
@@ -78,18 +63,17 @@ void ApiClient::setupReply(QNetworkReply* reply,
     timer->setInterval(t);
     m_timeoutTimers.insert(reply, timer);
 
-    connect(timer, &QTimer::timeout, this, [this, reply, url, onError]() {
+    connect(timer, &QTimer::timeout, this, [this, reply, onError]() {
         if (!reply) return;
         if (reply->isRunning()) {
             reply->abort();
             if (onError) onError(QStringLiteral("request timeout"), 0);
-            emit globalErrorOccurred(url, QStringLiteral("request timeout"), 0);
         }
     });
     timer->start();
 
     connect(reply, &QNetworkReply::finished, this,
-            [this, reply, url, onSuccess, onError, timer]() {
+            [this, reply, onSuccess, onError, timer]() {
         timer->stop();
         m_timeoutTimers.remove(reply);
         timer->deleteLater();
@@ -101,7 +85,6 @@ void ApiClient::setupReply(QNetworkReply* reply,
             const QString err = reply->errorString();
             reply->deleteLater();
             if (onError) onError(err, httpStatus);
-            emit globalErrorOccurred(url, err, httpStatus);
             return;
         }
 

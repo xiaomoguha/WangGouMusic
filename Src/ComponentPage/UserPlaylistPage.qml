@@ -1022,7 +1022,7 @@ Item {
                                                     onTapped: {
                                                         if (!playlistmanager) return
                                                         var s = filteredSongs[index]
-                                                        playlistmanager.addSong({
+                                                        playlistmanager.addSongNext({
                                                             "songname": s.songname,
                                                             "songhash": s.hash,
                                                             "singername": s.singername,
@@ -1030,7 +1030,7 @@ Item {
                                                             "album_name": s.album_name,
                                                             "duration": s.duration
                                                         })
-                                                        BasicConfig.emitSongAdded()
+                                                        BasicConfig.emitSongAdded("已添加到下一首: " + s.songname)
                                                     }
                                                 }
                                                 Behavior on color { ColorAnimation { duration: 150 } }
@@ -1090,12 +1090,14 @@ Item {
                                     }
                                 }
 
-                                MouseArea {
-                                    anchors.fill: parent
+                                // 双击切换播放列表。用 TapHandler 而非 MouseArea：
+                                // MouseArea anchors.fill 会 grab press 事件，导致 delegate 内
+                                // 按钮的 TapHandler 收不到点击。TapHandler 之间不互相吞噬。
+                                TapHandler {
                                     acceptedButtons: Qt.LeftButton
                                     enabled: !isTogetherMode
-                                    propagateComposedEvents: true
-                                    onDoubleClicked: {
+                                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                                    onDoubleTapped: {
                                         if (!playlistmanager) return
                                         var songs = (searchKeyword.trim() !== "")
                                                     ? filteredSongs : currentSongs

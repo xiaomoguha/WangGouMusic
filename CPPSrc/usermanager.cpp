@@ -1,5 +1,6 @@
 #include "usermanager.h"
 #include "ApiClient.h"
+#include "PlaylistCacheStore.h"
 
 #include <QDir>
 #include <QJsonArray>
@@ -235,23 +236,16 @@ void UserManager::fetchPlaylistDetail(const QString &globalCollectionId, int pag
         [](QString, int) {});
 }
 
-// ── 缓存相关 ──
+// ── 缓存相关（转发到 PlaylistCacheStore，统一缓存目录实现）──
 
 QString UserManager::getCacheDir() const
 {
-#ifdef Q_OS_WIN
-    return "C:/网狗音乐缓存目录";
-#elif defined(Q_OS_MAC)
-    return QStandardPaths::writableLocation(QStandardPaths::DownloadLocation) + "/网狗音乐缓存目录";
-#else
-    return QStandardPaths::writableLocation(QStandardPaths::DownloadLocation) + "/网狗音乐缓存目录";
-#endif
+    return PlaylistCacheStore::cacheDir();
 }
 
 void UserManager::ensureCacheDir() const
 {
-    QDir dir(getCacheDir());
-    if (!dir.exists()) dir.mkpath(".");
+    PlaylistCacheStore::ensureCacheDir();
 }
 
 void UserManager::writeCacheFile(const QString &fileName, const QJsonDocument &doc) const

@@ -1,13 +1,26 @@
 #include "playlistmanager.h"
 #include "ApiClient.h"
+#include "DominantColorExtractor.h"
+#include "PlaylistCacheStore.h"
 #include <QDebug>
 #include <QEventLoop>
-#include <QRunnable>
-#include <QThreadPool>
 #include <QTimer>
 #include <memory>
 PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent) : QObject(parent), m_recommendation(recommendation)
 {
+    // QML 列表视图 model（与 m_playlist/m_togetherplaylist/m_recentPlaylist 同步）
+    m_playlistModel = new SongListModel(this);
+    m_togetherplaylistModel = new SongListModel(this);
+    m_recentPlaylistModel = new SongListModel(this);
+
+    // 主色调提取模块：extract 异步返回结果，转发到 QML 绑定的 dominantColor 属性
+    m_colorExtractor = new DominantColorExtractor(this);
+    connect(m_colorExtractor, &DominantColorExtractor::dominantColorReady,
+            this, [this](const QString &color) {
+        m_dominantColor = color;
+        emit dominantColorChanged();
+    });
+
     player->setAudioOutput(audioOutput);
     audioOutput->setVolume(1.0);
     // 延迟到事件循环空闲时加载缓存，避免主线程同步 readAll + JSON 解析阻塞 QML 首屏
@@ -78,9 +91,18 @@ void PlaylistManager::addSong(const QVariantMap &songMap)
 void PlaylistManager::addSongNext(const SongInfo &song)
 {
     if (type != LOCAL) return;
-    // 去重
+    // 若这首歌就是当前正在播放的，无需操作（它已经是"当前"）
+    if (m_currentIndex >= 0 && m_currentIndex < m_playlist.size()
+        && m_playlist[m_currentIndex].songhash == song.songhash) {
+        return;
+    }
+    // 去重：若已在队列其它位置，先移除，再重新插到「下一首」位置，
+    // 确保它真的成为下一首（而非保留在原位置）
     for (int i = 0; i < m_playlist.size(); i++) {
-        if (m_playlist[i].songhash == song.songhash) return;
+        if (m_playlist[i].songhash == song.songhash) {
+            m_playlist.removeAt(i);
+            break;
+        }
     }
     SongInfo copy = song;
     copy.url.clear();
@@ -90,7 +112,7 @@ void PlaylistManager::addSongNext(const SongInfo &song)
     else
         m_playlist.insert(insertIndex, copy);
     savePlaylistToCache();
-    emit playlistUpdated();
+    m_playlistModel->syncFromList(m_playlist); emit playlistUpdated();
 }
 
 void PlaylistManager::addSongNext(const QVariantMap &songMap)
@@ -103,7 +125,7 @@ void PlaylistManager::removeSong(int index)
     {
         (*m_curplaylist).removeAt(index);
         if (type == LOCAL) savePlaylistToCache();
-        emit playlistUpdated();
+        m_playlistModel->syncFromList(m_playlist); emit playlistUpdated();
         if (index == m_currentIndex)
         {
             m_currentIndex = -1;
@@ -121,44 +143,24 @@ void PlaylistManager::clearPlaylist()
     m_lazyPage = 0;
     m_lazyFetching = false;
     if (type == LOCAL) savePlaylistToCache();
-    emit playlistUpdated();
+    m_playlistModel->syncFromList(m_playlist); emit playlistUpdated();
     emit currentIndexChanged(-1);
 }
 
+// 缓存目录访问转发到 PlaylistCacheStore（统一实现，消除三处 #ifdef 重复）
 QString PlaylistManager::getCacheDir() const
 {
-#ifdef Q_OS_WIN
-    return "C:/网狗音乐缓存目录";
-#elif defined(Q_OS_MAC)
-    return QStandardPaths::writableLocation(QStandardPaths::DownloadLocation) + "/网狗音乐缓存目录";
-#else
-    return QStandardPaths::writableLocation(QStandardPaths::DownloadLocation) + "/网狗音乐缓存目录";
-#endif
-}
-
-void PlaylistManager::ensureCacheDir() const
-{
-    QDir dir(getCacheDir());
-    if (!dir.exists()) {
-        if (!dir.mkpath(".")) {
-            qCritical() << "无法创建缓存目录:" << getCacheDir();
-        }
-    }
-}
-
-QString PlaylistManager::getPlaylistCachePath() const
-{
-    return getCacheDir() + "/playlist_cache.json";
-}
-
-QString PlaylistManager::getRecentCachePath() const
-{
-    return getCacheDir() + "/recent_cache.json";
+    return PlaylistCacheStore::cacheDir();
 }
 
 QList<SongInfo> PlaylistManager::recentPlaylist() const
 {
     return m_recentPlaylist;
+}
+
+SongListModel *PlaylistManager::recentPlaylistModel()
+{
+    return m_recentPlaylistModel;
 }
 
 void PlaylistManager::addToRecent(const SongInfo &song)
@@ -182,63 +184,23 @@ void PlaylistManager::addToRecent(const SongInfo &song)
     }
 
     saveRecentToCache();
-    emit recentPlaylistUpdated();
+    m_recentPlaylistModel->syncFromList(m_recentPlaylist); emit recentPlaylistUpdated();
 }
 
 void PlaylistManager::saveRecentToCache()
 {
-    ensureCacheDir();
-    QJsonArray arr;
-    for (const SongInfo &song : m_recentPlaylist) {
-        QJsonObject obj;
-        obj["title"] = song.title;
-        obj["songhash"] = song.songhash;
-        obj["singername"] = song.singername;
-        obj["union_cover"] = song.union_cover;
-        obj["album_name"] = song.album_name;
-        obj["duration"] = song.duration;
-        arr.append(obj);
-    }
-    QJsonDocument doc(arr);
-    QFile file(getRecentCachePath());
-    if (file.open(QIODevice::WriteOnly)) {
-        file.write(doc.toJson(QJsonDocument::Compact));
-        file.close();
-    }
+    PlaylistCacheStore::saveRecent(m_recentPlaylist);
 }
 
 void PlaylistManager::loadRecentFromCache()
 {
-    QFile file(getRecentCachePath());
-    if (!file.exists() || !file.open(QIODevice::ReadOnly)) return;
-
-    QByteArray data = file.readAll();
-    file.close();
-    QJsonDocument doc = QJsonDocument::fromJson(data);
-    if (!doc.isArray()) return;
-
-    m_recentPlaylist.clear();
-    QJsonArray arr = doc.array();
-    for (const QJsonValue &val : arr) {
-        if (!val.isObject()) continue;
-        QJsonObject obj = val.toObject();
-        SongInfo song;
-        song.title = obj["title"].toString();
-        song.songhash = obj["songhash"].toString();
-        song.singername = obj["singername"].toString();
-        song.union_cover = obj["union_cover"].toString();
-        // 旧缓存里的封面可能是低清尺寸(80/150/300/400/480)，统一升级到 720
-        song.union_cover.replace("/80/", "/720/").replace("/150/", "/720/").replace("/300/", "/720/").replace("/400/", "/720/").replace("/480/", "/720/");
-        song.album_name = obj["album_name"].toString();
-        song.duration = obj["duration"].toString();
-        m_recentPlaylist.append(song);
-    }
+    PlaylistCacheStore::loadRecent(m_recentPlaylist);
 }
 
 // 判断是否有缓存文件
 int PlaylistManager::is_have_cache(const SongInfo &song, const int index)
 {
-    ensureCacheDir();
+    PlaylistCacheStore::ensureCacheDir();
     QString cacheDir = getCacheDir();
     // 先判断本地是否有歌曲缓存
     QString cacheFileName = song.title + "-" + song.singername + ".mp3";
@@ -257,7 +219,7 @@ int PlaylistManager::is_have_cache(const SongInfo &song, const int index)
         m_isPaused = false;
         m_currentIndex = index;
         // 提取专辑封面主色调
-        extractDominantColor(song.union_cover);
+        m_colorExtractor->extract(song.union_cover);
         // 重置进度：缓存命中的新歌也从 0 开始（与 startPlayback 一致）。
         // 上一首自然播完时 m_percent 冻在 ~1.0（updatePlaybackProgress 在 EndOfMedia 跳过更新），
         // 不重置的话媒体控制栏（currentSongChanged 触发 getpercent）会把本曲显示在末尾。
@@ -323,7 +285,7 @@ void PlaylistManager::loadSongPaused(int index)
     player->stop();
     player->setSource(QUrl());
 
-    ensureCacheDir();
+    PlaylistCacheStore::ensureCacheDir();
     QString cacheFilePath = getCacheDir() + "/" + song.title + "-" + song.singername + ".mp3";
 
     if (QFile::exists(cacheFilePath))
@@ -347,7 +309,7 @@ void PlaylistManager::loadSongPaused(int index)
         });
     }
 
-    extractDominantColor(song.union_cover);
+    m_colorExtractor->extract(song.union_cover);
     m_isPaused = true;
     emit currentSongChanged();
     emit isPausedChanged();
@@ -436,7 +398,7 @@ void PlaylistManager::playPlaylistFromSource(const QString &sourceId, int totalC
         m_playlist.append(s);
 
     savePlaylistToCache();
-    emit playlistUpdated();
+    m_playlistModel->syncFromList(m_playlist); emit playlistUpdated();
 
     // 起始下标在首批内的相对位置
     int localIndex = startIndexInSource;
@@ -476,7 +438,7 @@ void PlaylistManager::fetchNextSourcePage()
                     m_playlist.append(s);
                 m_lazyPage += 1;
                 savePlaylistToCache();
-                emit playlistUpdated();
+                m_playlistModel->syncFromList(m_playlist); emit playlistUpdated();
                 // playNext 在已加载末尾触发拉取时，下一批到位后续播下一首
                 if (m_pendingNextAfterLoad) {
                     m_pendingNextAfterLoad = false;
@@ -630,7 +592,7 @@ void PlaylistManager::playNextAndPlay(const SongInfo &song)
     else
         m_playlist.insert(insertIndex, copy);
     savePlaylistToCache();
-    emit playlistUpdated();
+    m_playlistModel->syncFromList(m_playlist); emit playlistUpdated();
     // 立即播放刚插入的这首
     playSongbyindex(insertIndex);
 }
@@ -654,9 +616,9 @@ void PlaylistManager::doAddSong(const SongInfo &song, bool /*toHead*/, bool /*pl
     showplaylist();
     if (type == LOCAL) {
         savePlaylistToCache();
-        emit playlistUpdated();
+        m_playlistModel->syncFromList(m_playlist); emit playlistUpdated();
     } else if (type == TOGETHER) {
-        emit togetherplaylistUpdated();
+        m_togetherplaylistModel->syncFromList(m_togetherplaylist); emit togetherplaylistUpdated();
     }
 }
 
@@ -770,9 +732,19 @@ QList<SongInfo> PlaylistManager::playlist()
     return m_playlist;
 }
 
+SongListModel *PlaylistManager::playlistModel()
+{
+    return m_playlistModel;
+}
+
 QList<SongInfo> PlaylistManager::togetherplaylist()
 {
     return m_togetherplaylist;
+}
+
+SongListModel *PlaylistManager::togetherplaylistModel()
+{
+    return m_togetherplaylistModel;
 }
 
 void PlaylistManager::clearTogetherSongHash()
@@ -863,13 +835,120 @@ void PlaylistManager::changeplaylisttype(enum playlist_type changetype)
             loadSongPaused(m_localIndex);
         }
     }
-    emit playlistUpdated();
+    m_playlistModel->syncFromList(m_playlist); emit playlistUpdated();
     emit playlist_typeChanged();
 }
 
 float PlaylistManager::getpercent() const
 {
     return m_percent;
+}
+
+// 边下边播共享逻辑（startPlayback 与 playTogetherSongFromServer 共用）
+void PlaylistManager::downloadAndStream(const QString &songUrl, const QString &cacheFilePath,
+                                        const QString &coverUrlForColor, double seekPercent,
+                                        std::function<void()> onStreamStart)
+{
+    const qint64 startThreshold = 500 * 1024;  // 500KB 后开始播放
+
+    QFile *tempFile = new QFile(cacheFilePath, this);
+    if (!tempFile->open(QIODevice::WriteOnly)) {
+        qCritical() << "Cannot open cache file:" << cacheFilePath;
+        return;
+    }
+
+    QNetworkAccessManager *mgr = new QNetworkAccessManager(this);
+    QNetworkReply *reply = mgr->get(QNetworkRequest(QUrl(songUrl)));
+
+    m_downloadProgress = 0.0;
+    m_downloadedBytes = 0;
+    m_totalDownloadBytes = reply->header(QNetworkRequest::ContentLengthHeader).toLongLong();
+    emit downloadProgressChanged();
+
+    QObject::connect(reply, &QNetworkReply::readyRead, this, [=]() {
+        QByteArray chunk = reply->readAll();
+        if (!chunk.isEmpty()) {
+            tempFile->write(chunk);
+            tempFile->flush();
+            m_downloadedBytes += chunk.size();
+            if (m_totalDownloadBytes > 0) {
+                m_downloadProgress = static_cast<qreal>(m_downloadedBytes) / m_totalDownloadBytes;
+                emit downloadProgressChanged();
+            }
+        }
+
+        // 达到阈值且尚未开始播放 → 设置源并播放
+        QFileInfo fi(cacheFilePath);
+        if (fi.size() >= startThreshold && player->source().isEmpty()) {
+            player->setSource(QUrl::fromLocalFile(cacheFilePath));
+            // seekPercent > 0：等 LoadedMedia 后 seek 再播放；否则直接播放
+            if (seekPercent > 0) {
+                auto conn = std::make_shared<QMetaObject::Connection>();
+                *conn = connect(player, &QMediaPlayer::mediaStatusChanged, this,
+                    [this, seekPercent, conn](QMediaPlayer::MediaStatus status) {
+                        if (status == QMediaPlayer::LoadedMedia) {
+                            seekToPercent(seekPercent);
+                            player->play();
+                            m_isPaused = false;
+                            emit isPausedChanged();
+                            QObject::disconnect(*conn);
+                        }
+                    });
+            } else {
+                player->play();
+                m_isPaused = false;
+                emit isPausedChanged();
+            }
+            if (onStreamStart) onStreamStart();
+        }
+    });
+
+    QObject::connect(reply, &QNetworkReply::finished, this, [=]() {
+        tempFile->flush();
+        tempFile->close();
+        m_downloadProgress = 1.0;
+        m_downloadedBytes = m_totalDownloadBytes;
+        emit downloadProgressChanged();
+        if (m_isBuffering) {
+            m_isBuffering = false;
+            player->play();
+            emit isBufferingChanged();
+        }
+        qDebug() << "下载完成:" << cacheFilePath;
+
+        // 文件太小未触发阈值时，手动设置源并播放（一起听场景需要）
+        if (player->source().isEmpty() && QFile::exists(cacheFilePath)) {
+            player->setSource(QUrl::fromLocalFile(cacheFilePath));
+            if (seekPercent > 0) {
+                auto conn = std::make_shared<QMetaObject::Connection>();
+                *conn = connect(player, &QMediaPlayer::mediaStatusChanged, this,
+                    [this, seekPercent, conn](QMediaPlayer::MediaStatus status) {
+                        if (status == QMediaPlayer::LoadedMedia) {
+                            seekToPercent(seekPercent);
+                            player->play();
+                            m_isPaused = false;
+                            emit isPausedChanged();
+                            QObject::disconnect(*conn);
+                        }
+                    });
+            } else {
+                player->play();
+                m_isPaused = false;
+                emit isPausedChanged();
+            }
+            if (onStreamStart) onStreamStart();
+        }
+
+        // 释放本次下载资源（避免累积泄漏）
+        reply->deleteLater();
+        mgr->deleteLater();
+        tempFile->deleteLater();
+    });
+
+    // 颜色提取：本地播放路径需要，一起听路径 coverUrlForColor 传空跳过
+    if (!coverUrlForColor.isEmpty()) {
+        m_colorExtractor->extract(coverUrlForColor);
+    }
 }
 
 void PlaylistManager::startPlayback(const SongInfo &song)
@@ -895,170 +974,49 @@ void PlaylistManager::startPlayback(const SongInfo &song)
     m_percentstr = "00:00";
     emit percentChanged();
 
-    // 初始播放阈值（字节），例如 500KB
-    const qint64 startThreshold = 500 * 1024;
+    // 立即通知媒体控制栏更新标题/歌手/封面 URL——封面由 NowPlaying 异步下载，
+    // 这样切歌瞬间媒体栏就能反映新歌信息，不必等边下边播达到阈值。
+    emit currentSongChanged();
 
-    ensureCacheDir();
-    QString cacheDir = getCacheDir();
-    QString cacheFileName = song.title + "-" + song.singername + ".mp3";
-    QString cacheFilePath = cacheDir + "/" + cacheFileName;
+    PlaylistCacheStore::ensureCacheDir();
+    QString cacheFilePath = getCacheDir() + "/" + song.title + "-" + song.singername + ".mp3";
 
-    QFile cacheFile(cacheFilePath);
-    if (cacheFile.exists())
-    {
+    // 本地缓存命中：直接播放
+    if (QFile::exists(cacheFilePath)) {
         qDebug() << "缓存文件已存在，直接播放:" << cacheFilePath;
-
-        // 播放本地缓存文件
         player->stop();
         player->setSource(QUrl::fromLocalFile(cacheFilePath));
         player->play();
         m_isPaused = false;
-        // 提取专辑封面主色调
-        extractDominantColor(song.union_cover);
-        emit currentSongChanged();
+        m_colorExtractor->extract(song.union_cover);
         emit isPausedChanged();
         qDebug() << "正在播放:" << song.title << "(" << song.url << ")";
-
-        return; // 跳过下载
-    }
-
-    // 创建临时文件
-    QFile *tempFile = new QFile(cacheFilePath, this);
-    if (!tempFile->open(QIODevice::WriteOnly))
-    {
-        qCritical() << "Cannot open cache file:" << cacheFilePath;
         return;
     }
 
-    QNetworkAccessManager *mgr = new QNetworkAccessManager(this);
-    QNetworkReply *reply = mgr->get(QNetworkRequest(QUrl(song.url)));
-
-    // 下载进度追踪
-    m_downloadProgress = 0.0;
-    m_downloadedBytes = 0;
-    m_totalDownloadBytes = reply->header(QNetworkRequest::ContentLengthHeader).toLongLong();
-    emit downloadProgressChanged();
-
-    QObject::connect(reply, &QNetworkReply::readyRead, this, [=, this]()
-                     {
-        QByteArray chunk = reply->readAll();
-        if (!chunk.isEmpty()) {
-            tempFile->write(chunk);
-            tempFile->flush();
-            m_downloadedBytes += chunk.size();
-            if (m_totalDownloadBytes > 0) {
-                m_downloadProgress = static_cast<qreal>(m_downloadedBytes) / m_totalDownloadBytes;
-                emit downloadProgressChanged();
-            }
-        }
-
-        // 可以在达到一定缓存大小后播放，实现边下边播
-        QFileInfo fi(cacheFilePath);
-        if (fi.size() >= startThreshold && player->source().isEmpty()) {
-            player->setSource(QUrl::fromLocalFile(cacheFilePath));
-            player->play();
-            m_isPaused = false;
-            // 提取专辑封面主色调
-            extractDominantColor(song.union_cover);
-            emit currentSongChanged();
-            emit isPausedChanged();
-            qDebug() << "正在播放:" << song.title << "(" << song.url << ")";
-            qDebug() << "开始播放边下边播:" << cacheFilePath;
-        } });
-
-    QObject::connect(reply, &QNetworkReply::finished, this, [=, this]()
-                     {
-        tempFile->flush();
-        tempFile->close();
-        m_downloadProgress = 1.0;
-        m_downloadedBytes = m_totalDownloadBytes;
-        emit downloadProgressChanged();
-        if (m_isBuffering) {
-            m_isBuffering = false;
-            player->play();
-            emit isBufferingChanged();
-        }
-        qDebug() << "下载完成:" << cacheFilePath; });
+    // 无缓存：边下边播（下载逻辑与一起听路径共用 downloadAndStream）
+    // onStreamStart 无需再 emit currentSongChanged（已在入口 emit）
+    downloadAndStream(song.url, cacheFilePath, song.union_cover, 0.0, nullptr);
 }
 
 // 保存播放列表到本地缓存
 void PlaylistManager::savePlaylistToCache()
 {
-    ensureCacheDir();
-    QJsonArray arr;
-    for (const SongInfo &song : m_playlist) {
-        QJsonObject obj;
-        obj["title"] = song.title;
-        obj["songhash"] = song.songhash;
-        obj["url"] = song.url;
-        obj["singername"] = song.singername;
-        obj["union_cover"] = song.union_cover;
-        obj["album_name"] = song.album_name;
-        obj["duration"] = song.duration;
-        arr.append(obj);
-    }
-    QJsonObject root;
-    root["playlist"] = arr;
     // TOGETHER 模式下保存切换前的本地索引和进度，而非一起听的
-    root["currentIndex"] = (type == TOGETHER) ? m_localIndex : m_currentIndex;
-    root["percent"] = (type == TOGETHER) ? m_localPercent : m_percent;
-    QJsonDocument doc(root);
-    QFile file(getPlaylistCachePath());
-    if (file.open(QIODevice::WriteOnly)) {
-        file.write(doc.toJson(QJsonDocument::Compact));
-        file.close();
-        qDebug() << "播放列表已缓存，共" << m_playlist.size() << "首歌曲";
-    } else {
-        qWarning() << "无法写入播放列表缓存:" << getPlaylistCachePath();
-    }
+    const int idx = (type == TOGETHER) ? m_localIndex : m_currentIndex;
+    const float pct = (type == TOGETHER) ? m_localPercent : m_percent;
+    PlaylistCacheStore::savePlaylist(m_playlist, idx, pct);
 }
 
 // 从本地缓存加载播放列表
 void PlaylistManager::loadPlaylistFromCache()
 {
-    QFile file(getPlaylistCachePath());
-    if (!file.exists() || !file.open(QIODevice::ReadOnly)) {
-        qDebug() << "无播放列表缓存文件，跳过加载";
-        return;
-    }
-    QByteArray data = file.readAll();
-    file.close();
-    QJsonDocument doc = QJsonDocument::fromJson(data);
-
-    QJsonArray arr;
     int savedIndex = -1;
     float savedPercent = 0.0f;
-
-    if (doc.isObject()) {
-        QJsonObject root = doc.object();
-        arr = root["playlist"].toArray();
-        savedIndex = root["currentIndex"].toInt(-1);
-        savedPercent = static_cast<float>(root["percent"].toDouble(0.0));
-    } else if (doc.isArray()) {
-        arr = doc.array();
-    } else {
-        qWarning() << "播放列表缓存格式错误";
+    if (!PlaylistCacheStore::loadPlaylist(m_playlist, savedIndex, savedPercent))
         return;
-    }
 
-    m_playlist.clear();
-    for (const QJsonValue &val : arr) {
-        if (!val.isObject()) continue;
-        QJsonObject obj = val.toObject();
-        SongInfo song;
-        song.title = obj["title"].toString();
-        song.songhash = obj["songhash"].toString();
-        song.url = obj["url"].toString();
-        song.singername = obj["singername"].toString();
-        song.union_cover = obj["union_cover"].toString();
-        // 旧缓存里的封面可能是低清尺寸(80/150/300/400/480)，统一升级到 720
-        song.union_cover.replace("/80/", "/720/").replace("/150/", "/720/").replace("/300/", "/720/").replace("/400/", "/720/").replace("/480/", "/720/");
-        song.album_name = obj["album_name"].toString();
-        song.duration = obj["duration"].toString();
-        song.lyric = "";
-        m_playlist.append(song);
-    }
-    emit playlistUpdated();
+    m_playlistModel->syncFromList(m_playlist); emit playlistUpdated();
 
     // 恢复上次播放的歌曲和进度
     if (savedIndex >= 0 && savedIndex < m_playlist.size()) {
@@ -1101,7 +1059,7 @@ void PlaylistManager::restoreLastPlayback()
         lyricParser.parseKRCLyrics(song.lyric);
     }
 
-    extractDominantColor(song.union_cover);
+    m_colorExtractor->extract(song.union_cover);
     emit currentIndexChanged(index);
     emit currentSongChanged();
 
@@ -1123,7 +1081,7 @@ void PlaylistManager::restoreLastPlayback()
         });
 
     // 优先使用本地缓存文件，避免过期 URL 导致 403
-    ensureCacheDir();
+    PlaylistCacheStore::ensureCacheDir();
     QString cacheFilePath = getCacheDir() + "/" + song.title + "-" + song.singername + ".mp3";
     if (QFile::exists(cacheFilePath)) {
         player->setSource(QUrl::fromLocalFile(cacheFilePath));
@@ -1138,32 +1096,13 @@ void PlaylistManager::restoreLastPlayback()
 // 保存歌词到本地缓存
 void PlaylistManager::saveLyricToCache(const QString &songhash, const QString &lyric)
 {
-    if (songhash.isEmpty() || lyric.isEmpty()) return;
-    ensureCacheDir();
-    QString path = getCacheDir() + "/lyrics_" + songhash + ".json";
-    QFile file(path);
-    if (file.open(QIODevice::WriteOnly)) {
-        QJsonObject obj;
-        obj["songhash"] = songhash;
-        obj["lyric"] = lyric;
-        file.write(QJsonDocument(obj).toJson(QJsonDocument::Compact));
-        file.close();
-        qDebug() << "歌词已缓存:" << songhash;
-    }
+    PlaylistCacheStore::saveLyric(songhash, lyric);
 }
 
 // 从本地缓存加载歌词
 QString PlaylistManager::loadLyricFromCache(const QString &songhash)
 {
-    if (songhash.isEmpty()) return QString();
-    QString path = getCacheDir() + "/lyrics_" + songhash + ".json";
-    QFile file(path);
-    if (!file.exists() || !file.open(QIODevice::ReadOnly)) return QString();
-    QByteArray data = file.readAll();
-    file.close();
-    QJsonDocument doc = QJsonDocument::fromJson(data);
-    if (!doc.isObject()) return QString();
-    return doc.object()["lyric"].toString();
+    return PlaylistCacheStore::loadLyric(songhash);
 }
 
 void PlaylistManager::fetchSongUrl(const QString &hash, std::function<void(QString)> callback)
@@ -1418,214 +1357,6 @@ QString PlaylistManager::dominantColor() const
     return m_dominantColor;
 }
 
-// ──────────────────────────────────────────────
-// 主色调提取：后台线程任务（私有）
-// ──────────────────────────────────────────────
-namespace {
-
-class ColorExtractTask : public QRunnable {
-public:
-    ColorExtractTask(const QString& url,
-                     std::function<void(const QString&, const QString&)> cb)
-        : m_url(url), m_cb(std::move(cb)) {}
-
-    void run() override
-    {
-        QString resultColor = QStringLiteral("#FF6B6B");
-        QNetworkAccessManager nam;
-        QNetworkReply* reply = nam.get(QNetworkRequest(QUrl(m_url)));
-        if (!reply) { m_cb(m_url, resultColor); return; }
-
-        QEventLoop loop;
-        QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-        loop.exec();
-
-        if (reply->error() == QNetworkReply::NoError) {
-            QImage image = QImage::fromData(reply->readAll());
-            if (!image.isNull()) {
-                resultColor = computeColor(image);
-            }
-        }
-        reply->deleteLater();
-        m_cb(m_url, resultColor);
-    }
-
-private:
-    static QString computeColor(const QImage& image)
-    {
-        if (image.isNull()) return QStringLiteral("#FF6B6B");
-        QImage smallImage = image.scaled(50, 50, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-
-        long totalR = 0, totalG = 0, totalB = 0;
-        int pixelCount = 0;
-        for (int y = 0; y < smallImage.height(); ++y) {
-            for (int x = 0; x < smallImage.width(); ++x) {
-                QColor color = smallImage.pixelColor(x, y);
-                int brightness = (color.red() + color.green() + color.blue()) / 3;
-                if (brightness > 20 && brightness < 235) {
-                    totalR += color.red();
-                    totalG += color.green();
-                    totalB += color.blue();
-                    pixelCount++;
-                }
-            }
-        }
-        if (pixelCount == 0) return QStringLiteral("#FF6B6B");
-
-        int avgR = totalR / pixelCount;
-        int avgG = totalG / pixelCount;
-        int avgB = totalB / pixelCount;
-
-        QColor avgColor(avgR, avgG, avgB);
-        int h, s, v;
-        avgColor.getHsv(&h, &s, &v);
-        s = qMin(255, s + 50);
-        v = qMin(255, v + 30);
-        QColor finalColor;
-        finalColor.setHsv(h, s, v);
-        return finalColor.name(QColor::HexRgb).toUpper();
-    }
-
-    QString m_url;
-    std::function<void(const QString&, const QString&)> m_cb;
-};
-
-}  // namespace
-
-// 提取图片主色调（异步：后台线程 + LRU 缓存 + 去重）
-void PlaylistManager::extractDominantColor(const QString &imageUrl)
-{
-    if (imageUrl.isEmpty()) {
-        m_dominantColor = QStringLiteral("#FF6B6B");
-        emit dominantColorChanged();
-        return;
-    }
-
-    // 1. LRU 命中
-    {
-        QMutexLocker lock(&m_colorCacheMutex);
-        if (m_colorCache.contains(imageUrl)) {
-            m_dominantColor = m_colorCache.value(imageUrl);
-            emit dominantColorChanged();
-            return;
-        }
-    }
-
-    // 2. 已在进行中的请求：跳过
-    {
-        QMutexLocker lock(&m_colorCacheMutex);
-        if (m_pendingColorRequests.contains(imageUrl)) return;
-        m_pendingColorRequests.insert(imageUrl);
-    }
-
-    // 3. 本地资源：直接读（同步很快，不放后台）
-    if (imageUrl.startsWith("qrc:/")) {
-        QString path = imageUrl;
-        path.remove("qrc:");
-        QImage image(path);
-        QString color = image.isNull() ? QStringLiteral("#FF6B6B")
-                                         : QColor(getAverageColor(image)).name(QColor::HexRgb).toUpper();
-        {
-            QMutexLocker lock(&m_colorCacheMutex);
-            m_pendingColorRequests.remove(imageUrl);
-            if (m_colorCache.size() >= 64) m_colorCache.erase(m_colorCache.begin());
-            m_colorCache.insert(imageUrl, color);
-        }
-        m_dominantColor = color;
-        emit dominantColorChanged();
-        return;
-    }
-
-    // 4. 本地文件路径：直接读
-    if (!imageUrl.startsWith("http://") && !imageUrl.startsWith("https://")) {
-        QImage image(imageUrl);
-        QString color = image.isNull() ? QStringLiteral("#FF6B6B")
-                                         : QColor(getAverageColor(image)).name(QColor::HexRgb).toUpper();
-        {
-            QMutexLocker lock(&m_colorCacheMutex);
-            m_pendingColorRequests.remove(imageUrl);
-            if (m_colorCache.size() >= 64) m_colorCache.erase(m_colorCache.begin());
-            m_colorCache.insert(imageUrl, color);
-        }
-        m_dominantColor = color;
-        emit dominantColorChanged();
-        return;
-    }
-
-    // 5. 网络图片：丢到后台线程池
-    auto* task = new ColorExtractTask(imageUrl,
-        [this](const QString& url, const QString& color) {
-            // 回到主线程
-            QMutexLocker lock(&m_colorCacheMutex);
-            m_pendingColorRequests.remove(url);
-            if (m_colorCache.size() >= 64) m_colorCache.erase(m_colorCache.begin());
-            m_colorCache.insert(url, color);
-            QMetaObject::invokeMethod(this, [this, color]() {
-                m_dominantColor = color;
-                emit dominantColorChanged();
-            }, Qt::QueuedConnection);
-        });
-    QThreadPool::globalInstance()->start(task);
-}
-
-// 计算图片的平均颜色
-QColor PlaylistManager::getAverageColor(const QImage &image)
-{
-    if (image.isNull())
-    {
-        return QColor("#FF6B6B");
-    }
-
-    // 缩小图片以加快处理速度
-    QImage smallImage = image.scaled(50, 50, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-
-    long totalR = 0, totalG = 0, totalB = 0;
-    int pixelCount = 0;
-
-    // 遍历所有像素
-    for (int y = 0; y < smallImage.height(); ++y)
-    {
-        for (int x = 0; x < smallImage.width(); ++x)
-        {
-            QColor color = smallImage.pixelColor(x, y);
-
-            // 忽略太暗或太亮的像素
-            int brightness = (color.red() + color.green() + color.blue()) / 3;
-            if (brightness > 20 && brightness < 235)
-            {
-                totalR += color.red();
-                totalG += color.green();
-                totalB += color.blue();
-                pixelCount++;
-            }
-        }
-    }
-
-    if (pixelCount == 0)
-    {
-        return QColor("#FF6B6B");
-    }
-
-    // 计算平均值
-    int avgR = totalR / pixelCount;
-    int avgG = totalG / pixelCount;
-    int avgB = totalB / pixelCount;
-
-    // 增加饱和度，使颜色更鲜艳
-    QColor avgColor(avgR, avgG, avgB);
-    int h, s, v;
-    avgColor.getHsv(&h, &s, &v);
-
-    // 提高饱和度和亮度
-    s = qMin(255, s + 50);
-    v = qMin(255, v + 30);
-
-    QColor finalColor;
-    finalColor.setHsv(h, s, v);
-
-    return finalColor;
-}
-
 void PlaylistManager::syncTogetherPlaylistFromServer(const QJsonArray &songs)
 {
     // 在清空列表前记住当前播放歌曲的 hash
@@ -1668,7 +1399,7 @@ void PlaylistManager::syncTogetherPlaylistFromServer(const QJsonArray &songs)
         }
     }
 
-    emit togetherplaylistUpdated();
+    m_togetherplaylistModel->syncFromList(m_togetherplaylist); emit togetherplaylistUpdated();
 }
 
 void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const QString &songName,
@@ -1719,7 +1450,7 @@ void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const Q
         song.duration = duration;
         m_togetherplaylist.append(song);
         playIndex = m_togetherplaylist.size() - 1;
-        emit togetherplaylistUpdated();
+        m_togetherplaylistModel->syncFromList(m_togetherplaylist); emit togetherplaylistUpdated();
     }
     m_currentIndex = playIndex;
     emit currentIndexChanged(playIndex);
@@ -1735,7 +1466,7 @@ void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const Q
     emit downloadProgressChanged();
     emit isBufferingChanged();
 
-    ensureCacheDir();
+    PlaylistCacheStore::ensureCacheDir();
     QString cacheDir = getCacheDir();
     QString cacheFileName = songName + "-" + singerName + ".mp3";
     QString cacheFilePath = cacheDir + "/" + cacheFileName;
@@ -1783,93 +1514,11 @@ void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const Q
     }
     else if (!songUrl.isEmpty())
     {
-        // 无缓存 - 边下边播，保存到本地缓存文件
-        const qint64 startThreshold = 500 * 1024;
-
-        QFile *tempFile = new QFile(cacheFilePath, this);
-        if (!tempFile->open(QIODevice::WriteOnly))
-        {
-            qCritical() << "Cannot open cache file:" << cacheFilePath;
-            player->setSource(QUrl(songUrl));
-            player->play();
-            m_isPaused = false;
-            emit isPausedChanged();
-        }
-        else
-        {
-            QNetworkAccessManager *mgr = new QNetworkAccessManager(this);
-            QNetworkReply *reply = mgr->get(QNetworkRequest(QUrl(songUrl)));
-
-            m_downloadProgress = 0.0;
-            m_downloadedBytes = 0;
-            m_totalDownloadBytes = reply->header(QNetworkRequest::ContentLengthHeader).toLongLong();
-            emit downloadProgressChanged();
-
-            double seekPercent = m_togetherSeekPercent;
-            m_togetherSeekPercent = 0;
-
-            QObject::connect(reply, &QNetworkReply::readyRead, this, [=, this]() {
-                QByteArray chunk = reply->readAll();
-                if (!chunk.isEmpty()) {
-                    tempFile->write(chunk);
-                    tempFile->flush();
-                    m_downloadedBytes += chunk.size();
-                    if (m_totalDownloadBytes > 0) {
-                        m_downloadProgress = static_cast<qreal>(m_downloadedBytes) / m_totalDownloadBytes;
-                        emit downloadProgressChanged();
-                    }
-                }
-
-                QFileInfo fi(cacheFilePath);
-                if (fi.size() >= startThreshold && player->source().isEmpty()) {
-                    player->setSource(QUrl::fromLocalFile(cacheFilePath));
-                    if (seekPercent > 0) {
-                        auto conn = std::make_shared<QMetaObject::Connection>();
-                        *conn = connect(player, &QMediaPlayer::mediaStatusChanged, this,
-                            [this, seekPercent, conn](QMediaPlayer::MediaStatus status) {
-                                if (status == QMediaPlayer::LoadedMedia)
-                                {
-                                    seekToPercent(seekPercent);
-                                    player->play();
-                                    m_isPaused = false;
-                                    emit isPausedChanged();
-                                    QObject::disconnect(*conn);
-                                }
-                            });
-                    } else {
-                        player->play();
-                        m_isPaused = false;
-                        emit isPausedChanged();
-                    }
-                }
-            });
-
-            QObject::connect(reply, &QNetworkReply::finished, this, [=, this]() {
-                tempFile->flush();
-                tempFile->close();
-                m_downloadProgress = 1.0;
-                m_downloadedBytes = m_totalDownloadBytes;
-                emit downloadProgressChanged();
-                if (m_isBuffering) {
-                    m_isBuffering = false;
-                    player->play();
-                    emit isBufferingChanged();
-                }
-                qDebug() << "一起听 - 下载完成:" << cacheFilePath;
-
-                // 文件太小没触发阈值时，手动设置源并播放
-                if (player->source().isEmpty() && QFile::exists(cacheFilePath)) {
-                    player->setSource(QUrl::fromLocalFile(cacheFilePath));
-                    player->play();
-                    m_isPaused = false;
-                    emit isPausedChanged();
-                }
-
-                reply->deleteLater();
-                mgr->deleteLater();
-                tempFile->deleteLater();
-            });
-        }
+        // 无缓存 - 边下边播（下载逻辑与本地播放共用 downloadAndStream）
+        double seekPercent = m_togetherSeekPercent;
+        m_togetherSeekPercent = 0;
+        // 一起听路径不需要再提取封面色（已在调用方处理）也不需要 currentSongChanged
+        downloadAndStream(songUrl, cacheFilePath, QString(), seekPercent, nullptr);
     }
     else
     {
@@ -1907,7 +1556,7 @@ void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const Q
         });
     }
 
-    extractDominantColor(coverUrl);
+    m_colorExtractor->extract(coverUrl);
     emit currentSongChanged();
     emit isPausedChanged();
 

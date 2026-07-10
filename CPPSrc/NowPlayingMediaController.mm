@@ -17,6 +17,7 @@
 - (void)startAudioDeviceMonitor;
 - (void)stopAudioDeviceMonitor;
 - (void)loadArtworkFromURL:(NSString *)urlString;
+- (void)applyAppIconArtwork;
 @end
 
 // CoreAudio 设备变化回调：输出设备变化时暂停播放
@@ -39,6 +40,21 @@ static OSStatus AudioDeviceChangedCallback(AudioObjectID inObjectID,
 
 - (void)setup
 {
+    // 显式确保 NSApp 图标已加载：Qt 不一定调用 setApplicationIconImage，
+    // 导致 [NSApp applicationIconImage] 返回空/占位灰图，媒体控制栏右下角
+    // app 图标随之变灰。从 bundle 资源加载 icns 并强制设置。
+    NSString *iconName = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleIconFile"];
+    if (iconName) {
+        NSImage *icon = [[NSImage imageNamed:iconName] copy];
+        if (!icon) {
+            NSString *iconPath = [[NSBundle mainBundle] pathForImageResource:iconName];
+            if (iconPath) icon = [[NSImage alloc] initWithContentsOfFile:iconPath];
+        }
+        if (icon) {
+            [NSApp setApplicationIconImage:icon];
+        }
+    }
+
     MPRemoteCommandCenter *cc = [MPRemoteCommandCenter sharedCommandCenter];
 
     // 播放 / 暂停
@@ -148,7 +164,7 @@ static OSStatus AudioDeviceChangedCallback(AudioObjectID inObjectID,
     [info setObject:@(rate) forKey:MPNowPlayingInfoPropertyPlaybackRate];
     [info setObject:@(elapsedTime) forKey:MPNowPlayingInfoPropertyElapsedPlaybackTime];
 
-    // 保留已有封面，避免闪烁；无封面时使用 App 图标
+    // 保留已有封面，避免闪烁；无封面时使用 App 图标兜底
     if (self.cachedArtwork) {
         [info setObject:self.cachedArtwork forKey:MPMediaItemPropertyArtwork];
     } else {
@@ -159,6 +175,7 @@ static OSStatus AudioDeviceChangedCallback(AudioObjectID inObjectID,
                 requestHandler:^NSImage *(CGSize requestedSize) {
                     return appIcon;
                 }];
+            self.cachedArtwork = artwork;
             [info setObject:artwork forKey:MPMediaItemPropertyArtwork];
         }
     }
@@ -168,26 +185,50 @@ static OSStatus AudioDeviceChangedCallback(AudioObjectID inObjectID,
     // 封面 URL 变化时才重新下载
     NSString *coverNStr = coverQstr.toNSString();
     if (!coverQstr.isEmpty() && ![coverNStr isEqualToString:self.cachedCoverURL]) {
+        NSLog(@"NowPlaying: 开始下载封面 URL: %@", coverNStr);
         self.cachedCoverURL = coverNStr;
         [self loadArtworkFromURL:coverNStr];
+    } else if (coverQstr.isEmpty()) {
+        NSLog(@"NowPlaying: 封面 URL 为空，使用 App 图标兜底");
+        [self applyAppIconArtwork];
     }
 }
 
 - (void)loadArtworkFromURL:(NSString *)urlString
 {
     NSURL *url = [NSURL URLWithString:urlString];
-    if (!url) return;
+    if (!url) {
+        NSLog(@"NowPlaying: 封面 URL 无效，使用 App 图标兜底");
+        [self applyAppIconArtwork];
+        return;
+    }
 
-    NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithURL:url
+    // 用 sharedSession（单例，不会被提前释放）。
+    // 注意：不能用局部 [NSURLSession sessionWithConfiguration:]——ARC 下局部 session
+    // 在方法返回后即释放，而 task 不持有 session，回调时访问已释放 session 会段错误。
+    // 超时通过 NSMutableURLRequest 配置。
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+    request.timeoutInterval = 8.0;
+
+    NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithRequest:request
         completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
-            if (error || !data) {
-                NSLog(@"NowPlaying: 封面下载失败: %@", error.localizedDescription);
+            NSHTTPURLResponse *httpResp = [response isKindOfClass:[NSHTTPURLResponse class]]
+                                          ? (NSHTTPURLResponse *)response : nil;
+            if (error || !data || (httpResp && httpResp.statusCode != 200)) {
+                NSLog(@"NowPlaying: 封面下载失败(status=%ld err=%@)，使用 App 图标兜底",
+                      (long)(httpResp.statusCode), error.localizedDescription);
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [self applyAppIconArtwork];
+                });
                 return;
             }
 
             NSImage *nsImage = [[NSImage alloc] initWithData:data];
             if (!nsImage) {
-                NSLog(@"NowPlaying: 封面数据无法解析为图片");
+                NSLog(@"NowPlaying: 封面数据无法解析为图片，使用 App 图标兜底");
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [self applyAppIconArtwork];
+                });
                 return;
             }
 
@@ -206,6 +247,35 @@ static OSStatus AudioDeviceChangedCallback(AudioObjectID inObjectID,
             });
         }];
     [task resume];
+}
+
+// 用 App 图标作为媒体控制栏封面兜底（下载失败/URL 无效/为空时调用）
+- (void)applyAppIconArtwork
+{
+    NSImage *appIcon = [NSApp applicationIconImage];
+    // NSApp 图标为空时，尝试从主 bundle 资源加载（CFBundleIconFile 指向的 icns）
+    if (!appIcon || appIcon.size.width == 0) {
+        NSString *iconName = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleIconFile"];
+        if (iconName) {
+            appIcon = [[NSImage imageNamed:iconName] copy]
+                      ?: [[NSImage alloc] initWithContentsOfFile:
+                          [[NSBundle mainBundle] pathForImageResource:iconName]];
+        }
+    }
+    if (!appIcon) {
+        NSLog(@"NowPlaying: App 图标兜底也失败，封面将显示为系统默认");
+        return;
+    }
+    MPMediaItemArtwork *artwork = [[MPMediaItemArtwork alloc]
+        initWithBoundsSize:appIcon.size
+        requestHandler:^NSImage *(CGSize requestedSize) {
+            return appIcon;
+        }];
+    self.cachedArtwork = artwork;
+    NSMutableDictionary *current = [[[MPNowPlayingInfoCenter defaultCenter] nowPlayingInfo] mutableCopy];
+    if (!current) current = [NSMutableDictionary dictionary];
+    [current setObject:artwork forKey:MPMediaItemPropertyArtwork];
+    [[MPNowPlayingInfoCenter defaultCenter] setNowPlayingInfo:current];
 }
 
 - (void)clearNowPlaying

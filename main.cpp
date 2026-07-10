@@ -1,6 +1,11 @@
 #include <QApplication>
 #include <QIcon>
 #include <QLoggingCategory>
+#ifdef Q_OS_MAC
+#include <execinfo.h>
+#include <signal.h>
+#include <unistd.h>
+#endif
 #include <QQmlApplicationEngine>
 #include <QQmlComponent>
 #include <QQmlContext>
@@ -60,6 +65,24 @@ public:
 
 int main(int argc, char *argv[])
 {
+    // 崩溃时打印堆栈到 stderr，便于定位段错误
+#ifdef Q_OS_MAC
+    signal(SIGSEGV, [](int) {
+        void *callstack[128];
+        int frames = backtrace(callstack, 128);
+        fputs("=== SEGFAULT backtrace ===\n", stderr);
+        backtrace_symbols_fd(callstack, frames, 2);
+        _exit(1);
+    });
+    signal(SIGABRT, [](int) {
+        void *callstack[128];
+        int frames = backtrace(callstack, 128);
+        fputs("=== SIGABRT backtrace ===\n", stderr);
+        backtrace_symbols_fd(callstack, frames, 2);
+        _exit(1);
+    });
+#endif
+
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 #endif

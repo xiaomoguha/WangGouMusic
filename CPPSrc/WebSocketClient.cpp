@@ -6,9 +6,7 @@
 #define WEB_SOCKET_SERVICE_PATH "/ws"
 
 WebSocketClient::WebSocketClient(PlaylistManager *playManager, UserManager *userManager, QObject *parent)
-    : QObject{parent}, playmanager(playManager), usermanager(userManager), m_webSocket(nullptr), m_serverUrl("wss://music.xjt-togethertracks.top/ws"), m_connectionState(Disconnected), m_autoReconnect(true), m_reconnectBaseInterval(2000)
-      ,
-      m_reconnectAttempts(0), m_maxReconnectAttempts(10)
+    : QObject{parent}, playmanager(playManager), usermanager(userManager), m_webSocket(nullptr), m_serverUrl("wss://music.xjt-togethertracks.top/ws"), m_connectionState(Disconnected)
       ,
       m_heartbeatTimer(nullptr), m_heartbeatTimeoutTimer(nullptr), m_heartbeatInterval(30)
 {
@@ -75,8 +73,6 @@ void WebSocketClient::connectToServer()
 
 void WebSocketClient::disconnectFromServer()
 {
-    m_autoReconnect = false; // 用户主动断开，禁止自动重连
-
     if (m_heartbeatTimer && m_heartbeatTimer->isActive())
     {
         m_heartbeatTimer->stop();
@@ -88,7 +84,7 @@ void WebSocketClient::disconnectFromServer()
 
     if (m_webSocket)
     {
-        // 先断开信号连接，避免触发 onDisconnected 中的重连逻辑
+        // 先断开信号连接，避免 close() 触发 onDisconnected 走一遍断线清理流程
         disconnect(m_webSocket, &QWebSocket::disconnected, this, &WebSocketClient::onDisconnected);
         m_webSocket->close();
     }
@@ -190,11 +186,6 @@ void WebSocketClient::sendString(const QString &message)
     }
 
     m_webSocket->sendTextMessage(message);
-}
-
-void WebSocketClient::setAutoReconnect(bool enable)
-{
-    m_autoReconnect = enable;
 }
 
 void WebSocketClient::setHeartbeatInterval(int seconds)
@@ -410,7 +401,6 @@ void WebSocketClient::retryMessage(int msgId)
 void WebSocketClient::onConnected()
 {
     m_connectionState = Connected;
-    m_reconnectAttempts = 0;
     m_currentTogetherSongHash.clear();
     m_lastMessageTime.start();
 
@@ -423,7 +413,7 @@ void WebSocketClient::onConnected()
         m_heartbeatTimer->start();
     }
 
-    // 切换到一起听模式（不在 mutex 锁内调用）
+    // 切换到一起听模式
     playmanager->changeplaylisttype(TOGETHER);
 
     // 连接成功后主动请求房间状态（播放列表 + 当前歌曲 + 在线用户 + 历史操作）
@@ -554,32 +544,6 @@ void WebSocketClient::checkAddSongTimeout()
 
     m_pendingAddSong = false;
     emit serverNotice(QStringLiteral("添加歌曲超时，请重试"), QStringLiteral("error"));
-}
-
-void WebSocketClient::tryReconnect()
-{
-    if (m_connectionState == Connected)
-    {
-        return;
-    }
-
-    m_reconnectAttempts++;
-
-    if (m_reconnectAttempts > m_maxReconnectAttempts)
-    {
-        emit logMessage("达到最大重连次数，停止重连");
-        emit connectFail();
-        return;
-    }
-
-    m_connectionState = Reconnecting;
-    emit connectionStateChanged(m_connectionState);
-
-    emit logMessage(QStringLiteral("第 %1/%2 次重连...").arg(m_reconnectAttempts).arg(m_maxReconnectAttempts));
-
-    // 重建 WebSocket 以避免旧连接状态残留
-    initializeWebSocket();
-    connectToServer();
 }
 
 // ==================== 服务器消息分发 ====================
@@ -967,12 +931,6 @@ QJsonObject WebSocketClient::parseJson(const QString &jsonString)
     }
 
     return doc.object();
-}
-
-QString WebSocketClient::jsonToString(const QJsonObject &json)
-{
-    QJsonDocument doc(json);
-    return QString::fromUtf8(doc.toJson(QJsonDocument::Compact));
 }
 
 void WebSocketClient::fetchRoomList()

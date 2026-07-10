@@ -572,12 +572,14 @@ Item {
                         }
                     }
 
-                    MouseArea {
-                        anchors.fill: parent
+                    // 双击切换播放列表。用 TapHandler 而非 MouseArea：
+                    // MouseArea anchors.fill 会 grab press 事件，导致 delegate 内
+                    // 按钮的 TapHandler 收不到点击。TapHandler 之间不互相吞噬。
+                    TapHandler {
                         acceptedButtons: Qt.LeftButton
                         enabled: !isTogetherMode
-                        propagateComposedEvents: true
-                        onDoubleClicked: {
+                        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                        onDoubleTapped: {
                             if (!recommendation) return
                             var total = recommendation.playlistTotal
                             var firstBatch = recommendation.playlistTracksQml
