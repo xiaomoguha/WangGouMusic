@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Window
 import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
 
@@ -46,7 +47,7 @@ Rectangle {
         source: originalImage
         radius: 80  // 固定值：避免随窗口 resize 重算；80px 背景模糊足够柔和
         samples: 81  // 略大于 radius 即可（原 120 过高），降低 GPU 采样开销
-        transparentBorder: true  // 重要！
+        transparentBorder: false  // 全屏背景图：边缘钳制、不向透明衰减，避免四边发黑
         visible: false  // 隐藏模糊结果
     }
 
@@ -472,32 +473,30 @@ Rectangle {
                         to: 360
                         duration: 30000
                         loops: Animation.Infinite
-                        running: !playlistmanager.isPaused && root.visible
+                        running: true  // 创建即转，保证一定旋转；下面用 pause/resume 控制启停
                     }
+                    // pause/resume（而非 stop/start）：保留当前角度，恢复时不跳变（不闪角）；
+                    // 暂停/隐藏/最小化时暂停，避免持续渲染拉高 CPU。
+                    function updateRotation() {
+                        const active = playlistmanager && !playlistmanager.isPaused
+                                       && root.visible && root.visibility !== Window.Minimized;
+                        if (active) {
+                            if (rotationAnim.paused)
+                                rotationAnim.resume();
+                        } else {
+                            if (!rotationAnim.paused)
+                                rotationAnim.pause();
+                        }
+                    }
+                    Component.onCompleted: avatarImage.updateRotation()
                     Connections {
                         target: playlistmanager
-                        function onIsPausedChanged() {
-                            if (!playlistmanager.isPaused && root.visible) {
-                                rotationAnim.from = avatarImage.currentRotation % 360;
-                                rotationAnim.to = rotationAnim.from + 360;
-                                rotationAnim.start();
-                            } else {
-                                rotationAnim.stop();
-                            }
-                        }
+                        function onIsPausedChanged() { avatarImage.updateRotation(); }
                     }
-                    // 窗口可见性变化时控制动画
                     Connections {
                         target: root
-                        function onVisibleChanged() {
-                            if (!playlistmanager.isPaused && root.visible) {
-                                rotationAnim.from = avatarImage.currentRotation % 360;
-                                rotationAnim.to = rotationAnim.from + 360;
-                                rotationAnim.start();
-                            } else {
-                                rotationAnim.stop();
-                            }
-                        }
+                        function onVisibleChanged() { avatarImage.updateRotation(); }
+                        function onVisibilityChanged() { avatarImage.updateRotation(); }
                     }
                 }
             }
@@ -806,7 +805,7 @@ Rectangle {
                 // 进度条
                 Rectangle {
                     id: progressBar
-                    height: 4
+                    height: 2
                     radius: 2
                     color: "#3A3A4A"
                     anchors.verticalCenter: parent.verticalCenter
@@ -845,7 +844,7 @@ Rectangle {
                         anchors.top: parent.top
                         anchors.bottom: parent.bottom
                         radius: 2
-                        color: "#FFFFFF"
+                        color: dominantColor
                         width: progressBar.dragging ? tempWidth : parent.width * progressBar.value
                         property real tempWidth: 0
                     }
@@ -856,7 +855,7 @@ Rectangle {
                         width: 12
                         height: 12
                         radius: 6
-                        color: "#FFFFFF"
+                        color: dominantColor
                         anchors.verticalCenter: parent.verticalCenter
                         x: progressFill.width - width / 2
                     }

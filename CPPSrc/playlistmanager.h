@@ -28,6 +28,7 @@
 #include "recommendation.h"
 
 class DominantColorExtractor;
+class QPropertyAnimation;
 
 enum playlist_type
 {
@@ -176,6 +177,13 @@ private:
     void showplaylist();
     float m_percent = 0.0;
     QString m_percentstr = "00:00";
+    // 音量淡入/淡出：切歌/恢复渐强、暂停/自然结束前渐弱，各 1.5s
+    qreal m_targetVolume = 1.0;
+    QPropertyAnimation *m_volAnim = nullptr;
+    QMediaPlayer::PlaybackState m_prevPlaybackState = QMediaPlayer::StoppedState;
+    bool m_endFadeStarted = false;          // 当前歌曲末尾淡出是否已触发
+    void fadeInVolume();                   // 0 → 目标音量（1.5s）
+    void fadeOutVolume(int ms, std::function<void()> onFinished);  // 当前 → 0，完成后回调
     QString m_duration = "00:00";
     void updatePlaybackProgress(qint64 position);
     void handlePlayerError(QMediaPlayer::Error error, const QString &errorString);

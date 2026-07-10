@@ -3,6 +3,12 @@
 //
 // 构建要求：MSVC + Windows 10 SDK（10.0.19041+）自带的 C++/WinRT 头（cppwinrt），
 // 链接 runtimeobject.lib（已在 CMakeLists 的 WIN32 块配置）。
+//
+// Q_OS_WIN 由 <QtGlobal>（经任意 Qt 头引入）定义。下面的 #ifdef Q_OS_WIN 必须在包含
+// Qt 头之后才成立——否则 Q_OS_WIN 尚未定义，整份文件被预处理为空，
+// NowPlayingMediaController 的构造/析构符号不会被编译出来，导致 LNK2001。
+#include <QtGlobal>
+
 #ifdef Q_OS_WIN
 
 // C++/WinRT 要求在包含 winrt/base.h 之前定义 NOMINMAX：否则 windows.h 的
@@ -20,13 +26,17 @@
 
 #include <QCoreApplication>
 #include <QDebug>
+#include <QGuiApplication>
 #include <QMetaObject>
 #include <QString>
+#include <QWindow>
 
+#include <windows.h>
 #include <winrt/base.h>
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Media.h>
 #include <winrt/Windows.Storage.Streams.h>
+#include <systemmediatransportcontrolsinterop.h>
 
 using namespace winrt;
 using namespace winrt::Windows::Foundation;
@@ -60,10 +70,39 @@ inline TimeSpan secondsToTimeSpan(double sec) {
 
 // SMTC 必须在持有窗口的 UI 线程上获取，且需要窗口已存在，因此延迟到首次
 // updateNowPlaying（播放开始后）再初始化。失败被 catch，不影响主程序。
+// 主窗口 HWND：桌面(Win32)程序没有 CoreWindow 视图，必须用 GetForWindow 把 SMTC 绑到 HWND，
+// 否则 GetForCurrentView() 会报"找不到要与此 MediaPlaybackControl 实例关联的相应视图"。
+// 选普通顶层窗口（排除桌面歌词等 Qt::Tool 工具窗口）；窗口尚未就绪时返回 nullptr，下次播放再试。
+HWND findMainWindowHwnd() {
+    const auto wins = QGuiApplication::topLevelWindows();
+    for (QWindow *w : wins) {
+        if (!w->isVisible() || w->flags().testFlag(Qt::Tool))
+            continue;
+        const WId id = w->winId();
+        if (id)
+            return reinterpret_cast<HWND>(id);
+    }
+    // 退路：任一可见顶层窗口
+    for (QWindow *w : wins) {
+        if (w->isVisible() && w->winId())
+            return reinterpret_cast<HWND>(w->winId());
+    }
+    return nullptr;
+}
+
 void ensureSmtc(WinImpl *impl, PlaylistManager *pm) {
     if (!impl || impl->smtc) return;
     try {
-        auto smtc = SystemMediaTransportControls::GetForCurrentView();
+        HWND hwnd = findMainWindowHwnd();
+        if (!hwnd)
+            return;
+        auto factory = winrt::get_activation_factory<SystemMediaTransportControls>();
+        auto interop = factory.as<ISystemMediaTransportControlsInterop>();
+        const winrt::guid iid = winrt::guid_of<SystemMediaTransportControls>();
+        SystemMediaTransportControls smtc{ nullptr };
+        winrt::check_hresult(interop->GetForWindow(hwnd, reinterpret_cast<const GUID&>(iid), winrt::put_abi(smtc)));
+        if (!smtc)
+            return;
         smtc.IsEnabled(true);
         smtc.IsPlayEnabled(true);
         smtc.IsPauseEnabled(true);

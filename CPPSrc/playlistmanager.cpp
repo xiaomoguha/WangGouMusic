@@ -2,8 +2,11 @@
 #include "ApiClient.h"
 #include "DominantColorExtractor.h"
 #include "PlaylistCacheStore.h"
+#include <QAudioDevice>
 #include <QDebug>
 #include <QEventLoop>
+#include <QMediaDevices>
+#include <QPropertyAnimation>
 #include <QTimer>
 #include <memory>
 PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent) : QObject(parent), m_recommendation(recommendation)
@@ -23,6 +26,27 @@ PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent
 
     player->setAudioOutput(audioOutput);
     audioOutput->setVolume(1.0);
+
+    // 跟随系统默认音频输出设备：运行中新接入蓝牙耳机或切换默认播放设备时，自动把音频路由到新设备。
+    // 否则 QAudioOutput 会一直绑定启动时捕获的旧设备，必须重启应用才切换。
+    // audioOutputsChanged 在「输出设备增删」时触发——新连蓝牙会被识别为新增设备从而触发；
+    // 默认设备未变（相同设备）时由下方判等跳过，避免无谓的 sink 重建造成杂音。
+    auto *mediaDevices = new QMediaDevices(this);
+    connect(mediaDevices, &QMediaDevices::audioOutputsChanged, this, [this]() {
+        const QAudioDevice def = QMediaDevices::defaultAudioOutput();
+        if (def.isNull() || audioOutput->device() == def)
+            return;
+        audioOutput->setDevice(def);
+    });
+
+    // 音量淡入/淡出：新歌(Stopped→Playing)渐强；暂停/自然结束前渐弱（见 playstop / updatePlaybackProgress）
+    m_prevPlaybackState = player->playbackState();
+    connect(player, &QMediaPlayer::playbackStateChanged, this, [this](QMediaPlayer::PlaybackState state) {
+        if (state == QMediaPlayer::PlayingState && m_prevPlaybackState == QMediaPlayer::StoppedState)
+            fadeInVolume();   // 切歌/首次开播：渐强
+        m_prevPlaybackState = state;
+    });
+
     // 延迟到事件循环空闲时加载缓存，避免主线程同步 readAll + JSON 解析阻塞 QML 首屏
     // loadPlaylistFromCache 末尾会 emit playlistUpdated()，QML 绑定会自动刷新
     QTimer::singleShot(0, this, [this]() {
@@ -552,9 +576,13 @@ void PlaylistManager::playstop()
 
     if (state == QMediaPlayer::PlayingState)
     {
-        player->pause();
+        // 暂停前 1.5s 渐弱，再真正暂停（图标立即切换为暂停）
         m_isPaused = true;
         emit isPausedChanged();
+        fadeOutVolume(1000, [this]() {
+            if (player->playbackState() == QMediaPlayer::PlayingState)
+                player->pause();
+        });
     }
     else
     {
@@ -564,6 +592,7 @@ void PlaylistManager::playstop()
             player->play();
             m_isPaused = false;
             emit isPausedChanged();
+            fadeInVolume();   // 恢复时渐强
         }
         else
         {
@@ -636,6 +665,7 @@ void PlaylistManager::setposistion(float positionvalue)
         player->play();
         m_isPaused = false;
         emit isPausedChanged();
+        fadeInVolume();   // 暂停/停止态点进度条恢复播放：音量已被暂停淡出降到 0，需淡入恢复
     }
     else
     {
@@ -1189,6 +1219,17 @@ void PlaylistManager::updatePlaybackProgress(qint64 position)
         m_percentstr = formatTime(position);
         emit percentChanged();
 
+        // 末尾 1.5s 渐弱（自然结束前的淡出）；seek 离开末尾则恢复音量
+        const qint64 totalDur = player->duration();
+        if (totalDur > 0) {
+            if (position >= totalDur - 1000 && !m_endFadeStarted) {
+                m_endFadeStarted = true;
+                fadeOutVolume(1000, nullptr);
+            } else if (position < totalDur - 1500 && m_endFadeStarted) {
+                fadeInVolume();   // 回到非末尾：渐强恢复（同时重置 m_endFadeStarted）
+            }
+        }
+
         // 缓冲检测：正在边下边播且播放追上下载进度
         if (m_downloadProgress > 0 && m_downloadProgress < 1.0)
         {
@@ -1233,6 +1274,36 @@ void PlaylistManager::updatePlaybackProgress(qint64 position)
             emit currlyricChanged();
         }
     }
+}
+
+void PlaylistManager::fadeInVolume()
+{
+    m_endFadeStarted = false;
+    if (!m_volAnim)
+        m_volAnim = new QPropertyAnimation(audioOutput, "volume", this);
+    m_volAnim->stop();
+    m_volAnim->disconnect(this);   // 清理上次的 finished 回调（如暂停淡出未完成即恢复）
+    audioOutput->setVolume(0.0);
+    m_volAnim->setStartValue(0.0);
+    m_volAnim->setEndValue(m_targetVolume);
+    m_volAnim->setDuration(1500);
+    m_volAnim->setEasingCurve(QEasingCurve::InOutQuad);
+    m_volAnim->start();
+}
+
+void PlaylistManager::fadeOutVolume(int ms, std::function<void()> onFinished)
+{
+    if (!m_volAnim)
+        m_volAnim = new QPropertyAnimation(audioOutput, "volume", this);
+    m_volAnim->stop();
+    m_volAnim->disconnect(this);   // 清理上次的 finished 回调
+    if (onFinished)
+        connect(m_volAnim, &QPropertyAnimation::finished, this, [this, onFinished]() { onFinished(); });
+    m_volAnim->setStartValue(audioOutput->volume());
+    m_volAnim->setEndValue(0.0);
+    m_volAnim->setDuration(ms);
+    m_volAnim->setEasingCurve(QEasingCurve::InOutQuad);
+    m_volAnim->start();
 }
 
 void PlaylistManager::handlePlayerError(QMediaPlayer::Error error, const QString &errorString)
@@ -1592,14 +1663,19 @@ void PlaylistManager::setPaused(bool paused)
 {
     if (paused && player->playbackState() == QMediaPlayer::PlayingState)
     {
-        player->pause();
+        // 一起听：暂停前 1.5s 渐弱，再真正暂停（图标立即切换为暂停）
         m_isPaused = true;
         emit isPausedChanged();
+        fadeOutVolume(1000, [this]() {
+            if (player->playbackState() == QMediaPlayer::PlayingState)
+                player->pause();
+        });
     }
     else if (!paused && player->playbackState() != QMediaPlayer::PlayingState)
     {
         player->play();
         m_isPaused = false;
         emit isPausedChanged();
+        fadeInVolume();   // 一起听：恢复时渐强
     }
 }

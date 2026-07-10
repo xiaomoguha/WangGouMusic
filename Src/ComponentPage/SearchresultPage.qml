@@ -51,7 +51,7 @@ Item {
             Image {
                 id: backIco
                 anchors.centerIn: parent
-                source: "qrc:/image/fanhui.png"
+                source: "qrc:/image/left_line.png"
                 width: 14; height: 14; fillMode: Image.PreserveAspectFit
                 layer.enabled: true
                 layer.effect: ColorOverlay { source: backIco; color: AppTheme.iconDefault }
