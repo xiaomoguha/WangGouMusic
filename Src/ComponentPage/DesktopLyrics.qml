@@ -330,9 +330,10 @@ Window {
                         id: hStarCursor
                         visible: horizontalLyricContainer.charIndex >= 0
                         property real fontPx: desktopLyrics.fontSize * desktopLyrics.scale
-                        width: fontPx * 0.55
+                        width: fontPx * 0.7
                         height: width
                         // 唱到字下沉压字顶(1)→前段(0→a)减速上抛到最高(0,慢)→后段(a→1)重力加速下落(1,快)
+                        // 例外：最后一字末段不下落，保持高位往上淡出
                         property real starBob: {
                             if (horizontalLyricContainer.charIndex < 0) return 0
                             var p = horizontalLyricContainer.charProgress
@@ -341,18 +342,19 @@ Window {
                                 var t = p / a
                                 return (1 - t) * (1 - t)
                             }
+                            if (horizontalLyricContainer.charIndex >= horizontalLyricContainer.lyricText.length - 1) return 0
                             var t = (p - a) / (1 - a)
                             return t * t
                         }
                         x: -horizontalLyricContainer.scrollOffset + horizontalLyricContainer.starX - width / 2
-                        y: -fontPx * 0.75 + starBob * fontPx * 0.2
+                        y: -fontPx * 0.8 + starBob * fontPx * 0.6
                         opacity: {
                             var ci = horizontalLyricContainer.charIndex
                             var cp = horizontalLyricContainer.charProgress
                             var total = horizontalLyricContainer.lyricText.length
                             if (ci < 0) return 0
                             if (ci === 0 && cp < 0.15) return cp / 0.15
-                            if (ci >= total - 1 && cp > 0.85) return Math.max(0, (1 - cp) / 0.15)
+                            if (ci >= total - 1 && cp > 0.95) return Math.max(0, (1 - cp) / 0.05)
                             return 1
                         }
                         Behavior on opacity { NumberAnimation { duration: 150 } }
@@ -362,8 +364,8 @@ Window {
                             width: parent.width
                             height: parent.height
                             anchors.horizontalCenter: parent.horizontalCenter
-                            rotation: hLineRow.width > 0
-                                ? (hStarCursor.x + hStarCursor.width / 2) / hLineRow.width * 720 : 0
+                            // 一字转一个角(72°)，跟随字进度
+                            rotation: (horizontalLyricContainer.charIndex + horizontalLyricContainer.charProgress) * 72
                             Connections {
                                 target: AppTheme
                                 function onAccentChanged() { hStarCanvas.requestPaint() }
