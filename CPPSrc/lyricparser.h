@@ -11,9 +11,14 @@
 // 单个字结构体
 struct LyricChar
 {
+    Q_GADGET
+    Q_PROPERTY(qint64 startTime MEMBER startTime)
+    Q_PROPERTY(qint64 duration MEMBER duration)
+    Q_PROPERTY(QString text MEMBER text)
+public:
     qint64 startTime; // 字开始时间（毫秒）
     qint64 duration;  // 字持续时间（毫秒）
-    QString text;     // 字符文本
+    QString text;     // 字符文本（中文为单字、英文为单词）
 
     LyricChar(qint64 start = 0, qint64 dur = 0, const QString &txt = "")
         : startTime(start), duration(dur), text(txt) {}
