@@ -538,7 +538,7 @@ Rectangle {
 
         delegate: Item {
             width: lyricList.width
-            height: lineText.contentHeight + 8
+            height: isCurrentLine ? 52 : (lineText.contentHeight + 8)
 
             property bool isCurrentLine: ListView.isCurrentItem
             property bool isPastLine: index < lyricList.currentIndex && lyricList.currentIndex >= 0
@@ -548,52 +548,171 @@ Rectangle {
             // 歌词文本容器
             Item {
                 anchors.centerIn: parent
-                width: lineText.width
-                height: lineText.height
+                width: isCurrentLine ? currentLineWrap.width : lineText.width
+                height: isCurrentLine ? currentLineWrap.height : lineText.height
 
-                // 底层：完整灰色歌词
+                // 非当前行：单行灰色文本
                 Text {
                     id: lineText
                     anchors.centerIn: parent
+                    visible: !isCurrentLine
                     text: modelData.text || ""
                     textFormat: Text.PlainText
-                    font.pixelSize: isCurrentLine ? 20 : 16
-                    font.bold: isCurrentLine
+                    font.pixelSize: 16
                     font.family: AppTheme.fontFamily
                     color: "#dddddd"
-                    opacity: isCurrentLine ? 1.0 : 0.7
+                    opacity: 0.7
                 }
 
-                // 高亮层：带裁剪的渐变高亮（从左到右）
+                // 当前行：酷狗跳跃歌词 —— 整行亮（未唱亮白），
+                // 五角星从上方跟进度横向滚过：星压到的当前字被压扁+染已播放色（主色调），
+                // 星滚过后该字 spring 回弹到原大小，颜色保留为主色调。
                 Item {
-                    anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: highlightText.width * highlightRatio
-                    height: parent.height
-                    clip: true
-                    visible: isCurrentLine && charIdx >= 0
+                    id: currentLineWrap
+                    anchors.centerIn: parent
+                    visible: isCurrentLine
+                    // 成为当前行时弹性放大入场，替代瞬间放大
+                    scale: isCurrentLine ? 1.0 : 0.85
+                    Behavior on scale { SpringAnimation { spring: 3.5; damping: 0.45 } }
+                    width: currentLineRow.width
+                    height: currentLineRow.height
+                    // ponytail: 按 text.length 逐字拆分，假设 charIdx 为字符索引（中文歌词成立）；
+                    //           英文按单词分割时位置会偏，需要时再按 charCount 对齐。
+                    property int totalChars: (modelData.text || "").length
+                    // 星星实际像素位置（相对本行左端）：由当前字 delegate 的 Binding 写入，
+                    // = 当前字在 Row 里的 x + 字内进度×字宽。按真实字符宽度跟随，
+                    // 空格/标点等窄字符处不会按字符数比例"闪过"。
+                    property real starX: 0
+                    // 非当前行时把星星位置重置回行首(0)，避免下次成为当前行时星星从上一行
+                    // 残留的行末位置 spring"滚回"左边
+                    onVisibleChanged: if (!visible) starX = 0
 
-                    property real highlightRatio: {
-                        if (!isCurrentLine || charIdx < 0)
-                            return 0;
-                        // 计算已高亮字符比例 + 当前字符的部分进度
-                        // 使用 charCount（时间标签数）而不是 text.length，因为英文歌词可能按单词分割
-                        var totalChars = modelData.charCount || (modelData.text || "").length;
-                        if (totalChars === 0)
-                            return 0;
-                        return (charIdx + charProgress) / totalChars;
+                    Row {
+                        id: currentLineRow
+                        anchors.centerIn: parent
+                        spacing: 0
+
+                        Repeater {
+                            model: currentLineWrap.totalChars
+                            delegate: Item {
+                                required property int index
+                                width: baseChar.width
+                                height: baseChar.height
+                                // 字内染色比例：已唱字全染、当前字按 charProgress 从左向右刷过去、未唱字不染
+                                property real fillRatio: index < charIdx ? 1.0
+                                    : (index === charIdx ? charProgress : 0.0)
+                                // 唱到字瞬间压到最扁 0.5，前段(0→a) ease-out 慢回弹到 1.0，之后保持等下一字
+                                property real squeeze: {
+                                    if (index !== charIdx || charIdx < 0) return 1.0
+                                    var p = charProgress
+                                    var a = 0.65
+                                    if (p < a) {
+                                        var t = p / a
+                                        return 0.5 + (1.0 - 0.5) * (1 - (1 - t) * (1 - t))
+                                    }
+                                    return 1.0
+                                }
+                                transform: Scale { origin.x: 0; origin.y: height; yScale: squeeze }
+
+                                // 底层：未唱色（亮白）
+                                Text {
+                                    id: baseChar
+                                    text: (modelData.text || "").charAt(index)
+                                    font.pixelSize: 20
+                                    font.bold: true
+                                    font.family: AppTheme.fontFamily
+                                    color: "#ffffff"
+                                }
+                                // 染色层：按 fillRatio 从左裁剪，已播放色从左向右"刷过去"（当前字随 charProgress）
+                                Item {
+                                    width: baseChar.width * fillRatio
+                                    height: baseChar.height
+                                    clip: true
+                                    Text {
+                                        text: (modelData.text || "").charAt(index)
+                                        font.pixelSize: 20
+                                        font.bold: true
+                                        font.family: AppTheme.fontFamily
+                                        color: dominantColor
+                                    }
+                                }
+
+                                // 当前字把实际像素位置写回给星星游标（按真实字符宽度跟随）
+                                Binding {
+                                    target: currentLineWrap
+                                    property: "starX"
+                                    value: x + charProgress * width
+                                    when: isCurrentLine && index === charIdx && charIdx >= 0
+                                }
+                            }
+                        }
                     }
 
-                    Text {
-                        id: highlightText
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: modelData.text || ""
-                        textFormat: Text.PlainText
-                        font.pixelSize: isCurrentLine ? 20 : 16
-                        font.bold: isCurrentLine
-                        font.family: AppTheme.fontFamily
-                        color: dominantColor
+                    // 五角星游标：跟在当前字上方，横向滚过当前行
+                    Item {
+                        id: starCursor
+                        visible: isCurrentLine && charIdx >= 0
+                        width: 19; height: 19
+                        // 唱到字下沉压字顶(1)→前段(0→a)减速上抛到最高(0,慢)→后段(a→1)重力加速下落(1,快)
+                        property real starBob: {
+                            if (charIdx < 0) return 0
+                            var p = charProgress
+                            var a = 0.65
+                            if (p < a) {
+                                var t = p / a
+                                return (1 - t) * (1 - t)
+                            }
+                            var t = (p - a) / (1 - a)
+                            return t * t
+                        }
+                        x: currentLineWrap.starX - width / 2
+                        y: -21
+                        // 行首/行末淡入淡出按"首/末字的字内进度 charProgress"判断，而非像素比例：
+                        // 否则最后一字处于行末、starRatio 一上来就 >0.9，星刚到最后一字就淡出看不见。
+                        // 改成第一字前 15% 淡入、最后一字滚到 85% 后才淡出，中间每一字（含最后）都能被星完整压到。
+                        opacity: {
+                            if (charIdx < 0) return 0
+                            if (charIdx === 0 && charProgress < 0.15)
+                                return charProgress / 0.15
+                            if (charIdx >= currentLineWrap.totalChars - 1 && charProgress > 0.85)
+                                return Math.max(0, (1 - charProgress) / 0.15)
+                            return 1
+                        }
+                        Behavior on opacity { NumberAnimation { duration: 150 } }
+
+                        Canvas {
+                            id: starCanvas
+                            width: parent.width
+                            height: parent.height
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            y: starCursor.starBob * 16
+                            // 自转跟随实际像素位置（滚动模型），与位移完全同步
+                            rotation: currentLineRow.width > 0
+                                ? (starCursor.x + starCursor.width / 2) / currentLineRow.width * 720 : 0
+                            // 主题色变化时重绘（Canvas 不会自动跟随属性重绘）
+                            Connections {
+                                target: AppTheme
+                                function onAccentChanged() { starCanvas.requestPaint() }
+                            }
+                            onPaint: {
+                                var ctx = getContext("2d")
+                                ctx.reset()
+                                ctx.fillStyle = AppTheme.accent
+                                ctx.beginPath()
+                                var cx = width / 2, cy = height / 2
+                                var R = Math.min(width, height) / 2
+                                var r = R * 0.5
+                                for (var i = 0; i < 5; i++) {
+                                    var oA = -Math.PI / 2 + i * 2 * Math.PI / 5
+                                    var iA = oA + Math.PI / 5
+                                    if (i === 0) ctx.moveTo(cx + R * Math.cos(oA), cy + R * Math.sin(oA))
+                                    else ctx.lineTo(cx + R * Math.cos(oA), cy + R * Math.sin(oA))
+                                    ctx.lineTo(cx + r * Math.cos(iA), cy + r * Math.sin(iA))
+                                }
+                                ctx.closePath()
+                                ctx.fill()
+                            }
+                        }
                     }
                 }
             }
