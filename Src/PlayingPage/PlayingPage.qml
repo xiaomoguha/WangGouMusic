@@ -685,7 +685,7 @@ Rectangle {
 
                         // 拖尾：从主星位置随机喷出的小星粒子，各自随机轨迹飘散+淡出；未播放时不动
                         Repeater {
-                            model: 3
+                            model: 4
                             delegate: Canvas {
                                 id: trailStar
                                 required property int index
@@ -701,8 +701,8 @@ Rectangle {
                                 opacity: Math.max(0, 1 - life) * 0.8 * starCursor.opacity
                                 SequentialAnimation on life {
                                     running: starCursor.visible && playlistmanager && !playlistmanager.isPaused
-                                    PauseAnimation { duration: index * 750 }
-                                    NumberAnimation { from: 0; to: 1; duration: 2250; loops: Animation.Infinite }
+                                    PauseAnimation { duration: index * 500 }
+                                    NumberAnimation { from: 0; to: 1; duration: 2000; loops: Animation.Infinite }
                                 }
                                 Connections {
                                     target: AppTheme
