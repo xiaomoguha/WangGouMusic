@@ -175,7 +175,7 @@ Window {
             // 横向：宽度根据歌词内容 + 边距，最大屏幕80%
             // 竖向：宽度根据字体大小，高度根据容器高度（已限制最大屏幕80%）
             width: desktopLyrics.isVertical ? (desktopLyrics.fontSize * desktopLyrics.scale + 30) : Math.min(horizontalLyricContainer.width + 30, Screen.desktopAvailableWidth * 0.8)
-            height: desktopLyrics.isVertical ? Math.min(verticalTextContainer.height + 30, Screen.desktopAvailableHeight * 0.8) : (50 * desktopLyrics.scale)
+            height: desktopLyrics.isVertical ? Math.min(verticalTextContainer.height + 30, Screen.desktopAvailableHeight * 0.8) : (desktopLyrics.fontSize * desktopLyrics.scale * 2.4 + 10 * desktopLyrics.scale)
 
             // 横向歌词文本
             Row {
@@ -198,7 +198,7 @@ Window {
                     anchors.verticalCenter: parent.verticalCenter
                     width: Math.min(bgTextHorizontal.implicitWidth, Screen.desktopAvailableWidth * 0.8 - 30, desktopLyrics.horizontalWidthLimit)
                     height: bgTextHorizontal.implicitHeight
-                    clip: true
+                    clip: false   // 星星 y 为负需伸出容器顶，裁剪交给内层 clipTextMask
 
                     property string lyricText: {
                         try {
@@ -232,6 +232,9 @@ Window {
                         return (horizontalLyricContainer.charIndex + horizontalLyricContainer.charProgress) / totalChars;
                     }
 
+                    // 跳跃星星的实际像素位置（由当前字 delegate 写入）
+                    property real starX: 0
+
                     // 滚动偏移：跟随高亮位置
                     property real scrollOffset: {
                         var totalWidth = bgTextHorizontal.implicitWidth;
@@ -246,38 +249,143 @@ Window {
                         SmoothedAnimation { duration: 300; easing.type: Easing.OutCubic }
                     }
 
-                    // 底层：完整白色文字
+                    // 底层（隐藏，仅测量整行宽度/高度，供容器宽度与 scrollOffset 使用）
                     Text {
                         id: bgTextHorizontal
-                        anchors.verticalCenter: parent.verticalCenter
-                        x: -horizontalLyricContainer.scrollOffset
+                        visible: false
                         text: horizontalLyricContainer.lyricText
                         font.pixelSize: desktopLyrics.fontSize * desktopLyrics.scale
                         font.bold: true
-                        color: desktopLyrics.textColor
-                        style: Text.Outline
-                        styleColor: "#40000000"
                     }
 
-                    // 高亮层：从左到右刷过去
+                    // 横向裁剪层：只裁字、不裁星星
                     Item {
-                        anchors.verticalCenter: parent.verticalCenter
-                        x: -horizontalLyricContainer.scrollOffset
-                        width: hlTextHorizontal.width * horizontalLyricContainer.highlightRatio
-                        height: bgTextHorizontal.height
+                        anchors.fill: parent
                         clip: true
-                        visible: horizontalLyricContainer.highlightRatio > 0
 
-                        Text {
-                            id: hlTextHorizontal
-                            anchors.left: parent.left
+                        // 逐字渲染 + 压扁染色，整体随 scrollOffset 滚动
+                        Row {
+                            id: hLineRow
                             anchors.verticalCenter: parent.verticalCenter
-                            text: horizontalLyricContainer.lyricText
-                            font.pixelSize: desktopLyrics.fontSize * desktopLyrics.scale
-                            font.bold: true
-                            color: AppTheme.accent
-                            style: Text.Outline
-                            styleColor: AppTheme.accentGlow
+                            x: -horizontalLyricContainer.scrollOffset
+                            spacing: 0
+
+                            Repeater {
+                                model: horizontalLyricContainer.lyricText.length
+                                delegate: Item {
+                                    required property int index
+                                    width: hBaseChar.width
+                                    height: hBaseChar.height
+                                    property real fillRatio: index < horizontalLyricContainer.charIndex ? 1.0
+                                        : (index === horizontalLyricContainer.charIndex ? horizontalLyricContainer.charProgress : 0.0)
+                                    // 唱到字瞬间压到最扁 0.5，前段(0→a) ease-out 慢回弹到 1.0，之后保持等下一字
+                                    property real squeeze: {
+                                        if (index !== horizontalLyricContainer.charIndex || horizontalLyricContainer.charIndex < 0) return 1.0
+                                        var p = horizontalLyricContainer.charProgress
+                                        var a = 0.65
+                                        if (p < a) {
+                                            var t = p / a
+                                            return 0.5 + (1.0 - 0.5) * (1 - (1 - t) * (1 - t))
+                                        }
+                                        return 1.0
+                                    }
+                                    transform: Scale { origin.x: 0; origin.y: height; yScale: squeeze }
+
+                                    Text {
+                                        id: hBaseChar
+                                        text: horizontalLyricContainer.lyricText.charAt(index)
+                                        font.pixelSize: desktopLyrics.fontSize * desktopLyrics.scale
+                                        font.bold: true
+                                        color: desktopLyrics.textColor
+                                        style: Text.Outline
+                                        styleColor: "#40000000"
+                                    }
+                                    Item {
+                                        width: hBaseChar.width * fillRatio
+                                        height: hBaseChar.height
+                                        clip: true
+                                        Text {
+                                            text: horizontalLyricContainer.lyricText.charAt(index)
+                                            font.pixelSize: desktopLyrics.fontSize * desktopLyrics.scale
+                                            font.bold: true
+                                            color: AppTheme.accent
+                                            style: Text.Outline
+                                            styleColor: AppTheme.accentGlow
+                                        }
+                                    }
+
+                                    Binding {
+                                        target: horizontalLyricContainer
+                                        property: "starX"
+                                        value: x + horizontalLyricContainer.charProgress * width
+                                        when: index === horizontalLyricContainer.charIndex && horizontalLyricContainer.charIndex >= 0
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 跳跃星星：跟在当前字上方（y 为负伸出容器顶，由容器 clip:false 可见）
+                    Item {
+                        id: hStarCursor
+                        visible: horizontalLyricContainer.charIndex >= 0
+                        property real fontPx: desktopLyrics.fontSize * desktopLyrics.scale
+                        width: fontPx * 0.55
+                        height: width
+                        // 唱到字下沉压字顶(1)→前段(0→a)减速上抛到最高(0,慢)→后段(a→1)重力加速下落(1,快)
+                        property real starBob: {
+                            if (horizontalLyricContainer.charIndex < 0) return 0
+                            var p = horizontalLyricContainer.charProgress
+                            var a = 0.65
+                            if (p < a) {
+                                var t = p / a
+                                return (1 - t) * (1 - t)
+                            }
+                            var t = (p - a) / (1 - a)
+                            return t * t
+                        }
+                        x: -horizontalLyricContainer.scrollOffset + horizontalLyricContainer.starX - width / 2
+                        y: -fontPx * 0.75 + starBob * fontPx * 0.2
+                        opacity: {
+                            var ci = horizontalLyricContainer.charIndex
+                            var cp = horizontalLyricContainer.charProgress
+                            var total = horizontalLyricContainer.lyricText.length
+                            if (ci < 0) return 0
+                            if (ci === 0 && cp < 0.15) return cp / 0.15
+                            if (ci >= total - 1 && cp > 0.85) return Math.max(0, (1 - cp) / 0.15)
+                            return 1
+                        }
+                        Behavior on opacity { NumberAnimation { duration: 150 } }
+
+                        Canvas {
+                            id: hStarCanvas
+                            width: parent.width
+                            height: parent.height
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            rotation: hLineRow.width > 0
+                                ? (hStarCursor.x + hStarCursor.width / 2) / hLineRow.width * 720 : 0
+                            Connections {
+                                target: AppTheme
+                                function onAccentChanged() { hStarCanvas.requestPaint() }
+                            }
+                            onPaint: {
+                                var ctx = getContext("2d")
+                                ctx.reset()
+                                ctx.fillStyle = AppTheme.accent
+                                ctx.beginPath()
+                                var cx = width / 2, cy = height / 2
+                                var R = Math.min(width, height) / 2
+                                var r = R * 0.5
+                                for (var k = 0; k < 5; k++) {
+                                    var oA = -Math.PI / 2 + k * 2 * Math.PI / 5
+                                    var iA = oA + Math.PI / 5
+                                    if (k === 0) ctx.moveTo(cx + R * Math.cos(oA), cy + R * Math.sin(oA))
+                                    else ctx.lineTo(cx + R * Math.cos(oA), cy + R * Math.sin(oA))
+                                    ctx.lineTo(cx + r * Math.cos(iA), cy + r * Math.sin(iA))
+                                }
+                                ctx.closePath()
+                                ctx.fill()
+                            }
                         }
                     }
                 }
