@@ -21,8 +21,8 @@ if(APPLE)
     set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
 endif()
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Quick Multimedia WebSockets Widgets QuickControls2 Core5Compat Network)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Quick Multimedia WebSockets Widgets QuickControls2 Core5Compat Network)
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Quick Multimedia WebSockets Widgets QuickControls2 Core5Compat Network QuickDialogs2)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Quick Multimedia WebSockets Widgets QuickControls2 Core5Compat Network QuickDialogs2)
 
 set(PROJECT_SOURCES
     main.cpp
@@ -84,7 +84,7 @@ else()
 endif()
 
 target_link_libraries(WangGouMusic
-  PRIVATE Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Quick Qt${QT_VERSION_MAJOR}::Multimedia Qt${QT_VERSION_MAJOR}::WebSockets Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::QuickControls2 Qt${QT_VERSION_MAJOR}::Core5Compat Qt${QT_VERSION_MAJOR}::Network)
+  PRIVATE Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Quick Qt${QT_VERSION_MAJOR}::Multimedia Qt${QT_VERSION_MAJOR}::WebSockets Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::QuickControls2 Qt${QT_VERSION_MAJOR}::Core5Compat Qt${QT_VERSION_MAJOR}::Network Qt${QT_VERSION_MAJOR}::QuickDialogs2)
 
 # 将版本号注入 C++ 宏
 target_compile_definitions(WangGouMusic PRIVATE APP_VERSION="${PROJECT_VERSION}")

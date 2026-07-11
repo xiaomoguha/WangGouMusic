@@ -71,6 +71,10 @@ void LyricsConfigManager::saveConfig()
     config["scale"] = m_scale;
     config["fontSize"] = m_fontSize;
     config["isDark"] = m_isDark;
+    config["enabled"] = m_enabled;
+    config["lyricsColor"] = m_lyricsColor;
+    config["starColor"] = m_starColor;
+    config["jumpEnabled"] = m_jumpEnabled;
 
     // 写入文件
     QString filePath = getConfigFilePath();
@@ -139,6 +143,10 @@ void LyricsConfigManager::loadConfig()
         m_scale = config["scale"].toDouble(m_scale);
         m_fontSize = config["fontSize"].toInt(m_fontSize);
         m_isDark = config["isDark"].toBool(m_isDark);
+        m_enabled = config["enabled"].toBool(m_enabled);
+        m_lyricsColor = config["lyricsColor"].toString(m_lyricsColor);
+        m_starColor = config["starColor"].toString(m_starColor);
+        m_jumpEnabled = config["jumpEnabled"].toBool(m_jumpEnabled);
 
         qDebug() << "歌词配置已加载:" << filePath;
         emit configChanged();
@@ -164,6 +172,10 @@ void LyricsConfigManager::resetToDefaults()
     m_isVertical = false;
     m_scale = 1.0;
     m_fontSize = 22;
+    m_enabled = true;
+    m_lyricsColor.clear();
+    m_starColor.clear();
+    m_jumpEnabled = true;
 
     emit configChanged();
 }
@@ -274,6 +286,38 @@ void LyricsConfigManager::setIsDark(bool value)
     if (m_isDark != value)
     {
         m_isDark = value;
+        emit configChanged();
+    }
+}
+void LyricsConfigManager::setEnabled(bool value)
+{
+    if (m_enabled != value)
+    {
+        m_enabled = value;
+        emit configChanged();
+    }
+}
+void LyricsConfigManager::setLyricsColor(const QString &value)
+{
+    if (m_lyricsColor != value)
+    {
+        m_lyricsColor = value;
+        emit configChanged();
+    }
+}
+void LyricsConfigManager::setStarColor(const QString &value)
+{
+    if (m_starColor != value)
+    {
+        m_starColor = value;
+        emit configChanged();
+    }
+}
+void LyricsConfigManager::setJumpEnabled(bool value)
+{
+    if (m_jumpEnabled != value)
+    {
+        m_jumpEnabled = value;
         emit configChanged();
     }
 }

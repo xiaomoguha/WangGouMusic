@@ -154,13 +154,15 @@ int main(int argc, char *argv[])
 
     // 加载 DesktopLyrics.qml 独立窗口（跨平台）
     // 延迟到主窗口 QML 加载后再创建，避免 1079 行 DesktopLyrics.qml 的解析阻塞首屏
-    QTimer::singleShot(0, &engine, [&engine]() {
+    QTimer::singleShot(0, &engine, [&engine, &lyricsConfig]() {
         QQmlComponent comp(&engine, QUrl("qrc:/Src/ComponentPage/DesktopLyrics.qml"));
         QObject *desktopLyricsObj = comp.create();
         QWindow *desktopLyricsWindow = qobject_cast<QWindow *>(desktopLyricsObj);
 
         if (desktopLyricsWindow) {
-            desktopLyricsWindow->show();
+            // 可见性由 lyricsConfig.enabled 驱动：初始未开启则不显示
+            if (lyricsConfig.enabled())
+                desktopLyricsWindow->show();
 
 #ifdef Q_OS_WIN
             // Windows 特有：每次显示时设置置顶和鼠标不抢焦点

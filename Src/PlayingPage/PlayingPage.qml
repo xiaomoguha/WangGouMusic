@@ -604,6 +604,7 @@ Rectangle {
                                     : (index === charIdx ? charProgress : 0.0)
                                 // 唱到字瞬间压到最扁 0.5，前段(0→a) ease-out 慢回弹到 1.0，之后保持等下一字
                                 property real squeeze: {
+                                    if (!lyricsConfig || !lyricsConfig.jumpEnabled) return 1.0
                                     if (index !== charIdx || charIdx < 0) return 1.0
                                     var p = charProgress
                                     var a = 0.65
@@ -652,8 +653,8 @@ Rectangle {
                     // 五角星游标：跟在当前字上方，横向滚过当前行
                     Item {
                         id: starCursor
-                        visible: isCurrentLine && charIdx >= 0
-                        width: 19; height: 19
+                        visible: isCurrentLine && charIdx >= 0 && lyricsConfig && lyricsConfig.jumpEnabled
+                        width: 16; height: 16
                         // 唱到字下沉压字顶(1)→前段(0→a)减速上抛到最高(0,慢)→后段(a→1)重力加速下落(1,快)
                         // 例外：最后一字末段不下落，保持高位往上淡出
                         property real starBob: {

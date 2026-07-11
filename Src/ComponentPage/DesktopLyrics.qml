@@ -14,6 +14,23 @@ Window {
     property real scale: lyricsConfig ? lyricsConfig.scale : 1.0
     property int fontSize: lyricsConfig ? lyricsConfig.fontSize : 22
 
+    // 已播歌词染色（空=跟随主题 accent），glow 为其 40% 透明描边
+    property color lyricsColor: (lyricsConfig && lyricsConfig.lyricsColor.length > 0) ? lyricsConfig.lyricsColor : AppTheme.accent
+    property color lyricsGlow: Qt.rgba(lyricsColor.r, lyricsColor.g, lyricsColor.b, 0.4)
+    // 跳跃歌词（星星+拖尾）颜色（空=跟随主题 accent）
+    property color starColor: (lyricsConfig && lyricsConfig.starColor.length > 0) ? lyricsConfig.starColor : AppTheme.accent
+    // 跳跃歌词开关（关=普通刷过，无压扁无星星）
+    property bool jumpEnabled: lyricsConfig ? lyricsConfig.jumpEnabled : true
+
+    // 桌面歌词开关：enabled 变化时同步窗口可见性（初始可见性由 main.cpp 按 enabled 决定）
+    Connections {
+        target: lyricsConfig
+        function onConfigChanged() {
+            if (lyricsConfig && visible !== lyricsConfig.enabled)
+                visible = lyricsConfig.enabled;
+        }
+    }
+
     // 竖排歌词可视区固定高度上限（px）：长歌词不再顶满 80% 屏幕高，超出部分裁剪+滚动
     property int verticalHeightLimit: 350
     // 横排歌词可视区固定宽度上限（px）：长歌词在固定宽度内裁剪+滚动
@@ -281,6 +298,7 @@ Window {
                                         : (index === horizontalLyricContainer.charIndex ? horizontalLyricContainer.charProgress : 0.0)
                                     // 唱到字瞬间压到最扁 0.5，前段(0→a) ease-out 慢回弹到 1.0，之后保持等下一字
                                     property real squeeze: {
+                                        if (!desktopLyrics.jumpEnabled) return 1.0
                                         if (index !== horizontalLyricContainer.charIndex || horizontalLyricContainer.charIndex < 0) return 1.0
                                         var p = horizontalLyricContainer.charProgress
                                         var a = 0.65
@@ -309,9 +327,9 @@ Window {
                                             text: modelData.text
                                             font.pixelSize: desktopLyrics.fontSize * desktopLyrics.scale
                                             font.bold: true
-                                            color: AppTheme.accent
+                                            color: desktopLyrics.lyricsColor
                                             style: Text.Outline
-                                            styleColor: AppTheme.accentGlow
+                                            styleColor: desktopLyrics.lyricsGlow
                                         }
                                     }
 
@@ -329,7 +347,7 @@ Window {
                     // 跳跃星星：跟在当前字上方（y 为负伸出容器顶，由容器 clip:false 可见）
                     Item {
                         id: hStarCursor
-                        visible: horizontalLyricContainer.charIndex >= 0
+                        visible: desktopLyrics.jumpEnabled && horizontalLyricContainer.charIndex >= 0
                         property real fontPx: desktopLyrics.fontSize * desktopLyrics.scale
                         width: fontPx * 0.7
                         height: width
@@ -382,13 +400,13 @@ Window {
                                     NumberAnimation { from: 0; to: 1; duration: 2000; loops: Animation.Infinite }
                                 }
                                 Connections {
-                                    target: AppTheme
-                                    function onAccentChanged() { hTrailStar.requestPaint() }
+                                    target: desktopLyrics
+                                    function onStarColorChanged() { hTrailStar.requestPaint() }
                                 }
                                 onPaint: {
                                     var ctx = getContext("2d")
                                     ctx.reset()
-                                    ctx.fillStyle = AppTheme.accent
+                                    ctx.fillStyle = desktopLyrics.starColor
                                     ctx.beginPath()
                                     var cx = width / 2, cy = height / 2
                                     var R = Math.min(width, height) / 2
@@ -415,13 +433,13 @@ Window {
                             // 一字转一个角(72°)，跟随字进度
                             rotation: (horizontalLyricContainer.charIndex + horizontalLyricContainer.charProgress) * 72
                             Connections {
-                                target: AppTheme
-                                function onAccentChanged() { hStarCanvas.requestPaint() }
+                                target: desktopLyrics
+                                function onStarColorChanged() { hStarCanvas.requestPaint() }
                             }
                             onPaint: {
                                 var ctx = getContext("2d")
                                 ctx.reset()
-                                ctx.fillStyle = AppTheme.accent
+                                ctx.fillStyle = desktopLyrics.starColor
                                 ctx.beginPath()
                                 var cx = width / 2, cy = height / 2
                                 var R = Math.min(width, height) / 2
@@ -593,9 +611,9 @@ Window {
                                     text: currentChar
                                     font.pixelSize: desktopLyrics.fontSize * desktopLyrics.scale
                                     font.bold: true
-                                    color: AppTheme.accent
+                                    color: desktopLyrics.lyricsColor
                                     style: Text.Outline
-                                    styleColor: AppTheme.accentGlow
+                                    styleColor: desktopLyrics.lyricsGlow
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                     rotation: isPunctuation ? 90 : 0

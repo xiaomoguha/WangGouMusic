@@ -28,6 +28,10 @@ class LyricsConfigManager : public QObject
     Q_PROPERTY(qreal scale READ scale WRITE setScale NOTIFY configChanged)
     Q_PROPERTY(int fontSize READ fontSize WRITE setFontSize NOTIFY configChanged)
     Q_PROPERTY(bool isDark READ isDark WRITE setIsDark NOTIFY configChanged)
+    Q_PROPERTY(bool enabled READ enabled WRITE setEnabled NOTIFY configChanged)
+    Q_PROPERTY(QString lyricsColor READ lyricsColor WRITE setLyricsColor NOTIFY configChanged)
+    Q_PROPERTY(QString starColor READ starColor WRITE setStarColor NOTIFY configChanged)
+    Q_PROPERTY(bool jumpEnabled READ jumpEnabled WRITE setJumpEnabled NOTIFY configChanged)
 
 public:
     explicit LyricsConfigManager(QObject *parent = nullptr);
@@ -51,6 +55,10 @@ public:
     qreal scale() const { return m_scale; }
     int fontSize() const { return m_fontSize; }
     bool isDark() const { return m_isDark; }
+    bool enabled() const { return m_enabled; }
+    QString lyricsColor() const { return m_lyricsColor; }
+    QString starColor() const { return m_starColor; }
+    bool jumpEnabled() const { return m_jumpEnabled; }
 
     // 横向模式 setters
     void setHorizontalX(int value);
@@ -70,6 +78,10 @@ public:
     void setScale(qreal value);
     void setFontSize(int value);
     void setIsDark(bool value);
+    void setEnabled(bool value);
+    void setLyricsColor(const QString &value);
+    void setStarColor(const QString &value);
+    void setJumpEnabled(bool value);
 
     Q_INVOKABLE void saveConfig();
     Q_INVOKABLE void loadConfig();
@@ -98,6 +110,10 @@ private:
     qreal m_scale = 1.0;
     int m_fontSize = 22;
     bool m_isDark = false;
+    bool m_enabled = true;       // 桌面歌词开关
+    QString m_lyricsColor;       // 已播歌词颜色，空 = 跟随主题
+    QString m_starColor;         // 跳跃歌词(星星+拖尾)颜色，空 = 跟随主题
+    bool m_jumpEnabled = true;   // 跳跃歌词开关（关=普通刷过，无压扁无星星）
 
     // 屏幕尺寸缓存
     int m_screenWidth = 1920;

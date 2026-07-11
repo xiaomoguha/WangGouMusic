@@ -193,6 +193,7 @@ Rectangle {
                     property real unitWidth: songNameText.implicitWidth + 28
                     property bool overflow: songNameText.implicitWidth > width
                     Row {
+                        id: songNameRow
                         spacing: 28
                         Text {
                             id: songNameText
@@ -213,9 +214,16 @@ Rectangle {
                         NumberAnimation on x {
                             running: songNameClip.overflow
                             from: 0; to: -songNameClip.unitWidth
-                            duration: Math.max(3000, songNameClip.unitWidth * 20)
+                            duration: Math.max(3000, songNameClip.unitWidth * 40)
                             loops: Animation.Infinite
                             easing.type: Easing.Linear
+                        }
+                        // overflow 关闭（短文字）时把 x 归零，避免动画停在负值导致左边字被裁
+                        Connections {
+                            target: songNameClip
+                            function onOverflowChanged() {
+                                if (!songNameClip.overflow) songNameRow.x = 0
+                            }
                         }
                     }
                 }
@@ -229,6 +237,7 @@ Rectangle {
                     property real unitWidth: singerNameText.implicitWidth + 28
                     property bool overflow: singerNameText.implicitWidth > width
                     Row {
+                        id: singerNameRow
                         spacing: 28
                         Text {
                             id: singerNameText
@@ -247,9 +256,15 @@ Rectangle {
                         NumberAnimation on x {
                             running: singerNameClip.overflow
                             from: 0; to: -singerNameClip.unitWidth
-                            duration: Math.max(3000, singerNameClip.unitWidth * 20)
+                            duration: Math.max(3000, singerNameClip.unitWidth * 40)
                             loops: Animation.Infinite
                             easing.type: Easing.Linear
+                        }
+                        Connections {
+                            target: singerNameClip
+                            function onOverflowChanged() {
+                                if (!singerNameClip.overflow) singerNameRow.x = 0
+                            }
                         }
                     }
                 }
@@ -928,7 +943,7 @@ Rectangle {
                                 width: playlistView.width
                                 height: 44
                                 // 防护：Popup 首次实例化时 playlistmanager 可能尚未就绪
-                                readonly property int curIdx: playlistmanager ? curIdx : -1
+                                readonly property int curIdx: playlistmanager ? playlistmanager.currentIndex : -1
                                 readonly property bool isCurrent: index === curIdx
                                 color: {
                                     if (isCurrent) return AppTheme.accentDim
@@ -1072,7 +1087,7 @@ Rectangle {
                     layer.enabled: true
                     layer.effect: ColorOverlay {
                         source: lyricsIcon
-                        color: (typeof desktopLyricsWindow !== "undefined" && desktopLyricsWindow && desktopLyricsWindow.visible) ? AppTheme.accent : (lyricsBtnHandler.hovered ? AppTheme.iconHover : AppTheme.textMuted)
+                        color: (lyricsConfig && lyricsConfig.enabled) ? AppTheme.accent : (lyricsBtnHandler.hovered ? AppTheme.iconHover : AppTheme.textMuted)
                     }
                 }
 
@@ -1081,11 +1096,7 @@ Rectangle {
                 }
                 TapHandler {
                     cursorShape: Qt.PointingHandCursor
-                    onTapped: {
-                        if (desktopLyricsWindow) {
-                            desktopLyricsWindow.visible = !desktopLyricsWindow.visible;
-                        }
-                    }
+                    onTapped: BasicConfig.requestDesktopLyricsSettings()
                 }
 
                 Behavior on color {

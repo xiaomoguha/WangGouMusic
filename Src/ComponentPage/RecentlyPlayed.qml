@@ -205,15 +205,18 @@ Page {
                                 TapHandler {
                                     cursorShape: Qt.PointingHandCursor
                                     onTapped: {
+                                        // 先缓存 modelData：playNextAndPlay 可能触发 recentPlaylist 刷新，
+                                        // 导致 delegate 被重建、modelData 失效（ReferenceError）
+                                        var md = modelData
                                         playlistmanager.playNextAndPlay({
-                                            "songname": modelData.title,
-                                            "songhash": modelData.songhash,
-                                            "singername": modelData.singername,
-                                            "union_cover": modelData.union_cover,
-                                            "album_name": modelData.album_name,
-                                            "duration": modelData.duration
+                                            "songname": md.title,
+                                            "songhash": md.songhash,
+                                            "singername": md.singername,
+                                            "union_cover": md.union_cover,
+                                            "album_name": md.album_name,
+                                            "duration": md.duration
                                         });
-                                        BasicConfig.emitSongAdded("正在播放: " + modelData.title);
+                                        BasicConfig.emitSongAdded("正在播放: " + md.title);
                                     }
                                 }
                                 Behavior on color { ColorAnimation { duration: 150 } }
