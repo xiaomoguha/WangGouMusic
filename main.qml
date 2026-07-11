@@ -114,6 +114,7 @@ ApplicationWindow {
         }
     }
     MouseArea {
+        id: windowDragArea
         anchors.fill: parent
         property real pressX: 0
         property real pressY: 0
@@ -405,6 +406,21 @@ ApplicationWindow {
                 updateDialog.state_ = "idle";
                 updateDialog.open();
             }
+        }
+    }
+
+    // 桌面歌词设置窗口（独立 OS 模态窗口，transientParent 为主窗口，系统级防穿透）
+    ComponentPage.DesktopLyricsSettings {
+        id: desktopLyricsSettings
+        transientParent: root
+    }
+
+    Connections {
+        target: BasicConfig
+        function onRequestDesktopLyricsSettings() {
+            desktopLyricsSettings.x = root.x + (root.width - desktopLyricsSettings.width) / 2
+            desktopLyricsSettings.y = root.y + (root.height - desktopLyricsSettings.height) / 2
+            desktopLyricsSettings.show()
         }
     }
 }
