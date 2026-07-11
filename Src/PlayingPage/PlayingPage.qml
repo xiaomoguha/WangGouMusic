@@ -537,6 +537,7 @@ Rectangle {
         highlightMoveVelocity: -1       // -1 表示使用 duration 控制；设置正值则按速度控制
 
         delegate: Item {
+            id: lyricLine
             width: lyricList.width
             height: isCurrentLine ? 52 : (lineText.contentHeight + 8)
 
@@ -654,6 +655,7 @@ Rectangle {
                         visible: isCurrentLine && charIdx >= 0
                         width: 19; height: 19
                         // 唱到字下沉压字顶(1)→前段(0→a)减速上抛到最高(0,慢)→后段(a→1)重力加速下落(1,快)
+                        // 例外：最后一字末段不下落，保持高位往上淡出
                         property real starBob: {
                             if (charIdx < 0) return 0
                             var p = charProgress
@@ -662,6 +664,7 @@ Rectangle {
                                 var t = p / a
                                 return (1 - t) * (1 - t)
                             }
+                            if (charIdx >= currentLineWrap.totalChars - 1) return 0
                             var t = (p - a) / (1 - a)
                             return t * t
                         }
@@ -674,8 +677,8 @@ Rectangle {
                             if (charIdx < 0) return 0
                             if (charIdx === 0 && charProgress < 0.15)
                                 return charProgress / 0.15
-                            if (charIdx >= currentLineWrap.totalChars - 1 && charProgress > 0.85)
-                                return Math.max(0, (1 - charProgress) / 0.15)
+                            if (charIdx >= currentLineWrap.totalChars - 1 && charProgress > 0.95)
+                                return Math.max(0, (1 - charProgress) / 0.05)
                             return 1
                         }
                         Behavior on opacity { NumberAnimation { duration: 150 } }
@@ -687,8 +690,8 @@ Rectangle {
                             anchors.horizontalCenter: parent.horizontalCenter
                             y: starCursor.starBob * 16
                             // 自转跟随实际像素位置（滚动模型），与位移完全同步
-                            rotation: currentLineRow.width > 0
-                                ? (starCursor.x + starCursor.width / 2) / currentLineRow.width * 720 : 0
+                            // 一字转一个角(72°)，跟随字进度
+                            rotation: (lyricLine.charIdx + lyricLine.charProgress) * 72
                             // 主题色变化时重绘（Canvas 不会自动跟随属性重绘）
                             Connections {
                                 target: AppTheme
