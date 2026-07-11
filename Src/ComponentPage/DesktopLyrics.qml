@@ -271,9 +271,10 @@ Window {
                             spacing: 0
 
                             Repeater {
-                                model: horizontalLyricContainer.lyricText.length
+                                model: playlistmanager ? playlistmanager.lyricChars : []
                                 delegate: Item {
                                     required property int index
+                                    required property var modelData
                                     width: hBaseChar.width
                                     height: hBaseChar.height
                                     property real fillRatio: index < horizontalLyricContainer.charIndex ? 1.0
@@ -293,7 +294,7 @@ Window {
 
                                     Text {
                                         id: hBaseChar
-                                        text: horizontalLyricContainer.lyricText.charAt(index)
+                                        text: modelData.text
                                         font.pixelSize: desktopLyrics.fontSize * desktopLyrics.scale
                                         font.bold: true
                                         color: desktopLyrics.textColor
@@ -305,7 +306,7 @@ Window {
                                         height: hBaseChar.height
                                         clip: true
                                         Text {
-                                            text: horizontalLyricContainer.lyricText.charAt(index)
+                                            text: modelData.text
                                             font.pixelSize: desktopLyrics.fontSize * desktopLyrics.scale
                                             font.bold: true
                                             color: AppTheme.accent
@@ -347,11 +348,11 @@ Window {
                             return t * t
                         }
                         x: -horizontalLyricContainer.scrollOffset + horizontalLyricContainer.starX - width / 2
-                        y: -fontPx * 0.8 + starBob * fontPx * 0.6
+                        y: -fontPx * 0.8
                         opacity: {
                             var ci = horizontalLyricContainer.charIndex
                             var cp = horizontalLyricContainer.charProgress
-                            var total = horizontalLyricContainer.lyricText.length
+                            var total = playlistmanager ? playlistmanager.lyricCharCount : 0
                             if (ci < 0) return 0
                             if (ci === 0 && cp < 0.15) return cp / 0.15
                             if (ci >= total - 1 && cp > 0.95) return Math.max(0, (1 - cp) / 0.05)
@@ -359,11 +360,58 @@ Window {
                         }
                         Behavior on opacity { NumberAnimation { duration: 150 } }
 
+                        // 拖尾：从主星位置随机喷出的小星粒子，各自随机轨迹飘散+淡出；未播放时不动
+                        Repeater {
+                            model: 3
+                            delegate: Canvas {
+                                id: hTrailStar
+                                required property int index
+                                property real life: 0
+                                property real fontPx: desktopLyrics.fontSize * desktopLyrics.scale
+                                property real vx: -(0.5 + Math.random() * 0.4)
+                                property real vy: -0.1 + Math.random() * 0.3
+                                width: hStarCursor.width * (0.55 + Math.random() * 0.2)
+                                height: width
+                                x: hStarCursor.width * -0.2 + vx * life * (fontPx * 4) - width / 2
+                                y: hStarCursor.height * 0.9 + vy * life * (fontPx * 1.5)
+                                   + 0.2 * (life * 10) * (life * 10) - height / 2
+                                opacity: Math.max(0, 1 - life) * 0.8 * hStarCursor.opacity
+                                SequentialAnimation on life {
+                                    running: hStarCursor.visible && playlistmanager && !playlistmanager.isPaused
+                                    PauseAnimation { duration: index * 750 }
+                                    NumberAnimation { from: 0; to: 1; duration: 2250; loops: Animation.Infinite }
+                                }
+                                Connections {
+                                    target: AppTheme
+                                    function onAccentChanged() { hTrailStar.requestPaint() }
+                                }
+                                onPaint: {
+                                    var ctx = getContext("2d")
+                                    ctx.reset()
+                                    ctx.fillStyle = AppTheme.accent
+                                    ctx.beginPath()
+                                    var cx = width / 2, cy = height / 2
+                                    var R = Math.min(width, height) / 2
+                                    var r = R * 0.5
+                                    for (var k = 0; k < 5; k++) {
+                                        var oA = -Math.PI / 2 + k * 2 * Math.PI / 5
+                                        var iA = oA + Math.PI / 5
+                                        if (k === 0) ctx.moveTo(cx + R * Math.cos(oA), cy + R * Math.sin(oA))
+                                        else ctx.lineTo(cx + R * Math.cos(oA), cy + R * Math.sin(oA))
+                                        ctx.lineTo(cx + r * Math.cos(iA), cy + r * Math.sin(iA))
+                                    }
+                                    ctx.closePath()
+                                    ctx.fill()
+                                }
+                            }
+                        }
+
                         Canvas {
                             id: hStarCanvas
                             width: parent.width
                             height: parent.height
                             anchors.horizontalCenter: parent.horizontalCenter
+                            y: hStarCursor.starBob * (desktopLyrics.fontSize * desktopLyrics.scale * 0.6)
                             // 一字转一个角(72°)，跟随字进度
                             rotation: (horizontalLyricContainer.charIndex + horizontalLyricContainer.charProgress) * 72
                             Connections {

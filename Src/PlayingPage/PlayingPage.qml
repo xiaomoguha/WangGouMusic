@@ -577,9 +577,8 @@ Rectangle {
                     Behavior on scale { SpringAnimation { spring: 3.5; damping: 0.45 } }
                     width: currentLineRow.width
                     height: currentLineRow.height
-                    // ponytail: 按 text.length 逐字拆分，假设 charIdx 为字符索引（中文歌词成立）；
-                    //           英文按单词分割时位置会偏，需要时再按 charCount 对齐。
-                    property int totalChars: (modelData.text || "").length
+                    // 单元数（中文=字数、英文=词数），与 charIdx 一致
+                    property int totalChars: playlistmanager ? playlistmanager.lyricCharCount : 0
                     // 星星实际像素位置（相对本行左端）：由当前字 delegate 的 Binding 写入，
                     // = 当前字在 Row 里的 x + 字内进度×字宽。按真实字符宽度跟随，
                     // 空格/标点等窄字符处不会按字符数比例"闪过"。
@@ -594,9 +593,10 @@ Rectangle {
                         spacing: 0
 
                         Repeater {
-                            model: currentLineWrap.totalChars
+                            model: playlistmanager ? playlistmanager.lyricChars : []
                             delegate: Item {
                                 required property int index
+                                required property var modelData
                                 width: baseChar.width
                                 height: baseChar.height
                                 // 字内染色比例：已唱字全染、当前字按 charProgress 从左向右刷过去、未唱字不染
@@ -615,10 +615,10 @@ Rectangle {
                                 }
                                 transform: Scale { origin.x: 0; origin.y: height; yScale: squeeze }
 
-                                // 底层：未唱色（亮白）
+                                // 底层：未唱色（亮白）。modelData 为 LyricChar，text 可能是中文字或英文词
                                 Text {
                                     id: baseChar
-                                    text: (modelData.text || "").charAt(index)
+                                    text: modelData.text
                                     font.pixelSize: 20
                                     font.bold: true
                                     font.family: AppTheme.fontFamily
@@ -630,7 +630,7 @@ Rectangle {
                                     height: baseChar.height
                                     clip: true
                                     Text {
-                                        text: (modelData.text || "").charAt(index)
+                                        text: modelData.text
                                         font.pixelSize: 20
                                         font.bold: true
                                         font.family: AppTheme.fontFamily
@@ -682,6 +682,52 @@ Rectangle {
                             return 1
                         }
                         Behavior on opacity { NumberAnimation { duration: 150 } }
+
+                        // 拖尾：从主星位置随机喷出的小星粒子，各自随机轨迹飘散+淡出；未播放时不动
+                        Repeater {
+                            model: 3
+                            delegate: Canvas {
+                                id: trailStar
+                                required property int index
+                                property real life: 0
+                                // 每粒子随机初速/大小：vx 向左、vy 向上，加重力成抛物线轨迹
+                                property real vx: -(0.5 + Math.random() * 0.4)
+                                property real vy: -0.1 + Math.random() * 0.3
+                                width: starCursor.width * (0.35 + Math.random() * 0.15)
+                                height: width
+                                x: starCursor.width * -0.2 + vx * life * 70 - width / 2
+                                y: starCursor.height * 0.9 + vy * life * 60
+                                   + 0.2 * (life * 10) * (life * 10) - height / 2
+                                opacity: Math.max(0, 1 - life) * 0.8 * starCursor.opacity
+                                SequentialAnimation on life {
+                                    running: starCursor.visible && playlistmanager && !playlistmanager.isPaused
+                                    PauseAnimation { duration: index * 750 }
+                                    NumberAnimation { from: 0; to: 1; duration: 2250; loops: Animation.Infinite }
+                                }
+                                Connections {
+                                    target: AppTheme
+                                    function onAccentChanged() { trailStar.requestPaint() }
+                                }
+                                onPaint: {
+                                    var ctx = getContext("2d")
+                                    ctx.reset()
+                                    ctx.fillStyle = AppTheme.accent
+                                    ctx.beginPath()
+                                    var cx = width / 2, cy = height / 2
+                                    var R = Math.min(width, height) / 2
+                                    var r = R * 0.5
+                                    for (var k = 0; k < 5; k++) {
+                                        var oA = -Math.PI / 2 + k * 2 * Math.PI / 5
+                                        var iA = oA + Math.PI / 5
+                                        if (k === 0) ctx.moveTo(cx + R * Math.cos(oA), cy + R * Math.sin(oA))
+                                        else ctx.lineTo(cx + R * Math.cos(oA), cy + R * Math.sin(oA))
+                                        ctx.lineTo(cx + r * Math.cos(iA), cy + r * Math.sin(iA))
+                                    }
+                                    ctx.closePath()
+                                    ctx.fill()
+                                }
+                            }
+                        }
 
                         Canvas {
                             id: starCanvas
@@ -938,14 +984,7 @@ Rectangle {
                     property real dlProgress: playlistmanager ? playlistmanager.downloadProgress : 1.0
                     property bool dragging: false
 
-                    // 悬停高亮边框
-                    border.width: progressMouseArea.containsMouse ? 1 : 0
-                    border.color: "#80FFFFFF"
-                    Behavior on border.width {
-                        NumberAnimation {
-                            duration: 150
-                        }
-                    }
+                    border.width: 0
 
                     // 已下载部分（中间色）
                     Rectangle {
