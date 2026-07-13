@@ -17,6 +17,7 @@
 #include <cstring>
 #include <ctime>
 #include <cstdarg>
+#include <clocale>     // setlocale — 让 Windows C 运行时按 UTF-8 解析中文路径
 
 #ifndef APP_VERSION
 #define APP_VERSION "unknown"
@@ -36,6 +37,7 @@
     #include <io.h>
     #include <fcntl.h>
     #include <sys/stat.h>
+    #include <csignal>      // signal()、SIGSEGV/SIGABRT/SIGFPE/SIGILL 等
     #pragma comment(lib, "dbghelp.lib")
 #endif
 
@@ -286,7 +288,9 @@ static void crashSignalHandler(int sig)
         case SIGABRT: sigName = "SIGABRT (异常终止)"; break;
         case SIGFPE:  sigName = "SIGFPE (浮点异常/除零)"; break;
         case SIGILL:  sigName = "SIGILL (非法指令)"; break;
+#ifndef Q_OS_WIN
         case SIGBUS:  sigName = "SIGBUS (总线错误)"; break;
+#endif
     }
 
     generateCrashReport(sig, sigName);
@@ -416,6 +420,15 @@ static void pruneOldLogs()
 
 void CrashHandler::install()
 {
+#ifdef Q_OS_WIN
+    // Windows C 运行时默认按系统代码页（GBK）解析文件路径。本项目的日志路径含中文
+    // （C:/网狗音乐缓存目录/logs），但代码以 UTF-8 传递，两者不匹配会导致
+    // fopen/_open/rename 等全部失败（返回 nullptr/-1），日志文件无法创建。
+    // 设置 locale 为 UTF-8 后，C 运行时函数即可正确处理 UTF-8 中文路径。
+    // 要求 Windows 10 1803+（2018 年 4 月发布）。
+    setlocale(LC_ALL, ".UTF8");
+#endif
+
     // 1. 计算日志目录（与缓存目录同级）
     QString dir = computeLogDir();
     QDir().mkpath(dir);
@@ -466,7 +479,9 @@ void CrashHandler::install()
     signal(SIGABRT, crashSignalHandler);
     signal(SIGFPE,  crashSignalHandler);
     signal(SIGILL,  crashSignalHandler);
+#ifndef Q_OS_WIN
     signal(SIGBUS,  crashSignalHandler);
+#endif
 
 #ifdef Q_OS_WIN
     // 7. Windows SEH 异常过滤器
