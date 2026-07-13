@@ -20,6 +20,11 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
+// C++/WinRT 依赖 <experimental/coroutine>，MSVC 14.5x 将其标记为废弃并
+// 用 static_assert 阻断编译。此处静默该警告以维持 winrt 头可用。
+#ifndef _SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS
+#define _SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS
+#endif
 
 #include "NowPlayingMediaController.h"
 #include "playlistmanager.h"
