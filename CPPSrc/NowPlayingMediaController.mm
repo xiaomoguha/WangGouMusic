@@ -3,8 +3,12 @@
 #import <MediaPlayer/MediaPlayer.h>
 #import <CoreAudio/CoreAudio.h>
 
+#include <QtGlobal>
+#include <QDebug>
 #include "NowPlayingMediaController.h"
 #include "playlistmanager.h"
+
+// ==================== NowPlayingImpl ====================
 
 @interface NowPlayingImpl : NSObject
 @property (nonatomic, assign) NowPlayingMediaController *controller;
@@ -185,11 +189,11 @@ static OSStatus AudioDeviceChangedCallback(AudioObjectID inObjectID,
     // 封面 URL 变化时才重新下载
     NSString *coverNStr = coverQstr.toNSString();
     if (!coverQstr.isEmpty() && ![coverNStr isEqualToString:self.cachedCoverURL]) {
-        NSLog(@"NowPlaying: 开始下载封面 URL: %@", coverNStr);
+        qDebug("NowPlaying: 开始下载封面 URL: %s", coverNStr.UTF8String);
         self.cachedCoverURL = coverNStr;
         [self loadArtworkFromURL:coverNStr];
     } else if (coverQstr.isEmpty()) {
-        NSLog(@"NowPlaying: 封面 URL 为空，使用 App 图标兜底");
+        qDebug("NowPlaying: 封面 URL 为空，使用 App 图标兜底");
         [self applyAppIconArtwork];
     }
 }
@@ -198,7 +202,7 @@ static OSStatus AudioDeviceChangedCallback(AudioObjectID inObjectID,
 {
     NSURL *url = [NSURL URLWithString:urlString];
     if (!url) {
-        NSLog(@"NowPlaying: 封面 URL 无效，使用 App 图标兜底");
+        qDebug("NowPlaying: 封面 URL 无效，使用 App 图标兜底");
         [self applyAppIconArtwork];
         return;
     }
@@ -215,8 +219,8 @@ static OSStatus AudioDeviceChangedCallback(AudioObjectID inObjectID,
             NSHTTPURLResponse *httpResp = [response isKindOfClass:[NSHTTPURLResponse class]]
                                           ? (NSHTTPURLResponse *)response : nil;
             if (error || !data || (httpResp && httpResp.statusCode != 200)) {
-                NSLog(@"NowPlaying: 封面下载失败(status=%ld err=%@)，使用 App 图标兜底",
-                      (long)(httpResp.statusCode), error.localizedDescription);
+                qWarning("NowPlaying: 封面下载失败(status=%ld err=%s)，使用 App 图标兜底",
+                      (long)(httpResp.statusCode), error.localizedDescription.UTF8String);
                 dispatch_async(dispatch_get_main_queue(), ^{
                     [self applyAppIconArtwork];
                 });
@@ -225,7 +229,7 @@ static OSStatus AudioDeviceChangedCallback(AudioObjectID inObjectID,
 
             NSImage *nsImage = [[NSImage alloc] initWithData:data];
             if (!nsImage) {
-                NSLog(@"NowPlaying: 封面数据无法解析为图片，使用 App 图标兜底");
+                qWarning("NowPlaying: 封面数据无法解析为图片，使用 App 图标兜底");
                 dispatch_async(dispatch_get_main_queue(), ^{
                     [self applyAppIconArtwork];
                 });
@@ -263,7 +267,7 @@ static OSStatus AudioDeviceChangedCallback(AudioObjectID inObjectID,
         }
     }
     if (!appIcon) {
-        NSLog(@"NowPlaying: App 图标兜底也失败，封面将显示为系统默认");
+        qWarning("NowPlaying: App 图标兜底也失败，封面将显示为系统默认");
         return;
     }
     MPMediaItemArtwork *artwork = [[MPMediaItemArtwork alloc]

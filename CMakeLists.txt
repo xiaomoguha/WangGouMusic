@@ -44,6 +44,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         CPPSrc/models/SongListModel.cpp CPPSrc/models/SongListModel.h
         CPPSrc/models/VariantMapListModel.cpp CPPSrc/models/VariantMapListModel.h CPPSrc/models/SpecializedModels.h
         CPPSrc/SongInfo.cpp CPPSrc/SongInfo.h
+        CPPSrc/CrashHandler.cpp CPPSrc/CrashHandler.h
         image.qrc
     )
     # Windows 应用程序图标 + 系统媒体传输控件(SMTC)
