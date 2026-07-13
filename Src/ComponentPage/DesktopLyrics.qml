@@ -41,20 +41,19 @@ Window {
     height: desktopLyrics.isVertical ? Math.max(background.height + 20, controlPanelVertical.implicitHeight + 20) : Math.max(background.height + 70, 28 * desktopLyrics.scale + 16 + 8 * desktopLyrics.scale)
 
     // 歌词内容变化时保持中心位置不变（横向）/ 顶部位置不变（竖向）
+    // 使用绝对中心点重新计算 x，避免增量补偿的整数截断累积误差（导致窗口逐渐左漂）
     property bool _suppressCentering: true
-    property real _prevWidth: 0
-    property real _prevHeight: 0
+    property real _anchorCenterX: 0   // 目标中心 X（浮点，不受 width 取整影响）
+    property real _anchorCenterY: 0   // 目标中心 Y
     onWidthChanged: {
-        if (!_suppressCentering && _prevWidth > 0) {
-            desktopLyrics.x -= (width - _prevWidth) / 2;
+        if (!_suppressCentering) {
+            x = Math.round(_anchorCenterX - width / 2)
         }
-        _prevWidth = width;
     }
     onHeightChanged: {
-        if (!_suppressCentering && _prevHeight > 0 && !desktopLyrics.isVertical) {
-            desktopLyrics.y -= (height - _prevHeight) / 2;
+        if (!_suppressCentering) {
+            y = Math.round(_anchorCenterY - height / 2)
         }
-        _prevHeight = height;
     }
 
     color: "transparent"
@@ -106,13 +105,15 @@ Window {
         }
         x = targetX;
         y = targetY;
+        _anchorCenterX = targetX + width / 2
+        _anchorCenterY = targetY + height / 2
         console.log("[DesktopLyrics] final pos: " + x + "," + y);
     }
 
     // 启用居中补偿（延迟到布局稳定后）
     function enableCentering() {
-        _prevWidth = width;
-        _prevHeight = height;
+        _anchorCenterX = x + width / 2
+        _anchorCenterY = y + height / 2
         _suppressCentering = false;
     }
 
@@ -1226,6 +1227,9 @@ Window {
 
                     desktopLyrics.x = newX;
                     desktopLyrics.y = newY;
+                    // 拖动时同步更新锚点中心，确保歌词变化时从新位置保持居中
+                    _anchorCenterX = newX + desktopLyrics.width / 2
+                    _anchorCenterY = newY + desktopLyrics.height / 2
                 }
             }
         }

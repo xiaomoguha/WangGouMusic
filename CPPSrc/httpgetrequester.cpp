@@ -30,10 +30,16 @@ void HttpGetRequester::clearHeaders()
 
 void HttpGetRequester::abortCurrent()
 {
-    if (m_currentReply) {
-        m_currentReply->abort();
-        m_currentReply->deleteLater();
-        m_currentReply = nullptr;
+    // abort() 会同步触发 QNetworkReply::finished 信号（同线程为 DirectConnection），
+    // finished 回调中 onError 会执行 m_currentReply = nullptr。
+    // 如果直接用 m_currentReply->abort() 后再访问 m_currentReply，
+    // 此时已经被回调置空 → 空指针崩溃（SIGSEGV）。
+    // 修复：先将成员置空（防止重入），局部变量持有引用安全完成 abort + deleteLater。
+    QNetworkReply *reply = m_currentReply;
+    m_currentReply = nullptr;
+    if (reply) {
+        reply->abort();
+        reply->deleteLater();
     }
 }
 
