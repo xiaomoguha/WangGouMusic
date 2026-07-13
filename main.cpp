@@ -1,11 +1,6 @@
 #include <QApplication>
 #include <QIcon>
 #include <QLoggingCategory>
-#ifdef Q_OS_MAC
-#include <execinfo.h>
-#include <signal.h>
-#include <unistd.h>
-#endif
 #include <QQmlApplicationEngine>
 #include <QQmlComponent>
 #include <QQmlContext>
@@ -22,6 +17,7 @@
 
 #include "./CPPSrc/macoswindow.h"
 
+#include "./CPPSrc/CrashHandler.h"
 #include "./CPPSrc/HttpGetRequester.h"
 #include "./CPPSrc/NowPlayingMediaController.h"
 #include "./CPPSrc/WebSocketClient.h"
@@ -65,23 +61,8 @@ public:
 
 int main(int argc, char *argv[])
 {
-    // 崩溃时打印堆栈到 stderr，便于定位段错误
-#ifdef Q_OS_MAC
-    signal(SIGSEGV, [](int) {
-        void *callstack[128];
-        int frames = backtrace(callstack, 128);
-        fputs("=== SEGFAULT backtrace ===\n", stderr);
-        backtrace_symbols_fd(callstack, frames, 2);
-        _exit(1);
-    });
-    signal(SIGABRT, [](int) {
-        void *callstack[128];
-        int frames = backtrace(callstack, 128);
-        fputs("=== SIGABRT backtrace ===\n", stderr);
-        backtrace_symbols_fd(callstack, frames, 2);
-        _exit(1);
-    });
-#endif
+    // 在 QApplication 之前安装崩溃日志处理器
+    CrashHandler::install();
 
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
@@ -95,6 +76,9 @@ int main(int argc, char *argv[])
     qputenv("QT_FFMPEG_PLAYER_BUFFER", "15000");        // 提高缓冲
 
     QApplication app(argc, argv);
+
+    // 检测上次崩溃日志，如有则弹窗提示
+    CrashHandler::checkPreviousCrash();
 
     // 单实例检测：如果已有实例在运行，激活其主窗口并退出
     SingleApplication singleApp("WangGouMusic");
