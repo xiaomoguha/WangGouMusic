@@ -45,6 +45,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         CPPSrc/models/VariantMapListModel.cpp CPPSrc/models/VariantMapListModel.h CPPSrc/models/SpecializedModels.h
         CPPSrc/SongInfo.cpp CPPSrc/SongInfo.h
         CPPSrc/CrashHandler.cpp CPPSrc/CrashHandler.h
+        CPPSrc/ClickThroughHelper.cpp CPPSrc/ClickThroughHelper.h
         image.qrc
     )
     # Windows 应用程序图标 + 系统媒体传输控件(SMTC)
@@ -60,6 +61,9 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     endif()
     # macOS Objective-C++ 源文件
     if(APPLE)
+        # ClickThroughHelper.cpp 含 #import <Cocoa/Cocoa.h>，须编译为 ObjC++
+        set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/CPPSrc/ClickThroughHelper.cpp
+            PROPERTIES LANGUAGE OBJCXX)
         target_sources(WangGouMusic PRIVATE CPPSrc/macoswindow.mm CPPSrc/macoswindow.h
                         CPPSrc/NowPlayingMediaController.mm CPPSrc/NowPlayingMediaController.h)
         set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/cmake_wanggou.icns PROPERTIES

@@ -94,7 +94,6 @@ Item {
     property int onlineCount: 0
     property var messages: websocket ? websocket.messages : []
     property var confirmedMsgIds: ({})
-    property bool messageAutoScroll: true
     property int prevMsgCount: 0      // 上次消息数，用于判断哪些是新增的
     property bool firstLoad: true     // 首次加载不播动画
 
@@ -317,7 +316,25 @@ Item {
         cacheBuffer: 320
         model: messages
 
-        onContentHeightChanged: positionViewAtEnd()
+        // 是否自动滚动到底部（用户在底部附近时为 true，手动上滑后变 false）
+        property bool _autoScroll: true
+
+        // 用户拖动 / 惯性滑动时判断是否在底部附近
+        onContentYChanged: {
+            if (moving || flicking) {
+                _autoScroll = (contentY + height >= contentHeight - 30)
+            }
+        }
+        onMovementEnded: {
+            _autoScroll = (contentY + height >= contentHeight - 30)
+        }
+
+        // 消息数量变化（新增/替换 model）时，如果在底部则滚动到底
+        onCountChanged: {
+            if (_autoScroll) {
+                Qt.callLater(positionViewAtEnd)
+            }
+        }
 
         footer: Item { height: 4 }
 
@@ -583,7 +600,7 @@ Item {
                     if (chatInput.text.trim() !== "") {
                         websocket.sendChatMessage(chatInput.text.trim());
                         chatInput.text = "";
-                        root.messageAutoScroll = true;
+                        messageListView._autoScroll = true;
                     }
                 }
             }
@@ -608,7 +625,7 @@ Item {
                         if (chatInput.text.trim() !== "") {
                             websocket.sendChatMessage(chatInput.text.trim());
                             chatInput.text = "";
-                            root.messageAutoScroll = true;
+                            messageListView._autoScroll = true;
                         }
                     }
                 }
@@ -987,11 +1004,15 @@ Item {
         }
 
         function onRoomActionsReceived(actions) {
-            root.messageAutoScroll = messageListView.atYEnd || messageListView.contentHeight <= messageListView.height
+            // 新操作动态到达时，仅在用户已在底部时自动滚动
+            if (messageListView._autoScroll) {
+                Qt.callLater(messageListView.positionViewAtEnd)
+            }
         }
 
         function onChatMessageReceived(userid, nickname, avatarUrl, message, timestamp) {
-            root.messageAutoScroll = true
+            messageListView._autoScroll = true
+            Qt.callLater(messageListView.positionViewAtEnd)
         }
     }
 
@@ -999,6 +1020,8 @@ Item {
         if (websocket && websocket.connected) {
             websocket.requestClientList();
         }
-        messageListView.positionViewAtEnd();
+        // 延迟到下一帧执行，确保 delegate 已完成布局
+        messageListView._autoScroll = true;
+        Qt.callLater(messageListView.positionViewAtEnd);
     }
 }
