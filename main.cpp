@@ -18,6 +18,7 @@
 #include "./CPPSrc/macoswindow.h"
 
 #include "./CPPSrc/CrashHandler.h"
+#include "./CPPSrc/ClickThroughHelper.h"
 #include "./CPPSrc/HttpGetRequester.h"
 #include "./CPPSrc/NowPlayingMediaController.h"
 #include "./CPPSrc/WebSocketClient.h"
@@ -136,9 +137,13 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("appUpdater", &appUpdater);
     engine.rootContext()->setContextProperty("userManager", &userManager);
 
+    // 桌面歌词鼠标穿透控制器（锁定时窗口穿透，仅解锁按钮可点击）
+    ClickThroughHelper clickThroughHelper;
+    engine.rootContext()->setContextProperty("clickThroughHelper", &clickThroughHelper);
+
     // 加载 DesktopLyrics.qml 独立窗口（跨平台）
     // 延迟到主窗口 QML 加载后再创建，避免 1079 行 DesktopLyrics.qml 的解析阻塞首屏
-    QTimer::singleShot(0, &engine, [&engine, &lyricsConfig]() {
+    QTimer::singleShot(0, &engine, [&engine, &lyricsConfig, &clickThroughHelper]() {
         QQmlComponent comp(&engine, QUrl("qrc:/Src/ComponentPage/DesktopLyrics.qml"));
         QObject *desktopLyricsObj = comp.create();
         QWindow *desktopLyricsWindow = qobject_cast<QWindow *>(desktopLyricsObj);
@@ -173,6 +178,9 @@ int main(int argc, char *argv[])
 
         // 把桌面歌词对象暴露给主窗口 QML
         engine.rootContext()->setContextProperty("desktopLyricsWindow", desktopLyricsObj);
+
+        // 将窗口指针交给穿透控制器
+        clickThroughHelper.setWindow(desktopLyricsWindow);
     });
 
     // ---------------- 加载 QML ----------------

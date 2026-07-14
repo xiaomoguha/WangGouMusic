@@ -123,6 +123,12 @@ Window {
         Qt.callLater(function () {
             restorePosition();
             centeringTimer.start();
+            // 如果启动时就处于锁定状态，启用鼠标穿透
+            if (desktopLyrics.locked) {
+                updateClickThroughRegion();
+                if (clickThroughHelper)
+                    clickThroughHelper.setEnabled(true);
+            }
         });
     }
 
@@ -1278,7 +1284,58 @@ Window {
         }
     }
 
+    // 更新穿透捕获区域和监控区域
+    function updateClickThroughRegion() {
+        if (!clickThroughHelper || !desktopLyrics.locked) return;
+        // 监控区域 = 整个窗口（鼠标进入时显示锁按钮）
+        clickThroughHelper.setMonitorRegion(
+            desktopLyrics.x, desktopLyrics.y,
+            desktopLyrics.width, desktopLyrics.height
+        );
+        // 捕获区域 = 锁按钮位置（鼠标进入时取消穿透使其可点击）
+        var panel = desktopLyrics.isVertical ? controlPanelVertical : controlPanelHorizontal;
+        var pos = panel.mapToGlobal(0, 0);
+        clickThroughHelper.setCaptureRegion(
+            pos.x - 10, pos.y - 10,
+            panel.width + 20, panel.height + 20
+        );
+    }
+
+    Timer {
+        id: regionUpdateTimer
+        interval: 200
+        repeat: true
+        running: desktopLyrics.locked && desktopLyrics.visible
+        onTriggered: updateClickThroughRegion()
+    }
+
+    // 穿透控制器信号：鼠标进入/离开窗口区域（穿透时不依赖 HoverHandler）
+    Connections {
+        target: clickThroughHelper
+        function onHoverInWindowChanged(inside) {
+            if (inside) {
+                // 鼠标进入窗口区域 → 显示锁按钮
+                hideControlsTimer.stop();
+                desktopLyrics.showControls = true;
+            } else {
+                // 鼠标离开窗口区域 → 延迟隐藏
+                hideControlsTimer.restart();
+            }
+        }
+    }
+
     onLockedChanged: {
         lockTipTimer.restart();
+        if (desktopLyrics.locked) {
+            // 延迟到布局更新后再设置区域 + 启用穿透
+            Qt.callLater(function() {
+                updateClickThroughRegion();
+                if (clickThroughHelper)
+                    clickThroughHelper.setEnabled(true);
+            });
+        } else {
+            if (clickThroughHelper)
+                clickThroughHelper.setEnabled(false);
+        }
     }
 }
