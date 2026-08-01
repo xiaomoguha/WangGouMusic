@@ -110,7 +110,6 @@ Page {
                         anchors.rightMargin: 0.05 * root.width
                         spacing: 12
 
-                        // 序号
                         Text {
                             width: 30
                             text: (songItem.index + 1).toString().padStart(2, "0")
@@ -120,7 +119,6 @@ Page {
                             font.family: AppTheme.fontFamily
                         }
 
-                        // 封面
                         Image {
                             anchors.verticalCenter: parent.verticalCenter
                             width: 40
@@ -149,7 +147,6 @@ Page {
                             }
                         }
 
-                        // 歌名 + 歌手
                         Column {
                             width: 0.2 * root.width
                             anchors.verticalCenter: parent.verticalCenter
@@ -181,7 +178,6 @@ Page {
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: 4
 
-                            // 播放按钮
                             IconButton {
                                 visible: !isTogetherMode
                                 iconSource: "qrc:/image/playnow.png"
@@ -244,7 +240,6 @@ Page {
                             Behavior on x { NumberAnimation { duration: AppTheme.animFast } }
                         }
 
-                        // 时长
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             text: {

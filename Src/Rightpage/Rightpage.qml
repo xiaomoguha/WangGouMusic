@@ -114,7 +114,7 @@ Rectangle {
         if (target === "") {
             hideOverlay();
             // 回到首页，左栏导航高亮同步到"云音乐精选"
-            BasicConfig.indexchange(0);
+            BasicConfig.indexChange(0);
         } else {
             showOverlay(target);
         }
@@ -132,9 +132,9 @@ Rectangle {
             }
         }
 
-        function onPushsearchsongPage(url) {
+        function onPushSearchSongPage(url) {
             navigateTo(url);
-            BasicConfig.searchKeywordchange();
+            BasicConfig.searchKeywordChange();
         }
     }
 }

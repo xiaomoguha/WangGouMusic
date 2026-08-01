@@ -2,13 +2,13 @@ pragma Singleton
 import QtQuick 2.15
 
 QtObject {
-    signal bkanAreaClicked//窗口空白被点击
+    signal bkanAreaClicked // 窗口空白被点击
     signal pushPage(string pageUrl)
-    signal indexchange(int index)
-    signal pushsearchsongPage(string pageUrl)
-    signal searchKeywordchange
-    signal notice_error(string errormessages)
-    signal notice_success(string messages)
+    signal indexChange(int index)
+    signal pushSearchSongPage(string pageUrl)
+    signal searchKeywordChange
+    signal noticeError(string errormessages)
+    signal noticeSuccess(string messages)
     signal songAdded(string songname)
     signal requestDesktopLyricsSettings()
 
@@ -35,7 +35,7 @@ QtObject {
     function goBack() {
         if (previousPageUrl !== "") {
             pushPage(previousPageUrl);
-            indexchange(previousIndex);
+            indexChange(previousIndex);
         }
     }
 

@@ -260,7 +260,7 @@ Item {
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
                                     if (roomidtextfield.text === "") {
-                                        BasicConfig.notice_error("请输入房间号");
+                                        BasicConfig.noticeError("请输入房间号");
                                         return;
                                     }
                                     if (websocket && websocket.connectionState !== 0) return;

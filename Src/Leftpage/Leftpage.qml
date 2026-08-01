@@ -10,7 +10,7 @@ Rectangle {
 
     Connections {
         target: BasicConfig
-        function onIndexchange(index) {
+        function onIndexChange(index) {
             leftpageRectangle.currentIndex = index;
         }
     }

@@ -491,7 +491,7 @@ Rectangle {
                                 // 字内染色比例：已唱字全染、当前字按 charProgress 从左向右刷过去、未唱字不染
                                 property real fillRatio: index < charIdx ? 1.0
                                     : (index === charIdx ? charProgress : 0.0)
-                                // 唱到字瞬间压到最扁 0.5，前段(0→a) ease-out 慢回弹到 1.0，之后保持等下一字
+                                // 唱到字瞬间压到最扁 0.5，前段(0->a) ease-out 慢回弹到 1.0，之后保持等下一字
                                 property real squeeze: {
                                     if (!lyricsConfig || !lyricsConfig.jumpEnabled) return 1.0
                                     if (index !== charIdx || charIdx < 0) return 1.0
@@ -544,7 +544,7 @@ Rectangle {
                         id: starCursor
                         visible: isCurrentLine && charIdx >= 0 && lyricsConfig && lyricsConfig.jumpEnabled
                         width: 16; height: 16
-                        // 唱到字下沉压字顶(1)→前段(0→a)减速上抛到最高(0,慢)→后段(a→1)重力加速下落(1,快)
+                        // 唱到字下沉压字顶(1)->前段(0->a)减速上抛到最高(0,慢)->后段(a->1)重力加速下落(1,快)
                         // 例外：最后一字末段不下落，保持高位往上淡出
                         property real starBob: {
                             if (charIdx < 0) return 0
@@ -850,7 +850,6 @@ Rectangle {
                 anchors.fill: parent
                 spacing: 12
 
-                // 当前时间
                 Text {
                     id: currentTimeText
                     text: playlistmanager ? playlistmanager.percentstr : "00:00"

@@ -9,7 +9,7 @@ Page {
 
     Connections {
         target: BasicConfig
-        function onSearchKeywordchange() {
+        function onSearchKeywordChange() {
             flick.contentY = 0;
             complexsearch.fetchComplexData(BasicConfig.searchKeyword);
         }
@@ -134,7 +134,6 @@ Page {
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 12
 
-                        // 序号
                         Text {
                             width: 28
                             text: (songItem.index + 1).toString().padStart(2, "0")
@@ -144,7 +143,6 @@ Page {
                             font.family: AppTheme.fontFamily
                         }
 
-                        // 封面
                         Rectangle {
                             width: 40; height: 40; radius: 8
                             anchors.verticalCenter: parent.verticalCenter
@@ -162,7 +160,6 @@ Page {
                             }
                         }
 
-                        // 歌名 + 歌手
                         Column {
                             width: 0.2 * root.width
                             anchors.verticalCenter: parent.verticalCenter

@@ -735,7 +735,6 @@ Item {
                         Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
                     }
 
-                    // 下一首
                     Rectangle {
                         width: 26; height: 26; radius: 13
                         color: nextBtnHover.containsMouse ? AppTheme.iconButtonHover : "transparent"
@@ -818,7 +817,6 @@ Item {
                                 anchors.verticalCenter: parent.verticalCenter
                             }
 
-                            // 封面
                             Item {
                                 width: 30; height: 30
                                 anchors.verticalCenter: parent.verticalCenter
@@ -858,7 +856,6 @@ Item {
                                 }
                             }
 
-                            // 歌名 + 歌手
                             Column {
                                 anchors.verticalCenter: parent.verticalCenter
                                 spacing: 1
@@ -943,7 +940,6 @@ Item {
                             }
                         }
 
-                        // 时长
                         Text {
                             anchors.right: parent.right
                             anchors.rightMargin: 8
