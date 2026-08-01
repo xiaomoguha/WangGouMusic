@@ -14,9 +14,9 @@
  *
  * 使用方法：
  *   int main(int argc, char *argv[]) {
- *       CrashHandler::install();              // ← 在 QApplication 之前调用
+ *       CrashHandler::install();              // <- 在 QApplication 之前调用
  *       QApplication app(argc, argv);
- *       CrashHandler::checkPreviousCrash();   // ← 在 QApplication 之后调用
+ *       CrashHandler::checkPreviousCrash();   // <- 在 QApplication 之后调用
  *       ...
  *   }
  */

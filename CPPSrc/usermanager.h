@@ -74,11 +74,10 @@ private:
     QJsonDocument readCacheFile(const QString &fileName) const;
 
     /// 内部：POST 一组 form 参数，响应作为 QJsonObject 回调
-    void postForm(const QString &path,
-                  const QList<QPair<QString, QString>> &params,
-                  std::function<void(QJsonObject)> onSuccess,
-                  std::function<void(QString, int)> onError,
-                  int timeoutMs = 10000);
+    void postForm(
+        const QString &path, const QList<QPair<QString, QString>> &params, std::function<void(QJsonObject)> onSuccess,
+        std::function<void(QString, int)> onError, int timeoutMs = 10000
+    );
 
     QSettings m_settings{"WangGouMusic", "UserConfig"};
 
@@ -86,7 +85,7 @@ private:
     QString m_userid;
     QString m_nickname;
     QString m_avatarUrl;
-    bool m_isVip = false;
+    bool m_isVip     = false;
     bool m_isLoading = false;
 };
 

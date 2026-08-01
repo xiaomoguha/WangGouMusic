@@ -20,8 +20,7 @@ public:
     qint64 duration;  // 字持续时间（毫秒）
     QString text;     // 字符文本（中文为单字、英文为单词）
 
-    LyricChar(qint64 start = 0, qint64 dur = 0, const QString &txt = "")
-        : startTime(start), duration(dur), text(txt) {}
+    LyricChar(qint64 start = 0, qint64 dur = 0, const QString &txt = "") : startTime(start), duration(dur), text(txt) {}
 };
 Q_DECLARE_METATYPE(LyricChar)
 
@@ -40,7 +39,9 @@ public:
     int charCount;      // 字符数（时间标签数，用于高亮计算）
 
     LyricLine(qint64 t = 0, qint64 dur = 0, const QString &txt = "", const QVariantList &c = QVariantList())
-        : time(t), duration(dur), text(txt), chars(c), charCount(c.size()) {}
+        : time(t), duration(dur), text(txt), chars(c), charCount(c.size())
+    {
+    }
 };
 Q_DECLARE_METATYPE(LyricLine)
 

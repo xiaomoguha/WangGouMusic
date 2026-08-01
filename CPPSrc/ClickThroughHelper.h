@@ -10,9 +10,9 @@
  *
  * 锁定时窗口始终穿透，用 QCursor::pos() 全局轮询实现三态：
  *
- *  ① 鼠标在窗口外        → 全穿透，锁按钮隐藏
- *  ② 鼠标在窗口内但不在锁上 → 全穿透，锁按钮显示（hoverInWindow=true）
- *  ③ 鼠标在锁按钮区域     → 取消穿透，锁按钮可点击
+ *  1. 鼠标在窗口外        -> 全穿透，锁按钮隐藏
+ *  2. 鼠标在窗口内但不在锁上 -> 全穿透，锁按钮显示（hoverInWindow=true）
+ *  3. 鼠标在锁按钮区域     -> 取消穿透，锁按钮可点击
  *
  * 平台原生 API：
  * - Windows: WS_EX_TRANSPARENT
@@ -34,7 +34,10 @@ public:
     Q_INVOKABLE void setMonitorRegion(int x, int y, int w, int h);
 
     Q_INVOKABLE void setEnabled(bool enabled);
-    Q_INVOKABLE bool isEnabled() const { return m_enabled; }
+    Q_INVOKABLE bool isEnabled() const
+    {
+        return m_enabled;
+    }
 
 signals:
     /// 鼠标进入/离开窗口区域（用于控制锁按钮显隐，不影响穿透）
@@ -47,11 +50,11 @@ private:
     void applyPassThrough(bool pass);
 
     QWindow *m_window = nullptr;
-    QRect    m_captureRegion;   // 锁按钮区域
-    QRect    m_monitorRegion;   // 整个窗口区域
-    bool     m_hasRegion = false;
-    bool     m_enabled = false;
-    bool     m_currentlyPassing = false;
-    bool     m_currentlyInside = false;
-    QTimer   m_timer;
+    QRect m_captureRegion; // 锁按钮区域
+    QRect m_monitorRegion; // 整个窗口区域
+    bool m_hasRegion        = false;
+    bool m_enabled          = false;
+    bool m_currentlyPassing = false;
+    bool m_currentlyInside  = false;
+    QTimer m_timer;
 };

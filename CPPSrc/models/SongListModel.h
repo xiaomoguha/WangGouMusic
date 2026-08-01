@@ -1,10 +1,10 @@
 #ifndef SONG_LIST_MODEL_H
 #define SONG_LIST_MODEL_H
 
+#include "../SongInfo.h"
 #include <QAbstractListModel>
 #include <QList>
 #include <QVariant>
-#include "../SongInfo.h"
 
 /**
  * @brief SongInfo 列表的 QAbstractListModel 封装
@@ -22,7 +22,8 @@ class SongListModel : public QAbstractListModel
     // QML 可直接绑定的行数属性（QAbstractItemModel 无内建 count 属性）
     Q_PROPERTY(int count READ count NOTIFY countChanged)
 public:
-    enum Roles {
+    enum Roles
+    {
         TitleRole = Qt::UserRole + 1,
         SongHashRole,
         UrlRole,
@@ -45,7 +46,10 @@ public:
 
     // ── 供 QML JS 迭代（替代直接数组下标访问）──
     Q_INVOKABLE QVariant get(int index) const;
-    int count() const { return m_songs.size(); }
+    int count() const
+    {
+        return m_songs.size();
+    }
 
     // ── 数据操作（C++ 端调用，触发正确的 model 信号）──
     /// 用外部 QList 替换全部数据（保留原 list 的引用语义给 PlaylistManager）
@@ -63,9 +67,15 @@ signals:
 
     /// 取底层 list 的只读引用（PlaylistManager 内部用）
 public:
-    const QList<SongInfo> &songs() const { return m_songs; }
+    const QList<SongInfo> &songs() const
+    {
+        return m_songs;
+    }
     /// 取底层 list 的可写引用（PlaylistManager 直接操作后需手动调 syncFromList 刷新）
-    QList<SongInfo> &songsRef() { return m_songs; }
+    QList<SongInfo> &songsRef()
+    {
+        return m_songs;
+    }
 
 private:
     QList<SongInfo> m_songs;

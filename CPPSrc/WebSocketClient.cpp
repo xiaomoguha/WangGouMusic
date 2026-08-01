@@ -6,16 +6,17 @@
 #define WEB_SOCKET_SERVICE_PATH "/ws"
 
 WebSocketClient::WebSocketClient(PlaylistManager *playManager, UserManager *userManager, QObject *parent)
-    : QObject{parent}, playmanager(playManager), usermanager(userManager), m_webSocket(nullptr), m_serverUrl("wss://music.xjt-togethertracks.top/ws"), m_connectionState(Disconnected)
-      ,
-      m_heartbeatTimer(nullptr), m_heartbeatTimeoutTimer(nullptr), m_heartbeatInterval(30)
+    : QObject{parent}, playmanager(playManager), usermanager(userManager), m_webSocket(nullptr),
+      m_serverUrl("wss://music.xjt-togethertracks.top/ws"), m_connectionState(Disconnected), m_heartbeatTimer(nullptr),
+      m_heartbeatTimeoutTimer(nullptr), m_heartbeatInterval(30)
 {
     initializeWebSocket();
 }
 
 WebSocketClient::~WebSocketClient()
 {
-    if (m_webSocket) {
+    if (m_webSocket)
+    {
         m_webSocket->close();
         delete m_webSocket;
         m_webSocket = nullptr;
@@ -34,31 +35,24 @@ void WebSocketClient::initializeWebSocket()
     // 改为在析构中显式 close + delete（见 ~WebSocketClient）。
     m_webSocket = new QWebSocket();
 
-    connect(m_webSocket, &QWebSocket::connected,
-            this, &WebSocketClient::onConnected);
-    connect(m_webSocket, &QWebSocket::disconnected,
-            this, &WebSocketClient::onDisconnected);
-    connect(m_webSocket, &QWebSocket::textMessageReceived,
-            this, &WebSocketClient::onTextMessageReceived);
-    connect(m_webSocket, &QWebSocket::binaryMessageReceived,
-            this, &WebSocketClient::onBinaryMessageReceived);
-    connect(m_webSocket, &QWebSocket::errorOccurred,
-            this, &WebSocketClient::onError);
+    connect(m_webSocket, &QWebSocket::connected, this, &WebSocketClient::onConnected);
+    connect(m_webSocket, &QWebSocket::disconnected, this, &WebSocketClient::onDisconnected);
+    connect(m_webSocket, &QWebSocket::textMessageReceived, this, &WebSocketClient::onTextMessageReceived);
+    connect(m_webSocket, &QWebSocket::binaryMessageReceived, this, &WebSocketClient::onBinaryMessageReceived);
+    connect(m_webSocket, &QWebSocket::errorOccurred, this, &WebSocketClient::onError);
 
     if (!m_heartbeatTimer)
     {
         m_heartbeatTimer = new QTimer(this);
         m_heartbeatTimer->setInterval(m_heartbeatInterval * 1000);
-        connect(m_heartbeatTimer, &QTimer::timeout,
-                this, &WebSocketClient::sendHeartbeat);
+        connect(m_heartbeatTimer, &QTimer::timeout, this, &WebSocketClient::sendHeartbeat);
     }
 
     if (!m_heartbeatTimeoutTimer)
     {
         m_heartbeatTimeoutTimer = new QTimer(this);
         m_heartbeatTimeoutTimer->setSingleShot(true);
-        connect(m_heartbeatTimeoutTimer, &QTimer::timeout,
-                this, &WebSocketClient::checkHeartbeatTimeout);
+        connect(m_heartbeatTimeoutTimer, &QTimer::timeout, this, &WebSocketClient::checkHeartbeatTimeout);
     }
 }
 
@@ -135,7 +129,7 @@ QString WebSocketClient::url() const
 
 void WebSocketClient::setUrl(const QString &roomid, const QString &userid)
 {
-    Roomid = roomid;
+    Roomid   = roomid;
     m_userId = userid;
 
     // 从 UserManager 获取昵称和头像
@@ -143,7 +137,7 @@ void WebSocketClient::setUrl(const QString &roomid, const QString &userid)
     QString avatarUrl;
     if (usermanager && usermanager->isLoggedIn())
     {
-        nickname = usermanager->nickname();
+        nickname  = usermanager->nickname();
         avatarUrl = usermanager->avatarUrl();
     }
 
@@ -191,27 +185,29 @@ void WebSocketClient::sendJson(const QJsonObject &json)
 
 // ==================== 一起听操作命令 ====================
 
-void WebSocketClient::addSongToTogether(const QString &songname, const QString &songhash,
-                                         const QString &singername, const QString &albumname,
-                                         const QString &duration, const QString &coverurl)
+void WebSocketClient::addSongToTogether(
+    const QString &songname, const QString &songhash, const QString &singername, const QString &albumname,
+    const QString &duration, const QString &coverurl
+)
 {
     QJsonObject json;
     json["userid"] = m_userId;
     json["action"] = ADD_SONG_TO_PLAYLIST;
     QJsonObject params;
-    params["songname"] = songname;
-    params["songhash"] = songhash;
+    params["songname"]   = songname;
+    params["songhash"]   = songhash;
     params["singername"] = singername;
-    params["albumname"] = albumname;
-    params["duration"] = duration;
-    params["coverurl"] = coverurl;
-    json["params"] = params;
-    m_pendingAddSong = true;
+    params["albumname"]  = albumname;
+    params["duration"]   = duration;
+    params["coverurl"]   = coverurl;
+    json["params"]       = params;
+    m_pendingAddSong     = true;
     emit serverNotice("正在添加到一起听...", "loading");
     sendJson(json);
 
     // 超时机制：5秒内没收到确认则提示失败
-    if (!m_addSongTimeoutTimer) {
+    if (!m_addSongTimeoutTimer)
+    {
         m_addSongTimeoutTimer = new QTimer(this);
         m_addSongTimeoutTimer->setSingleShot(true);
         connect(m_addSongTimeoutTimer, &QTimer::timeout, this, &WebSocketClient::checkAddSongTimeout);
@@ -226,7 +222,7 @@ void WebSocketClient::removeSongFromTogether(const QString &songhash)
     json["action"] = REMOVE_SONG_FROM_PLAYLIST;
     QJsonObject params;
     params["songhash"] = songhash;
-    json["params"] = params;
+    json["params"]     = params;
     sendJson(json);
 }
 
@@ -261,7 +257,7 @@ void WebSocketClient::playTogetherByHash(const QString &songhash)
     json["action"] = PLAY_BY_SONG_HASH;
     QJsonObject params;
     params["songhash"] = songhash;
-    json["params"] = params;
+    json["params"]     = params;
     sendJson(json);
 }
 
@@ -272,7 +268,7 @@ void WebSocketClient::upSongByHash(const QString &songhash)
     json["action"] = UP_SONGBYHASH;
     QJsonObject params;
     params["songhash"] = songhash;
-    json["params"] = params;
+    json["params"]     = params;
     sendJson(json);
 }
 
@@ -294,29 +290,28 @@ void WebSocketClient::requestClientList()
 
 void WebSocketClient::sendChatMessage(const QString &message)
 {
-    if (message.trimmed().isEmpty()) return;
+    if (message.trimmed().isEmpty())
+        return;
 
     // 本地回显：立即显示自己发的消息
     int msgId = ++m_msgIdCounter;
     QVariantMap msg;
-    msg["type"] = "chat";
-    msg["userid"] = m_userId;
-    msg["nickname"] = usermanager ? usermanager->nickname() : QString();
+    msg["type"]      = "chat";
+    msg["userid"]    = m_userId;
+    msg["nickname"]  = usermanager ? usermanager->nickname() : QString();
     msg["avatarUrl"] = usermanager ? usermanager->avatarUrl() : QString();
-    msg["message"] = message.trimmed();
-    msg["time"] = QDateTime::currentSecsSinceEpoch();
-    msg["_local"] = true;
-    msg["status"] = "sending";
-    msg["_msgId"] = msgId;
+    msg["message"]   = message.trimmed();
+    msg["time"]      = QDateTime::currentSecsSinceEpoch();
+    msg["_local"]    = true;
+    msg["status"]    = "sending";
+    msg["_msgId"]    = msgId;
     m_messages.append(msg);
     emit messagesUpdated();
 
     // 超时计时器：10秒未确认则标记为失败
     QTimer *timer = new QTimer(this);
     timer->setSingleShot(true);
-    connect(timer, &QTimer::timeout, this, [this, msgId]() {
-        markMessageFailed(msgId);
-    });
+    connect(timer, &QTimer::timeout, this, [this, msgId]() { markMessageFailed(msgId); });
     m_pendingMsgTimers[msgId] = timer;
     timer->start(10000);
 
@@ -325,7 +320,7 @@ void WebSocketClient::sendChatMessage(const QString &message)
     json["action"] = SEND_CHAT;
     QJsonObject params;
     params["message"] = message.trimmed();
-    json["params"] = params;
+    json["params"]    = params;
     sendJson(json);
 }
 
@@ -333,10 +328,12 @@ void WebSocketClient::sendChatMessage(const QString &message)
 
 void WebSocketClient::markMessageFailed(int msgId)
 {
-    for (int i = 0; i < m_messages.size(); ++i) {
+    for (int i = 0; i < m_messages.size(); ++i)
+    {
         QVariantMap m = m_messages[i].toMap();
-        if (m.value("_msgId").toInt() == msgId && m.value("status").toString() == "sending") {
-            m["status"] = "failed";
+        if (m.value("_msgId").toInt() == msgId && m.value("status").toString() == "sending")
+        {
+            m["status"]   = "failed";
             m_messages[i] = m;
             emit messagesUpdated();
             break;
@@ -349,28 +346,29 @@ void WebSocketClient::retryMessage(int msgId)
 {
     QString messageText;
     int idx = -1;
-    for (int i = 0; i < m_messages.size(); ++i) {
+    for (int i = 0; i < m_messages.size(); ++i)
+    {
         QVariantMap m = m_messages[i].toMap();
-        if (m.value("_msgId").toInt() == msgId && m.value("status").toString() == "failed") {
+        if (m.value("_msgId").toInt() == msgId && m.value("status").toString() == "failed")
+        {
             messageText = m.value("message").toString();
-            idx = i;
+            idx         = i;
             break;
         }
     }
-    if (idx < 0 || messageText.isEmpty()) return;
+    if (idx < 0 || messageText.isEmpty())
+        return;
 
     // 恢复为发送中状态
-    QVariantMap m = m_messages[idx].toMap();
-    m["status"] = "sending";
+    QVariantMap m   = m_messages[idx].toMap();
+    m["status"]     = "sending";
     m_messages[idx] = m;
     emit messagesUpdated();
 
     // 重新启动超时计时器
     QTimer *timer = new QTimer(this);
     timer->setSingleShot(true);
-    connect(timer, &QTimer::timeout, this, [this, msgId]() {
-        markMessageFailed(msgId);
-    });
+    connect(timer, &QTimer::timeout, this, [this, msgId]() { markMessageFailed(msgId); });
     m_pendingMsgTimers[msgId] = timer;
     timer->start(10000);
 
@@ -380,7 +378,7 @@ void WebSocketClient::retryMessage(int msgId)
     json["action"] = SEND_CHAT;
     QJsonObject params;
     params["message"] = messageText;
-    json["params"] = params;
+    json["params"]    = params;
     sendJson(json);
 }
 
@@ -403,17 +401,21 @@ void WebSocketClient::onConnected()
     playmanager->changeplaylisttype(TOGETHER);
 
     // 连接成功后主动请求房间状态（播放列表 + 当前歌曲 + 在线用户 + 历史操作）
-    QTimer::singleShot(100, this, [this]()
-                       {
-        if (isConnected())
+    QTimer::singleShot(
+        100, this,
+        [this]()
         {
-            requestPlaylist();
-            requestClientList();
-            QJsonObject json;
-            json["userid"] = m_userId;
-            json["action"] = GET_CUR_SONG_INFO;
-            sendJson(json);
-        } });
+            if (isConnected())
+            {
+                requestPlaylist();
+                requestClientList();
+                QJsonObject json;
+                json["userid"] = m_userId;
+                json["action"] = GET_CUR_SONG_INFO;
+                sendJson(json);
+            }
+        }
+    );
 }
 
 void WebSocketClient::onDisconnected()
@@ -438,7 +440,8 @@ void WebSocketClient::onDisconnected()
     emit messagesUpdated();
 
     // 清理待确认消息的超时计时器
-    for (auto it = m_pendingMsgTimers.begin(); it != m_pendingMsgTimers.end(); ++it) {
+    for (auto it = m_pendingMsgTimers.begin(); it != m_pendingMsgTimers.end(); ++it)
+    {
         it.value()->stop();
         it.value()->deleteLater();
     }
@@ -499,7 +502,7 @@ void WebSocketClient::sendHeartbeat()
     }
 
     QJsonObject heartbeat;
-    heartbeat["type"] = "heartbeat";
+    heartbeat["type"]      = "heartbeat";
     heartbeat["timestamp"] = QDateTime::currentMSecsSinceEpoch();
 
     sendJson(heartbeat);
@@ -510,7 +513,7 @@ void WebSocketClient::checkHeartbeatTimeout()
     if (m_connectionState != Connected)
         return;
 
-    qint64 elapsed = m_lastMessageTime.elapsed();
+    qint64 elapsed   = m_lastMessageTime.elapsed();
     qint64 threshold = static_cast<qint64>(m_heartbeatInterval) * HEARTBEAT_TIMEOUT_FACTOR * 1000;
 
     if (elapsed > threshold)
@@ -585,32 +588,32 @@ void WebSocketClient::handleServerMessage(const QJsonObject &json)
     case BROADCAST_CHAT:
         if (json.contains("data") && json["data"].isObject())
         {
-            QJsonObject data = json["data"].toObject();
+            QJsonObject data   = json["data"].toObject();
             QString chatUserid = data["userid"].toString();
-            QString chatMsg = data["message"].toString();
-            qint64 chatTime = static_cast<qint64>(data["time"].toDouble());
+            QString chatMsg    = data["message"].toString();
+            qint64 chatTime    = static_cast<qint64>(data["time"].toDouble());
 
             // 检查本地回显去重
             bool isLocalEcho = false;
             for (int i = m_messages.size() - 1; i >= qMax(0, m_messages.size() - 5); --i)
             {
                 QVariantMap m = m_messages[i].toMap();
-                if (m.value("type") == "chat" && m.value("_local").toBool()
-                    && m.value("userid").toString() == chatUserid
-                    && m.value("message").toString() == chatMsg)
+                if (m.value("type") == "chat" && m.value("_local").toBool() &&
+                    m.value("userid").toString() == chatUserid && m.value("message").toString() == chatMsg)
                 {
                     int msgId = m.value("_msgId").toInt();
                     // 更新状态但不触发模型刷新，避免闪烁
-                    QVariantMap updated = m;
-                    updated["_local"] = false;
-                    updated["status"] = "sent";
-                    updated["nickname"] = data["nickname"].toString();
+                    QVariantMap updated  = m;
+                    updated["_local"]    = false;
+                    updated["status"]    = "sent";
+                    updated["nickname"]  = data["nickname"].toString();
                     updated["avatarUrl"] = data["avatar_url"].toString();
-                    updated["time"] = chatTime;
-                    m_messages[i] = updated;
+                    updated["time"]      = chatTime;
+                    m_messages[i]        = updated;
 
                     // 取消超时计时器
-                    if (m_pendingMsgTimers.contains(msgId)) {
+                    if (m_pendingMsgTimers.contains(msgId))
+                    {
                         m_pendingMsgTimers.value(msgId)->stop();
                         m_pendingMsgTimers.value(msgId)->deleteLater();
                         m_pendingMsgTimers.remove(msgId);
@@ -626,25 +629,23 @@ void WebSocketClient::handleServerMessage(const QJsonObject &json)
             if (!isLocalEcho)
             {
                 QVariantMap msg;
-                msg["type"] = "chat";
-                msg["userid"] = chatUserid;
-                msg["nickname"] = data["nickname"].toString();
+                msg["type"]      = "chat";
+                msg["userid"]    = chatUserid;
+                msg["nickname"]  = data["nickname"].toString();
                 msg["avatarUrl"] = data["avatar_url"].toString();
-                msg["message"] = chatMsg;
-                msg["time"] = chatTime;
+                msg["message"]   = chatMsg;
+                msg["time"]      = chatTime;
                 m_messages.append(msg);
             }
             // 本地回显确认时不触发模型刷新，避免闪烁
-            if (!isLocalEcho) {
+            if (!isLocalEcho)
+            {
                 emit messagesUpdated();
             }
 
             emit chatMessageReceived(
-                chatUserid,
-                data["nickname"].toString(),
-                data["avatar_url"].toString(),
-                chatMsg,
-                chatTime);
+                chatUserid, data["nickname"].toString(), data["avatar_url"].toString(), chatMsg, chatTime
+            );
         }
         break;
 
@@ -658,11 +659,14 @@ void WebSocketClient::handleServerMessage(const QJsonObject &json)
             {
                 QVariantMap act = actions[i].toObject().toVariantMap();
                 // 区分聊天历史和操作动态
-                if (act.value("msg_type").toString() == "chat") {
-                    act["type"] = "chat";
+                if (act.value("msg_type").toString() == "chat")
+                {
+                    act["type"]      = "chat";
                     act["avatarUrl"] = act["avatar_url"];
-                    act["status"] = "sent";
-                } else {
+                    act["status"]    = "sent";
+                }
+                else
+                {
                     act["type"] = "action";
                 }
                 // 去重：检查最近 30 条
@@ -698,7 +702,8 @@ void WebSocketClient::handleServerMessage(const QJsonObject &json)
         if (json["status"].toString() == "error")
         {
             m_pendingAddSong = false;
-            if (m_addSongTimeoutTimer) m_addSongTimeoutTimer->stop();
+            if (m_addSongTimeoutTimer)
+                m_addSongTimeoutTimer->stop();
             emit serverNotice(json["message"].toString(), "error");
         }
         break;
@@ -708,15 +713,18 @@ void WebSocketClient::handleServerMessage(const QJsonObject &json)
     if (json.contains("actions") && json["actions"].isArray() && action != BROADCAST_ROOM_ACTION)
     {
         QJsonArray actions = json["actions"].toArray();
-        bool added = false;
+        bool added         = false;
         for (int i = actions.size() - 1; i >= 0; --i)
         {
             QVariantMap act = actions[i].toObject().toVariantMap();
-            if (act.value("msg_type").toString() == "chat") {
-                act["type"] = "chat";
+            if (act.value("msg_type").toString() == "chat")
+            {
+                act["type"]      = "chat";
                 act["avatarUrl"] = act["avatar_url"];
-                act["status"] = "sent";
-            } else {
+                act["status"]    = "sent";
+            }
+            else
+            {
                 act["type"] = "action";
             }
             bool dup = false;
@@ -747,15 +755,15 @@ void WebSocketClient::handleServerMessage(const QJsonObject &json)
 
 void WebSocketClient::handleSongInfoBroadcast(const QJsonObject &data)
 {
-    QString songHash = data["songhash"].toString();
-    QString songUrl = data["song_url"].toString();
-    QString songName = data["songname"].toString();
-    QString singerName = data["singername"].toString();
-    QString coverUrl = data["cover_url"].toString();
-    QString albumName = data["album_name"].toString();
-    QString duration = data["duration"].toString();
+    QString songHash     = data["songhash"].toString();
+    QString songUrl      = data["song_url"].toString();
+    QString songName     = data["songname"].toString();
+    QString singerName   = data["singername"].toString();
+    QString coverUrl     = data["cover_url"].toString();
+    QString albumName    = data["album_name"].toString();
+    QString duration     = data["duration"].toString();
     double playedPercent = data["played_percent"].toDouble();
-    int isPlaying = data["is_playing"].toInt();
+    int isPlaying        = data["is_playing"].toInt();
 
     // 通知 QML 更新
     emit songInfoUpdated(data);
@@ -769,9 +777,7 @@ void WebSocketClient::handleSongInfoBroadcast(const QJsonObject &data)
         {
             playmanager->setTogetherSeekPercent(playedPercent);
         }
-        playmanager->playTogetherSongFromServer(songUrl, songName, songHash,
-                                                  singerName, coverUrl, albumName,
-                                                  duration);
+        playmanager->playTogetherSongFromServer(songUrl, songName, songHash, singerName, coverUrl, albumName, duration);
     }
     else
     {
@@ -783,9 +789,9 @@ void WebSocketClient::handleSongInfoBroadcast(const QJsonObject &data)
             if (localPercent > 0.9)
             {
                 playmanager->clearTogetherSongHash(); // 允许重新播放同一首歌
-                playmanager->playTogetherSongFromServer(songUrl, songName, songHash,
-                                                          singerName, coverUrl, albumName,
-                                                          duration);
+                playmanager->playTogetherSongFromServer(
+                    songUrl, songName, songHash, singerName, coverUrl, albumName, duration
+                );
                 return;
             }
         }
@@ -800,7 +806,7 @@ void WebSocketClient::handleSongInfoBroadcast(const QJsonObject &data)
             playmanager->setPaused(false);
             // 进度偏差超过 3 秒才 seek，避免频繁跳动
             float localPercent = playmanager->getpercent();
-            qint64 durationMs = 0;
+            qint64 durationMs  = 0;
             // duration 格式可能是 "mm:ss" 或秒数字符串
             if (duration.contains(":"))
             {
@@ -828,9 +834,9 @@ void WebSocketClient::handleSongInfoBroadcast(const QJsonObject &data)
 
 void WebSocketClient::handleSongProgressBroadcast(const QJsonObject &data)
 {
-    QString songHash = data["songhash"].toString();
+    QString songHash     = data["songhash"].toString();
     double playedPercent = data["played_percent"].toDouble();
-    int isPlaying = data["is_playing"].toInt();
+    int isPlaying        = data["is_playing"].toInt();
 
     if (songHash.isEmpty())
         return;
@@ -879,7 +885,7 @@ void WebSocketClient::handleSongListBroadcast(const QJsonObject &json)
     if (json.contains("song_info") && json["song_info"].isObject())
     {
         QJsonObject songInfo = json["song_info"].toObject();
-        QString infoHash = songInfo["songhash"].toString();
+        QString infoHash     = songInfo["songhash"].toString();
         if (m_currentTogetherSongHash.isEmpty() || infoHash == m_currentTogetherSongHash)
         {
             handleSongInfoBroadcast(songInfo);
@@ -889,7 +895,8 @@ void WebSocketClient::handleSongListBroadcast(const QJsonObject &json)
     if (m_pendingAddSong)
     {
         m_pendingAddSong = false;
-        if (m_addSongTimeoutTimer) m_addSongTimeoutTimer->stop();
+        if (m_addSongTimeoutTimer)
+            m_addSongTimeoutTimer->stop();
         emit serverNotice("已添加到一起听", "success");
     }
 }
@@ -926,20 +933,26 @@ void WebSocketClient::fetchRoomList()
     request.setTransferTimeout(5000);
     QNetworkReply *reply = m_httpManager.get(request);
 
-    connect(reply, &QNetworkReply::finished, this, [this, reply]()
+    connect(
+        reply, &QNetworkReply::finished, this,
+        [this, reply]()
+        {
+            reply->deleteLater();
+            if (reply->error() != QNetworkReply::NoError)
             {
-        reply->deleteLater();
-        if (reply->error() != QNetworkReply::NoError) {
-            return;
+                return;
+            }
+            QByteArray data = reply->readAll();
+            QJsonParseError parseError;
+            QJsonDocument doc = QJsonDocument::fromJson(data, &parseError);
+            if (parseError.error != QJsonParseError::NoError || !doc.isArray())
+            {
+                return;
+            }
+            m_roomList = doc.array().toVariantList();
+            emit roomListUpdated();
         }
-        QByteArray data = reply->readAll();
-        QJsonParseError parseError;
-        QJsonDocument doc = QJsonDocument::fromJson(data, &parseError);
-        if (parseError.error != QJsonParseError::NoError || !doc.isArray()) {
-            return;
-        }
-        m_roomList = doc.array().toVariantList();
-        emit roomListUpdated(); });
+    );
 }
 
 QVariantList WebSocketClient::roomList() const

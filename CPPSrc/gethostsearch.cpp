@@ -5,36 +5,40 @@
 #include <QJsonObject>
 #include <QDebug>
 
-GetHostSearch::GetHostSearch(QObject *parent) : QObject{parent}
-{
-}
+GetHostSearch::GetHostSearch(QObject *parent) : QObject{parent} {}
 
 void GetHostSearch::fetchhostserachData(const QString &url)
 {
-    if (url.isEmpty()) {
+    if (url.isEmpty())
+    {
         qWarning() << "Empty URL provided";
         return;
     }
 
-    ApiClient::instance().getJson(url,
-        [this](QJsonObject root) {
+    ApiClient::instance().getJson(
+        url,
+        [this](QJsonObject root)
+        {
             const int errorCode = root["errcode"].toInt();
-            if (errorCode != 0) {
+            if (errorCode != 0)
+            {
                 qWarning() << "[GetHostSearch] errcode:" << errorCode;
                 return;
             }
             m_items.clear();
 
-            const QJsonObject jsondata = root["data"].toObject();
+            const QJsonObject jsondata   = root["data"].toObject();
             const QJsonArray categoryObj = jsondata["list"].toArray();
-            if (categoryObj.isEmpty()) {
+            if (categoryObj.isEmpty())
+            {
                 emit hostsearchitemsChanged();
                 return;
             }
             const QJsonObject hostsearchdata = categoryObj[0].toObject();
-            const QJsonArray keywords = hostsearchdata["keywords"].toArray();
+            const QJsonArray keywords        = hostsearchdata["keywords"].toArray();
 
-            for (const QJsonValue &keywordValue : keywords) {
+            for (const QJsonValue &keywordValue : keywords)
+            {
                 const QString keyword = keywordValue.toObject()["keyword"].toString();
                 QVariantMap item;
                 item["keyword"] = keyword;
@@ -42,11 +46,13 @@ void GetHostSearch::fetchhostserachData(const QString &url)
             }
             emit hostsearchitemsChanged();
         },
-        [this](QString err, int code) {
+        [this](QString err, int code)
+        {
             Q_UNUSED(code);
             qWarning() << "[GetHostSearch] fetch error:" << err;
         },
-        10000);
+        10000
+    );
 }
 
 QVariantList GetHostSearch::gethostserachitems() const

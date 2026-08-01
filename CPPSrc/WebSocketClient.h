@@ -1,9 +1,9 @@
 #ifndef WEBSOCKETCLIENT_H
 #define WEBSOCKETCLIENT_H
 
-#include <QObject>
 #include "playlistmanager.h"
 #include "usermanager.h"
+#include <QObject>
 #include <QWebSocket>
 #include <QUrl>
 #include <QJsonObject>
@@ -15,7 +15,8 @@
 #include <QElapsedTimer>
 
 // 与服务端 types.h 中的 enum ctrl 保持一致
-enum ServerAction {
+enum ServerAction
+{
     GET_CUR_SONG_INFO = 200,
     PLAY_NEXT_SONG,
     PLAY_BY_SONG_HASH,
@@ -33,7 +34,8 @@ enum ServerAction {
 };
 
 // 聊天 & 操作日志 action（与服务端 types.h 一致）
-enum ChatAction {
+enum ChatAction
+{
     SEND_CHAT = 300,
     BROADCAST_CHAT,
     BROADCAST_ROOM_ACTION
@@ -53,30 +55,32 @@ public:
     explicit WebSocketClient(PlaylistManager *playmanager, UserManager *usermanager, QObject *parent = nullptr);
     ~WebSocketClient() override;
     // 连接状态枚举
-    enum ConnectionState {
-        Disconnected = 0,  // 未连接
-        Connecting,        // 连接中
-        Connected,         // 已连接
+    enum ConnectionState
+    {
+        Disconnected = 0, // 未连接
+        Connecting,       // 连接中
+        Connected,        // 已连接
     };
     Q_ENUM(ConnectionState)
 
     // 基本操作
-    Q_INVOKABLE void connectToServer();           // 连接服务器
-    Q_INVOKABLE void disconnectFromServer();      // 断开连接
+    Q_INVOKABLE void connectToServer();                  // 连接服务器
+    Q_INVOKABLE void disconnectFromServer();             // 断开连接
     Q_INVOKABLE void sendJson(const QJsonObject &json);  // 发送JSON数据
-    Q_INVOKABLE bool isConnected() const;         // 是否已连接
+    Q_INVOKABLE bool isConnected() const;                // 是否已连接
     Q_INVOKABLE ConnectionState connectionState() const; // 获取连接状态
 
     // URL 相关
     QString url() const;
-    Q_INVOKABLE void setUrl(const QString &roomid,const QString &userid);
+    Q_INVOKABLE void setUrl(const QString &roomid, const QString &userid);
 
     QString Getroomid() const;
 
     // 一起听操作命令（QML 可调用）
-    Q_INVOKABLE void addSongToTogether(const QString &songname, const QString &songhash,
-                                        const QString &singername, const QString &albumname,
-                                        const QString &duration, const QString &coverurl);
+    Q_INVOKABLE void addSongToTogether(
+        const QString &songname, const QString &songhash, const QString &singername, const QString &albumname,
+        const QString &duration, const QString &coverurl
+    );
     Q_INVOKABLE void removeSongFromTogether(const QString &songhash);
     Q_INVOKABLE void playNextTogether();
     Q_INVOKABLE void pauseTogether();
@@ -112,8 +116,10 @@ signals:
     void messagesUpdated();
 
     // 聊天 & 操作日志
-    void chatMessageReceived(const QString &userid, const QString &nickname,
-                             const QString &avatarUrl, const QString &message, qint64 timestamp);
+    void chatMessageReceived(
+        const QString &userid, const QString &nickname, const QString &avatarUrl, const QString &message,
+        qint64 timestamp
+    );
     void roomActionsReceived(const QJsonArray &actions);
     void messageConfirmed(int msgId);
 
@@ -133,7 +139,7 @@ private slots:
 
 private:
     PlaylistManager *playmanager = nullptr;
-    UserManager *usermanager = nullptr;
+    UserManager *usermanager     = nullptr;
     void initializeWebSocket();
 
     // 服务器消息分发
@@ -171,12 +177,12 @@ private:
     QVariantList m_messages;
 
     // 待确认的添加歌曲操作
-    bool m_pendingAddSong = false;
+    bool m_pendingAddSong         = false;
     QTimer *m_addSongTimeoutTimer = nullptr;
 
     // 消息发送状态追踪
     int m_msgIdCounter = 0;
-    QMap<int, QTimer*> m_pendingMsgTimers;
+    QMap<int, QTimer *> m_pendingMsgTimers;
     void markMessageFailed(int msgId);
 };
 

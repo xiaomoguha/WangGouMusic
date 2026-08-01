@@ -48,18 +48,23 @@ using namespace winrt::Windows::Foundation;
 using namespace winrt::Windows::Media;
 using namespace winrt::Windows::Storage::Streams;
 
-namespace {
-struct WinImpl {
-    SystemMediaTransportControls smtc{ nullptr };
-    QString cachedCoverUrl;   // 封面 URL 变化才换缩略图，避免反复重建
+namespace
+{
+struct WinImpl
+{
+    SystemMediaTransportControls smtc{nullptr};
+    QString cachedCoverUrl; // 封面 URL 变化才换缩略图，避免反复重建
 };
 
-inline hstring toHstring(const QString &s) {
+inline hstring toHstring(const QString &s)
+{
     return hstring(reinterpret_cast<const wchar_t *>(s.utf16()));
 }
 
-double parseDurationSec(const QString &s) {
-    if (s.contains(QLatin1Char(':'))) {
+double parseDurationSec(const QString &s)
+{
+    if (s.contains(QLatin1Char(':')))
+    {
         const auto parts = s.split(QLatin1Char(':'));
         if (parts.size() == 2)
             return parts[0].toInt() * 60.0 + parts[1].toInt();
@@ -69,8 +74,9 @@ double parseDurationSec(const QString &s) {
 
 // TimeSpan 是 100ns 单位的 int64；brace-init 在「裸 struct」与「chrono duration」两种
 // C++/WinRT 投影形态下都能编过。
-inline TimeSpan secondsToTimeSpan(double sec) {
-    return TimeSpan{ static_cast<int64_t>(sec * 10000000.0) };
+inline TimeSpan secondsToTimeSpan(double sec)
+{
+    return TimeSpan{static_cast<int64_t>(sec * 10000000.0)};
 }
 
 // SMTC 必须在持有窗口的 UI 线程上获取，且需要窗口已存在，因此延迟到首次
@@ -78,9 +84,11 @@ inline TimeSpan secondsToTimeSpan(double sec) {
 // 主窗口 HWND：桌面(Win32)程序没有 CoreWindow 视图，必须用 GetForWindow 把 SMTC 绑到 HWND，
 // 否则 GetForCurrentView() 会报"找不到要与此 MediaPlaybackControl 实例关联的相应视图"。
 // 选普通顶层窗口（排除桌面歌词等 Qt::Tool 工具窗口）；窗口尚未就绪时返回 nullptr，下次播放再试。
-HWND findMainWindowHwnd() {
+HWND findMainWindowHwnd()
+{
     const auto wins = QGuiApplication::topLevelWindows();
-    for (QWindow *w : wins) {
+    for (QWindow *w : wins)
+    {
         if (!w->isVisible() || w->flags().testFlag(Qt::Tool))
             continue;
         const WId id = w->winId();
@@ -88,24 +96,28 @@ HWND findMainWindowHwnd() {
             return reinterpret_cast<HWND>(id);
     }
     // 退路：任一可见顶层窗口
-    for (QWindow *w : wins) {
+    for (QWindow *w : wins)
+    {
         if (w->isVisible() && w->winId())
             return reinterpret_cast<HWND>(w->winId());
     }
     return nullptr;
 }
 
-void ensureSmtc(WinImpl *impl, PlaylistManager *pm) {
-    if (!impl || impl->smtc) return;
-    try {
+void ensureSmtc(WinImpl *impl, PlaylistManager *pm)
+{
+    if (!impl || impl->smtc)
+        return;
+    try
+    {
         HWND hwnd = findMainWindowHwnd();
         if (!hwnd)
             return;
-        auto factory = winrt::get_activation_factory<SystemMediaTransportControls>();
-        auto interop = factory.as<ISystemMediaTransportControlsInterop>();
+        auto factory          = winrt::get_activation_factory<SystemMediaTransportControls>();
+        auto interop          = factory.as<ISystemMediaTransportControlsInterop>();
         const winrt::guid iid = winrt::guid_of<SystemMediaTransportControls>();
-        SystemMediaTransportControls smtc{ nullptr };
-        winrt::check_hresult(interop->GetForWindow(hwnd, reinterpret_cast<const GUID&>(iid), winrt::put_abi(smtc)));
+        SystemMediaTransportControls smtc{nullptr};
+        winrt::check_hresult(interop->GetForWindow(hwnd, reinterpret_cast<const GUID &>(iid), winrt::put_abi(smtc)));
         if (!smtc)
             return;
         smtc.IsEnabled(true);
@@ -114,27 +126,32 @@ void ensureSmtc(WinImpl *impl, PlaylistManager *pm) {
         smtc.IsNextEnabled(true);
         smtc.IsPreviousEnabled(true);
         // ponytail: 系统回调线程不可控，统一用 QueuedConnection 派发回主线程操作播放器
-        smtc.ButtonPressed([pm](SystemMediaTransportControls const &,
-                                SystemMediaTransportControlsButtonPressedEventArgs const &args) {
-            switch (args.Button()) {
-            case SystemMediaTransportControlsButton::Play:
-                QMetaObject::invokeMethod(qApp, [pm] { pm->setPaused(false); }, Qt::QueuedConnection);
-                break;
-            case SystemMediaTransportControlsButton::Pause:
-                QMetaObject::invokeMethod(qApp, [pm] { pm->setPaused(true); }, Qt::QueuedConnection);
-                break;
-            case SystemMediaTransportControlsButton::Next:
-                QMetaObject::invokeMethod(qApp, [pm] { pm->playNext(); }, Qt::QueuedConnection);
-                break;
-            case SystemMediaTransportControlsButton::Previous:
-                QMetaObject::invokeMethod(qApp, [pm] { pm->playPrevious(); }, Qt::QueuedConnection);
-                break;
-            default:
-                break;
+        smtc.ButtonPressed(
+            [pm](SystemMediaTransportControls const &, SystemMediaTransportControlsButtonPressedEventArgs const &args)
+            {
+                switch (args.Button())
+                {
+                case SystemMediaTransportControlsButton::Play:
+                    QMetaObject::invokeMethod(qApp, [pm] { pm->setPaused(false); }, Qt::QueuedConnection);
+                    break;
+                case SystemMediaTransportControlsButton::Pause:
+                    QMetaObject::invokeMethod(qApp, [pm] { pm->setPaused(true); }, Qt::QueuedConnection);
+                    break;
+                case SystemMediaTransportControlsButton::Next:
+                    QMetaObject::invokeMethod(qApp, [pm] { pm->playNext(); }, Qt::QueuedConnection);
+                    break;
+                case SystemMediaTransportControlsButton::Previous:
+                    QMetaObject::invokeMethod(qApp, [pm] { pm->playPrevious(); }, Qt::QueuedConnection);
+                    break;
+                default:
+                    break;
+                }
             }
-        });
+        );
         impl->smtc = smtc;
-    } catch (const hresult_error &e) {
+    }
+    catch (const hresult_error &e)
+    {
         qWarning() << "SMTC init failed:" << QString::fromWCharArray(e.message().c_str());
     }
 }
@@ -145,14 +162,19 @@ NowPlayingMediaController::NowPlayingMediaController(PlaylistManager *pm, QObjec
 {
     // Qt 已以 STA（OleInitialize）初始化主线程 COM；此处再以 single_threaded 初始化
     // 通常返回 S_FALSE，仅作保险。若抛 RPC_E_CHANGED_MODE 也忽略。
-    try {
+    try
+    {
         init_apartment(apartment_type::single_threaded);
-    } catch (...) {
+    }
+    catch (...)
+    {
     }
 
     m_impl = new WinImpl();
 
-    connect(m_playlistManager, &PlaylistManager::currentSongChanged, this, &NowPlayingMediaController::updateNowPlaying);
+    connect(
+        m_playlistManager, &PlaylistManager::currentSongChanged, this, &NowPlayingMediaController::updateNowPlaying
+    );
     connect(m_playlistManager, &PlaylistManager::isPausedChanged, this, &NowPlayingMediaController::updateNowPlaying);
     connect(m_playlistManager, &PlaylistManager::durationChanged, this, &NowPlayingMediaController::updateNowPlaying);
 }
@@ -160,9 +182,17 @@ NowPlayingMediaController::NowPlayingMediaController(PlaylistManager *pm, QObjec
 NowPlayingMediaController::~NowPlayingMediaController()
 {
     auto *impl = static_cast<WinImpl *>(m_impl);
-    if (impl) {
-        if (impl->smtc) {
-            try { impl->smtc.PlaybackStatus(MediaPlaybackStatus::Closed); } catch (...) {}
+    if (impl)
+    {
+        if (impl->smtc)
+        {
+            try
+            {
+                impl->smtc.PlaybackStatus(MediaPlaybackStatus::Closed);
+            }
+            catch (...)
+            {
+            }
         }
         delete impl;
     }
@@ -172,18 +202,21 @@ NowPlayingMediaController::~NowPlayingMediaController()
 void NowPlayingMediaController::updateNowPlaying()
 {
     auto *impl = static_cast<WinImpl *>(m_impl);
-    if (!impl) return;
+    if (!impl)
+        return;
     ensureSmtc(impl, m_playlistManager);
-    if (!impl->smtc) return;
+    if (!impl->smtc)
+        return;
     const auto smtc = impl->smtc;
 
-    try {
-        const QString title = m_playlistManager->currentTitle();
+    try
+    {
+        const QString title  = m_playlistManager->currentTitle();
         const QString artist = m_playlistManager->currentsingername();
-        const QString cover = m_playlistManager->union_cover();
-        const float percent = m_playlistManager->getpercent();
-        const bool paused = m_playlistManager->isPaused();
-        const double dur = parseDurationSec(m_playlistManager->durationstr());
+        const QString cover  = m_playlistManager->union_cover();
+        const float percent  = m_playlistManager->getpercent();
+        const bool paused    = m_playlistManager->isPaused();
+        const double dur     = parseDurationSec(m_playlistManager->durationstr());
 
         auto updater = smtc.DisplayUpdater();
         updater.Type(MediaPlaybackType::Music);
@@ -191,12 +224,16 @@ void NowPlayingMediaController::updateNowPlaying()
         props.Title(toHstring(title));
         props.Artist(toHstring(artist));
 
-        if (!cover.isEmpty() && cover != impl->cachedCoverUrl) {
+        if (!cover.isEmpty() && cover != impl->cachedCoverUrl)
+        {
             impl->cachedCoverUrl = cover;
-            try {
-                Uri uri{ toHstring(cover) };
+            try
+            {
+                Uri uri{toHstring(cover)};
                 updater.Thumbnail(RandomAccessStreamReference::CreateFromUri(uri));
-            } catch (...) {
+            }
+            catch (...)
+            {
                 // 无效 URL（如 qrc:/ 本地图）：跳过缩略图
             }
         }
@@ -212,7 +249,9 @@ void NowPlayingMediaController::updateNowPlaying()
         tl.MinSeekTime(secondsToTimeSpan(0));
         tl.MaxSeekTime(secondsToTimeSpan(dur));
         smtc.UpdateTimelineProperties(tl);
-    } catch (const hresult_error &e) {
+    }
+    catch (const hresult_error &e)
+    {
         qWarning() << "SMTC update failed:" << QString::fromWCharArray(e.message().c_str());
     }
 }
@@ -220,8 +259,15 @@ void NowPlayingMediaController::updateNowPlaying()
 void NowPlayingMediaController::clearNowPlaying()
 {
     auto *impl = static_cast<WinImpl *>(m_impl);
-    if (!impl || !impl->smtc) return;
-    try { impl->smtc.PlaybackStatus(MediaPlaybackStatus::Closed); } catch (...) {}
+    if (!impl || !impl->smtc)
+        return;
+    try
+    {
+        impl->smtc.PlaybackStatus(MediaPlaybackStatus::Closed);
+    }
+    catch (...)
+    {
+    }
     impl->cachedCoverUrl.clear();
 }
 

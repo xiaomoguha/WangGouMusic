@@ -1,0 +1,37 @@
+---
+# 华为风格倾向的 C++ 格式化配置
+# 核心约定：Allman 大括号（语句/函数左大括号另起一行）、4 空格缩进、
+# 指针/引用靠变量名、不自动排序 #include（winrt/base.h 等有顺序依赖）。
+BasedOnStyle: LLVM
+Standard: c++17
+
+# 大括号另起一行（华为/Allman）
+BreakBeforeBraces: Allman
+
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ContinuationIndentWidth: 4
+AccessModifierOffset: -4
+IndentAccessModifiers: false
+
+ColumnLimit: 120
+
+# 指针/引用靠变量名（与现有 QObject *parent 一致，最小 diff）
+DerivePointerAlignment: false
+PointerAlignment: Right
+
+# 关闭 include 自动排序/重组（存在顺序依赖，如 winrt/base.h）
+IncludeBlocks: Preserve
+SortIncludes: false
+
+AlignAfterOpenBracket: BlockIndent
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLambdasOnASingleLine: Inline
+AllowShortLoopsOnASingleLine: false
+AlwaysBreakTemplateDeclarations: Yes
+AlignConsecutiveAssignments: Consecutive
+AlignTrailingComments: true
+SpacesBeforeTrailingComments: 1
+SortUsingDeclarations: true
