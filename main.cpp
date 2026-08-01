@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QFontDatabase>
 #include <QIcon>
 #include <QLoggingCategory>
 #include <QQmlApplicationEngine>
@@ -70,6 +71,13 @@ int main(int argc, char *argv[])
     qputenv("QT_FFMPEG_PLAYER_BUFFER", "15000");        // 提高缓冲
 
     QApplication app(argc, argv);
+
+    // 注册内嵌中文字体 Sarasa Gothic SC（随包打包，跨平台显示一致）
+    QFontDatabase::addApplicationFont(":/fonts/SarasaGothicSC-Regular.ttf");
+    QFontDatabase::addApplicationFont(":/fonts/SarasaGothicSC-SemiBold.ttf");
+    QFontDatabase::addApplicationFont(":/fonts/SarasaGothicSC-Bold.ttf");
+    // 设为应用默认字体：未显式指定 family 的 QML 文本也会统一使用 Sarasa Gothic SC
+    app.setFont(QFont(QStringLiteral("Sarasa Gothic SC")));
 
     // 检测上次崩溃日志，如有则弹窗提示
     CrashHandler::checkPreviousCrash();

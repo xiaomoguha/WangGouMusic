@@ -156,7 +156,8 @@ Page {
                                 text: modelData.title
                                 font.pixelSize: AppTheme.fontSizeBody
                                 font.family: AppTheme.fontFamily
-                                color: AppTheme.textPrimary
+                                font.bold: true
+                                color: AppTheme.textSongTitle
                                 elide: Text.ElideRight
                                 width: parent.width
                                 wrapMode: Text.NoWrap
@@ -165,6 +166,7 @@ Page {
                                 text: modelData.singername
                                 font.pixelSize: AppTheme.fontSizeCaption
                                 font.family: AppTheme.fontFamily
+                                font.bold: true
                                 color: AppTheme.textMuted
                                 elide: Text.ElideRight
                                 width: parent.width
@@ -235,6 +237,7 @@ Page {
                             text: modelData.album_name
                             font.pixelSize: AppTheme.fontSizeBody
                             font.family: AppTheme.fontFamily
+                            font.bold: true
                             color: AppTheme.textMuted
 
                             Behavior on x { NumberAnimation { duration: AppTheme.animFast } }

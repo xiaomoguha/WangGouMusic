@@ -122,6 +122,7 @@ Rectangle {
                         text: navColumn.navList[navItemRect.index].text
                         font.pixelSize: AppTheme.fontSizeBodyLg
                         font.family: AppTheme.fontFamily
+                        font.bold: true
                         color: navItemRect.isSelected ? AppTheme.textPrimary : AppTheme.textSecondary
                     }
                 }
@@ -231,6 +232,7 @@ Rectangle {
                         text: navColumn2.navList[navItemRect2.index].text
                         font.pixelSize: AppTheme.fontSizeBodyLg
                         font.family: AppTheme.fontFamily
+                        font.bold: true
                         color: navItemRect2.isSelected ? AppTheme.textPrimary : AppTheme.textSecondary
                     }
                 }

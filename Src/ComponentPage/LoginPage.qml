@@ -167,7 +167,7 @@ ThemedPopup {
                 text: userManager && userManager.isLoading ? "登录中..." : "登录"
                 color: "white"
                 font.pixelSize: AppTheme.fontSizeBodyLg
-                font.weight: Font.Medium
+                font.weight: Font.DemiBold
                 font.family: AppTheme.fontFamily
             }
 

@@ -182,13 +182,15 @@ Page {
                                         id: songNameText
                                         text: modelData.songname
                                         font.pixelSize: AppTheme.fontSizeBody; font.family: AppTheme.fontFamily
-                                        color: AppTheme.textPrimary
+                                        font.bold: true
+                                        color: AppTheme.textSongTitle
                                     }
                                     // 第二份副本：仅超出时显示，配合 x 滚到 -unitWidth 实现无缝循环
                                     Text {
                                         text: modelData.songname
                                         font.pixelSize: AppTheme.fontSizeBody; font.family: AppTheme.fontFamily
-                                        color: AppTheme.textPrimary
+                                        font.bold: true
+                                        color: AppTheme.textSongTitle
                                         visible: songNameClip.overflow
                                     }
                                     NumberAnimation on x {
@@ -203,6 +205,7 @@ Page {
                             Text {
                                 text: modelData.singername
                                 font.pixelSize: AppTheme.fontSizeCaption; font.family: AppTheme.fontFamily
+                                font.bold: true
                                 color: AppTheme.textMuted
                                 elide: Text.ElideRight; width: parent.width; wrapMode: Text.NoWrap
                             }
@@ -269,6 +272,7 @@ Page {
                         elide: Text.ElideRight; width: 0.28 * root.width; wrapMode: Text.NoWrap
                         text: modelData.album_name
                         font.pixelSize: AppTheme.fontSizeBody; font.family: AppTheme.fontFamily; color: AppTheme.textMuted
+                        font.bold: true
                     }
 
                     // 时长（固定位置）

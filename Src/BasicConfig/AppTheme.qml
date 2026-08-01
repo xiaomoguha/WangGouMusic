@@ -55,6 +55,8 @@ QtObject {
 
     // ===== 文字颜色 =====
     readonly property color textPrimary: isDark ? "#FFFFFF" : "#1A1A2E"
+    // 歌曲名专用：深色纯白、浅色纯黑（比 textPrimary 的浅色 #1A1A2E 更黑）
+    readonly property color textSongTitle: isDark ? "#FFFFFF" : "#000000"
     readonly property color textSecondary: isDark ? "#CCCCCC" : "#666680"
     readonly property color textMuted: isDark ? "#888899" : "#9999AA"
     readonly property color textDim: isDark ? "#666677" : "#AAAAAA"
@@ -120,9 +122,9 @@ QtObject {
     readonly property int animThemeTransition: 300
 
     // ===== 字体 =====
-    // 跨平台中文优先字体栈：Windows 用微软雅黑，macOS 用苹方，Linux 用思源黑体，
-    // 避免之前硬编码 "黑体" 在非 Windows 中文系统上回退到默认字体导致观感不一致。
-    readonly property string fontFamily: "Microsoft YaHei UI, Microsoft YaHei, PingFang SC, Hiragino Sans GB, Noto Sans CJK SC, Source Han Sans CN, sans-serif"
+    // 主字体：Sarasa Gothic SC（更纱黑体），随包打包、在 main.cpp 用 QFontDatabase 注册，
+    // 跨平台显示一致；含完整中文，中英文混排对齐整齐。缺失字形时 Qt 自动回退系统字体。
+    readonly property string fontFamily: "Sarasa Gothic SC"
 
     // ===== 字号（px）=====
     // 对齐现有最高频取值（13/12/14/11/16/20/18）；后续可叠加 dp 缩放适配 HiDPI
