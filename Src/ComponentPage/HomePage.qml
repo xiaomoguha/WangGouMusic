@@ -155,10 +155,12 @@ Item {
                         Image {
                             id: refreshIcon
                             anchors.centerIn: parent
-                            source: "qrc:/image/shuaxin.png"
+                            source: AppIcon.refresh
                             width: 14
                             height: 14
                             fillMode: Image.PreserveAspectFit
+                            sourceSize: Qt.size(128, 128)
+                            mipmap: true
                             layer.enabled: true
                             layer.effect: ColorOverlay {
                                 source: refreshIcon
@@ -385,12 +387,17 @@ Item {
                                         }
 
                                         Image {
+                                            id: cardPlayIcon
                                             anchors.centerIn: parent
-                                            source: "qrc:/image/playnow.png"
+                                            source: AppIcon.playCircle
                                             width: 32
                                             height: 32
                                             fillMode: Image.PreserveAspectFit
                                             visible: !isPlaying && songCardHover.hovered
+                                            sourceSize: Qt.size(128, 128)
+                                            mipmap: true
+                                            layer.enabled: true
+                                            layer.effect: ColorOverlay { source: cardPlayIcon; color: AppTheme.textPrimary }
                                         }
                                     }
                                 }

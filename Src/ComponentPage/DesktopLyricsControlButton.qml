@@ -47,6 +47,8 @@ Item {
             visible: root.iconSource !== ""
             anchors.centerIn: parent
             source: root.iconSource
+            sourceSize: Qt.size(128, 128)
+            mipmap: true
             width: 12 * root.scaleFactor
             height: 12 * root.scaleFactor
             fillMode: Image.PreserveAspectFit

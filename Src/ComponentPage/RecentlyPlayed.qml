@@ -12,7 +12,7 @@ Page {
     Row {
         id: headerRow
         anchors.left: parent.left
-        anchors.leftMargin: 0.025 * root.width
+        anchors.leftMargin: 0.025 * recentPage.width
         anchors.top: parent.top
         anchors.topMargin: 16
         spacing: 12
@@ -96,47 +96,58 @@ Page {
                     required property int index
                     required property var modelData
                     width: recentCol.width
-                    height: 56
-                    radius: 8
-                    color: itemHover.hovered ? AppTheme.bgCardHover : "transparent"
+                    height: 60
+                    radius: 5
+                    color: {
+                        if (itemHover.hovered) return AppTheme.bgCardHover
+                        if (songItem.isPlaying) return AppTheme.bgCardHover
+                        return "transparent"
+                    }
 
-                    property bool showActions: itemHover.hovered
-
-                    HoverHandler { id: itemHover }
+                    // 与歌单详情页一致的「正在播放」高亮：♪/动图 + 强调色
+                    readonly property bool isPlaying: !!(playlistmanager && playlistmanager.currentSonghash === modelData.songhash)
 
                     Row {
                         anchors.fill: parent
-                        anchors.leftMargin: 0.025 * root.width
-                        anchors.rightMargin: 0.05 * root.width
-                        spacing: 12
+                        anchors.leftMargin: 0.025 * recentPage.width
+                        anchors.rightMargin: 0.05 * recentPage.width
+                        spacing: 15
 
                         Text {
-                            width: 30
+                            width: 25
                             text: (songItem.index + 1).toString().padStart(2, "0")
                             anchors.verticalCenter: parent.verticalCenter
-                            font.pixelSize: AppTheme.fontSizeBodyLg
-                            color: AppTheme.textMuted
-                            font.family: AppTheme.fontFamily
+                            font.pixelSize: AppTheme.fontSizeTitle
+                            color: isPlaying ? AppTheme.accentPlaying : AppTheme.textMuted
+                            visible: !isPlaying
+                        }
+
+                        AnimatedImage {
+                            width: 25
+                            height: 25
+                            source: "qrc:/image/isplaying.gif"
+                            playing: visible
+                            visible: isPlaying
+                            anchors.verticalCenter: parent.verticalCenter
                         }
 
                         Image {
-                            anchors.verticalCenter: parent.verticalCenter
                             width: 40
                             height: 40
                             source: modelData.union_cover || ""
-                            fillMode: Image.PreserveAspectCrop
-                            asynchronous: true
-                            cache: true
                             sourceSize.width: 80
                             sourceSize.height: 80
+                            fillMode: Image.PreserveAspectCrop
+                            anchors.verticalCenter: parent.verticalCenter
+                            asynchronous: true
+                            cache: true
 
+                            // ponytail: 封面缺失时的占位（历史记录更易缺封面），不占额外布局
                             Rectangle {
                                 anchors.fill: parent
                                 radius: 6
-                                color: "transparent"
-                                border.width: 0
-                                visible: modelData.union_cover === ""
-
+                                color: AppTheme.bgCard
+                                visible: !modelData.union_cover
                                 Text {
                                     anchors.centerIn: parent
                                     text: modelData.title ? modelData.title.substring(0, 1) : "♪"
@@ -148,129 +159,135 @@ Page {
                         }
 
                         Column {
-                            width: 0.2 * root.width
-                            anchors.verticalCenter: parent.verticalCenter
-                            spacing: 3
-
-                            Text {
-                                text: modelData.title
-                                font.pixelSize: AppTheme.fontSizeBody
-                                font.family: AppTheme.fontFamily
-                                font.bold: true
-                                color: AppTheme.textSongTitle
-                                elide: Text.ElideRight
-                                width: parent.width
-                                wrapMode: Text.NoWrap
-                            }
-                            Text {
-                                text: modelData.singername
-                                font.pixelSize: AppTheme.fontSizeCaption
-                                font.family: AppTheme.fontFamily
-                                font.bold: true
-                                color: AppTheme.textMuted
-                                elide: Text.ElideRight
-                                width: parent.width
-                                wrapMode: Text.NoWrap
-                            }
-                        }
-
-                        // 操作按钮（悬停显示）
-                        Row {
-                            visible: songItem.showActions
+                            width: 0.3 * recentPage.width
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: 4
 
-                            IconButton {
-                                visible: !isTogetherMode
-                                iconSource: "qrc:/image/playnow.png"
-                                onClicked: {
-                                    // 先缓存 modelData：playNextAndPlay 可能触发 recentPlaylist 刷新，
-                                    // 导致 delegate 袘重建、modelData 失效（ReferenceError）
-                                    var md = modelData
-                                    playlistmanager.playNextAndPlay({
-                                        "songname": md.title,
-                                        "songhash": md.songhash,
-                                        "singername": md.singername,
-                                        "union_cover": md.union_cover,
-                                        "album_name": md.album_name,
-                                        "duration": md.duration
-                                    });
-                                    BasicConfig.emitSongAdded("正在播放: " + md.title);
-                                }
+                            Text {
+                                text: modelData.title
+                                width: parent.width
+                                elide: Text.ElideRight
+                                font.pixelSize: AppTheme.fontSizeBody
+                                font.family: AppTheme.fontFamily
+                                font.bold: true
+                                color: isPlaying ? AppTheme.accentPlaying : AppTheme.textSongTitle
                             }
-
-                            // 添加到列表按钮
-                            IconButton {
-                                visible: !isTogetherMode
-                                iconSource: "qrc:/image/addplaylist.png"
-                                onClicked: {
-                                    playlistmanager.addSong({
-                                        "songname": modelData.title,
-                                        "songhash": modelData.songhash,
-                                        "singername": modelData.singername,
-                                        "union_cover": modelData.union_cover,
-                                        "album_name": modelData.album_name,
-                                        "duration": modelData.duration
-                                    });
-                                    BasicConfig.emitSongAdded();
-                                }
+                            Text {
+                                text: modelData.singername
+                                width: parent.width
+                                elide: Text.ElideRight
+                                font.pixelSize: AppTheme.fontSizeCaption
+                                font.family: AppTheme.fontFamily
+                                font.bold: true
+                                color: isPlaying ? AppTheme.accentPlaying : AppTheme.textMuted
                             }
-
-                            // 一起听按钮
-                            IconButton {
-                                id: togetherBtn
-                                visible: (websocket && websocket.connected) || isTogetherMode
-                                iconSource: "qrc:/image/yinle.png"
-                                iconColor: AppTheme.isDark ? (togetherBtn.hovered ? AppTheme.accent : AppTheme.iconDefault) : AppTheme.accent
-                                onClicked: websocket.addSongToTogether(modelData.title, modelData.songhash, modelData.singername, modelData.album_name, modelData.duration, modelData.union_cover)
-                            }
-
                         }
 
-                        // 专辑
-                        Text {
-                            x: songItem.showActions ? 0.48 * root.width : 0.4 * root.width
+                        // 操作按钮区（固定宽度占位，悬停时显示；专辑/时长不再随悬停跳动）
+                        Item {
+                            width: isTogetherMode ? 34 : 68
+                            height: 30
                             anchors.verticalCenter: parent.verticalCenter
-                            elide: Text.ElideRight
-                            width: 0.28 * root.width
-                            wrapMode: Text.NoWrap
+
+                            Row {
+                                anchors.fill: parent
+                                spacing: 4
+                                visible: itemHover.hovered && !isPlaying
+
+                                IconButton {
+                                    id: playBtn
+                                    visible: !isTogetherMode
+                                    size: 30
+                                    iconSize: 16
+                                    iconSource: AppIcon.playCircle
+                                    iconColor: AppTheme.isDark ? (playBtn.hovered ? "#4FC3F7" : "#FFFFFF") : AppTheme.iconDefault
+                                    onClicked: {
+                                        // 先读取为基本类型：playNextAndPlay 会触发 recentPlaylist 重置，
+                                        // 之后 modelData 按失效下标取值会得到 undefined（toast 显示“正在播放 undefined”）。
+                                        var title = modelData.title
+                                        var songhash = modelData.songhash
+                                        var singername = modelData.singername
+                                        var union_cover = modelData.union_cover
+                                        var album_name = modelData.album_name
+                                        var duration = modelData.duration
+                                        playlistmanager.playNextAndPlay({
+                                            "songname": title,
+                                            "songhash": songhash,
+                                            "singername": singername,
+                                            "union_cover": union_cover,
+                                            "album_name": album_name,
+                                            "duration": duration
+                                        })
+                                        BasicConfig.emitSongAdded("正在播放: " + title)
+                                    }
+                                }
+
+                                IconButton {
+                                    id: addBtn
+                                    visible: !isTogetherMode
+                                    size: 30
+                                    iconSize: 16
+                                    iconSource: AppIcon.addToList
+                                    iconColor: AppTheme.isDark ? (addBtn.hovered ? AppTheme.accent : "#FFFFFF") : AppTheme.iconDefault
+                                    onClicked: {
+                                        var md = modelData
+                                        playlistmanager.addSong({
+                                            "songname": md.title,
+                                            "songhash": md.songhash,
+                                            "singername": md.singername,
+                                            "union_cover": md.union_cover,
+                                            "album_name": md.album_name,
+                                            "duration": md.duration
+                                        })
+                                        BasicConfig.emitSongAdded("已添加到播放列表: " + md.title)
+                                    }
+                                }
+
+                                IconButton {
+                                    id: togetherBtn
+                                    visible: isTogetherMode
+                                    size: 30
+                                    iconSize: 16
+                                    iconSource: AppIcon.addTogether
+                                    iconColor: AppTheme.isDark ? (togetherBtn.hovered ? AppTheme.accent : "#FFFFFF") : AppTheme.iconDefault
+                                    onClicked: {
+                                        var md = modelData
+                                        websocket.addSongToTogether(md.title, md.songhash, md.singername, md.album_name, md.duration, md.union_cover)
+                                    }
+                                }
+                            }
+                        }
+
+                        Text {
                             text: modelData.album_name
-                            font.pixelSize: AppTheme.fontSizeBody
+                            width: 0.2 * recentPage.width
+                            elide: Text.ElideRight
+                            font.pixelSize: AppTheme.fontSizeBodyLg
                             font.family: AppTheme.fontFamily
                             font.bold: true
-                            color: AppTheme.textMuted
-
-                            Behavior on x { NumberAnimation { duration: AppTheme.animFast } }
+                            color: AppTheme.textPrimary
+                            anchors.verticalCenter: parent.verticalCenter
                         }
 
                         Text {
-                            anchors.verticalCenter: parent.verticalCenter
                             text: {
-                                var d = modelData.duration;
-                                if (!d) return "--:--";
-                                if (d.indexOf(":") !== -1) return d;
-                                var sec = parseInt(d);
-                                if (isNaN(sec)) return d;
-                                var m = Math.floor(sec / 60);
-                                var s = sec % 60;
-                                return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+                                var d = modelData.duration
+                                if (!d) return "--:--"
+                                if (d.indexOf(":") !== -1) return d
+                                var sec = parseInt(d)
+                                if (isNaN(sec)) return d
+                                var m = Math.floor(sec / 60)
+                                var s = sec % 60
+                                return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s
                             }
-                            font.pixelSize: AppTheme.fontSizeBody
+                            font.pixelSize: AppTheme.fontSizeBodyLg
                             font.family: AppTheme.fontFamily
                             color: AppTheme.textMuted
+                            anchors.verticalCenter: parent.verticalCenter
                         }
                     }
 
-                    // 入场动画
-                    opacity: 0
-                    Component.onCompleted: itemAnim.start()
-                    NumberAnimation on opacity {
-                        id: itemAnim
-                        from: 0
-                        to: 1
-                        duration: AppTheme.animThemeTransition
-                        easing.type: Easing.OutCubic
-                    }
+                    HoverHandler { id: itemHover }
                 }
             }
         }

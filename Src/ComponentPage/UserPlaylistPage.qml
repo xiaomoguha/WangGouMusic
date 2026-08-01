@@ -444,7 +444,9 @@ Item {
                                         id: arrowIcon
                                         width: 16
                                         height: 16
-                                        source: "qrc:/image/left_line.png"
+                                        source: AppIcon.back
+                                        sourceSize: Qt.size(128, 128)
+                                        mipmap: true
                                         rotation: 180
                                         fillMode: Image.PreserveAspectFit
                                         anchors.verticalCenter: parent.verticalCenter
@@ -592,7 +594,9 @@ Item {
                             Image {
                                 id: backIcon
                                 anchors.centerIn: parent
-                                source: "qrc:/image/left_line.png"
+                                source: AppIcon.back
+                                sourceSize: Qt.size(128, 128)
+                                mipmap: true
                                 width: 16
                                 height: 16
                                 fillMode: Image.PreserveAspectFit
@@ -663,7 +667,9 @@ Item {
 
                             Image {
                                 id: playAllIcon
-                                source: "qrc:/image/play.png"
+                                source: AppIcon.play
+                                sourceSize: Qt.size(128, 128)
+                                mipmap: true
                                 width: 16
                                 height: 16
                                 fillMode: Image.PreserveAspectFit
@@ -747,7 +753,9 @@ Item {
 
                             Image {
                                 id: detailSearchIcon
-                                source: "qrc:/image/search_line.png"
+                                source: AppIcon.search
+                                sourceSize: Qt.size(128, 128)
+                                mipmap: true
                                 width: 14
                                 height: 14
                                 fillMode: Image.PreserveAspectFit
@@ -786,7 +794,9 @@ Item {
                                 Image {
                                     id: clearDetailIcon
                                     anchors.centerIn: parent
-                                    source: "qrc:/image/delete_line.png"
+                                    source: AppIcon.deleteIcon
+                                    sourceSize: Qt.size(128, 128)
+                                    mipmap: true
                                     width: 12
                                     height: 12
                                     fillMode: Image.PreserveAspectFit
@@ -964,9 +974,9 @@ Item {
                                             IconButton {
                                                 id: playBtn
                                                 visible: !isTogetherMode
-                                                size: 30; iconSize: 14
-                                                iconSource: "qrc:/image/playnow.png"
-                                                iconColor: AppTheme.isDark ? (playBtn.hovered ? "#4FC3F7" : "#FFFFFF") : AppTheme.accent
+                                                size: 30; iconSize: 16
+                                                iconSource: AppIcon.playCircle
+                                                iconColor: AppTheme.isDark ? (playBtn.hovered ? "#4FC3F7" : "#FFFFFF") : AppTheme.iconDefault
                                                 onClicked: {
                                                     if (!playlistmanager) return
                                                     var s = filteredSongs[index]
@@ -984,9 +994,9 @@ Item {
                                             IconButton {
                                                 id: addBtn
                                                 visible: !isTogetherMode
-                                                size: 30; iconSize: 14
-                                                iconSource: "qrc:/image/addplaylist.png"
-                                                iconColor: AppTheme.isDark ? (addBtn.hovered ? AppTheme.accent : "#FFFFFF") : AppTheme.accent
+                                                size: 30; iconSize: 16
+                                                iconSource: AppIcon.addToList
+                                                iconColor: AppTheme.isDark ? (addBtn.hovered ? AppTheme.accent : "#FFFFFF") : AppTheme.iconDefault
                                                 onClicked: {
                                                     if (!playlistmanager) return
                                                     var s = filteredSongs[index]
@@ -1005,9 +1015,9 @@ Item {
                                             IconButton {
                                                 id: togetherBtn
                                                 visible: isTogetherMode
-                                                size: 30; iconSize: 14
-                                                iconSource: "qrc:/image/yinle.png"
-                                                iconColor: AppTheme.isDark ? (togetherBtn.hovered ? AppTheme.accent : "#FFFFFF") : AppTheme.accent
+                                                size: 30; iconSize: 16
+                                                iconSource: AppIcon.addTogether
+                                                iconColor: AppTheme.isDark ? (togetherBtn.hovered ? AppTheme.accent : "#FFFFFF") : AppTheme.iconDefault
                                                 onClicked: {
                                                     if (!websocket || !filteredSongs[index]) return
                                                     var s = filteredSongs[index]

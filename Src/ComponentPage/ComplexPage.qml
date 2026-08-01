@@ -223,7 +223,9 @@ Page {
                         // 播放
                         IconButton {
                             visible: !isTogetherMode
-                            iconSource: "qrc:/image/playnow.png"
+                            iconSource: AppIcon.playCircle
+                            size: 30
+                            iconSize: 16
                             onClicked: {
                                 playlistmanager.playNextAndPlay({
                                     "songname": modelData.songname,
@@ -240,7 +242,9 @@ Page {
                         // 添加到列表
                         IconButton {
                             visible: !isTogetherMode
-                            iconSource: "qrc:/image/addplaylist.png"
+                            iconSource: AppIcon.addToList
+                            size: 30
+                            iconSize: 16
                             onClicked: {
                                 playlistmanager.addSong({
                                     "songname": modelData.songname,
@@ -258,8 +262,10 @@ Page {
                         IconButton {
                             id: togetherBtn
                             visible: (websocket && websocket.connected) || isTogetherMode
-                            iconSource: "qrc:/image/yinle.png"
-                            iconColor: AppTheme.isDark ? (togetherBtn.hovered ? AppTheme.accent : AppTheme.iconDefault) : AppTheme.accent
+                            iconSource: AppIcon.addTogether
+                            size: 30
+                            iconSize: 16
+                            iconColor: AppTheme.isDark ? (togetherBtn.hovered ? AppTheme.accent : AppTheme.iconDefault) : AppTheme.iconDefault
                             onClicked: websocket.addSongToTogether(modelData.songname, modelData.songhash, modelData.singername, modelData.album_name, modelData.duration, modelData.union_cover)
                         }
 

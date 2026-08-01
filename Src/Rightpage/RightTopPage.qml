@@ -25,7 +25,9 @@ Item {
         Image {
             id: backIcon
             anchors.centerIn: parent
-            source: "qrc:/image/left_line.png"
+            source: AppIcon.back
+            sourceSize: Qt.size(128, 128)
+            mipmap: true
             width: 16
             height: 16
             fillMode: Image.PreserveAspectFit

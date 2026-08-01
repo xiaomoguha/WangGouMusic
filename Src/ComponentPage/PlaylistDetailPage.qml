@@ -126,7 +126,9 @@ Item {
                     Image {
                         id: backIcon
                         anchors.centerIn: parent
-                        source: "qrc:/image/left_line.png"
+                        source: AppIcon.back
+                        sourceSize: Qt.size(128, 128)
+                        mipmap: true
                         width: 18
                         height: 18
                         fillMode: Image.PreserveAspectFit
@@ -381,109 +383,62 @@ Item {
                             }
                         }
 
-                        // 操作按钮
-                        Row {
+                        // 操作按钮区（固定宽度占位，悬停时显示；时长始终可见，不再被覆盖）
+                        Item {
+                            width: isTogetherMode ? 34 : 68
+                            height: 30
                             anchors.verticalCenter: parent.verticalCenter
-                            spacing: 6
-                            visible: songHover.hovered
 
-                            // 普通模式：立即播放 + 下一首播放
                             Row {
-                                visible: !isTogetherMode
-                                spacing: 6
+                                anchors.fill: parent
+                                spacing: 4
+                                visible: songHover.hovered
 
-                                Rectangle {
-                                    width: 66
-                                    height: 26
-                                    radius: 13
-                                    color: playBtnHover.hovered ? "#533483" : "#e94560"
-
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: "立即播放"
-                                        font.pixelSize: AppTheme.fontSizeXs
-                                        color: "#ffffff"
-                                        font.family: AppTheme.fontFamily
-                                    }
-
-                                    HoverHandler { id: playBtnHover }
-                                    TapHandler {
-                                        cursorShape: Qt.PointingCursor
-                                        onTapped: {
-                                            playlistmanager.playNextAndPlay({
-                                                "songname": modelData.songname,
-                                                "songhash": modelData.songhash,
-                                                "singername": modelData.singername,
-                                                "union_cover": modelData.union_cover,
-                                                "album_name": modelData.album_name,
-                                                "duration": modelData.duration
-                                            })
-                                            BasicConfig.emitSongAdded("正在播放: " + modelData.songname)
-                                        }
-                                    }
-                                    Behavior on color { ColorAnimation { duration: 100 } }
-                                }
-
-                                Rectangle {
-                                    width: 76
-                                    height: 26
-                                    radius: 13
-                                    color: nextBtnHover.hovered ? AppTheme.bgNavHover : "transparent"
-                                    border.color: AppTheme.textMuted
-                                    border.width: 1
-
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: "下一首播放"
-                                        font.pixelSize: AppTheme.fontSizeXs
-                                        color: AppTheme.textPrimary
-                                        font.family: AppTheme.fontFamily
-                                    }
-
-                                    HoverHandler { id: nextBtnHover }
-                                    TapHandler {
-                                        cursorShape: Qt.PointingCursor
-                                        onTapped: {
-                                            playlistmanager.addSongNext({
-                                                "songname": modelData.songname,
-                                                "songhash": modelData.songhash,
-                                                "singername": modelData.singername,
-                                                "union_cover": modelData.union_cover,
-                                                "album_name": modelData.album_name,
-                                                "duration": modelData.duration
-                                            })
-                                            BasicConfig.emitSongAdded("已添加到下一首: " + modelData.songname)
-                                        }
+                                IconButton {
+                                    visible: !isTogetherMode
+                                    iconSource: AppIcon.playCircle
+                                    size: 30
+                                    iconSize: 16
+                                    onClicked: {
+                                        playlistmanager.playNextAndPlay({
+                                            "songname": modelData.songname,
+                                            "songhash": modelData.songhash,
+                                            "singername": modelData.singername,
+                                            "union_cover": modelData.union_cover,
+                                            "album_name": modelData.album_name,
+                                            "duration": modelData.duration
+                                        })
+                                        BasicConfig.emitSongAdded("正在播放: " + modelData.songname)
                                     }
                                 }
-                            }
 
-                            // 一起听模式：添加到一起听列表
-                            Rectangle {
-                                visible: isTogetherMode
-                                width: 80
-                                height: 26
-                                radius: 13
-                                color: togetherBtnHover.hovered ? "#533483" : "#e94560"
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: "添加到一起听"
-                                    font.pixelSize: AppTheme.fontSizeXs
-                                    color: "#ffffff"
-                                    font.family: AppTheme.fontFamily
-                                }
-
-                                HoverHandler { id: togetherBtnHover }
-                                TapHandler {
-                                    cursorShape: Qt.PointingCursor
-                                    onTapped: {
-                                        websocket.addSongToTogether(modelData.songname, modelData.songhash,
-                                                                    modelData.singername, modelData.album_name,
-                                                                    modelData.duration, modelData.union_cover)
+                                IconButton {
+                                    visible: !isTogetherMode
+                                    iconSource: AppIcon.addToList
+                                    size: 30
+                                    iconSize: 16
+                                    onClicked: {
+                                        playlistmanager.addSongNext({
+                                            "songname": modelData.songname,
+                                            "songhash": modelData.songhash,
+                                            "singername": modelData.singername,
+                                            "union_cover": modelData.union_cover,
+                                            "album_name": modelData.album_name,
+                                            "duration": modelData.duration
+                                        })
+                                        BasicConfig.emitSongAdded("已添加到下一首: " + modelData.songname)
                                     }
                                 }
-                                Behavior on color { ColorAnimation { duration: 100 } }
+
+                                IconButton {
+                                    visible: isTogetherMode
+                                    iconSource: AppIcon.addTogether
+                                    size: 30
+                                    iconSize: 16
+                                    onClicked: websocket.addSongToTogether(modelData.songname, modelData.songhash,
+                                                                           modelData.singername, modelData.album_name,
+                                                                           modelData.duration, modelData.union_cover)
+                                }
                             }
                         }
 
@@ -494,7 +449,6 @@ Item {
                             font.pixelSize: AppTheme.fontSizeCaption
                             color: AppTheme.textMuted
                             font.family: AppTheme.fontFamily
-                            visible: !songHover.hovered
                         }
                     }
 

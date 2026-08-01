@@ -723,8 +723,10 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         Image {
                             id: ctrlPlayIcon; anchors.centerIn: parent
-                            source: playlistmanager && !playlistmanager.isPaused ? "qrc:/image/paused.png" : "qrc:/image/play.png"
+                            source: playlistmanager && !playlistmanager.isPaused ? AppIcon.pause : AppIcon.play
                             width: 12; height: 12; fillMode: Image.PreserveAspectFit
+                            sourceSize: Qt.size(128, 128)
+                            mipmap: true
                             layer.enabled: true
                             layer.effect: ColorOverlay { source: ctrlPlayIcon; color: AppTheme.textSecondary }
                         }
@@ -741,7 +743,9 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         Image {
                             id: nextBtnIcon; anchors.centerIn: parent
-                            source: "qrc:/image/nextplay.png"; width: 12; height: 12; fillMode: Image.PreserveAspectFit
+                            source: AppIcon.next; width: 12; height: 12; fillMode: Image.PreserveAspectFit
+                            sourceSize: Qt.size(128, 128)
+                            mipmap: true
                             layer.enabled: true
                             layer.effect: ColorOverlay { source: nextBtnIcon; color: AppTheme.textSecondary }
                         }
@@ -756,7 +760,9 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         Image {
                             id: refreshIcon; anchors.centerIn: parent
-                            source: "qrc:/image/shuaxin.png"; width: 12; height: 12; fillMode: Image.PreserveAspectFit
+                            source: AppIcon.refresh; width: 12; height: 12; fillMode: Image.PreserveAspectFit
+                            sourceSize: Qt.size(128, 128)
+                            mipmap: true
                             layer.enabled: true
                             layer.effect: ColorOverlay { source: refreshIcon; color: AppTheme.textSecondary }
                         }
@@ -891,7 +897,7 @@ Item {
                                     width: 22; height: 22; radius: 11
                                     visible: !parent.isCurrent
                                     color: iPlayBtnHover.hovered ? AppTheme.iconButtonHover : "transparent"
-                                    Image { id: iPlayIco; anchors.centerIn: parent; source: "qrc:/image/playnow.png"; width: 10; height: 10; fillMode: Image.PreserveAspectFit; layer.enabled: true; layer.effect: ColorOverlay { source: iPlayIco; color: AppTheme.textSecondary } }
+                                    Image { id: iPlayIco; anchors.centerIn: parent; source: AppIcon.playCircle; width: 10; height: 10; fillMode: Image.PreserveAspectFit; sourceSize: Qt.size(128, 128); mipmap: true; layer.enabled: true; layer.effect: ColorOverlay { source: iPlayIco; color: AppTheme.textSecondary } }
                                     HoverHandler { id: iPlayBtnHover }
                                     TapHandler { cursorShape: Qt.PointingHandCursor; onTapped: websocket.playTogetherByHash(model.songhash) }
                                 }
@@ -935,7 +941,7 @@ Item {
                                     width: 22; height: 22; radius: 11
                                     visible: !parent.isCurrent
                                     color: iDelBtnHover.hovered ? AppTheme.iconButtonHover : "transparent"
-                                    Image { id: iDelIco; anchors.centerIn: parent; source: "qrc:/image/delete_line.png"; width: 10; height: 10; fillMode: Image.PreserveAspectFit; layer.enabled: true; layer.effect: ColorOverlay { source: iDelIco; color: AppTheme.textSecondary } }
+                                    Image { id: iDelIco; anchors.centerIn: parent; source: AppIcon.deleteIcon; width: 10; height: 10; fillMode: Image.PreserveAspectFit; sourceSize: Qt.size(128, 128); mipmap: true; layer.enabled: true; layer.effect: ColorOverlay { source: iDelIco; color: AppTheme.textSecondary } }
                                     HoverHandler { id: iDelBtnHover }
                                     TapHandler { cursorShape: Qt.PointingHandCursor; onTapped: websocket.removeSongFromTogether(model.songhash) }
                                 }
