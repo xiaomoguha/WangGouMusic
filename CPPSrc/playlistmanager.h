@@ -11,7 +11,6 @@
 #include <QString>
 #include <QMediaPlayer>
 #include <QNetworkAccessManager>
-#include <QObject>
 #include <QNetworkReply>
 #include <QJsonDocument>
 #include <QJsonArray>
@@ -88,7 +87,6 @@ public:
     QString currentTitle() const;
     QString currentsingername() const;
     QString currentSongHash() const;
-    int count() const;
     bool isPaused() const;
     QString union_cover() const;
     QString dominantColor() const;
@@ -151,9 +149,6 @@ signals:
     void dominantColorChanged();
     void downloadProgressChanged();
     void isBufferingChanged();
-
-public slots:
-    void parselyricsuc();
 
 private:
     enum playlist_type type = LOCAL;

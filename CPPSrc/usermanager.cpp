@@ -65,8 +65,6 @@ void UserManager::login(const QString &username, const QString &password)
             m_nickname   = data["nickname"].toString();
             m_avatarUrl  = data["pic"].toString();
             m_isVip      = data["is_vip"].toInt() == 1;
-            m_vipType    = data["vip_type"].toInt();
-            m_vipToken   = data["vip_token"].toString();
             saveToSettings();
             syncTokenToApiClient();
             emit loginStatusChanged();
@@ -126,8 +124,6 @@ void UserManager::loginByPhone(const QString &mobile, const QString &code)
             m_nickname   = data["nickname"].toString();
             m_avatarUrl  = data["pic"].toString();
             m_isVip      = data["is_vip"].toInt() == 1;
-            m_vipType    = data["vip_type"].toInt();
-            m_vipToken   = data["vip_token"].toString();
             saveToSettings();
             syncTokenToApiClient();
             emit loginStatusChanged();
@@ -165,8 +161,6 @@ void UserManager::refreshToken()
             m_nickname   = data["nickname"].toString();
             m_avatarUrl  = data["pic"].toString();
             m_isVip      = data["is_vip"].toInt() == 1;
-            m_vipType    = data["vip_type"].toInt();
-            m_vipToken   = data["vip_token"].toString();
             saveToSettings();
             syncTokenToApiClient();
             emit loginStatusChanged();
@@ -190,8 +184,6 @@ void UserManager::logout()
     m_nickname.clear();
     m_avatarUrl.clear();
     m_isVip = false;
-    m_vipType = 0;
-    m_vipToken.clear();
     clearSettings();
     syncTokenToApiClient();
     emit loginStatusChanged();
@@ -321,8 +313,6 @@ void UserManager::saveToSettings()
     m_settings.setValue("nickname", m_nickname);
     m_settings.setValue("avatarUrl", m_avatarUrl);
     m_settings.setValue("isVip", m_isVip);
-    m_settings.setValue("vipType", m_vipType);
-    m_settings.setValue("vipToken", m_vipToken);
 }
 
 void UserManager::loadFromSettings()
@@ -332,8 +322,6 @@ void UserManager::loadFromSettings()
     m_nickname  = m_settings.value("nickname").toString();
     m_avatarUrl = m_settings.value("avatarUrl").toString();
     m_isVip     = m_settings.value("isVip").toBool();
-    m_vipType   = m_settings.value("vipType").toInt();
-    m_vipToken  = m_settings.value("vipToken").toString();
 }
 
 void UserManager::clearSettings()
@@ -343,6 +331,4 @@ void UserManager::clearSettings()
     m_settings.remove("nickname");
     m_settings.remove("avatarUrl");
     m_settings.remove("isVip");
-    m_settings.remove("vipType");
-    m_settings.remove("vipToken");
 }

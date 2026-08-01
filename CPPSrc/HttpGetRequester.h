@@ -4,7 +4,6 @@
 #include <QObject>
 #include <QString>
 #include <QByteArray>
-#include <functional>
 
 class QNetworkReply;
 
@@ -23,17 +22,8 @@ class HttpGetRequester : public QObject
 public:
     explicit HttpGetRequester(int timeoutMs = 10000, QObject *parent = nullptr);
 
-    /// 设置请求超时（毫秒）
-    Q_INVOKABLE void setTimeout(int milliseconds);
-
     /// 发起异步 GET 请求
     Q_INVOKABLE void fetchData(const QString &url);
-
-    /// 设置自定义 HTTP 头（仅追加到 User-Agent 后；不影响全局默认头）
-    Q_INVOKABLE void setHeader(const QByteArray &name, const QByteArray &value);
-
-    /// 清除所有自定义头
-    Q_INVOKABLE void clearHeaders();
 
 signals:
     void dataReceived(const QByteArray &data);
@@ -46,8 +36,6 @@ private:
 
     int m_timeoutMs;
     QNetworkReply *m_currentReply = nullptr;
-    // 自定义请求头（仅本实例生效，不写入 ApiClient 全局）
-    QList<QPair<QByteArray, QByteArray>> m_customHeaders;
 };
 
 #endif // HTTPGETREQUESTER_H

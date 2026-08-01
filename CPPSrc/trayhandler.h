@@ -14,6 +14,9 @@ public:
     TrayHandler(QQuickWindow *win, QApplication *app, const QIcon &icon, QObject *parent = nullptr);
     ~TrayHandler() override;
 
+    // 显示系统通知（跨平台：Windows 右下角横幅 / macOS 通知中心）
+    Q_INVOKABLE void showMessage(const QString &title, const QString &message, int timeoutMs = 3000);
+
 private slots:
     void onShowRequested();
     void onQuitRequested();

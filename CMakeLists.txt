@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(网狗音乐 VERSION 0.6.1 LANGUAGES CXX)
+project(网狗音乐 VERSION 0.6.3 LANGUAGES CXX)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -42,7 +42,6 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         CPPSrc/DominantColorExtractor.cpp CPPSrc/DominantColorExtractor.h
         CPPSrc/PlaylistCacheStore.cpp CPPSrc/PlaylistCacheStore.h
         CPPSrc/models/SongListModel.cpp CPPSrc/models/SongListModel.h
-        CPPSrc/models/VariantMapListModel.cpp CPPSrc/models/VariantMapListModel.h CPPSrc/models/SpecializedModels.h
         CPPSrc/SongInfo.cpp CPPSrc/SongInfo.h
         CPPSrc/CrashHandler.cpp CPPSrc/CrashHandler.h
         CPPSrc/ClickThroughHelper.cpp CPPSrc/ClickThroughHelper.h

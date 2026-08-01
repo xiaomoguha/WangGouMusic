@@ -51,6 +51,7 @@ class WebSocketClient : public QObject
     Q_PROPERTY(QVariantList messages READ messages NOTIFY messagesUpdated)
 public:
     explicit WebSocketClient(PlaylistManager *playmanager, UserManager *usermanager, QObject *parent = nullptr);
+    ~WebSocketClient() override;
     // 连接状态枚举
     enum ConnectionState {
         Disconnected = 0,  // 未连接
@@ -71,9 +72,6 @@ public:
     Q_INVOKABLE void setUrl(const QString &roomid,const QString &userid);
 
     QString Getroomid() const;
-
-    // 配置
-    Q_INVOKABLE void setHeartbeatInterval(int seconds);  // 设置心跳间隔
 
     // 一起听操作命令（QML 可调用）
     Q_INVOKABLE void addSongToTogether(const QString &songname, const QString &songhash,
@@ -121,9 +119,6 @@ signals:
 
     // 服务器操作结果通知
     void serverNotice(const QString &message, const QString &mode); // mode: "loading" / "success" / "error"
-
-public slots:
-    Q_INVOKABLE void sendString(const QString &message);
 
 private slots:
     void onConnected();

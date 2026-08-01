@@ -88,8 +88,6 @@ private:
     QString m_avatarUrl;
     bool m_isVip = false;
     bool m_isLoading = false;
-    int m_vipType = 0;
-    QString m_vipToken;
 };
 
 #endif // USERMANAGER_H
