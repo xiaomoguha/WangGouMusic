@@ -92,7 +92,9 @@ Row {
             // 搜索图标
             Image {
                 id: searchicon
-                source: "qrc:/image/search_line.png"
+                source: AppIcon.search
+                sourceSize: Qt.size(128, 128)
+                mipmap: true
                 width: 16
                 height: 16
                 fillMode: Image.PreserveAspectFit
@@ -220,7 +222,9 @@ Row {
                                 // 搜索图标
                                 Image {
                                     id: suggestIcon
-                                    source: "qrc:/image/search_line.png"
+                                    source: AppIcon.search
+                                    sourceSize: Qt.size(128, 128)
+                                    mipmap: true
                                     width: 16
                                     height: 16
                                     fillMode: Image.PreserveAspectFit
@@ -324,7 +328,9 @@ Row {
                         Image {
                             id: deleteicn
                             anchors.centerIn: parent
-                            source: "qrc:/image/delete_line.png"
+                            source: AppIcon.deleteIcon
+                            sourceSize: Qt.size(128, 128)
+                            mipmap: true
                             width: 14
                             height: 14
                             fillMode: Image.PreserveAspectFit

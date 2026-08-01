@@ -1,5 +1,6 @@
 singleton BasicConfig BasicConfig.qml
 singleton AppTheme AppTheme.qml
+singleton AppIcon AppIcon.qml
 LocateCurrentButton LocateCurrentButton.qml
 IconButton IconButton.qml
 ThemedPopup ThemedPopup.qml

@@ -51,7 +51,9 @@ Item {
             Image {
                 id: backIco
                 anchors.centerIn: parent
-                source: "qrc:/image/left_line.png"
+                source: AppIcon.back
+                sourceSize: Qt.size(128, 128)
+                mipmap: true
                 width: 14; height: 14; fillMode: Image.PreserveAspectFit
                 layer.enabled: true
                 layer.effect: ColorOverlay { source: backIco; color: AppTheme.iconDefault }

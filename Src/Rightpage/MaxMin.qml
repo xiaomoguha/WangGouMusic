@@ -18,7 +18,9 @@ Row {
             width: 14
             height: 14
             fillMode: Image.PreserveAspectFit
-            source: "qrc:/image/minus_line.png"
+            source: AppIcon.minimize
+            sourceSize: Qt.size(128, 128)
+            mipmap: true
             layer.enabled: true
             layer.effect: ColorOverlay {
                 source: minbutton
@@ -55,7 +57,9 @@ Row {
             width: 14
             height: 14
             fillMode: Image.PreserveAspectFit
-            source: root.visibility === Window.Maximized ? "qrc:/image/fullscreen-exit_line.png" : "qrc:/image/fullscreen_line.png"
+            source: root.visibility === Window.Maximized ? AppIcon.restore : AppIcon.maximize
+            sourceSize: Qt.size(128, 128)
+            mipmap: true
             layer.enabled: true
             layer.effect: ColorOverlay {
                 source: maxbottom
@@ -103,7 +107,9 @@ Row {
             width: 14
             height: 14
             fillMode: Image.PreserveAspectFit
-            source: "qrc:/image/close-circle_line.png"
+            source: AppIcon.close
+            sourceSize: Qt.size(128, 128)
+            mipmap: true
             layer.enabled: true
             layer.effect: ColorOverlay {
                 source: closebottom

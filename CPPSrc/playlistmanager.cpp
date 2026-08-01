@@ -250,6 +250,10 @@ void PlaylistManager::saveRecentToCache()
 void PlaylistManager::loadRecentFromCache()
 {
     PlaylistCacheStore::loadRecent(m_recentPlaylist);
+    // 缺这两行会导致启动时 QML 的 recentPlaylist 仍为空——直到首次 addToRecent 才同步。
+    // 与 loadPlaylistFromCache 末尾一致：加载后立即同步 model 并发信号，QML 绑定刷新。
+    m_recentPlaylistModel->syncFromList(m_recentPlaylist);
+    emit recentPlaylistUpdated();
 }
 
 // 判断是否有缓存文件

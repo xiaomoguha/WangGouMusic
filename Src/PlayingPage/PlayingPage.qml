@@ -114,7 +114,7 @@ Rectangle {
         anchors.topMargin: 0.03 * root.height
         anchors.leftMargin: Qt.platform.os === "osx" ? 90 : 0.03 * root.width
         size: 32; iconSize: 16; iconRotation: -90
-        iconSource: "qrc:/image/left_line.png"
+        iconSource: AppIcon.back
         iconColor: "#FFFFFF"
         hoverColor: "#30FFFFFF"
         normalColor: "transparent"
@@ -133,7 +133,7 @@ Rectangle {
         // 最小化按钮
         IconButton {
             iconSize: 14
-            iconSource: "qrc:/image/minus_line.png"
+            iconSource: AppIcon.minimize
             iconColor: "#FFFFFF"
             hoverColor: "#30FFFFFF"
             normalColor: "transparent"
@@ -143,7 +143,7 @@ Rectangle {
         // 最大化按钮
         IconButton {
             iconSize: 14
-            iconSource: root.visibility === Window.Maximized ? "qrc:/image/fullscreen-exit_line.png" : "qrc:/image/fullscreen_line.png"
+            iconSource: root.visibility === Window.Maximized ? AppIcon.restore : AppIcon.maximize
             iconColor: "#FFFFFF"
             hoverColor: "#30FFFFFF"
             normalColor: "transparent"
@@ -165,7 +165,7 @@ Rectangle {
         // 关闭按钮
         IconButton {
             iconSize: 14
-            iconSource: "qrc:/image/close-circle_line.png"
+            iconSource: AppIcon.close
             iconColor: "#FFFFFF"
             hoverColor: "#FF5252"
             normalColor: "transparent"
@@ -748,7 +748,9 @@ Rectangle {
             // 上一曲
             Image {
                 id: prevBtn
-                source: "qrc:/image/upplay.png"
+                source: AppIcon.prev
+                sourceSize: Qt.size(128, 128)
+                mipmap: true
                 width: 24
                 height: 24
                 fillMode: Image.PreserveAspectFit
@@ -791,7 +793,9 @@ Rectangle {
                 Image {
                     id: playPauseIcon
                     anchors.centerIn: parent
-                    source: playlistmanager ? (playlistmanager.isPaused ? "qrc:/image/play.png" : "qrc:/image/paused.png") : "qrc:/image/play.png"
+                    source: playlistmanager ? (playlistmanager.isPaused ? AppIcon.play : AppIcon.pause) : AppIcon.play
+                    sourceSize: Qt.size(128, 128)
+                    mipmap: true
                     width: 20
                     height: 20
                     fillMode: Image.PreserveAspectFit
@@ -825,7 +829,9 @@ Rectangle {
             // 下一曲
             Image {
                 id: nextBtn
-                source: "qrc:/image/nextplay.png"
+                source: AppIcon.next
+                sourceSize: Qt.size(128, 128)
+                mipmap: true
                 width: 24
                 height: 24
                 fillMode: Image.PreserveAspectFit

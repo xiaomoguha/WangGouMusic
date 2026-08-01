@@ -759,9 +759,9 @@ Window {
                 hoverColor: btnBgHover
                 iconSource: {
                     try {
-                        return playlistmanager ? (playlistmanager.isPaused ? "qrc:/image/play.png" : "qrc:/image/paused.png") : "qrc:/image/play.png";
+                        return playlistmanager ? (playlistmanager.isPaused ? AppIcon.play : AppIcon.pause) : AppIcon.play;
                     } catch (e) {
-                        return "qrc:/image/play.png";
+                        return AppIcon.play;
                     }
                 }
                 onClicked: {
@@ -788,7 +788,7 @@ Window {
                 animateColor: true
                 normalColor: btnBgNormal
                 hoverColor: btnBgHover
-                iconSource: "qrc:/image/lock_open.png"
+                iconSource: AppIcon.unlock
                 onClicked: {
                     desktopLyrics.locked = !desktopLyrics.locked;
                     saveCurrentConfig();
@@ -802,7 +802,7 @@ Window {
                 animateColor: true
                 normalColor: "#80333333"
                 hoverColor: btnBgActive
-                iconSource: "qrc:/image/lock_close.png"
+                iconSource: AppIcon.lock
                 onClicked: {
                     desktopLyrics.locked = false;
                     saveCurrentConfig();
@@ -917,9 +917,9 @@ Window {
                 hoverColor: btnBgHover
                 iconSource: {
                     try {
-                        return playlistmanager ? (playlistmanager.isPaused ? "qrc:/image/play.png" : "qrc:/image/paused.png") : "qrc:/image/play.png";
+                        return playlistmanager ? (playlistmanager.isPaused ? AppIcon.play : AppIcon.pause) : AppIcon.play;
                     } catch (e) {
-                        return "qrc:/image/play.png";
+                        return AppIcon.play;
                     }
                 }
                 onClicked: {
@@ -937,7 +937,7 @@ Window {
                 animateColor: true
                 normalColor: btnBgNormal
                 hoverColor: btnBgHover
-                iconSource: "qrc:/image/lock_open.png"
+                iconSource: AppIcon.unlock
                 onClicked: {
                     desktopLyrics.locked = !desktopLyrics.locked;
                     saveCurrentConfig();
@@ -951,7 +951,7 @@ Window {
                 animateColor: true
                 normalColor: "#80333333"
                 hoverColor: btnBgActive
-                iconSource: "qrc:/image/lock_close.png"
+                iconSource: AppIcon.lock
                 onClicked: {
                     desktopLyrics.locked = false;
                     saveCurrentConfig();
@@ -1034,7 +1034,9 @@ Window {
             spacing: 8
 
             Image {
-                source: desktopLyrics.locked ? "qrc:/image/lock_close.png" : "qrc:/image/lock_open.png"
+                source: desktopLyrics.locked ? AppIcon.lock : AppIcon.unlock
+                sourceSize: Qt.size(128, 128)
+                mipmap: true
                 width: 16
                 height: 16
                 fillMode: Image.PreserveAspectFit

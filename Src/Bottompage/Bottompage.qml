@@ -280,158 +280,11 @@ Rectangle {
             height: parent.height
             anchors.verticalCenter: parent.verticalCenter
 
-            // 是否显示控制按钮：暂停时始终显示，播放时根据悬停状态
-            property bool isPaused: playlistmanager ? playlistmanager.isPaused : false
-            readonly property bool showControls: isPaused || containerHovered
-            property bool containerHovered: false
-
-            // 延迟隐藏定时器（仅播放状态使用）
-            Timer {
-                id: hideControlsDelay
-                interval: 1500
-                onTriggered: {
-                    if (!lyricsControlContainer.isPaused) {
-                        lyricsControlContainer.containerHovered = false;
-                    }
-                }
-            }
-
-            // 鼠标区域（覆盖整个按钮区域）
-            MouseArea {
-                id: lyricsContainerMouseArea
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-
-                onEntered: {
-                    hideControlsDelay.stop();
-                    lyricsControlContainer.containerHovered = true;
-                }
-                onExited: {
-                    hideControlsDelay.stop();
-                    // 暂停状态立即重置，播放状态延迟重置
-                    if (lyricsControlContainer.isPaused) {
-                        lyricsControlContainer.containerHovered = false;
-                    } else {
-                        hideControlsDelay.restart();
-                    }
-                }
-            }
-
-            HoverHandler {
-                id: lyricsContainerHover
-            }
-
-            // ===== 歌词滚动层（默认显示） =====
-            Item {
-                id: lyricsScrollLayer
-                anchors.centerIn: parent
-                // 比容器窄 40px（两侧各留 20px 内边距）：长歌词不顶到容器边缘，
-                // 离歌名/已播放时间有留白；最大显示长度也相应变短。滚动按 lyricsContainer.width 自动适配。
-                width: parent.width - 40
-                height: parent.height
-                opacity: lyricsControlContainer.showControls ? 0 : 1.0
-
-                property string lyricText: playlistmanager ? (playlistmanager.currlyric || "网狗音乐") : "网狗音乐"
-                property int charIndex: playlistmanager ? playlistmanager.lyricCharIndex : -1
-                property real charProgress: playlistmanager ? playlistmanager.lyricCharProgress : 0.0
-
-                property real highlightRatio: {
-                    var totalChars = playlistmanager ? (playlistmanager.lyricCharCount || lyricText.length) : lyricText.length;
-                    if (totalChars === 0 || charIndex < 0)
-                        return 0;
-                    return (charIndex + charProgress) / totalChars;
-                }
-
-                // 是否需要滚动（文字超出容器）
-                property bool needsScroll: bgText.implicitWidth > lyricsContainer.width
-                // 高亮位置的 x 坐标
-                property real highlightX: hlText.width * highlightRatio
-                // 滚动偏移：保证高亮位置始终在容器中可见
-                property real scrollOffset: {
-                    if (!needsScroll) return 0;
-                    var viewW = lyricsContainer.width;
-                    // 目标：高亮点在容器 40%~60% 的位置
-                    var target = highlightX - viewW * 0.45;
-                    // 限制范围：不超出 [0, maxScroll]
-                    var maxScroll = bgText.implicitWidth - viewW;
-                    return Math.max(0, Math.min(maxScroll, target));
-                }
-
-                // 歌词内容容器
-                Item {
-                    id: lyricsContainer
-                    anchors.fill: parent
-                    height: 24
-                    clip: true
-
-                    // 内部可滑动层
-                    Item {
-                        id: lyricsSlide
-                        width: Math.max(bgText.implicitWidth, lyricsContainer.width)
-                        height: parent.height
-                        // 短歌词居中，长歌词跟随高亮滚动
-                        x: lyricsScrollLayer.needsScroll
-                           ? -lyricsScrollLayer.scrollOffset
-                           : (lyricsContainer.width - bgText.implicitWidth) / 2
-
-                        Behavior on x {
-                            enabled: lyricsScrollLayer.needsScroll
-                            SmoothedAnimation { duration: AppTheme.animThemeTransition; velocity: 150 }
-                        }
-
-                        // 底层：完整灰色文字
-                        Text {
-                            id: bgText
-                            anchors.left: parent.left
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: lyricsScrollLayer.lyricText
-                            font.pixelSize: AppTheme.fontSizeBodyLg
-                            font.bold: true
-                            font.family: AppTheme.fontFamily
-                            color: AppTheme.textMuted
-                            maximumLineCount: 1
-                        }
-
-                        // 高亮层
-                        Item {
-                            anchors.left: parent.left
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: hlText.width * lyricsScrollLayer.highlightRatio
-                            height: bgText.height
-                            clip: true
-                            visible: lyricsScrollLayer.highlightRatio > 0
-
-                            Text {
-                                id: hlText
-                                anchors.left: parent.left
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: lyricsScrollLayer.lyricText
-                                font.pixelSize: AppTheme.fontSizeBodyLg
-                                font.bold: true
-                                font.family: AppTheme.fontFamily
-                                color: AppTheme.accent
-                                maximumLineCount: 1
-                            }
-                        }
-                    }
-                }
-
-                Behavior on opacity {
-                    NumberAnimation {
-                        duration: AppTheme.animThemeTransition
-                        easing.type: Easing.OutCubic
-                    }
-                }
-            }
-
-            // ===== 控制按钮层（悬停显示，按钮在歌词区域居中） =====
+            // ===== 控制按钮（常驻显示，不再切换歌词） =====
             Row {
                 id: controlButtonsLayer
                 anchors.centerIn: parent
                 spacing: 16
-                opacity: lyricsControlContainer.showControls ? 1.0 : 0.0
-                visible: opacity > 0
 
                 // 上一曲
                 Rectangle {
@@ -446,7 +299,9 @@ Rectangle {
                     Image {
                         id: prevIcon
                         anchors.centerIn: parent
-                        source: "qrc:/image/upplay.png"
+                        source: AppIcon.prev
+                        sourceSize: Qt.size(128, 128)
+                        mipmap: true
                         width: 20
                         height: 20
                         fillMode: Image.PreserveAspectFit
@@ -499,7 +354,9 @@ Rectangle {
                     Image {
                         id: playPauseIcon
                         anchors.centerIn: parent
-                        source: playlistmanager ? (playlistmanager.isPaused ? "qrc:/image/play.png" : "qrc:/image/paused.png") : "qrc:/image/play.png"
+                        source: playlistmanager ? (playlistmanager.isPaused ? AppIcon.playFill : AppIcon.pauseFill) : AppIcon.playFill
+                        sourceSize: Qt.size(128, 128)
+                        mipmap: true
                         width: 22
                         height: 22
                         fillMode: Image.PreserveAspectFit
@@ -555,7 +412,9 @@ Rectangle {
                     Image {
                         id: nextIcon
                         anchors.centerIn: parent
-                        source: "qrc:/image/nextplay.png"
+                        source: AppIcon.next
+                        sourceSize: Qt.size(128, 128)
+                        mipmap: true
                         width: 20
                         height: 20
                         fillMode: Image.PreserveAspectFit
@@ -780,7 +639,9 @@ Rectangle {
                 Image {
                     id: playlistIcon
                     anchors.centerIn: parent
-                    source: "qrc:/image/liebiao.png"
+                    source: AppIcon.queue
+                    sourceSize: Qt.size(128, 128)
+                    mipmap: true
                     width: 16
                     height: 16
                     fillMode: Image.PreserveAspectFit
@@ -1078,7 +939,9 @@ Rectangle {
                 Image {
                     id: lyricsIcon
                     anchors.centerIn: parent
-                    source: "qrc:/image/geci.png"
+                    source: AppIcon.lyrics
+                    sourceSize: Qt.size(128, 128)
+                    mipmap: true
                     width: 16
                     height: 16
                     fillMode: Image.PreserveAspectFit

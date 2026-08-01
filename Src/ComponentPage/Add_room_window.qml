@@ -346,7 +346,9 @@ Item {
                             Image {
                                 id: roomRefreshIcon
                                 anchors.centerIn: parent
-                                source: "qrc:/image/shuaxin.png"
+                                source: AppIcon.refresh
+                                sourceSize: Qt.size(128, 128)
+                                mipmap: true
                                 width: 12
                                 height: 12
                                 fillMode: Image.PreserveAspectFit

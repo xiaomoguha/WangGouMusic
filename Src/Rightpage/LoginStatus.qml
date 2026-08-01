@@ -22,7 +22,9 @@ Row {
             width: 20
             height: 20
             visible: !(userManager && userManager.isLoggedIn && userManager.avatarUrl !== "")
-            source: "qrc:/image/user_line.png"
+            source: AppIcon.user
+            sourceSize: Qt.size(128, 128)
+            mipmap: true
             fillMode: Image.PreserveAspectFit
             layer.enabled: true
             layer.effect: ColorOverlay {
@@ -294,7 +296,9 @@ Row {
                     visible: userDetailData && userDetailData.birthday && userDetailData.birthday !== ""
                     Image {
                         id: birthIcon
-                        source: "qrc:/image/geci.png"
+                        source: AppIcon.lyrics
+                        sourceSize: Qt.size(128, 128)
+                        mipmap: true
                         width: 12; height: 12
                         fillMode: Image.PreserveAspectFit
                         anchors.verticalCenter: parent.verticalCenter
@@ -319,7 +323,9 @@ Row {
                     }
                     Image {
                         id: occIcon
-                        source: "qrc:/image/user_line.png"
+                        source: AppIcon.user
+                        sourceSize: Qt.size(128, 128)
+                        mipmap: true
                         width: 12; height: 12
                         fillMode: Image.PreserveAspectFit
                         anchors.verticalCenter: parent.verticalCenter
@@ -383,7 +389,9 @@ Row {
             width: 14
             height: 14
             fillMode: Image.PreserveAspectFit
-            source: AppTheme.isDark ? "qrc:/image/moon_line.png" : "qrc:/image/sun_line.png"
+            source: AppTheme.isDark ? AppIcon.moon : AppIcon.sun
+            sourceSize: Qt.size(128, 128)
+            mipmap: true
             layer.enabled: true
             layer.effect: ColorOverlay {
                 source: moonbuttom
