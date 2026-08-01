@@ -270,7 +270,7 @@ Window {
                     }
 
                     Behavior on scrollOffset {
-                        SmoothedAnimation { duration: 300; easing.type: Easing.OutCubic }
+                        SmoothedAnimation { duration: AppTheme.animThemeTransition; easing.type: Easing.OutCubic }
                     }
 
                     // 底层（隐藏，仅测量整行宽度/高度，供容器宽度与 scrollOffset 使用）
@@ -383,7 +383,7 @@ Window {
                             if (ci >= total - 1 && cp > 0.95) return Math.max(0, (1 - cp) / 0.05)
                             return 1
                         }
-                        Behavior on opacity { NumberAnimation { duration: 150 } }
+                        Behavior on opacity { NumberAnimation { duration: AppTheme.animFast } }
 
                         // 拖尾：从主星位置随机喷出的小星粒子，各自随机轨迹飘散+淡出；未播放时不动
                         Repeater {
@@ -532,7 +532,7 @@ Window {
                     }
 
                     Behavior on scrollOffset {
-                        SmoothedAnimation { duration: 300; easing.type: Easing.OutCubic }
+                        SmoothedAnimation { duration: AppTheme.animThemeTransition; easing.type: Easing.OutCubic }
                     }
 
                     // 底层：完整灰色文字（整列）
@@ -661,36 +661,22 @@ Window {
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: 150
+                    duration: AppTheme.animFast
                 }
             }
 
             // 缩小按钮（未锁定时显示）
-            Rectangle {
-                width: 28 * desktopLyrics.scale
-                height: 28 * desktopLyrics.scale
-                radius: 14 * desktopLyrics.scale
-                color: zoomOutHandler.hovered ? btnBgHover : btnBgNormal
+            DesktopLyricsControlButton {
                 visible: !desktopLyrics.locked
-
-                Text {
-                    anchors.centerIn: parent
-                    text: "−"
-                    font.pixelSize: 16 * desktopLyrics.scale
-                    font.bold: true
-                    color: "white"
-                }
-
-                HoverHandler {
-                    id: zoomOutHandler
-                }
-                TapHandler {
-                    cursorShape: Qt.PointingHandCursor
-                    onTapped: {
-                        if (desktopLyrics.scale > 0.6) {
-                            desktopLyrics.scale -= 0.1;
-                            saveCurrentConfig();
-                        }
+                scaleFactor: desktopLyrics.scale
+                label: "−"
+                pixelSize: AppTheme.fontSizeTitle
+                normalColor: btnBgNormal
+                hoverColor: btnBgHover
+                onClicked: {
+                    if (desktopLyrics.scale > 0.6) {
+                        desktopLyrics.scale -= 0.1;
+                        saveCurrentConfig();
                     }
                 }
             }
@@ -706,120 +692,66 @@ Window {
                 Text {
                     anchors.centerIn: parent
                     text: Math.round(desktopLyrics.scale * 100) + "%"
-                    font.pixelSize: 11 * desktopLyrics.scale
+                    font.pixelSize: AppTheme.fontSizeCaption * desktopLyrics.scale
                     color: "white"
                     font.bold: true
                 }
             }
 
             // 放大按钮（未锁定时显示）
-            Rectangle {
-                width: 28 * desktopLyrics.scale
-                height: 28 * desktopLyrics.scale
-                radius: 14 * desktopLyrics.scale
-                color: zoomInHandler.hovered ? btnBgHover : btnBgNormal
+            DesktopLyricsControlButton {
                 visible: !desktopLyrics.locked
-
-                Text {
-                    anchors.centerIn: parent
-                    text: "+"
-                    font.pixelSize: 16 * desktopLyrics.scale
-                    font.bold: true
-                    color: "white"
-                }
-
-                HoverHandler {
-                    id: zoomInHandler
-                }
-                TapHandler {
-                    cursorShape: Qt.PointingHandCursor
-                    onTapped: {
-                        if (desktopLyrics.scale < 1.5) {
-                            desktopLyrics.scale += 0.1;
-                            saveCurrentConfig();
-                        }
+                scaleFactor: desktopLyrics.scale
+                label: "+"
+                pixelSize: AppTheme.fontSizeTitle
+                normalColor: btnBgNormal
+                hoverColor: btnBgHover
+                onClicked: {
+                    if (desktopLyrics.scale < 1.5) {
+                        desktopLyrics.scale += 0.1;
+                        saveCurrentConfig();
                     }
                 }
             }
 
             // 横向/竖向切换按钮（未锁定时显示）
-            Rectangle {
-                width: 28 * desktopLyrics.scale
-                height: 28 * desktopLyrics.scale
-                radius: 14 * desktopLyrics.scale
-                color: rotateHandler.hovered ? btnBgHover : btnBgNormal
+            DesktopLyricsControlButton {
                 visible: !desktopLyrics.locked
-
-                Text {
-                    anchors.centerIn: parent
-                    text: desktopLyrics.isVertical ? "横" : "竖"
-                    font.pixelSize: 11 * desktopLyrics.scale
-                    font.bold: true
-                    color: "white"
-                }
-
-                HoverHandler {
-                    id: rotateHandler
-                }
-                TapHandler {
-                    cursorShape: Qt.PointingHandCursor
-                    onTapped: {
-                        saveCurrentConfig();
-                        _suppressCentering = true;
-                        desktopLyrics.isVertical = !desktopLyrics.isVertical;
-                        Qt.callLater(function () {
-                            restorePosition();
-                            enableCentering();
-                        });
-                    }
+                scaleFactor: desktopLyrics.scale
+                label: desktopLyrics.isVertical ? "横" : "竖"
+                pixelSize: AppTheme.fontSizeCaption
+                normalColor: btnBgNormal
+                hoverColor: btnBgHover
+                onClicked: {
+                    saveCurrentConfig();
+                    _suppressCentering = true;
+                    desktopLyrics.isVertical = !desktopLyrics.isVertical;
+                    Qt.callLater(function () {
+                        restorePosition();
+                        enableCentering();
+                    });
                 }
             }
 
             // 播放/暂停按钮（未锁定时显示）
-            Rectangle {
-                width: 28 * desktopLyrics.scale
-                height: 28 * desktopLyrics.scale
-                radius: 14 * desktopLyrics.scale
-                color: playPauseDlHandler.hovered ? btnBgHover : btnBgNormal
+            DesktopLyricsControlButton {
                 visible: !desktopLyrics.locked
-
-                Image {
-                    id: playPauseDlIcon
-                    anchors.centerIn: parent
-                    source: {
-                        try {
-                            return playlistmanager ? (playlistmanager.isPaused ? "qrc:/image/play.png" : "qrc:/image/paused.png") : "qrc:/image/play.png";
-                        } catch (e) {
-                            return "qrc:/image/play.png";
-                        }
-                    }
-                    width: 12 * desktopLyrics.scale
-                    height: 12 * desktopLyrics.scale
-                    fillMode: Image.PreserveAspectFit
-                    layer.enabled: true
-                    layer.effect: ColorOverlay {
-                        source: playPauseDlIcon
-                        color: "#FFFFFF"
+                scaleFactor: desktopLyrics.scale
+                animateColor: true
+                normalColor: btnBgNormal
+                hoverColor: btnBgHover
+                iconSource: {
+                    try {
+                        return playlistmanager ? (playlistmanager.isPaused ? "qrc:/image/play.png" : "qrc:/image/paused.png") : "qrc:/image/play.png";
+                    } catch (e) {
+                        return "qrc:/image/play.png";
                     }
                 }
-
-                HoverHandler {
-                    id: playPauseDlHandler
-                }
-                TapHandler {
-                    cursorShape: Qt.PointingHandCursor
-                    onTapped: {
-                        try {
-                            if (playlistmanager)
-                                playlistmanager.playstop();
-                        } catch (e) {}
-                    }
-                }
-
-                Behavior on color {
-                    ColorAnimation {
-                        duration: 150
-                    }
+                onClicked: {
+                    try {
+                        if (playlistmanager)
+                            playlistmanager.playstop();
+                    } catch (e) {}
                 }
             }
 
@@ -833,82 +765,30 @@ Window {
             }
 
             // 锁定/解锁按钮（未锁定时显示）
-            Rectangle {
-                width: 28 * desktopLyrics.scale
-                height: 28 * desktopLyrics.scale
-                radius: 14 * desktopLyrics.scale
-                color: lockHandler.hovered ? btnBgHover : btnBgNormal
+            DesktopLyricsControlButton {
                 visible: !desktopLyrics.locked
-
-                Image {
-                    id: lockIcon
-                    anchors.centerIn: parent
-                    source: "qrc:/image/lock_open.png"
-                    width: 12 * desktopLyrics.scale
-                    height: 12 * desktopLyrics.scale
-                    fillMode: Image.PreserveAspectFit
-                    layer.enabled: true
-                    layer.effect: ColorOverlay {
-                        source: lockIcon
-                        color: "#FFFFFF"
-                    }
-                }
-
-                HoverHandler {
-                    id: lockHandler
-                }
-                TapHandler {
-                    cursorShape: Qt.PointingHandCursor
-                    onTapped: {
-                        desktopLyrics.locked = !desktopLyrics.locked;
-                        saveCurrentConfig();
-                    }
-                }
-
-                Behavior on color {
-                    ColorAnimation {
-                        duration: 150
-                    }
+                scaleFactor: desktopLyrics.scale
+                animateColor: true
+                normalColor: btnBgNormal
+                hoverColor: btnBgHover
+                iconSource: "qrc:/image/lock_open.png"
+                onClicked: {
+                    desktopLyrics.locked = !desktopLyrics.locked;
+                    saveCurrentConfig();
                 }
             }
 
             // 解锁按钮（锁定状态下显示）
-            Rectangle {
-                width: 28 * desktopLyrics.scale
-                height: 28 * desktopLyrics.scale
-                radius: 14 * desktopLyrics.scale
-                color: unlockHandler.hovered ? btnBgActive : "#80333333"
+            DesktopLyricsControlButton {
                 visible: desktopLyrics.locked
-
-                Image {
-                    id: unlockIcon
-                    anchors.centerIn: parent
-                    source: "qrc:/image/lock_close.png"
-                    width: 12 * desktopLyrics.scale
-                    height: 12 * desktopLyrics.scale
-                    fillMode: Image.PreserveAspectFit
-                    layer.enabled: true
-                    layer.effect: ColorOverlay {
-                        source: unlockIcon
-                        color: "#FFFFFF"
-                    }
-                }
-
-                HoverHandler {
-                    id: unlockHandler
-                }
-                TapHandler {
-                    cursorShape: Qt.PointingHandCursor
-                    onTapped: {
-                        desktopLyrics.locked = false;
-                        saveCurrentConfig();
-                    }
-                }
-
-                Behavior on color {
-                    ColorAnimation {
-                        duration: 150
-                    }
+                scaleFactor: desktopLyrics.scale
+                animateColor: true
+                normalColor: "#80333333"
+                hoverColor: btnBgActive
+                iconSource: "qrc:/image/lock_close.png"
+                onClicked: {
+                    desktopLyrics.locked = false;
+                    saveCurrentConfig();
                 }
             }
         }
@@ -939,36 +819,22 @@ Window {
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: 150
+                    duration: AppTheme.animFast
                 }
             }
 
             // 缩小按钮
-            Rectangle {
-                width: 28 * desktopLyrics.scale
-                height: 28 * desktopLyrics.scale
-                radius: 14 * desktopLyrics.scale
-                color: zoomOutHandlerV.hovered ? btnBgHover : btnBgNormal
+            DesktopLyricsControlButton {
                 visible: !desktopLyrics.locked
-
-                Text {
-                    anchors.centerIn: parent
-                    text: "−"
-                    font.pixelSize: 16 * desktopLyrics.scale
-                    font.bold: true
-                    color: "white"
-                }
-
-                HoverHandler {
-                    id: zoomOutHandlerV
-                }
-                TapHandler {
-                    cursorShape: Qt.PointingHandCursor
-                    onTapped: {
-                        if (desktopLyrics.scale > 0.6) {
-                            desktopLyrics.scale -= 0.1;
-                            saveCurrentConfig();
-                        }
+                scaleFactor: desktopLyrics.scale
+                label: "−"
+                pixelSize: AppTheme.fontSizeTitle
+                normalColor: btnBgNormal
+                hoverColor: btnBgHover
+                onClicked: {
+                    if (desktopLyrics.scale > 0.6) {
+                        desktopLyrics.scale -= 0.1;
+                        saveCurrentConfig();
                     }
                 }
             }
@@ -991,193 +857,87 @@ Window {
             }
 
             // 放大按钮
-            Rectangle {
-                width: 28 * desktopLyrics.scale
-                height: 28 * desktopLyrics.scale
-                radius: 14 * desktopLyrics.scale
-                color: zoomInHandlerV.hovered ? btnBgHover : btnBgNormal
+            DesktopLyricsControlButton {
                 visible: !desktopLyrics.locked
-
-                Text {
-                    anchors.centerIn: parent
-                    text: "+"
-                    font.pixelSize: 16 * desktopLyrics.scale
-                    font.bold: true
-                    color: "white"
-                }
-
-                HoverHandler {
-                    id: zoomInHandlerV
-                }
-                TapHandler {
-                    cursorShape: Qt.PointingHandCursor
-                    onTapped: {
-                        if (desktopLyrics.scale < 1.5) {
-                            desktopLyrics.scale += 0.1;
-                            saveCurrentConfig();
-                        }
+                scaleFactor: desktopLyrics.scale
+                label: "+"
+                pixelSize: AppTheme.fontSizeTitle
+                normalColor: btnBgNormal
+                hoverColor: btnBgHover
+                onClicked: {
+                    if (desktopLyrics.scale < 1.5) {
+                        desktopLyrics.scale += 0.1;
+                        saveCurrentConfig();
                     }
                 }
             }
 
             // 横向/竖向切换按钮
-            Rectangle {
-                width: 28 * desktopLyrics.scale
-                height: 28 * desktopLyrics.scale
-                radius: 14 * desktopLyrics.scale
-                color: rotateHandlerV.hovered ? btnBgHover : btnBgNormal
+            DesktopLyricsControlButton {
                 visible: !desktopLyrics.locked
-
-                Text {
-                    anchors.centerIn: parent
-                    text: "横"
-                    font.pixelSize: 11 * desktopLyrics.scale
-                    font.bold: true
-                    color: "white"
-                }
-
-                HoverHandler {
-                    id: rotateHandlerV
-                }
-                TapHandler {
-                    cursorShape: Qt.PointingHandCursor
-                    onTapped: {
-                        saveCurrentConfig();
-                        _suppressCentering = true;
-                        desktopLyrics.isVertical = !desktopLyrics.isVertical;
-                        Qt.callLater(function () {
-                            restorePosition();
-                            enableCentering();
-                        });
-                    }
+                scaleFactor: desktopLyrics.scale
+                label: "横"
+                pixelSize: AppTheme.fontSizeCaption
+                normalColor: btnBgNormal
+                hoverColor: btnBgHover
+                onClicked: {
+                    saveCurrentConfig();
+                    _suppressCentering = true;
+                    desktopLyrics.isVertical = !desktopLyrics.isVertical;
+                    Qt.callLater(function () {
+                        restorePosition();
+                        enableCentering();
+                    });
                 }
             }
 
             // 播放/暂停按钮（未锁定时显示）
-            Rectangle {
-                width: 28 * desktopLyrics.scale
-                height: 28 * desktopLyrics.scale
-                radius: 14 * desktopLyrics.scale
-                color: playPauseDlVHandler.hovered ? btnBgHover : btnBgNormal
+            DesktopLyricsControlButton {
                 visible: !desktopLyrics.locked
-
-                Image {
-                    id: playPauseDlVIcon
-                    anchors.centerIn: parent
-                    source: {
-                        try {
-                            return playlistmanager ? (playlistmanager.isPaused ? "qrc:/image/play.png" : "qrc:/image/paused.png") : "qrc:/image/play.png";
-                        } catch (e) {
-                            return "qrc:/image/play.png";
-                        }
-                    }
-                    width: 12 * desktopLyrics.scale
-                    height: 12 * desktopLyrics.scale
-                    fillMode: Image.PreserveAspectFit
-                    layer.enabled: true
-                    layer.effect: ColorOverlay {
-                        source: playPauseDlVIcon
-                        color: "#FFFFFF"
+                scaleFactor: desktopLyrics.scale
+                animateColor: true
+                normalColor: btnBgNormal
+                hoverColor: btnBgHover
+                iconSource: {
+                    try {
+                        return playlistmanager ? (playlistmanager.isPaused ? "qrc:/image/play.png" : "qrc:/image/paused.png") : "qrc:/image/play.png";
+                    } catch (e) {
+                        return "qrc:/image/play.png";
                     }
                 }
-
-                HoverHandler {
-                    id: playPauseDlVHandler
-                }
-                TapHandler {
-                    cursorShape: Qt.PointingHandCursor
-                    onTapped: {
-                        try {
-                            if (playlistmanager)
-                                playlistmanager.playstop();
-                        } catch (e) {}
-                    }
-                }
-
-                Behavior on color {
-                    ColorAnimation {
-                        duration: 150
-                    }
+                onClicked: {
+                    try {
+                        if (playlistmanager)
+                            playlistmanager.playstop();
+                    } catch (e) {}
                 }
             }
 
             // 锁定/解锁按钮（未锁定时显示）
-            Rectangle {
-                width: 28 * desktopLyrics.scale
-                height: 28 * desktopLyrics.scale
-                radius: 14 * desktopLyrics.scale
-                color: lockHandlerV.hovered ? btnBgHover : btnBgNormal
+            DesktopLyricsControlButton {
                 visible: !desktopLyrics.locked
-
-                Image {
-                    id: lockIconV
-                    anchors.centerIn: parent
-                    source: "qrc:/image/lock_open.png"
-                    width: 12 * desktopLyrics.scale
-                    height: 12 * desktopLyrics.scale
-                    fillMode: Image.PreserveAspectFit
-                    layer.enabled: true
-                    layer.effect: ColorOverlay {
-                        source: lockIconV
-                        color: "#FFFFFF"
-                    }
-                }
-
-                HoverHandler {
-                    id: lockHandlerV
-                }
-                TapHandler {
-                    cursorShape: Qt.PointingHandCursor
-                    onTapped: {
-                        desktopLyrics.locked = !desktopLyrics.locked;
-                        saveCurrentConfig();
-                    }
-                }
-
-                Behavior on color {
-                    ColorAnimation {
-                        duration: 150
-                    }
+                scaleFactor: desktopLyrics.scale
+                animateColor: true
+                normalColor: btnBgNormal
+                hoverColor: btnBgHover
+                iconSource: "qrc:/image/lock_open.png"
+                onClicked: {
+                    desktopLyrics.locked = !desktopLyrics.locked;
+                    saveCurrentConfig();
                 }
             }
 
             // 解锁按钮（锁定状态下显示）
-            Rectangle {
-                width: 28 * desktopLyrics.scale
-                height: 28 * desktopLyrics.scale
-                radius: 14 * desktopLyrics.scale
-                color: unlockHandlerV.hovered ? btnBgActive : "#80333333"
+            DesktopLyricsControlButton {
                 visible: desktopLyrics.locked
-
-                Image {
-                    id: unlockIconV
-                    anchors.centerIn: parent
-                    source: "qrc:/image/lock_close.png"
-                    width: 12 * desktopLyrics.scale
-                    height: 12 * desktopLyrics.scale
-                    fillMode: Image.PreserveAspectFit
-                    layer.enabled: true
-                    layer.effect: ColorOverlay {
-                        source: unlockIconV
-                        color: "#FFFFFF"
-                    }
-                }
-
-                HoverHandler {
-                    id: unlockHandlerV
-                }
-                TapHandler {
-                    cursorShape: Qt.PointingHandCursor
-                    onTapped: {
-                        desktopLyrics.locked = false;
-                        saveCurrentConfig();
-                    }
-                }
-
-                Behavior on color {
-                    ColorAnimation {
-                        duration: 150
-                    }
+                scaleFactor: desktopLyrics.scale
+                animateColor: true
+                normalColor: "#80333333"
+                hoverColor: btnBgActive
+                iconSource: "qrc:/image/lock_close.png"
+                onClicked: {
+                    desktopLyrics.locked = false;
+                    saveCurrentConfig();
                 }
             }
         }
@@ -1271,7 +1031,7 @@ Window {
 
             Text {
                 text: desktopLyrics.locked ? "已锁定 - 点击解锁图标解锁" : "已解锁 - 可拖动调整"
-                font.pixelSize: 13
+                font.pixelSize: AppTheme.fontSizeBody
                 color: "white"
                 anchors.verticalCenter: parent.verticalCenter
             }

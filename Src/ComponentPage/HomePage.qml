@@ -60,7 +60,7 @@ Item {
 
                     Text {
                         text: "每日推荐"
-                        font.pixelSize: 11
+                        font.pixelSize: AppTheme.fontSizeCaption
                         color: "#aaaacc"
                         font.family: AppTheme.fontFamily
                         font.bold: true
@@ -74,7 +74,7 @@ Item {
                     }
                     Text {
                         text: "精选音乐，为你的每一个时刻匹配最完美的声音"
-                        font.pixelSize: 12
+                        font.pixelSize: AppTheme.fontSizeSmall
                         color: "#aaaacc"
                         font.family: AppTheme.fontFamily
                         width: 300
@@ -91,7 +91,7 @@ Item {
                         Text {
                             anchors.centerIn: parent
                             text: "▶ 立即播放"
-                            font.pixelSize: 13
+                            font.pixelSize: AppTheme.fontSizeBody
                             color: "#ffffff"
                             font.family: AppTheme.fontFamily
                             font.bold: true
@@ -122,7 +122,7 @@ Item {
                             }
                         }
 
-                        Behavior on color { ColorAnimation { duration: 150 } }
+                        Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
                     }
                 }
             }
@@ -137,7 +137,7 @@ Item {
 
                     Text {
                         text: "↑ 精选歌单"
-                        font.pixelSize: 18
+                        font.pixelSize: AppTheme.fontSizeTitleLg
                         font.bold: true
                         color: AppTheme.textPrimary
                         font.family: AppTheme.fontFamily
@@ -203,13 +203,13 @@ Item {
                         opacity: 1
 
                         Behavior on opacity {
-                            NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+                            NumberAnimation { duration: AppTheme.animThemeTransition; easing.type: Easing.OutCubic }
                         }
 
                         SequentialAnimation {
                             id: playlistRefreshAnim
-                            NumberAnimation { target: playlistsGrid; property: "opacity"; to: 0; duration: 150; easing.type: Easing.InCubic }
-                            NumberAnimation { target: playlistsGrid; property: "opacity"; to: 1; duration: 300; easing.type: Easing.OutCubic }
+                            NumberAnimation { target: playlistsGrid; property: "opacity"; to: 0; duration: AppTheme.animFast; easing.type: Easing.InCubic }
+                            NumberAnimation { target: playlistsGrid; property: "opacity"; to: 1; duration: AppTheme.animThemeTransition; easing.type: Easing.OutCubic }
                         }
 
                         delegate: Item {
@@ -253,7 +253,7 @@ Item {
                                             text: plData.specialname
                                             width: parent.width
                                             elide: Text.ElideRight
-                                            font.pixelSize: 13
+                                            font.pixelSize: AppTheme.fontSizeBody
                                             font.bold: true
                                             color: AppTheme.textPrimary
                                             font.family: AppTheme.fontFamily
@@ -265,7 +265,7 @@ Item {
                                             wrapMode: Text.WordWrap
                                             elide: Text.ElideRight
                                             maximumLineCount: 2
-                                            font.pixelSize: 11
+                                            font.pixelSize: AppTheme.fontSizeCaption
                                             color: AppTheme.textMuted
                                             font.family: AppTheme.fontFamily
                                         }
@@ -273,7 +273,7 @@ Item {
                                             spacing: 8
                                             Text {
                                                 text: (plData.play_count / 10000).toFixed(1) + "万播放"
-                                                font.pixelSize: 10
+                                                font.pixelSize: AppTheme.fontSizeXs
                                                 color: AppTheme.textMuted
                                                 font.family: AppTheme.fontFamily
                                             }
@@ -286,7 +286,7 @@ Item {
                                                 Text {
                                                     id: tagText
                                                     text: plData.tags
-                                                    font.pixelSize: 10
+                                                    font.pixelSize: AppTheme.fontSizeXs
                                                     color: AppTheme.textMuted
                                                     anchors.centerIn: parent
                                                     font.family: AppTheme.fontFamily
@@ -321,7 +321,7 @@ Item {
 
                 Text {
                     text: "✦ 热门推荐"
-                    font.pixelSize: 18
+                    font.pixelSize: AppTheme.fontSizeTitleLg
                     font.bold: true
                     color: AppTheme.textPrimary
                     font.family: AppTheme.fontFamily
@@ -399,7 +399,7 @@ Item {
                                     text: songData.songname
                                     width: parent.width
                                     elide: Text.ElideRight
-                                    font.pixelSize: 12
+                                    font.pixelSize: AppTheme.fontSizeSmall
                                     color: isPlaying ? AppTheme.accentPlaying : AppTheme.textPrimary
                                     font.family: AppTheme.fontFamily
                                 }
@@ -408,7 +408,7 @@ Item {
                                     text: songData.singername
                                     width: parent.width
                                     elide: Text.ElideRight
-                                    font.pixelSize: 11
+                                    font.pixelSize: AppTheme.fontSizeCaption
                                     color: AppTheme.textMuted
                                     font.family: AppTheme.fontFamily
                                 }

@@ -2,15 +2,11 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import "../BasicConfig"
 
-Popup {
+ThemedPopup {
     id: updateDialog
-    modal: true
-    focus: true
-    closePolicy: Popup.CloseOnEscape
 
     width: 380
     height: contentColumn.implicitHeight + 60
-    anchors.centerIn: Overlay.overlay
 
     // 外部需要绑定 appUpdater 对象
     required property QtObject updater
@@ -20,55 +16,6 @@ Popup {
     // 当前状态: idle | downloading | downloaded | error
     property string state_: "idle"
     property string errorMsg: ""
-
-    enter: Transition {
-        NumberAnimation {
-            property: "opacity"
-            from: 0
-            to: 1
-            duration: 200
-            easing.type: Easing.OutCubic
-        }
-        NumberAnimation {
-            property: "scale"
-            from: 0.85
-            to: 1.0
-            duration: 200
-            easing.type: Easing.OutBack
-        }
-    }
-    exit: Transition {
-        NumberAnimation {
-            property: "opacity"
-            from: 1
-            to: 0
-            duration: 150
-            easing.type: Easing.InCubic
-        }
-        NumberAnimation {
-            property: "scale"
-            from: 1.0
-            to: 0.85
-            duration: 150
-            easing.type: Easing.InCubic
-        }
-    }
-
-    background: Rectangle {
-        radius: 16
-        color: AppTheme.bgOverlay
-        border.color: AppTheme.dialogBorder
-        border.width: 1
-    }
-
-    Overlay.modal: Rectangle {
-        color: AppTheme.dialogOverlay
-        MouseArea {
-            anchors.fill: parent
-            acceptedButtons: Qt.AllButtons
-            onClicked: {}
-        }
-    }
 
     Column {
         id: contentColumn
@@ -80,7 +27,7 @@ Popup {
         Text {
             text: updateDialog.hasUpdate ? "发现新版本" : "已是最新版本"
             color: AppTheme.textPrimary
-            font.pixelSize: 18
+            font.pixelSize: AppTheme.fontSizeTitleLg
             font.weight: Font.Bold
             anchors.horizontalCenter: parent.horizontalCenter
         }
@@ -93,18 +40,18 @@ Popup {
             Text {
                 text: updater ? updater.currentVersion : ""
                 color: AppTheme.textMuted
-                font.pixelSize: 13
+                font.pixelSize: AppTheme.fontSizeBody
             }
             Text {
                 text: "\u2192"
                 color: AppTheme.accent
-                font.pixelSize: 13
+                font.pixelSize: AppTheme.fontSizeBody
                 font.bold: true
             }
             Text {
                 text: updater ? updater.latestVersion : ""
                 color: AppTheme.successColor
-                font.pixelSize: 13
+                font.pixelSize: AppTheme.fontSizeBody
                 font.weight: Font.Bold
             }
         }
@@ -117,14 +64,14 @@ Popup {
             Text {
                 text: updater ? "v" + updater.currentVersion : ""
                 color: AppTheme.successColor
-                font.pixelSize: 14
+                font.pixelSize: AppTheme.fontSizeBodyLg
                 font.weight: Font.Bold
                 anchors.horizontalCenter: parent.horizontalCenter
             }
             Text {
                 text: "当前版本更新内容"
                 color: AppTheme.textMuted
-                font.pixelSize: 12
+                font.pixelSize: AppTheme.fontSizeSmall
                 anchors.horizontalCenter: parent.horizontalCenter
             }
         }
@@ -148,7 +95,7 @@ Popup {
                     width: parent.width
                     text: updater ? updater.releaseNotes : ""
                     color: AppTheme.textSecondary
-                    font.pixelSize: 12
+                    font.pixelSize: AppTheme.fontSizeSmall
                     wrapMode: Text.Wrap
                     lineHeight: 1.4
                 }
@@ -184,7 +131,7 @@ Popup {
             Text {
                 text: updater ? Math.round(updater.downloadProgress * 100) + "%" : "0%"
                 color: AppTheme.textMuted
-                font.pixelSize: 11
+                font.pixelSize: AppTheme.fontSizeCaption
                 anchors.horizontalCenter: parent.horizontalCenter
             }
         }
@@ -194,7 +141,7 @@ Popup {
             visible: updateDialog.state_ === "error"
             text: updateDialog.errorMsg
             color: AppTheme.errorColor
-            font.pixelSize: 12
+            font.pixelSize: AppTheme.fontSizeSmall
             wrapMode: Text.Wrap
             width: parent.width
             horizontalAlignment: Text.AlignHCenter
@@ -214,7 +161,7 @@ Popup {
                 color: cancelMA.containsMouse ? AppTheme.bgCardHover : AppTheme.iconButtonHover
                 Behavior on color {
                     ColorAnimation {
-                        duration: 150
+                        duration: AppTheme.animFast
                     }
                 }
 
@@ -222,7 +169,7 @@ Popup {
                     anchors.centerIn: parent
                     text: updateDialog.state_ === "downloading" ? "取消" : "稍后再说"
                     color: AppTheme.textSecondary
-                    font.pixelSize: 13
+                    font.pixelSize: AppTheme.fontSizeBody
                 }
                 MouseArea {
                     id: cancelMA
@@ -253,7 +200,7 @@ Popup {
                 }
                 Behavior on color {
                     ColorAnimation {
-                        duration: 150
+                        duration: AppTheme.animFast
                     }
                 }
 
@@ -274,7 +221,7 @@ Popup {
                         }
                     }
                     color: updateDialog.hasUpdate ? "white" : AppTheme.textSecondary
-                    font.pixelSize: 13
+                    font.pixelSize: AppTheme.fontSizeBody
                     font.weight: Font.Medium
                 }
                 MouseArea {

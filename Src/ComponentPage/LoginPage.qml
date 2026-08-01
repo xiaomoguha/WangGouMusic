@@ -2,39 +2,14 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import "../BasicConfig"
 
-Popup {
+ThemedPopup {
     id: loginPopup
-    modal: true
-    focus: true
-    closePolicy: Popup.CloseOnEscape
 
     width: 360
     height: contentColumn.implicitHeight + 56
-    anchors.centerIn: Overlay.overlay
 
     property string errorMsg: ""
     property int cooldown: 0
-
-    enter: Transition {
-        NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic }
-        NumberAnimation { property: "scale"; from: 0.85; to: 1.0; duration: 200; easing.type: Easing.OutBack }
-    }
-    exit: Transition {
-        NumberAnimation { property: "opacity"; from: 1; to: 0; duration: 150; easing.type: Easing.InCubic }
-        NumberAnimation { property: "scale"; from: 1.0; to: 0.85; duration: 150; easing.type: Easing.InCubic }
-    }
-
-    background: Rectangle {
-        radius: 16
-        color: AppTheme.bgOverlay
-        border.color: AppTheme.dialogBorder
-        border.width: 1
-    }
-
-    Overlay.modal: Rectangle {
-        color: AppTheme.dialogOverlay
-        MouseArea { anchors.fill: parent }
-    }
 
     // 关闭按钮
     Rectangle {
@@ -51,7 +26,7 @@ Popup {
             anchors.centerIn: parent
             text: "×"
             color: AppTheme.textMuted
-            font.pixelSize: 18
+            font.pixelSize: AppTheme.fontSizeTitleLg
         }
 
         HoverHandler { id: closeHover }
@@ -59,7 +34,7 @@ Popup {
             onTapped: loginPopup.close()
         }
 
-        Behavior on color { ColorAnimation { duration: 150 } }
+        Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
     }
 
     Column {
@@ -71,7 +46,7 @@ Popup {
         Text {
             text: "登录网狗音乐"
             color: AppTheme.textPrimary
-            font.pixelSize: 20
+            font.pixelSize: AppTheme.fontSizeHeadline
             font.weight: Font.Bold
             font.family: AppTheme.fontFamily
             anchors.horizontalCenter: parent.horizontalCenter
@@ -80,7 +55,7 @@ Popup {
         Text {
             text: "验证码登录，无需密码"
             color: AppTheme.textMuted
-            font.pixelSize: 12
+            font.pixelSize: AppTheme.fontSizeSmall
             font.family: AppTheme.fontFamily
             anchors.horizontalCenter: parent.horizontalCenter
         }
@@ -92,7 +67,7 @@ Popup {
             height: 42
             placeholderText: "请输入手机号"
             color: AppTheme.textPrimary
-            font.pixelSize: 14
+            font.pixelSize: AppTheme.fontSizeBodyLg
             font.family: AppTheme.fontFamily
             leftPadding: 14
             rightPadding: 14
@@ -104,7 +79,7 @@ Popup {
                 color: AppTheme.bgInput
                 border.color: phoneInput.activeFocus ? AppTheme.borderFocus : AppTheme.borderSubtle
                 border.width: 1
-                Behavior on border.color { ColorAnimation { duration: 150 } }
+                Behavior on border.color { ColorAnimation { duration: AppTheme.animFast } }
             }
             onAccepted: codeInput.forceActiveFocus()
         }
@@ -120,7 +95,7 @@ Popup {
                 height: 42
                 placeholderText: "请输入验证码"
                 color: AppTheme.textPrimary
-                font.pixelSize: 14
+                font.pixelSize: AppTheme.fontSizeBodyLg
                 font.family: AppTheme.fontFamily
                 leftPadding: 14
                 rightPadding: 14
@@ -132,7 +107,7 @@ Popup {
                     color: AppTheme.bgInput
                     border.color: codeInput.activeFocus ? AppTheme.borderFocus : AppTheme.borderSubtle
                     border.width: 1
-                    Behavior on border.color { ColorAnimation { duration: 150 } }
+                    Behavior on border.color { ColorAnimation { duration: AppTheme.animFast } }
                 }
                 onAccepted: doLogin()
             }
@@ -151,7 +126,7 @@ Popup {
                     anchors.centerIn: parent
                     text: cooldown > 0 ? cooldown + "s" : "获取验证码"
                     color: "white"
-                    font.pixelSize: 13
+                    font.pixelSize: AppTheme.fontSizeBody
                     font.family: AppTheme.fontFamily
                 }
 
@@ -161,7 +136,7 @@ Popup {
                     onTapped: doSendCaptcha()
                 }
 
-                Behavior on color { ColorAnimation { duration: 150 } }
+                Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
             }
         }
 
@@ -171,7 +146,7 @@ Popup {
             visible: loginPopup.errorMsg !== ""
             text: loginPopup.errorMsg
             color: AppTheme.errorColor
-            font.pixelSize: 12
+            font.pixelSize: AppTheme.fontSizeSmall
             font.family: AppTheme.fontFamily
             wrapMode: Text.Wrap
             horizontalAlignment: Text.AlignHCenter
@@ -191,7 +166,7 @@ Popup {
                 anchors.centerIn: parent
                 text: userManager && userManager.isLoading ? "登录中..." : "登录"
                 color: "white"
-                font.pixelSize: 14
+                font.pixelSize: AppTheme.fontSizeBodyLg
                 font.weight: Font.Medium
                 font.family: AppTheme.fontFamily
             }
@@ -202,14 +177,14 @@ Popup {
                 onTapped: doLogin()
             }
 
-            Behavior on color { ColorAnimation { duration: 150 } }
+            Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
         }
 
         // 底部提示
         Text {
             text: "使用酷狗音乐账号登录"
             color: AppTheme.textDim
-            font.pixelSize: 11
+            font.pixelSize: AppTheme.fontSizeCaption
             font.family: AppTheme.fontFamily
             anchors.horizontalCenter: parent.horizontalCenter
         }

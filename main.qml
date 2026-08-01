@@ -1,5 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Window 2.15
+import QtQuick.Controls
+import Qt5Compat.GraphicalEffects
 import "./Src/BasicConfig"
 import "./Src/Leftpage"
 import "./Src/Rightpage"
@@ -7,8 +9,6 @@ import "./Src/Bottompage"
 import "./Src/PlayingPage"
 import "./Src/ToolWindow"
 import "./Src/ComponentPage" as ComponentPage
-import QtQuick.Controls
-import Qt5Compat.GraphicalEffects
 
 ApplicationWindow {
     id: root

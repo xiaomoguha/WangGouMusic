@@ -175,7 +175,7 @@ Item {
                         text: playlistName
                         width: parent.width
                         elide: Text.ElideRight
-                        font.pixelSize: 20
+                        font.pixelSize: AppTheme.fontSizeHeadline
                         font.bold: true
                         color: AppTheme.textPrimary
                         font.family: AppTheme.fontFamily
@@ -188,7 +188,7 @@ Item {
                         wrapMode: Text.WordWrap
                         elide: Text.ElideRight
                         maximumLineCount: 2
-                        font.pixelSize: 12
+                        font.pixelSize: AppTheme.fontSizeSmall
                         color: AppTheme.textMuted
                         font.family: AppTheme.fontFamily
                     }
@@ -207,7 +207,7 @@ Item {
                             Text {
                                 anchors.centerIn: parent
                                 text: (recommendation && recommendation.playlistIsLoading) ? "加载中..." : "▶ 播放全部"
-                                font.pixelSize: 12
+                                font.pixelSize: AppTheme.fontSizeSmall
                                 color: "#ffffff"
                                 font.family: AppTheme.fontFamily
                                 font.bold: true
@@ -243,7 +243,7 @@ Item {
                                     }
                                 }
                             }
-                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
                         }
                     }
                 }
@@ -329,7 +329,7 @@ Item {
                             height: parent.height
                             verticalAlignment: Text.AlignVCenter
                             horizontalAlignment: Text.AlignHCenter
-                            font.pixelSize: 13
+                            font.pixelSize: AppTheme.fontSizeBody
                             color: isPlaying ? AppTheme.accentPlaying : AppTheme.textMuted
                             font.family: AppTheme.fontFamily
                             text: isPlaying ? "♪" : (index + 1)
@@ -364,7 +364,7 @@ Item {
                                 text: modelData.songname
                                 width: parent.width
                                 elide: Text.ElideRight
-                                font.pixelSize: 13
+                                font.pixelSize: AppTheme.fontSizeBody
                                 color: isPlaying ? AppTheme.accentPlaying : AppTheme.textPrimary
                                 font.family: AppTheme.fontFamily
                             }
@@ -373,7 +373,7 @@ Item {
                                 text: modelData.singername
                                 width: parent.width
                                 elide: Text.ElideRight
-                                font.pixelSize: 11
+                                font.pixelSize: AppTheme.fontSizeCaption
                                 color: AppTheme.textMuted
                                 font.family: AppTheme.fontFamily
                             }
@@ -399,7 +399,7 @@ Item {
                                     Text {
                                         anchors.centerIn: parent
                                         text: "立即播放"
-                                        font.pixelSize: 10
+                                        font.pixelSize: AppTheme.fontSizeXs
                                         color: "#ffffff"
                                         font.family: AppTheme.fontFamily
                                     }
@@ -433,7 +433,7 @@ Item {
                                     Text {
                                         anchors.centerIn: parent
                                         text: "下一首播放"
-                                        font.pixelSize: 10
+                                        font.pixelSize: AppTheme.fontSizeXs
                                         color: AppTheme.textPrimary
                                         font.family: AppTheme.fontFamily
                                     }
@@ -467,7 +467,7 @@ Item {
                                 Text {
                                     anchors.centerIn: parent
                                     text: "添加到一起听"
-                                    font.pixelSize: 10
+                                    font.pixelSize: AppTheme.fontSizeXs
                                     color: "#ffffff"
                                     font.family: AppTheme.fontFamily
                                 }
@@ -489,7 +489,7 @@ Item {
                             id: durationText
                             text: modelData.duration
                             anchors.verticalCenter: parent.verticalCenter
-                            font.pixelSize: 11
+                            font.pixelSize: AppTheme.fontSizeCaption
                             color: AppTheme.textMuted
                             font.family: AppTheme.fontFamily
                             visible: !songHover.hovered
@@ -522,7 +522,7 @@ Item {
             height: 44
             Text {
                 anchors.centerIn: parent
-                font.pixelSize: 12
+                font.pixelSize: AppTheme.fontSizeSmall
                 color: AppTheme.textMuted
                 font.family: AppTheme.fontFamily
                 text: {

@@ -67,7 +67,7 @@ Row {
         }
 
         Behavior on color {
-            ColorAnimation { duration: 150 }
+            ColorAnimation { duration: AppTheme.animFast }
         }
     }
 
@@ -198,7 +198,7 @@ Row {
                                 anchors.centerIn: parent
                                 text: "VIP"
                                 color: "#333"
-                                font.pixelSize: 10
+                                font.pixelSize: AppTheme.fontSizeXs
                                 font.bold: true
                                 font.family: AppTheme.fontFamily
                             }
@@ -216,7 +216,7 @@ Row {
                             return parts.length > 0 ? parts.join(" · ") : "未知地区"
                         }
                         color: AppTheme.textMuted
-                        font.pixelSize: 11
+                        font.pixelSize: AppTheme.fontSizeCaption
                         font.family: AppTheme.fontFamily
                     }
                 }
@@ -231,7 +231,7 @@ Row {
                 maximumLineCount: 2
                 elide: Text.ElideRight
                 color: AppTheme.textSecondary
-                font.pixelSize: 12
+                font.pixelSize: AppTheme.fontSizeSmall
                 font.family: AppTheme.fontFamily
             }
 
@@ -258,7 +258,7 @@ Row {
                             Text {
                                 text: modelData.value
                                 color: AppTheme.textPrimary
-                                font.pixelSize: 14
+                                font.pixelSize: AppTheme.fontSizeBodyLg
                                 font.bold: true
                                 font.family: AppTheme.fontFamily
                                 anchors.horizontalCenter: parent.horizontalCenter
@@ -267,7 +267,7 @@ Row {
                             Text {
                                 text: modelData.label
                                 color: AppTheme.textMuted
-                                font.pixelSize: 11
+                                font.pixelSize: AppTheme.fontSizeCaption
                                 font.family: AppTheme.fontFamily
                                 anchors.horizontalCenter: parent.horizontalCenter
                             }
@@ -304,7 +304,7 @@ Row {
                     Text {
                         text: userDetailData ? String(userDetailData.birthday || "") : ""
                         color: AppTheme.textMuted
-                        font.pixelSize: 11
+                        font.pixelSize: AppTheme.fontSizeCaption
                         font.family: AppTheme.fontFamily
                         anchors.verticalCenter: parent.verticalCenter
                     }
@@ -329,7 +329,7 @@ Row {
                     Text {
                         text: userDetailData ? String(userDetailData.occupation || "") : ""
                         color: AppTheme.textMuted
-                        font.pixelSize: 11
+                        font.pixelSize: AppTheme.fontSizeCaption
                         font.family: AppTheme.fontFamily
                         anchors.verticalCenter: parent.verticalCenter
                     }
@@ -354,7 +354,7 @@ Row {
                     anchors.centerIn: parent
                     text: "退出登录"
                     color: AppTheme.errorColor
-                    font.pixelSize: 13
+                    font.pixelSize: AppTheme.fontSizeBody
                     font.family: AppTheme.fontFamily
                 }
 
@@ -400,7 +400,7 @@ Row {
         }
 
         Behavior on color {
-            ColorAnimation { duration: 150 }
+            ColorAnimation { duration: AppTheme.animFast }
         }
     }
 }

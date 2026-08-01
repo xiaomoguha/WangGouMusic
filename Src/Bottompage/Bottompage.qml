@@ -107,7 +107,7 @@ Rectangle {
                     border.color: playlistmanager && !playlistmanager.isPaused ? AppTheme.accentGlow : "transparent"
                     Behavior on border.color {
                         ColorAnimation {
-                            duration: 300
+                            duration: AppTheme.animThemeTransition
                         }
                     }
                 }
@@ -199,14 +199,14 @@ Rectangle {
                             id: songNameText
                             text: playlistmanager ? (playlistmanager.currentTitle === "" ? "默认歌曲" : playlistmanager.currentTitle) : "........"
                             font.family: AppTheme.fontFamily
-                            font.pixelSize: 14
+                            font.pixelSize: AppTheme.fontSizeBodyLg
                             font.bold: true
                             color: AppTheme.textPrimary
                         }
                         Text {
                             text: songNameText.text
                             font.family: AppTheme.fontFamily
-                            font.pixelSize: 14
+                            font.pixelSize: AppTheme.fontSizeBodyLg
                             font.bold: true
                             color: AppTheme.textPrimary
                             visible: songNameClip.overflow
@@ -243,13 +243,13 @@ Rectangle {
                             id: singerNameText
                             text: playlistmanager ? (playlistmanager.currentsingername === "" ? "默认歌手" : playlistmanager.currentsingername) : "....."
                             font.family: AppTheme.fontFamily
-                            font.pixelSize: 12
+                            font.pixelSize: AppTheme.fontSizeSmall
                             color: AppTheme.textMuted
                         }
                         Text {
                             text: singerNameText.text
                             font.family: AppTheme.fontFamily
-                            font.pixelSize: 12
+                            font.pixelSize: AppTheme.fontSizeSmall
                             color: AppTheme.textMuted
                             visible: singerNameClip.overflow
                         }
@@ -375,7 +375,7 @@ Rectangle {
 
                         Behavior on x {
                             enabled: lyricsScrollLayer.needsScroll
-                            SmoothedAnimation { duration: 300; velocity: 150 }
+                            SmoothedAnimation { duration: AppTheme.animThemeTransition; velocity: 150 }
                         }
 
                         // 底层：完整灰色文字
@@ -384,7 +384,7 @@ Rectangle {
                             anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
                             text: lyricsScrollLayer.lyricText
-                            font.pixelSize: 14
+                            font.pixelSize: AppTheme.fontSizeBodyLg
                             font.bold: true
                             font.family: AppTheme.fontFamily
                             color: AppTheme.textMuted
@@ -405,7 +405,7 @@ Rectangle {
                                 anchors.left: parent.left
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: lyricsScrollLayer.lyricText
-                                font.pixelSize: 14
+                                font.pixelSize: AppTheme.fontSizeBodyLg
                                 font.bold: true
                                 font.family: AppTheme.fontFamily
                                 color: AppTheme.accent
@@ -417,7 +417,7 @@ Rectangle {
 
                 Behavior on opacity {
                     NumberAnimation {
-                        duration: 300
+                        duration: AppTheme.animThemeTransition
                         easing.type: Easing.OutCubic
                     }
                 }
@@ -469,7 +469,7 @@ Rectangle {
                     opacity: enabled ? 1.0 : 0.3
                     Behavior on opacity {
                         NumberAnimation {
-                            duration: 150
+                            duration: AppTheme.animFast
                         }
                     }
                 }
@@ -536,7 +536,7 @@ Rectangle {
                     }
                     Behavior on color {
                         ColorAnimation {
-                            duration: 150
+                            duration: AppTheme.animFast
                         }
                     }
                 }
@@ -587,7 +587,7 @@ Rectangle {
                     }
                     Behavior on color {
                         ColorAnimation {
-                            duration: 150
+                            duration: AppTheme.animFast
                         }
                     }
                 }
@@ -595,7 +595,7 @@ Rectangle {
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: 300
+                    duration: AppTheme.animThemeTransition
                     easing.type: Easing.OutCubic
                 }
             }
@@ -613,7 +613,7 @@ Rectangle {
                 id: currentTimeText
                 text: playlistmanager ? playlistmanager.percentstr : "00:00"
                 font.family: AppTheme.fontFamily
-                font.pixelSize: 11
+                font.pixelSize: AppTheme.fontSizeCaption
                 color: AppTheme.isDark ? "#99FFFFFF" : AppTheme.textMuted
                 anchors.verticalCenter: parent.verticalCenter
             }
@@ -743,7 +743,7 @@ Rectangle {
                 id: totalTimeText
                 text: playlistmanager ? playlistmanager.duration : "00:00"
                 font.family: AppTheme.fontFamily
-                font.pixelSize: 11
+                font.pixelSize: AppTheme.fontSizeCaption
                 color: AppTheme.isDark ? "#99FFFFFF" : AppTheme.textMuted
                 anchors.verticalCenter: parent.verticalCenter
             }
@@ -827,8 +827,8 @@ Rectangle {
                     }
 
                     enter: Transition {
-                        NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 150 }
-                        NumberAnimation { property: "scale"; from: 0.9; to: 1.0; duration: 150; easing.type: Easing.OutCubic }
+                        NumberAnimation { property: "opacity"; from: 0; to: 1; duration: AppTheme.animFast }
+                        NumberAnimation { property: "scale"; from: 0.9; to: 1.0; duration: AppTheme.animFast; easing.type: Easing.OutCubic }
                     }
                     exit: Transition {
                         NumberAnimation { property: "opacity"; from: 1; to: 0; duration: 100 }
@@ -853,7 +853,7 @@ Rectangle {
 
                                 Text {
                                     text: "播放列表"
-                                    font.pixelSize: 14
+                                    font.pixelSize: AppTheme.fontSizeBodyLg
                                     font.bold: true
                                     font.family: AppTheme.fontFamily
                                     color: AppTheme.textPrimary
@@ -861,7 +861,7 @@ Rectangle {
                                 }
                                 Text {
                                     text: "(" + playlistView.count + ")"
-                                    font.pixelSize: 12
+                                    font.pixelSize: AppTheme.fontSizeSmall
                                     font.family: AppTheme.fontFamily
                                     color: AppTheme.textMuted
                                     anchors.verticalCenter: parent.verticalCenter
@@ -871,7 +871,7 @@ Rectangle {
 
                                 Text {
                                     text: "清空"
-                                    font.pixelSize: 12
+                                    font.pixelSize: AppTheme.fontSizeSmall
                                     font.family: AppTheme.fontFamily
                                     color: clearBtnArea.containsMouse ? AppTheme.accent : AppTheme.textMuted
                                     anchors.verticalCenter: parent.verticalCenter
@@ -926,7 +926,7 @@ Rectangle {
 
                                     Text {
                                         anchors.centerIn: parent
-                                        font.pixelSize: 11
+                                        font.pixelSize: AppTheme.fontSizeCaption
                                         font.family: AppTheme.fontFamily
                                         color: AppTheme.textDim
                                         text: {
@@ -976,7 +976,7 @@ Rectangle {
 
                                         Text {
                                             text: model.title
-                                            font.pixelSize: 13
+                                            font.pixelSize: AppTheme.fontSizeBody
                                             font.family: AppTheme.fontFamily
                                             color: index === curIdx ? AppTheme.accent : AppTheme.textPrimary
                                             elide: Text.ElideRight
@@ -984,7 +984,7 @@ Rectangle {
                                         }
                                         Text {
                                             text: model.singername
-                                            font.pixelSize: 10
+                                            font.pixelSize: AppTheme.fontSizeXs
                                             font.family: AppTheme.fontFamily
                                             color: AppTheme.textMuted
                                             elide: Text.ElideRight
@@ -1002,7 +1002,7 @@ Rectangle {
                                             var s = sec % 60
                                             return m + ":" + (s < 10 ? "0" : "") + s
                                         }
-                                        font.pixelSize: 11
+                                        font.pixelSize: AppTheme.fontSizeCaption
                                         font.family: AppTheme.fontFamily
                                         color: AppTheme.textDim
                                         anchors.verticalCenter: parent.verticalCenter
@@ -1020,7 +1020,7 @@ Rectangle {
                                         Text {
                                             anchors.centerIn: parent
                                             text: "×"
-                                            font.pixelSize: 14
+                                            font.pixelSize: AppTheme.fontSizeBodyLg
                                             color: delBtnMA.containsMouse ? AppTheme.accent : AppTheme.textMuted
                                         }
 
@@ -1063,7 +1063,7 @@ Rectangle {
 
                 Behavior on color {
                     ColorAnimation {
-                        duration: 150
+                        duration: AppTheme.animFast
                     }
                 }
             }
@@ -1101,7 +1101,7 @@ Rectangle {
 
                 Behavior on color {
                     ColorAnimation {
-                        duration: 150
+                        duration: AppTheme.animFast
                     }
                 }
             }

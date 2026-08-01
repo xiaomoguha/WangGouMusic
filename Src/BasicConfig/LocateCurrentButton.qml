@@ -25,8 +25,8 @@ Item {
     visible: shouldBeVisible
     opacity: shouldBeVisible ? 1.0 : 0.0
     scale: shouldBeVisible ? 1.0 : 0.6
-    Behavior on opacity { NumberAnimation { duration: 150 } }
-    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+    Behavior on opacity { NumberAnimation { duration: AppTheme.animFast } }
+    Behavior on scale { NumberAnimation { duration: AppTheme.animFast; easing.type: Easing.OutCubic } }
 
     width: 40
     height: 40

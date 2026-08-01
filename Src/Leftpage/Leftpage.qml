@@ -58,7 +58,7 @@ Rectangle {
                 id: titletext
                 anchors.verticalCenter: parent.verticalCenter
                 text: qsTr("网狗音乐")
-                font.pixelSize: 20
+                font.pixelSize: AppTheme.fontSizeHeadline
                 font.family: AppTheme.fontFamily
                 font.bold: true
                 color: AppTheme.textPrimary
@@ -120,7 +120,7 @@ Rectangle {
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
                         text: navColumn.navList[navItemRect.index].text
-                        font.pixelSize: 14
+                        font.pixelSize: AppTheme.fontSizeBodyLg
                         font.family: AppTheme.fontFamily
                         color: navItemRect.isSelected ? AppTheme.textPrimary : AppTheme.textSecondary
                     }
@@ -142,14 +142,14 @@ Rectangle {
 
                 Behavior on color {
                     ColorAnimation {
-                        duration: 150
+                        duration: AppTheme.animFast
                     }
                 }
 
                 scale: navMouseArea.containsMouse && !isSelected ? 1.03 : 1.0
                 Behavior on scale {
                     NumberAnimation {
-                        duration: 150
+                        duration: AppTheme.animFast
                         easing.type: Easing.OutCubic
                     }
                 }
@@ -229,7 +229,7 @@ Rectangle {
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
                         text: navColumn2.navList[navItemRect2.index].text
-                        font.pixelSize: 14
+                        font.pixelSize: AppTheme.fontSizeBodyLg
                         font.family: AppTheme.fontFamily
                         color: navItemRect2.isSelected ? AppTheme.textPrimary : AppTheme.textSecondary
                     }
@@ -251,14 +251,14 @@ Rectangle {
 
                 Behavior on color {
                     ColorAnimation {
-                        duration: 150
+                        duration: AppTheme.animFast
                     }
                 }
 
                 scale: navMouseArea2.containsMouse && !isSelected ? 1.03 : 1.0
                 Behavior on scale {
                     NumberAnimation {
-                        duration: 150
+                        duration: AppTheme.animFast
                         easing.type: Easing.OutCubic
                     }
                 }
@@ -285,14 +285,14 @@ Rectangle {
             Text {
                 text: "\u21BB"
                 color: AppTheme.textMuted
-                font.pixelSize: 16
+                font.pixelSize: AppTheme.fontSizeTitle
                 anchors.verticalCenter: parent.verticalCenter
             }
 
             Text {
                 text: "检查更新"
                 color: AppTheme.textMuted
-                font.pixelSize: 13
+                font.pixelSize: AppTheme.fontSizeBody
                 font.family: AppTheme.fontFamily
                 anchors.verticalCenter: parent.verticalCenter
             }
@@ -300,7 +300,7 @@ Rectangle {
             Text {
                 text: appUpdater ? "v" + appUpdater.currentVersion : ""
                 color: AppTheme.textDim
-                font.pixelSize: 11
+                font.pixelSize: AppTheme.fontSizeCaption
                 anchors.verticalCenter: parent.verticalCenter
             }
         }
@@ -320,7 +320,7 @@ Rectangle {
 
         Behavior on color {
             ColorAnimation {
-                duration: 150
+                duration: AppTheme.animFast
             }
         }
     }

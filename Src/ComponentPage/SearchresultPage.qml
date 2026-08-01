@@ -36,7 +36,7 @@ Item {
                 if (total > 10000) return (total / 10000).toFixed(1) + "万首";
                 return total + "首";
             }
-            font.pixelSize: 13
+            font.pixelSize: AppTheme.fontSizeBody
             color: AppTheme.textMuted
             font.family: AppTheme.fontFamily
             anchors.verticalCenter: parent.verticalCenter
@@ -61,7 +61,7 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onTapped: BasicConfig.goBack()
             }
-            Behavior on color { ColorAnimation { duration: 150 } }
+            Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
         }
     }
 

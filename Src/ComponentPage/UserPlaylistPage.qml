@@ -272,7 +272,7 @@ Item {
             Text {
                 text: "请先登录查看歌单"
                 color: AppTheme.textMuted
-                font.pixelSize: 16
+                font.pixelSize: AppTheme.fontSizeTitle
                 font.family: AppTheme.fontFamily
                 anchors.horizontalCenter: parent.horizontalCenter
             }
@@ -288,13 +288,13 @@ Item {
                     anchors.centerIn: parent
                     text: "去登录"
                     color: "white"
-                    font.pixelSize: 14
+                    font.pixelSize: AppTheme.fontSizeBodyLg
                     font.family: AppTheme.fontFamily
                 }
 
                 HoverHandler { id: loginBtnHover }
                 TapHandler { onTapped: loginPopup.open() }
-                Behavior on color { ColorAnimation { duration: 150 } }
+                Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
             }
         }
     }
@@ -316,7 +316,7 @@ Item {
             property real listSlideX: viewState === "list" ? 0 : -width * 0.15
 
             Behavior on listOpacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
-            Behavior on listSlideX { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+            Behavior on listSlideX { NumberAnimation { duration: AppTheme.animNormal; easing.type: Easing.OutCubic } }
 
             Flickable {
                 id: playlistFlickable
@@ -357,7 +357,7 @@ Item {
                     Text {
                         text: "我的歌单"
                         color: AppTheme.textPrimary
-                        font.pixelSize: 24
+                        font.pixelSize: AppTheme.fontSizeDisplay
                         font.weight: Font.Bold
                         font.family: AppTheme.fontFamily
                         anchors.left: parent.left
@@ -369,7 +369,7 @@ Item {
                         visible: isLoadingPlaylists
                         text: "加载中..."
                         color: AppTheme.textMuted
-                        font.pixelSize: 13
+                        font.pixelSize: AppTheme.fontSizeBody
                         font.family: AppTheme.fontFamily
                         anchors.horizontalCenter: parent.horizontalCenter
                         topPadding: 20
@@ -428,14 +428,14 @@ Item {
                                             width: parent.width
                                             elide: Text.ElideRight
                                             color: AppTheme.textPrimary
-                                            font.pixelSize: 14
+                                            font.pixelSize: AppTheme.fontSizeBodyLg
                                             font.family: AppTheme.fontFamily
                                         }
 
                                         Text {
                                             text: (playlistData.count || 0) + " 首"
                                             color: AppTheme.textMuted
-                                            font.pixelSize: 12
+                                            font.pixelSize: AppTheme.fontSizeSmall
                                             font.family: AppTheme.fontFamily
                                         }
                                     }
@@ -503,7 +503,6 @@ Item {
                                         userManager.fetchPlaylistDetail(gid, 1, detailPageSize)
                                     }
                                 }
-                                Behavior on color { ColorAnimation { duration: 150 } }
                             }
                         }
 
@@ -517,7 +516,7 @@ Item {
                                 visible: isLoadingMorePlaylists
                                 text: "加载更多..."
                                 color: AppTheme.textMuted
-                                font.pixelSize: 12
+                                font.pixelSize: AppTheme.fontSizeSmall
                                 font.family: AppTheme.fontFamily
                                 anchors.centerIn: parent
                             }
@@ -526,7 +525,7 @@ Item {
                                 visible: !hasMorePlaylists && playlists.length > 0 && !isLoadingMorePlaylists
                                 text: "共 " + playlists.length + " 个歌单"
                                 color: AppTheme.textDim
-                                font.pixelSize: 12
+                                font.pixelSize: AppTheme.fontSizeSmall
                                 font.family: AppTheme.fontFamily
                                 anchors.centerIn: parent
                             }
@@ -538,7 +537,7 @@ Item {
                         visible: !isLoadingPlaylists && playlists.length === 0
                         text: "暂无歌单"
                         color: AppTheme.textMuted
-                        font.pixelSize: 14
+                        font.pixelSize: AppTheme.fontSizeBodyLg
                         font.family: AppTheme.fontFamily
                         anchors.horizontalCenter: parent.horizontalCenter
                     }
@@ -558,7 +557,7 @@ Item {
             property real detailSlideX: viewState === "detail" ? 0 : width * 0.15
 
             Behavior on detailOpacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
-            Behavior on detailSlideX { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+            Behavior on detailSlideX { NumberAnimation { duration: AppTheme.animNormal; easing.type: Easing.OutCubic } }
 
             // 右下角浮动「定位到正在播放」按钮（当前歌不在视口内时出现）
             LocateCurrentButton {
@@ -615,13 +614,13 @@ Item {
                                     resetTimer.start()
                                 }
                             }
-                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
                         }
 
                         Text {
                             text: currentListName
                             color: AppTheme.textPrimary
-                            font.pixelSize: 24
+                            font.pixelSize: AppTheme.fontSizeDisplay
                             font.weight: Font.Bold
                             font.family: AppTheme.fontFamily
                             anchors.verticalCenter: parent.verticalCenter
@@ -630,7 +629,7 @@ Item {
                         Text {
                             text: "共" + currentListCount + "首"
                             color: AppTheme.textDim
-                            font.pixelSize: 13
+                            font.pixelSize: AppTheme.fontSizeBody
                             font.family: AppTheme.fontFamily
                             anchors.bottom: parent.bottom
                             anchors.bottomMargin: 4
@@ -680,7 +679,7 @@ Item {
                             Text {
                                 text: "播放全部"
                                 color: "white"
-                                font.pixelSize: 14
+                                font.pixelSize: AppTheme.fontSizeBodyLg
                                 font.family: AppTheme.fontFamily
                                 anchors.verticalCenter: parent.verticalCenter
                             }
@@ -707,14 +706,14 @@ Item {
                                 playlistmanager.playSongbyindex(0)
                             }
                         }
-                        Behavior on color { ColorAnimation { duration: 150 } }
+                        Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
                     }
 
                     Text {
                         visible: isLoadingDetail
                         text: "加载中..."
                         color: AppTheme.textMuted
-                        font.pixelSize: 13
+                        font.pixelSize: AppTheme.fontSizeBody
                         font.family: AppTheme.fontFamily
                         anchors.verticalCenter: parent.verticalCenter
                     }
@@ -724,7 +723,7 @@ Item {
                         visible: searchKeyword.trim() !== ""
                         text: "找到 " + filteredSongs.length + " 首"
                         color: AppTheme.textMuted
-                        font.pixelSize: 13
+                        font.pixelSize: AppTheme.fontSizeBody
                         font.family: AppTheme.fontFamily
                         anchors.verticalCenter: parent.verticalCenter
                     }
@@ -769,7 +768,7 @@ Item {
                                 color: AppTheme.textPrimary
                                 palette.placeholderText: AppTheme.textPlaceholder
                                 verticalAlignment: TextInput.AlignVCenter
-                                font.pixelSize: 13
+                                font.pixelSize: AppTheme.fontSizeBody
                                 font.family: AppTheme.fontFamily
                                 background: Rectangle { color: "transparent" }
                                 onTextChanged: {
@@ -809,7 +808,7 @@ Item {
                             }
                         }
 
-                        Behavior on border.color { ColorAnimation { duration: 150 } }
+                        Behavior on border.color { ColorAnimation { duration: AppTheme.animFast } }
                     }
                 }
 
@@ -862,7 +861,7 @@ Item {
                                         visible: isLoadingMoreSongs
                                         text: "加载更多歌曲..."
                                         color: AppTheme.textMuted
-                                        font.pixelSize: 12
+                                        font.pixelSize: AppTheme.fontSizeSmall
                                         font.family: AppTheme.fontFamily
                                         anchors.centerIn: parent
                                     }
@@ -871,7 +870,7 @@ Item {
                                         visible: !hasMoreSongs && currentSongs.length > 0 && !isLoadingMoreSongs
                                         text: "已加载全部 " + currentSongs.length + " 首"
                                         color: AppTheme.textDim
-                                        font.pixelSize: 12
+                                        font.pixelSize: AppTheme.fontSizeSmall
                                         font.family: AppTheme.fontFamily
                                         anchors.centerIn: parent
                                     }
@@ -898,9 +897,9 @@ Item {
 
                                     Text {
                                         width: 25
-                                        text: index + 1 <= 9 ? "0" + String(index + 1) : String(index + 1)
+                                        text: (index + 1).toString().padStart(2, "0")
                                         anchors.verticalCenter: parent.verticalCenter
-                                        font.pixelSize: 16
+                                        font.pixelSize: AppTheme.fontSizeTitle
                                         color: isPlaying ? AppTheme.accentPlaying : AppTheme.textMuted
                                         visible: !isPlaying
                                     }
@@ -935,7 +934,7 @@ Item {
                                             text: filteredSongs[index] ? filteredSongs[index].songname : ""
                                             width: parent.width
                                             elide: Text.ElideRight
-                                            font.pixelSize: 13
+                                            font.pixelSize: AppTheme.fontSizeBody
                                             font.family: AppTheme.fontFamily
                                             color: isPlaying ? AppTheme.accentPlaying : AppTheme.textPrimary
                                         }
@@ -944,7 +943,7 @@ Item {
                                             text: filteredSongs[index] ? filteredSongs[index].singername : ""
                                             width: parent.width
                                             elide: Text.ElideRight
-                                            font.pixelSize: 11
+                                            font.pixelSize: AppTheme.fontSizeCaption
                                             font.family: AppTheme.fontFamily
                                             color: isPlaying ? AppTheme.accentPlaying : AppTheme.textMuted
                                         }
@@ -961,112 +960,61 @@ Item {
                                             spacing: 4
                                             visible: songMouse.hovered && !isPlaying
 
-                                            Rectangle {
+                                            IconButton {
+                                                id: playBtn
                                                 visible: !isTogetherMode
-                                                width: 30; height: 30; radius: 15
-                                                color: AppTheme.isDark
-                                                       ? (playHover.hovered ? AppTheme.iconButtonHover : "transparent")
-                                                       : (playHover.hovered ? "#FFCCCC" : "#FFD8D8")
-                                                Image {
-                                                    id: playNowIcon
-                                                    anchors.centerIn: parent
-                                                    source: "qrc:/image/playnow.png"
-                                                    width: 14; height: 14
-                                                    fillMode: Image.PreserveAspectFit
-                                                    layer.enabled: true
-                                                    layer.effect: ColorOverlay {
-                                                        source: playNowIcon
-                                                        color: AppTheme.isDark ? (playHover.hovered ? "#4FC3F7" : "#FFFFFF") : AppTheme.accent
-                                                    }
+                                                size: 30; iconSize: 14
+                                                iconSource: "qrc:/image/playnow.png"
+                                                iconColor: AppTheme.isDark ? (playBtn.hovered ? "#4FC3F7" : "#FFFFFF") : AppTheme.accent
+                                                onClicked: {
+                                                    if (!playlistmanager) return
+                                                    var s = filteredSongs[index]
+                                                    playlistmanager.playNextAndPlay({
+                                                        "songname": s.songname,
+                                                        "songhash": s.hash,
+                                                        "singername": s.singername,
+                                                        "union_cover": s.cover,
+                                                        "album_name": s.album_name,
+                                                        "duration": s.duration
+                                                    })
                                                 }
-                                                HoverHandler { id: playHover }
-                                                TapHandler {
-                                                    cursorShape: Qt.PointingHandCursor
-                                                    onTapped: {
-                                                        if (!playlistmanager) return
-                                                        var s = filteredSongs[index]
-                                                        playlistmanager.playNextAndPlay({
-                                                            "songname": s.songname,
-                                                            "songhash": s.hash,
-                                                            "singername": s.singername,
-                                                            "union_cover": s.cover,
-                                                            "album_name": s.album_name,
-                                                            "duration": s.duration
-                                                        })
-                                                    }
-                                                }
-                                                Behavior on color { ColorAnimation { duration: 150 } }
                                             }
 
-                                            Rectangle {
+                                            IconButton {
+                                                id: addBtn
                                                 visible: !isTogetherMode
-                                                width: 30; height: 30; radius: 15
-                                                color: AppTheme.isDark
-                                                       ? (addHover.hovered ? AppTheme.iconButtonHover : "transparent")
-                                                       : (addHover.hovered ? "#FFCCCC" : "#FFD8D8")
-                                                Image {
-                                                    id: addListIcon
-                                                    anchors.centerIn: parent
-                                                    source: "qrc:/image/addplaylist.png"
-                                                    width: 14; height: 14
-                                                    fillMode: Image.PreserveAspectFit
-                                                    layer.enabled: true
-                                                    layer.effect: ColorOverlay {
-                                                        source: addListIcon
-                                                        color: AppTheme.isDark ? (addHover.hovered ? AppTheme.accent : "#FFFFFF") : AppTheme.accent
-                                                    }
+                                                size: 30; iconSize: 14
+                                                iconSource: "qrc:/image/addplaylist.png"
+                                                iconColor: AppTheme.isDark ? (addBtn.hovered ? AppTheme.accent : "#FFFFFF") : AppTheme.accent
+                                                onClicked: {
+                                                    if (!playlistmanager) return
+                                                    var s = filteredSongs[index]
+                                                    playlistmanager.addSongNext({
+                                                        "songname": s.songname,
+                                                        "songhash": s.hash,
+                                                        "singername": s.singername,
+                                                        "union_cover": s.cover,
+                                                        "album_name": s.album_name,
+                                                        "duration": s.duration
+                                                    })
+                                                    BasicConfig.emitSongAdded("已添加到下一首: " + s.songname)
                                                 }
-                                                HoverHandler { id: addHover }
-                                                TapHandler {
-                                                    cursorShape: Qt.PointingHandCursor
-                                                    onTapped: {
-                                                        if (!playlistmanager) return
-                                                        var s = filteredSongs[index]
-                                                        playlistmanager.addSongNext({
-                                                            "songname": s.songname,
-                                                            "songhash": s.hash,
-                                                            "singername": s.singername,
-                                                            "union_cover": s.cover,
-                                                            "album_name": s.album_name,
-                                                            "duration": s.duration
-                                                        })
-                                                        BasicConfig.emitSongAdded("已添加到下一首: " + s.songname)
-                                                    }
-                                                }
-                                                Behavior on color { ColorAnimation { duration: 150 } }
                                             }
 
-                                            Rectangle {
+                                            IconButton {
+                                                id: togetherBtn
                                                 visible: isTogetherMode
-                                                width: 30; height: 30; radius: 15
-                                                color: AppTheme.isDark
-                                                       ? (addTogetherHover.hovered ? AppTheme.iconButtonHover : "transparent")
-                                                       : (addTogetherHover.hovered ? "#FFCCCC" : "#FFD8D8")
-                                                Image {
-                                                    id: togetherIcon
-                                                    anchors.centerIn: parent
-                                                    source: "qrc:/image/yinle.png"
-                                                    width: 14; height: 14
-                                                    fillMode: Image.PreserveAspectFit
-                                                    layer.enabled: true
-                                                    layer.effect: ColorOverlay {
-                                                        source: togetherIcon
-                                                        color: AppTheme.isDark ? (addTogetherHover.hovered ? AppTheme.accent : "#FFFFFF") : AppTheme.accent
-                                                    }
+                                                size: 30; iconSize: 14
+                                                iconSource: "qrc:/image/yinle.png"
+                                                iconColor: AppTheme.isDark ? (togetherBtn.hovered ? AppTheme.accent : "#FFFFFF") : AppTheme.accent
+                                                onClicked: {
+                                                    if (!websocket || !filteredSongs[index]) return
+                                                    var s = filteredSongs[index]
+                                                    websocket.addSongToTogether(
+                                                        s.songname, s.hash, s.singername,
+                                                        s.album_name, s.duration, s.cover
+                                                    )
                                                 }
-                                                HoverHandler { id: addTogetherHover }
-                                                TapHandler {
-                                                    cursorShape: Qt.PointingHandCursor
-                                                    onTapped: {
-                                                        if (!websocket || !filteredSongs[index]) return
-                                                        var s = filteredSongs[index]
-                                                        websocket.addSongToTogether(
-                                                            s.songname, s.hash, s.singername,
-                                                            s.album_name, s.duration, s.cover
-                                                        )
-                                                    }
-                                                }
-                                                Behavior on color { ColorAnimation { duration: 150 } }
                                             }
                                         }
                                     }
@@ -1075,7 +1023,7 @@ Item {
                                         text: filteredSongs[index] ? filteredSongs[index].album_name : ""
                                         width: 0.2 * userPlaylistPage.width
                                         elide: Text.ElideRight
-                                        font.pixelSize: 14
+                                        font.pixelSize: AppTheme.fontSizeBodyLg
                                         font.family: AppTheme.fontFamily
                                         color: AppTheme.textPrimary
                                         anchors.verticalCenter: parent.verticalCenter
@@ -1083,7 +1031,7 @@ Item {
 
                                     Text {
                                         text: filteredSongs[index] ? filteredSongs[index].duration : ""
-                                        font.pixelSize: 14
+                                        font.pixelSize: AppTheme.fontSizeBodyLg
                                         font.family: AppTheme.fontFamily
                                         color: AppTheme.textMuted
                                         anchors.verticalCenter: parent.verticalCenter

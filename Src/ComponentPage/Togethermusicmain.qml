@@ -38,8 +38,8 @@ Item {
             NumberAnimation { property: "scale"; from: 0.85; to: 1.0; duration: 200; easing.type: Easing.OutBack }
         }
         exit: Transition {
-            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: 150; easing.type: Easing.InCubic }
-            NumberAnimation { property: "scale"; from: 1.0; to: 0.85; duration: 150; easing.type: Easing.InCubic }
+            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: AppTheme.animFast; easing.type: Easing.InCubic }
+            NumberAnimation { property: "scale"; from: 1.0; to: 0.85; duration: AppTheme.animFast; easing.type: Easing.InCubic }
         }
 
         Column {
@@ -48,7 +48,7 @@ Item {
 
             Text {
                 text: "确认离开房间？"
-                font.pixelSize: 18
+                font.pixelSize: AppTheme.fontSizeTitleLg
                 font.family: AppTheme.fontFamily
                 font.weight: Font.Bold
                 color: AppTheme.textPrimary
@@ -57,7 +57,7 @@ Item {
 
             Text {
                 text: "离开后将无法继续与好友同步听歌"
-                font.pixelSize: 13
+                font.pixelSize: AppTheme.fontSizeBody
                 font.family: AppTheme.fontFamily
                 color: AppTheme.textMuted
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -71,19 +71,19 @@ Item {
                     width: 100; height: 36; radius: 8
                     color: cancelLeaveHover.hovered ? AppTheme.iconButtonHover : "transparent"
                     border.width: 1; border.color: AppTheme.borderDefault
-                    Text { anchors.centerIn: parent; text: "取消"; font.pixelSize: 13; font.family: AppTheme.fontFamily; color: AppTheme.textSecondary }
+                    Text { anchors.centerIn: parent; text: "取消"; font.pixelSize: AppTheme.fontSizeBody; font.family: AppTheme.fontFamily; color: AppTheme.textSecondary }
                     HoverHandler { id: cancelLeaveHover }
                     TapHandler { onTapped: leaveConfirmDialog.close() }
-                    Behavior on color { ColorAnimation { duration: 150 } }
+                    Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
                 }
 
                 Rectangle {
                     width: 100; height: 36; radius: 8
                     color: confirmLeaveHover.hovered ? "#E04040" : "#FF4D4F"
-                    Text { anchors.centerIn: parent; text: "离开"; font.pixelSize: 13; font.family: AppTheme.fontFamily; font.weight: Font.Medium; color: "#FFFFFF" }
+                    Text { anchors.centerIn: parent; text: "离开"; font.pixelSize: AppTheme.fontSizeBody; font.family: AppTheme.fontFamily; font.weight: Font.Medium; color: "#FFFFFF" }
                     HoverHandler { id: confirmLeaveHover }
                     TapHandler { onTapped: { leaveConfirmDialog.close(); websocket.disconnectFromServer(); } }
-                    Behavior on color { ColorAnimation { duration: 150 } }
+                    Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
                 }
             }
         }
@@ -129,7 +129,7 @@ Item {
 
         Text {
             anchors.centerIn: parent
-            font.pixelSize: 13
+            font.pixelSize: AppTheme.fontSizeBody
             font.family: AppTheme.fontFamily
             color: "#FFA500"
             text: bannerText.text
@@ -155,7 +155,7 @@ Item {
 
             Text {
                 text: qsTr(websocket ? websocket.Roomid : "")
-                font.pixelSize: 20
+                font.pixelSize: AppTheme.fontSizeHeadline
                 font.family: AppTheme.fontFamily
                 color: AppTheme.textPrimary
                 font.weight: Font.Bold
@@ -184,7 +184,7 @@ Item {
 
                     Text {
                         text: onlineCount + " 人在线"
-                        font.pixelSize: 12
+                        font.pixelSize: AppTheme.fontSizeSmall
                         font.family: AppTheme.fontFamily
                         color: AppTheme.accent
                         anchors.verticalCenter: parent.verticalCenter
@@ -215,7 +215,7 @@ Item {
 
                         Text {
                             text: "在线用户"
-                            font.pixelSize: 13
+                            font.pixelSize: AppTheme.fontSizeBody
                             font.family: AppTheme.fontFamily
                             font.weight: Font.Bold
                             color: AppTheme.textPrimary
@@ -257,7 +257,7 @@ Item {
 
                                 Text {
                                     text: modelData.nickname || modelData.userId || "未知用户"
-                                    font.pixelSize: 12
+                                    font.pixelSize: AppTheme.fontSizeSmall
                                     font.family: AppTheme.fontFamily
                                     color: AppTheme.textPrimary
                                     elide: Text.ElideRight
@@ -284,7 +284,7 @@ Item {
             Text {
                 anchors.centerIn: parent
                 text: "离开房间"
-                font.pixelSize: 13; font.family: AppTheme.fontFamily
+                font.pixelSize: AppTheme.fontSizeBody; font.family: AppTheme.fontFamily
                 color: leaveMouseArea.containsMouse ? "#FF4D4F" : AppTheme.textMuted
             }
 
@@ -295,8 +295,8 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: leaveConfirmDialog.open()
             }
-            Behavior on color { ColorAnimation { duration: 150 } }
-            Behavior on border.color { ColorAnimation { duration: 150 } }
+            Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+            Behavior on border.color { ColorAnimation { duration: AppTheme.animFast } }
         }
     }
 
@@ -313,7 +313,7 @@ Item {
         anchors.bottomMargin: 6
         clip: true
         spacing: 6
-        cacheBuffer: 320
+        cacheBuffer: 1000
         model: messages
 
         // 是否自动滚动到底部（用户在底部附近时为 true，手动上滑后变 false）
@@ -368,7 +368,7 @@ Item {
                 }
                 NumberAnimation {
                     target: messageDelegate; property: "msgOpacity"
-                    from: 0; to: 1; duration: 400; easing.type: Easing.OutCubic
+                    from: 0; to: 1; duration: AppTheme.animSlow; easing.type: Easing.OutCubic
                 }
             }
 
@@ -410,7 +410,7 @@ Item {
                         }
                         return timeStr + (d.nickname || d.userid || "") + " " + (d.message || "");
                     }
-                    font.pixelSize: 12
+                    font.pixelSize: AppTheme.fontSizeSmall
                     font.family: AppTheme.fontFamily
                     color: AppTheme.textSecondary
                     wrapMode: Text.Wrap
@@ -453,7 +453,7 @@ Item {
 
                         Text {
                             text: modelData.nickname || modelData.userid || "未知"
-                            font.pixelSize: 12
+                            font.pixelSize: AppTheme.fontSizeSmall
                             font.family: AppTheme.fontFamily
                             color: AppTheme.accent
                             font.weight: Font.Medium
@@ -466,7 +466,7 @@ Item {
                                 }
                                 return "";
                             }
-                            font.pixelSize: 10
+                            font.pixelSize: AppTheme.fontSizeXs
                             font.family: AppTheme.fontFamily
                             color: AppTheme.textDim
                             anchors.verticalCenter: parent.verticalCenter
@@ -479,7 +479,7 @@ Item {
 
                         Text {
                             text: modelData.message || ""
-                            font.pixelSize: 13
+                            font.pixelSize: AppTheme.fontSizeBody
                             font.family: AppTheme.fontFamily
                             color: AppTheme.textSecondary
                             wrapMode: Text.Wrap
@@ -586,7 +586,7 @@ Item {
                 height: 36
                 placeholderText: "说点什么..."
                 color: AppTheme.textPrimary
-                font.pixelSize: 13
+                font.pixelSize: AppTheme.fontSizeBody
                 font.family: AppTheme.fontFamily
                 verticalAlignment: Text.AlignVCenter
                 leftPadding: 14
@@ -613,7 +613,7 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: "发送"
-                    font.pixelSize: 13; font.family: AppTheme.fontFamily; color: "#FFFFFF"
+                    font.pixelSize: AppTheme.fontSizeBody; font.family: AppTheme.fontFamily; color: "#FFFFFF"
                 }
 
                 MouseArea {
@@ -629,7 +629,7 @@ Item {
                         }
                     }
                 }
-                Behavior on color { ColorAnimation { duration: 150 } }
+                Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
             }
         }
     }
@@ -663,7 +663,7 @@ Item {
             Text {
                 anchors.centerIn: parent
                 text: playlistDrawer.open ? "›" : "‹"
-                font.pixelSize: 18
+                font.pixelSize: AppTheme.fontSizeTitleLg
                 font.weight: Font.Bold
                 color: AppTheme.textSecondary
             }
@@ -675,7 +675,7 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: playlistDrawer.open = !playlistDrawer.open
             }
-            Behavior on color { ColorAnimation { duration: 150 } }
+            Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
         }
 
         // 播放列表面板
@@ -709,7 +709,7 @@ Item {
 
                     Text {
                         text: (playlistmanager ? playlistmanager.togetherplaylist.count : 0) + "首"
-                        font.pixelSize: 12; font.family: AppTheme.fontFamily
+                        font.pixelSize: AppTheme.fontSizeSmall; font.family: AppTheme.fontFamily
                         color: AppTheme.textDim
                         anchors.verticalCenter: parent.verticalCenter
                     }
@@ -732,7 +732,7 @@ Item {
                             id: ctrlPlayBtn; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                             onClicked: playlistmanager && playlistmanager.isPaused ? websocket.resumeTogether() : websocket.pauseTogether()
                         }
-                        Behavior on color { ColorAnimation { duration: 150 } }
+                        Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
                     }
 
                     // 下一首
@@ -747,7 +747,7 @@ Item {
                             layer.effect: ColorOverlay { source: nextBtnIcon; color: AppTheme.textSecondary }
                         }
                         MouseArea { id: nextBtnHover; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: websocket.playNextTogether() }
-                        Behavior on color { ColorAnimation { duration: 150 } }
+                        Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
                     }
 
                     // 刷新
@@ -762,7 +762,7 @@ Item {
                             layer.effect: ColorOverlay { source: refreshIcon; color: AppTheme.textSecondary }
                         }
                         MouseArea { id: refreshHover; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: websocket.requestPlaylist() }
-                        Behavior on color { ColorAnimation { duration: 150 } }
+                        Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
                     }
                 }
 
@@ -804,9 +804,9 @@ Item {
                             // 序号 / 播放动画
                             Text {
                                 width: 20
-                                text: index + 1 <= 9 ? "0" + String(index + 1) : index + 1
+                                text: (index + 1).toString().padStart(2, "0")
                                 anchors.verticalCenter: parent.verticalCenter
-                                font.pixelSize: 12; color: AppTheme.textDim
+                                font.pixelSize: AppTheme.fontSizeSmall; color: AppTheme.textDim
                                 visible: !(playlistmanager && playlistmanager.currentIndex === index)
                             }
 
@@ -864,14 +864,14 @@ Item {
                                 spacing: 1
                                 Text {
                                     text: model.title
-                                    font.pixelSize: 12
+                                    font.pixelSize: AppTheme.fontSizeSmall
                                     color: playlistmanager && playlistmanager.currentIndex === index ? AppTheme.accentPlaying : AppTheme.textPrimary
                                     elide: Text.ElideRight
                                     width: 140
                                 }
                                 Text {
                                     text: model.singername
-                                    font.pixelSize: 10
+                                    font.pixelSize: AppTheme.fontSizeXs
                                     color: AppTheme.textMuted
                                     elide: Text.ElideRight
                                     width: 140
@@ -949,7 +949,7 @@ Item {
                             anchors.rightMargin: 8
                             anchors.verticalCenter: parent.verticalCenter
                             text: model.duration
-                            font.pixelSize: 11; font.family: AppTheme.fontFamily
+                            font.pixelSize: AppTheme.fontSizeCaption; font.family: AppTheme.fontFamily
                             color: AppTheme.textDim
                         }
 
@@ -1013,6 +1013,15 @@ Item {
         function onChatMessageReceived(userid, nickname, avatarUrl, message, timestamp) {
             messageListView._autoScroll = true
             Qt.callLater(messageListView.positionViewAtEnd)
+
+            // 不在当前页面时，弹出系统通知
+            if (!root.visible && trayHandler) {
+                trayHandler.showMessage(
+                    "网狗音乐 - " + (nickname || "未知用户"),
+                    message,
+                    3000
+                );
+            }
         }
     }
 

@@ -1,8 +1,8 @@
 import QtQuick 2.15
 import QtQuick.Controls
 import Qt5Compat.GraphicalEffects
-import "../BasicConfig"
 import NetworkRequest 1.0
+import "../BasicConfig"
 
 Row {
     id: root
@@ -112,7 +112,7 @@ Row {
                 color: AppTheme.textPrimary
                 palette.placeholderText: AppTheme.textPlaceholder
                 verticalAlignment: TextInput.AlignVCenter
-                font.pixelSize: 14
+                font.pixelSize: AppTheme.fontSizeBodyLg
                 font.family: AppTheme.fontFamily
                 background: Rectangle {
                     color: "transparent"
@@ -347,7 +347,7 @@ Row {
 
                         Behavior on color {
                             ColorAnimation {
-                                duration: 150
+                                duration: AppTheme.animFast
                             }
                         }
                     }
@@ -372,7 +372,7 @@ Row {
                             Label {
                                 id: datalabel
                                 text: songName === undefined ? "" : songName
-                                font.pixelSize: 16
+                                font.pixelSize: AppTheme.fontSizeTitle
                                 anchors.centerIn: parent
                                 color: AppTheme.textSecondary
                                 font.family: AppTheme.fontFamily
@@ -415,7 +415,7 @@ Row {
                     Text {
                         anchors.centerIn: parent
                         text: historyRep.showall ? "收起 ▲" : "展开更多 ▼"
-                        font.pixelSize: 13
+                        font.pixelSize: AppTheme.fontSizeBody
                         font.family: AppTheme.fontFamily
                         color: expandHover.hovered ? AppTheme.accent : AppTheme.textMuted
                     }
@@ -453,7 +453,7 @@ Row {
                                 anchors.left: parent.left
                                 width: 12
                                 anchors.verticalCenter: parent.verticalCenter
-                                font.pixelSize: 16
+                                font.pixelSize: AppTheme.fontSizeTitle
                                 font.family: AppTheme.fontFamily
                                 color: index < 3 ? AppTheme.textHotIndex : AppTheme.textNormalIndex
                                 text: String(index + 1)
@@ -463,7 +463,7 @@ Row {
                                 anchors.left: hotsearchindexLabel.right
                                 anchors.leftMargin: 15
                                 anchors.verticalCenter: parent.verticalCenter
-                                font.pixelSize: 16
+                                font.pixelSize: AppTheme.fontSizeTitle
                                 font.family: AppTheme.fontFamily
                                 color: AppTheme.textNormalIndex
                                 text: modelData.keyword
