@@ -187,7 +187,7 @@ Rectangle {
             text: songName
             font.pixelSize: AppTheme.fontSizeHeadline
             font.bold: true
-            color: "white"
+            color: AppTheme.textSongTitle
             font.family: AppTheme.fontFamily
             horizontalAlignment: Text.AlignHCenter
             width: parent.width
@@ -196,6 +196,7 @@ Rectangle {
         Text {
             text: singerName
             font.pixelSize: AppTheme.fontSizeTitle
+            font.bold: true
             color: "#DDDDDD"
             horizontalAlignment: Text.AlignHCenter
             width: parent.width
@@ -505,16 +506,16 @@ Rectangle {
                                 }
                                 transform: Scale { origin.x: 0; origin.y: height; yScale: squeeze }
 
-                                // 底层：未唱色（亮白）。modelData 为 LyricChar，text 可能是中文字或英文词
+                                // 隐藏测量字：提供本字宽高供两个裁剪层定位（modelData 为 LyricChar，text 可能是中文字或英文词）
                                 Text {
                                     id: baseChar
+                                    visible: false
                                     text: modelData.text
                                     font.pixelSize: AppTheme.fontSizeHeadline
                                     font.bold: true
                                     font.family: AppTheme.fontFamily
-                                    color: "#ffffff"
                                 }
-                                // 染色层：按 fillRatio 从左裁剪，已播放色从左向右"刷过去"（当前字随 charProgress）
+                                // 已唱色（左半，按 fillRatio 裁剪）
                                 Item {
                                     width: baseChar.width * fillRatio
                                     height: baseChar.height
@@ -525,6 +526,21 @@ Rectangle {
                                         font.bold: true
                                         font.family: AppTheme.fontFamily
                                         color: dominantColor
+                                    }
+                                }
+                                // 未唱白（右半，互补裁剪）：与已唱色不重叠，既无叠加透白、又不加描边，字形不发糊
+                                Item {
+                                    x: baseChar.width * fillRatio
+                                    width: baseChar.width * (1 - fillRatio)
+                                    height: baseChar.height
+                                    clip: true
+                                    Text {
+                                        x: -baseChar.width * fillRatio
+                                        text: modelData.text
+                                        font.pixelSize: AppTheme.fontSizeHeadline
+                                        font.bold: true
+                                        font.family: AppTheme.fontFamily
+                                        color: "#ffffff"
                                     }
                                 }
 

@@ -222,7 +222,7 @@ ThemedPopup {
                     }
                     color: updateDialog.hasUpdate ? "white" : AppTheme.textSecondary
                     font.pixelSize: AppTheme.fontSizeBody
-                    font.weight: Font.Medium
+                    font.weight: Font.DemiBold
                 }
                 MouseArea {
                     id: actionMA

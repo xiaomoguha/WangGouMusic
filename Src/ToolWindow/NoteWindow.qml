@@ -150,7 +150,7 @@ ThemedPopup {
             text: toast.message
             color: AppTheme.textSecondary
             font.pixelSize: AppTheme.fontSizeBodyLg
-            font.weight: Font.Medium
+            font.weight: Font.DemiBold
             wrapMode: Text.Wrap
             horizontalAlignment: Text.AlignHCenter
             anchors.horizontalCenter: parent.horizontalCenter
@@ -176,7 +176,7 @@ ThemedPopup {
                 text: "确定"
                 color: "white"
                 font.pixelSize: AppTheme.fontSizeBody
-                font.weight: Font.Medium
+                font.weight: Font.DemiBold
             }
             HoverHandler {
                 id: confirmBtnHandler

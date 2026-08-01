@@ -301,13 +301,11 @@ ApplicationWindow {
     // 使用 Loader 延迟加载歌词页，减少启动内存
     Loader {
         id: lyricsPageLoader
-        // 与 windowShell 的 10px 投影边距保持一致（最大化时贴边），
-        // 使播放详情页与主页面（左/右/底三块）大小、位置完全相同
-        property int shellMargin: root.visibility === Window.Maximized ? 0 : 10
-        x: shellMargin
-        width: root.width - 2 * shellMargin
-        height: root.height - 2 * shellMargin
-        y: root.lyricsOpened ? shellMargin : root.height
+        // 铺满整个窗口，与主页面（windowShell）大小、位置完全一致（窗口投影已移除）
+        x: 0
+        width: root.width
+        height: root.height
+        y: root.lyricsOpened ? 0 : root.height
         z: 10
         // 首次打开后保持活跃
         active: root.lyricsOpened || lyricsPageLoader.item !== null

@@ -201,14 +201,14 @@ Rectangle {
                             font.family: AppTheme.fontFamily
                             font.pixelSize: AppTheme.fontSizeBodyLg
                             font.bold: true
-                            color: AppTheme.textPrimary
+                            color: AppTheme.textSongTitle
                         }
                         Text {
                             text: songNameText.text
                             font.family: AppTheme.fontFamily
                             font.pixelSize: AppTheme.fontSizeBodyLg
                             font.bold: true
-                            color: AppTheme.textPrimary
+                            color: AppTheme.textSongTitle
                             visible: songNameClip.overflow
                         }
                         NumberAnimation on x {
@@ -244,12 +244,14 @@ Rectangle {
                             text: playlistmanager ? (playlistmanager.currentsingername === "" ? "默认歌手" : playlistmanager.currentsingername) : "....."
                             font.family: AppTheme.fontFamily
                             font.pixelSize: AppTheme.fontSizeSmall
+                            font.bold: true
                             color: AppTheme.textMuted
                         }
                         Text {
                             text: singerNameText.text
                             font.family: AppTheme.fontFamily
                             font.pixelSize: AppTheme.fontSizeSmall
+                            font.bold: true
                             color: AppTheme.textMuted
                             visible: singerNameClip.overflow
                         }
@@ -973,7 +975,8 @@ Rectangle {
                                             text: model.title
                                             font.pixelSize: AppTheme.fontSizeBody
                                             font.family: AppTheme.fontFamily
-                                            color: index === curIdx ? AppTheme.accent : AppTheme.textPrimary
+                                            font.bold: true
+                                            color: index === curIdx ? AppTheme.accent : AppTheme.textSongTitle
                                             elide: Text.ElideRight
                                             width: parent.width
                                         }
@@ -981,6 +984,7 @@ Rectangle {
                                             text: model.singername
                                             font.pixelSize: AppTheme.fontSizeXs
                                             font.family: AppTheme.fontFamily
+                                            font.bold: true
                                             color: AppTheme.textMuted
                                             elide: Text.ElideRight
                                             width: parent.width

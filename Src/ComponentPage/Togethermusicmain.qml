@@ -80,7 +80,7 @@ Item {
                 Rectangle {
                     width: 100; height: 36; radius: 8
                     color: confirmLeaveHover.hovered ? "#E04040" : "#FF4D4F"
-                    Text { anchors.centerIn: parent; text: "离开"; font.pixelSize: AppTheme.fontSizeBody; font.family: AppTheme.fontFamily; font.weight: Font.Medium; color: "#FFFFFF" }
+                    Text { anchors.centerIn: parent; text: "离开"; font.pixelSize: AppTheme.fontSizeBody; font.family: AppTheme.fontFamily; font.weight: Font.DemiBold; color: "#FFFFFF" }
                     HoverHandler { id: confirmLeaveHover }
                     TapHandler { onTapped: { leaveConfirmDialog.close(); websocket.disconnectFromServer(); } }
                     Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
@@ -456,7 +456,7 @@ Item {
                             font.pixelSize: AppTheme.fontSizeSmall
                             font.family: AppTheme.fontFamily
                             color: AppTheme.accent
-                            font.weight: Font.Medium
+                            font.weight: Font.DemiBold
                         }
 
                         Text {
@@ -862,13 +862,15 @@ Item {
                                 Text {
                                     text: model.title
                                     font.pixelSize: AppTheme.fontSizeSmall
-                                    color: playlistmanager && playlistmanager.currentIndex === index ? AppTheme.accentPlaying : AppTheme.textPrimary
+                                    font.bold: true
+                                    color: playlistmanager && playlistmanager.currentIndex === index ? AppTheme.accentPlaying : AppTheme.textSongTitle
                                     elide: Text.ElideRight
                                     width: 140
                                 }
                                 Text {
                                     text: model.singername
                                     font.pixelSize: AppTheme.fontSizeXs
+                                    font.bold: true
                                     color: AppTheme.textMuted
                                     elide: Text.ElideRight
                                     width: 140

@@ -317,15 +317,15 @@ Window {
                                     }
                                     transform: Scale { origin.x: 0; origin.y: height; yScale: squeeze }
 
+                                    // 隐藏测量字：提供本字宽高
                                     Text {
                                         id: hBaseChar
+                                        visible: false
                                         text: modelData.text
                                         font.pixelSize: desktopLyrics.fontSize * desktopLyrics.scale
                                         font.bold: true
-                                        color: desktopLyrics.textColor
-                                        style: Text.Outline
-                                        styleColor: "#40000000"
                                     }
+                                    // 已唱色（左半，按 fillRatio 裁剪）+ 深色描边保可读
                                     Item {
                                         width: hBaseChar.width * fillRatio
                                         height: hBaseChar.height
@@ -336,7 +336,23 @@ Window {
                                             font.bold: true
                                             color: desktopLyrics.lyricsColor
                                             style: Text.Outline
-                                            styleColor: desktopLyrics.lyricsGlow
+                                            styleColor: "#40000000"
+                                        }
+                                    }
+                                    // 未唱色（右半，互补裁剪）+ 深色描边保可读：与已唱色不重叠，无透白也不发糊
+                                    Item {
+                                        x: hBaseChar.width * fillRatio
+                                        width: hBaseChar.width * (1 - fillRatio)
+                                        height: hBaseChar.height
+                                        clip: true
+                                        Text {
+                                            x: -hBaseChar.width * fillRatio
+                                            text: modelData.text
+                                            font.pixelSize: desktopLyrics.fontSize * desktopLyrics.scale
+                                            font.bold: true
+                                            color: desktopLyrics.textColor
+                                            style: Text.Outline
+                                            styleColor: "#40000000"
                                         }
                                     }
 
@@ -619,8 +635,9 @@ Window {
                                     font.pixelSize: desktopLyrics.fontSize * desktopLyrics.scale
                                     font.bold: true
                                     color: desktopLyrics.lyricsColor
+                                    // 深色描边保可读（替代旧 lyricsGlow 软发光）。竖排整列互补裁剪待后续补，暂保留轻微透白
                                     style: Text.Outline
-                                    styleColor: desktopLyrics.lyricsGlow
+                                    styleColor: "#40000000"
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                     rotation: isPunctuation ? 90 : 0

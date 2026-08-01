@@ -88,7 +88,7 @@ Item {
             text: root._message || "已添加至播放列表"
             color: AppTheme.textSecondary
             font.pixelSize: AppTheme.fontSizeBodyLg
-            font.weight: Font.Medium
+            font.weight: Font.DemiBold
         }
     }
 

@@ -354,7 +354,7 @@ Window {
                 text: "完成"
                 color: "white"
                 font.pixelSize: AppTheme.fontSizeBody
-                font.weight: Font.Medium
+                font.weight: Font.DemiBold
             }
             MouseArea {
                 id: doneMA

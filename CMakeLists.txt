@@ -46,6 +46,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         CPPSrc/CrashHandler.cpp CPPSrc/CrashHandler.h
         CPPSrc/ClickThroughHelper.cpp CPPSrc/ClickThroughHelper.h
         image.qrc
+        fonts.qrc
     )
     # Windows 应用程序图标 + 系统媒体传输控件(SMTC)
     if(WIN32)

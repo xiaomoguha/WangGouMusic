@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/">
+        <file>fonts/SarasaGothicSC-Regular.ttf</file>
+        <file>fonts/SarasaGothicSC-SemiBold.ttf</file>
+        <file>fonts/SarasaGothicSC-Bold.ttf</file>
+    </qresource>
+</RCC>

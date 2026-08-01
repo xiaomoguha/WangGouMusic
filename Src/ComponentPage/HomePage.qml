@@ -400,7 +400,8 @@ Item {
                                     width: parent.width
                                     elide: Text.ElideRight
                                     font.pixelSize: AppTheme.fontSizeSmall
-                                    color: isPlaying ? AppTheme.accentPlaying : AppTheme.textPrimary
+                                    font.bold: true
+                                    color: isPlaying ? AppTheme.accentPlaying : AppTheme.textSongTitle
                                     font.family: AppTheme.fontFamily
                                 }
 
@@ -409,6 +410,7 @@ Item {
                                     width: parent.width
                                     elide: Text.ElideRight
                                     font.pixelSize: AppTheme.fontSizeCaption
+                                    font.bold: true
                                     color: AppTheme.textMuted
                                     font.family: AppTheme.fontFamily
                                 }

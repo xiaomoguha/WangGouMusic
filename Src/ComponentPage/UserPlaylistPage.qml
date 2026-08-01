@@ -935,7 +935,8 @@ Item {
                                             elide: Text.ElideRight
                                             font.pixelSize: AppTheme.fontSizeBody
                                             font.family: AppTheme.fontFamily
-                                            color: isPlaying ? AppTheme.accentPlaying : AppTheme.textPrimary
+                                            font.bold: true
+                                            color: isPlaying ? AppTheme.accentPlaying : AppTheme.textSongTitle
                                         }
 
                                         Text {
@@ -944,6 +945,7 @@ Item {
                                             elide: Text.ElideRight
                                             font.pixelSize: AppTheme.fontSizeCaption
                                             font.family: AppTheme.fontFamily
+                                            font.bold: true
                                             color: isPlaying ? AppTheme.accentPlaying : AppTheme.textMuted
                                         }
                                     }
@@ -1024,6 +1026,7 @@ Item {
                                         elide: Text.ElideRight
                                         font.pixelSize: AppTheme.fontSizeBodyLg
                                         font.family: AppTheme.fontFamily
+                                        font.bold: true
                                         color: AppTheme.textPrimary
                                         anchors.verticalCenter: parent.verticalCenter
                                     }
