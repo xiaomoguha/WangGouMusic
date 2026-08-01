@@ -28,7 +28,7 @@ Item {
         property: "opacity"
         from: 1
         to: 0
-        duration: 300
+        duration: AppTheme.animThemeTransition
         easing.type: Easing.OutCubic
         onStopped: {
             root.visible = false;
@@ -76,7 +76,7 @@ Item {
                 anchors.centerIn: parent
                 text: "✓"
                 color: AppTheme.successColor
-                font.pixelSize: 14
+                font.pixelSize: AppTheme.fontSizeBodyLg
                 font.bold: true
             }
         }
@@ -89,7 +89,7 @@ Item {
             elide: Text.ElideRight
             text: root._message || "已添加至播放列表"
             color: AppTheme.textSecondary
-            font.pixelSize: 14
+            font.pixelSize: AppTheme.fontSizeBodyLg
             font.weight: Font.Medium
         }
     }

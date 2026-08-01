@@ -3,10 +3,10 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import "../BasicConfig"
 
-Popup {
+ThemedPopup {
     id: toast
-    modal: true
-    focus: true
+    dimBackground: false
+    accentBorder: true
     closePolicy: mode === "loading" ? Popup.NoAutoClose : Popup.CloseOnPressOutside
 
     property string mode: "loading"   // loading | error | success
@@ -16,60 +16,6 @@ Popup {
     // ── 尺寸自适应 ──
     width: 280
     height: mode === "loading" ? 150 : 120
-    anchors.centerIn: Overlay.overlay
-
-    // ── 进出动画 ──
-    enter: Transition {
-        NumberAnimation {
-            property: "opacity"
-            from: 0
-            to: 1
-            duration: 200
-            easing.type: Easing.OutCubic
-        }
-        NumberAnimation {
-            property: "scale"
-            from: 0.85
-            to: 1.0
-            duration: 200
-            easing.type: Easing.OutBack
-        }
-    }
-    exit: Transition {
-        NumberAnimation {
-            property: "opacity"
-            from: 1
-            to: 0
-            duration: 150
-            easing.type: Easing.InCubic
-        }
-        NumberAnimation {
-            property: "scale"
-            from: 1.0
-            to: 0.85
-            duration: 150
-            easing.type: Easing.InCubic
-        }
-    }
-
-    // ── 遮罩层 ──
-    background: Rectangle {
-        radius: 16
-        color: AppTheme.bgOverlay
-        // 顶部微光边框
-        border.color: AppTheme.dialogBorder
-        border.width: 1
-        // 柔和阴影
-        layer.enabled: true
-        Rectangle {
-            anchors.fill: parent
-            anchors.margins: -1
-            radius: parent.radius + 1
-            color: "transparent"
-            border.color: AppTheme.dialogAccentBorder
-            border.width: 1
-        }
-    }
 
     // ── 内容区 ──
     Column {
@@ -139,12 +85,12 @@ Popup {
                             loops: Animation.Infinite
                             NumberAnimation {
                                 to: 1
-                                duration: 400
+                                duration: AppTheme.animSlow
                                 easing.type: Easing.InOutSine
                             }
                             NumberAnimation {
                                 to: 0.3
-                                duration: 400
+                                duration: AppTheme.animSlow
                                 easing.type: Easing.InOutSine
                             }
                         }
@@ -166,7 +112,7 @@ Popup {
                     anchors.centerIn: parent
                     text: "✕"
                     color: AppTheme.errorColor
-                    font.pixelSize: 16
+                    font.pixelSize: AppTheme.fontSizeTitle
                     font.bold: true
                 }
             }
@@ -185,14 +131,14 @@ Popup {
                     anchors.centerIn: parent
                     text: "✓"
                     color: AppTheme.successColor
-                    font.pixelSize: 18
+                    font.pixelSize: AppTheme.fontSizeTitleLg
                     font.bold: true
                 }
                 // 成功态缩放弹跳
                 scale: toast.mode === "success" ? 1 : 0
                 Behavior on scale {
                     NumberAnimation {
-                        duration: 300
+                        duration: AppTheme.animThemeTransition
                         easing.type: Easing.OutBack
                     }
                 }
@@ -203,7 +149,7 @@ Popup {
         Text {
             text: toast.message
             color: AppTheme.textSecondary
-            font.pixelSize: 14
+            font.pixelSize: AppTheme.fontSizeBodyLg
             font.weight: Font.Medium
             wrapMode: Text.Wrap
             horizontalAlignment: Text.AlignHCenter
@@ -221,7 +167,7 @@ Popup {
             color: confirmBtnHandler.hovered ? AppTheme.accentHover : AppTheme.accent
             Behavior on color {
                 ColorAnimation {
-                    duration: 150
+                    duration: AppTheme.animFast
                 }
             }
 
@@ -229,7 +175,7 @@ Popup {
                 anchors.centerIn: parent
                 text: "确定"
                 color: "white"
-                font.pixelSize: 13
+                font.pixelSize: AppTheme.fontSizeBody
                 font.weight: Font.Medium
             }
             HoverHandler {

@@ -61,13 +61,13 @@ Window {
             height: 28
             radius: 14
             color: closeHover.hovered ? AppTheme.iconButtonHover : "transparent"
-            Behavior on color { ColorAnimation { duration: 150 } }
+            Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
             HoverHandler { id: closeHover }
             Text {
                 anchors.centerIn: parent
                 text: "✕"
                 color: AppTheme.textSecondary
-                font.pixelSize: 13
+                font.pixelSize: AppTheme.fontSizeBody
             }
             TapHandler {
                 cursorShape: Qt.PointingHandCursor
@@ -83,7 +83,7 @@ Window {
             anchors.horizontalCenter: parent.horizontalCenter
             text: "桌面歌词"
             color: AppTheme.textPrimary
-            font.pixelSize: 18
+            font.pixelSize: AppTheme.fontSizeTitleLg
             font.weight: Font.Bold
         }
 
@@ -117,7 +117,7 @@ Window {
                     Text {
                         text: "开启桌面歌词"
                         color: AppTheme.textPrimary
-                        font.pixelSize: 14
+                        font.pixelSize: AppTheme.fontSizeBodyLg
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
                     }
@@ -129,7 +129,7 @@ Window {
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
                         color: (lyricsConfig && lyricsConfig.enabled) ? AppTheme.accent : AppTheme.scrollbarColor
-                        Behavior on color { ColorAnimation { duration: 150 } }
+                        Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
 
                         Rectangle {
                             x: (lyricsConfig && lyricsConfig.enabled) ? parent.width - width - 3 : 3
@@ -138,7 +138,7 @@ Window {
                             height: 20
                             radius: 10
                             color: "white"
-                            Behavior on x { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+                            Behavior on x { NumberAnimation { duration: AppTheme.animFast; easing.type: Easing.OutCubic } }
                         }
 
                         TapHandler {
@@ -160,7 +160,7 @@ Window {
                     Text {
                         text: "方向"
                         color: AppTheme.textPrimary
-                        font.pixelSize: 14
+                        font.pixelSize: AppTheme.fontSizeBodyLg
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
                     }
@@ -177,11 +177,11 @@ Window {
                             color: (lyricsConfig && !lyricsConfig.isVertical) ? AppTheme.accent : "transparent"
                             border.width: 1
                             border.color: (lyricsConfig && !lyricsConfig.isVertical) ? AppTheme.accent : AppTheme.borderDefault
-                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
                             Text {
                                 anchors.centerIn: parent
                                 text: "横向"
-                                font.pixelSize: 12
+                                font.pixelSize: AppTheme.fontSizeSmall
                                 color: (lyricsConfig && !lyricsConfig.isVertical) ? "white" : AppTheme.textSecondary
                             }
                             TapHandler {
@@ -197,11 +197,11 @@ Window {
                             color: (lyricsConfig && lyricsConfig.isVertical) ? AppTheme.accent : "transparent"
                             border.width: 1
                             border.color: (lyricsConfig && lyricsConfig.isVertical) ? AppTheme.accent : AppTheme.borderDefault
-                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
                             Text {
                                 anchors.centerIn: parent
                                 text: "竖向"
-                                font.pixelSize: 12
+                                font.pixelSize: AppTheme.fontSizeSmall
                                 color: (lyricsConfig && lyricsConfig.isVertical) ? "white" : AppTheme.textSecondary
                             }
                             TapHandler {
@@ -225,12 +225,12 @@ Window {
                         Text {
                             text: "跳跃歌词"
                             color: AppTheme.textPrimary
-                            font.pixelSize: 14
+                            font.pixelSize: AppTheme.fontSizeBodyLg
                         }
                         Text {
                             text: "（仅横向歌词支持）关闭则普通刷过"
                             color: AppTheme.textMuted
-                            font.pixelSize: 11
+                            font.pixelSize: AppTheme.fontSizeCaption
                         }
                     }
 
@@ -241,7 +241,7 @@ Window {
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
                         color: (lyricsConfig && lyricsConfig.jumpEnabled) ? AppTheme.accent : AppTheme.scrollbarColor
-                        Behavior on color { ColorAnimation { duration: 150 } }
+                        Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
 
                         Rectangle {
                             x: (lyricsConfig && lyricsConfig.jumpEnabled) ? parent.width - width - 3 : 3
@@ -250,7 +250,7 @@ Window {
                             height: 20
                             radius: 10
                             color: "white"
-                            Behavior on x { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+                            Behavior on x { NumberAnimation { duration: AppTheme.animFast; easing.type: Easing.OutCubic } }
                         }
 
                         TapHandler {
@@ -306,14 +306,14 @@ Window {
                         Text {
                             text: "大小"
                             color: AppTheme.textSecondary
-                            font.pixelSize: 13
+                            font.pixelSize: AppTheme.fontSizeBody
                             anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
                         }
                         Text {
                             text: lyricsConfig ? Math.round(lyricsConfig.scale * 100) + "%" : "100%"
                             color: AppTheme.textPrimary
-                            font.pixelSize: 13
+                            font.pixelSize: AppTheme.fontSizeBody
                             font.bold: true
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
@@ -347,13 +347,13 @@ Window {
             anchors.bottomMargin: 20
             anchors.horizontalCenter: parent.horizontalCenter
             color: doneMA.containsMouse ? AppTheme.accentHover : AppTheme.accent
-            Behavior on color { ColorAnimation { duration: 150 } }
+            Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
 
             Text {
                 anchors.centerIn: parent
                 text: "完成"
                 color: "white"
-                font.pixelSize: 13
+                font.pixelSize: AppTheme.fontSizeBody
                 font.weight: Font.Medium
             }
             MouseArea {

@@ -54,7 +54,7 @@ Item {
         Text {
             text: root.label
             color: AppTheme.textSecondary
-            font.pixelSize: 13
+            font.pixelSize: AppTheme.fontSizeBody
         }
 
         Flow {
@@ -73,7 +73,7 @@ Item {
                     id: followLbl
                     anchors.centerIn: parent
                     text: "跟随主题"
-                    font.pixelSize: 12
+                    font.pixelSize: AppTheme.fontSizeSmall
                     color: root.followTheme ? "white" : AppTheme.textSecondary
                 }
                 TapHandler { cursorShape: Qt.PointingHandCursor; onTapped: root.colorEdited("") }
@@ -148,7 +148,7 @@ Item {
                     visible: root.followTheme
                     anchors.centerIn: parent
                     text: "主"
-                    font.pixelSize: 10
+                    font.pixelSize: AppTheme.fontSizeXs
                     font.bold: true
                     color: "white"
                 }
@@ -158,7 +158,7 @@ Item {
                 id: hexInput
                 width: parent.width - 38
                 height: 30
-                font.pixelSize: 12
+                font.pixelSize: AppTheme.fontSizeSmall
                 color: AppTheme.textPrimary
                 placeholderText: "#RRGGBB"
                 selectByMouse: true

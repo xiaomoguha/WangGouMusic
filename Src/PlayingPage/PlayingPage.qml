@@ -6,7 +6,7 @@ import "../BasicConfig"
 
 Rectangle {
     id: lyricspage
-    color: "#13131a"
+    color: AppTheme.bgContent
     radius: 20
 
     property string albumCover: playlistmanager ? (playlistmanager.union_cover === "" ? "qrc:/image/touxi.jpg" : playlistmanager.union_cover) : "qrc:/image/touxi.jpg"
@@ -107,48 +107,18 @@ Rectangle {
     }
 
     // ======================= 左上角收起按钮 =======================
-    Rectangle {
+    IconButton {
         id: collapseBtn
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.topMargin: 0.03 * root.height
         anchors.leftMargin: 0.03 * root.width
-        width: 32
-        height: 32
-        radius: 16
-        color: collapseHoverHandler.hovered ? "#30FFFFFF" : "transparent"
-
-        Image {
-            id: collapseIcon
-            anchors.centerIn: parent
-            source: "qrc:/image/left_line.png"
-            width: 16
-            height: 16
-            fillMode: Image.PreserveAspectFit
-            rotation: -90
-            layer.enabled: true
-            layer.effect: ColorOverlay {
-                source: collapseIcon
-                color: "#FFFFFF"
-            }
-        }
-
-        HoverHandler {
-            id: collapseHoverHandler
-        }
-
-        TapHandler {
-            cursorShape: Qt.PointingHandCursor
-            onTapped: {
-                root.lyricsOpened = !root.lyricsOpened;
-            }
-        }
-
-        Behavior on color {
-            ColorAnimation {
-                duration: 150
-            }
-        }
+        size: 32; iconSize: 16; iconRotation: -90
+        iconSource: "qrc:/image/left_line.png"
+        iconColor: "#FFFFFF"
+        hoverColor: "#30FFFFFF"
+        normalColor: "transparent"
+        onClicked: root.lyricsOpened = !root.lyricsOpened
     }
 
     // ======================= 右上角窗口控制按钮 =======================
@@ -160,126 +130,45 @@ Rectangle {
         spacing: 8
 
         // 最小化按钮
-        Rectangle {
-            width: 28
-            height: 28
-            radius: 14
-            color: minHoverHandler.hovered ? "#30FFFFFF" : "transparent"
-
-            Image {
-                id: minIcon
-                anchors.centerIn: parent
-                source: "qrc:/image/minus_line.png"
-                width: 14
-                height: 14
-                fillMode: Image.PreserveAspectFit
-                layer.enabled: true
-                layer.effect: ColorOverlay {
-                    source: minIcon
-                    color: "#FFFFFF"
-                }
-            }
-
-            HoverHandler {
-                id: minHoverHandler
-            }
-
-            TapHandler {
-                cursorShape: Qt.PointingHandCursor
-                onTapped: root.showMinimized()
-            }
-
-            Behavior on color {
-                ColorAnimation {
-                    duration: 150
-                }
-            }
+        IconButton {
+            iconSize: 14
+            iconSource: "qrc:/image/minus_line.png"
+            iconColor: "#FFFFFF"
+            hoverColor: "#30FFFFFF"
+            normalColor: "transparent"
+            onClicked: root.showMinimized()
         }
 
         // 最大化按钮
-        Rectangle {
-            width: 28
-            height: 28
-            radius: 14
-            color: maxHoverHandler.hovered ? "#30FFFFFF" : "transparent"
-
-            Image {
-                id: maxIcon
-                anchors.centerIn: parent
-                source: root.visibility === Window.Maximized ? "qrc:/image/fullscreen-exit_line.png" : "qrc:/image/fullscreen_line.png"
-                width: 14
-                height: 14
-                fillMode: Image.PreserveAspectFit
-                layer.enabled: true
-                layer.effect: ColorOverlay {
-                    source: maxIcon
-                    color: "#FFFFFF"
-                }
-            }
-
-            HoverHandler {
-                id: maxHoverHandler
-            }
-
-            TapHandler {
-                cursorShape: Qt.PointingHandCursor
-                onTapped: {
-                    if (root.visibility === Window.Maximized) {
-                        root.showNormal();
-                        leftrect.radius = 20;
-                        rightrect.radius = 20;
-                        bottomrect.radius = 20;
-                    } else {
-                        root.showMaximized();
-                        leftrect.radius = 0;
-                        rightrect.radius = 0;
-                        bottomrect.radius = 0;
-                    }
-                }
-            }
-
-            Behavior on color {
-                ColorAnimation {
-                    duration: 150
+        IconButton {
+            iconSize: 14
+            iconSource: root.visibility === Window.Maximized ? "qrc:/image/fullscreen-exit_line.png" : "qrc:/image/fullscreen_line.png"
+            iconColor: "#FFFFFF"
+            hoverColor: "#30FFFFFF"
+            normalColor: "transparent"
+            onClicked: {
+                if (root.visibility === Window.Maximized) {
+                    root.showNormal();
+                    leftrect.radius = 20;
+                    rightrect.radius = 20;
+                    bottomrect.radius = 20;
+                } else {
+                    root.showMaximized();
+                    leftrect.radius = 0;
+                    rightrect.radius = 0;
+                    bottomrect.radius = 0;
                 }
             }
         }
 
         // 关闭按钮
-        Rectangle {
-            width: 28
-            height: 28
-            radius: 14
-            color: closeHoverHandler.hovered ? "#FF5252" : "transparent"
-
-            Image {
-                id: closeIcon
-                anchors.centerIn: parent
-                source: "qrc:/image/close-circle_line.png"
-                width: 14
-                height: 14
-                fillMode: Image.PreserveAspectFit
-                layer.enabled: true
-                layer.effect: ColorOverlay {
-                    source: closeIcon
-                    color: "#FFFFFF"
-                }
-            }
-
-            HoverHandler {
-                id: closeHoverHandler
-            }
-
-            TapHandler {
-                cursorShape: Qt.PointingHandCursor
-                onTapped: root.close()
-            }
-
-            Behavior on color {
-                ColorAnimation {
-                    duration: 150
-                }
-            }
+        IconButton {
+            iconSize: 14
+            iconSource: "qrc:/image/close-circle_line.png"
+            iconColor: "#FFFFFF"
+            hoverColor: "#FF5252"
+            normalColor: "transparent"
+            onClicked: root.close()
         }
     }
 
@@ -296,7 +185,7 @@ Rectangle {
 
         Text {
             text: songName
-            font.pixelSize: 20
+            font.pixelSize: AppTheme.fontSizeHeadline
             font.bold: true
             color: "white"
             font.family: AppTheme.fontFamily
@@ -306,7 +195,7 @@ Rectangle {
 
         Text {
             text: singerName
-            font.pixelSize: 16
+            font.pixelSize: AppTheme.fontSizeTitle
             color: "#DDDDDD"
             horizontalAlignment: Text.AlignHCenter
             width: parent.width
@@ -519,7 +408,7 @@ Rectangle {
         anchors.topMargin: 80
         clip: true
         width: parent.width * 0.32
-        cacheBuffer: 150
+        cacheBuffer: 1500
 
         model: playlistmanager ? playlistmanager.m_lyrics : 0
         interactive: false   //是否可以手动滚动
@@ -559,7 +448,7 @@ Rectangle {
                     visible: !isCurrentLine
                     text: modelData.text || ""
                     textFormat: Text.PlainText
-                    font.pixelSize: 16
+                    font.pixelSize: AppTheme.fontSizeTitle
                     font.family: AppTheme.fontFamily
                     color: "#dddddd"
                     opacity: 0.7
@@ -620,7 +509,7 @@ Rectangle {
                                 Text {
                                     id: baseChar
                                     text: modelData.text
-                                    font.pixelSize: 20
+                                    font.pixelSize: AppTheme.fontSizeHeadline
                                     font.bold: true
                                     font.family: AppTheme.fontFamily
                                     color: "#ffffff"
@@ -632,7 +521,7 @@ Rectangle {
                                     clip: true
                                     Text {
                                         text: modelData.text
-                                        font.pixelSize: 20
+                                        font.pixelSize: AppTheme.fontSizeHeadline
                                         font.bold: true
                                         font.family: AppTheme.fontFamily
                                         color: dominantColor
@@ -682,7 +571,7 @@ Rectangle {
                                 return Math.max(0, (1 - charProgress) / 0.05)
                             return 1
                         }
-                        Behavior on opacity { NumberAnimation { duration: 150 } }
+                        Behavior on opacity { NumberAnimation { duration: AppTheme.animFast } }
 
                         // 拖尾：从主星位置随机喷出的小星粒子，各自随机轨迹飘散+淡出；未播放时不动
                         Repeater {
@@ -811,7 +700,7 @@ Rectangle {
 
             Text {
                 text: "正在缓冲..."
-                font.pixelSize: 16
+                font.pixelSize: AppTheme.fontSizeTitle
                 color: "#CCCCCC"
                 font.family: AppTheme.fontFamily
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -868,7 +757,7 @@ Rectangle {
 
                 Behavior on opacity {
                     NumberAnimation {
-                        duration: 150
+                        duration: AppTheme.animFast
                     }
                 }
             }
@@ -945,7 +834,7 @@ Rectangle {
 
                 Behavior on opacity {
                     NumberAnimation {
-                        duration: 150
+                        duration: AppTheme.animFast
                     }
                 }
             }
@@ -965,7 +854,7 @@ Rectangle {
                 Text {
                     id: currentTimeText
                     text: playlistmanager ? playlistmanager.percentstr : "00:00"
-                    font.pixelSize: 13
+                    font.pixelSize: AppTheme.fontSizeBody
                     color: "#AAAAAA"
                     font.family: AppTheme.fontFamily
                     anchors.verticalCenter: parent.verticalCenter
@@ -1070,7 +959,7 @@ Rectangle {
                 Text {
                     id: totalTimeText
                     text: playlistmanager ? playlistmanager.duration : "00:00"
-                    font.pixelSize: 13
+                    font.pixelSize: AppTheme.fontSizeBody
                     color: "#AAAAAA"
                     font.family: AppTheme.fontFamily
                     anchors.verticalCenter: parent.verticalCenter

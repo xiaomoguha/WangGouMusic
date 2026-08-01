@@ -36,7 +36,7 @@ Row {
 
         Behavior on color {
             ColorAnimation {
-                duration: 150
+                duration: AppTheme.animFast
             }
         }
     }
@@ -85,7 +85,7 @@ Row {
 
         Behavior on color {
             ColorAnimation {
-                duration: 150
+                duration: AppTheme.animFast
             }
         }
     }
@@ -121,7 +121,7 @@ Row {
 
         Behavior on color {
             ColorAnimation {
-                duration: 150
+                duration: AppTheme.animFast
             }
         }
     }

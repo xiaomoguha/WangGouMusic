@@ -46,6 +46,13 @@ QtObject {
     readonly property color accentGlow: isDark ? "#40FF6B6B" : "#40FF8A80"
     readonly property color accentPlaying: isDark ? "#e74f50" : "#FF6B6B"
 
+    // 弱化的强调色（空状态图标底色、淡红底纹等）
+    readonly property color accentSubtle: isDark ? "#30FF6B6B" : "#10FF8A80"
+
+    // 主操作按钮(CTA)色：暂保留现有"一起听 / 播放全部"红紫配色，后续可统一到 accent
+    readonly property color accentPrimary: "#e94560"
+    readonly property color accentPrimaryHover: "#533483"
+
     // ===== 文字颜色 =====
     readonly property color textPrimary: isDark ? "#FFFFFF" : "#1A1A2E"
     readonly property color textSecondary: isDark ? "#CCCCCC" : "#666680"
@@ -116,4 +123,16 @@ QtObject {
     // 跨平台中文优先字体栈：Windows 用微软雅黑，macOS 用苹方，Linux 用思源黑体，
     // 避免之前硬编码 "黑体" 在非 Windows 中文系统上回退到默认字体导致观感不一致。
     readonly property string fontFamily: "Microsoft YaHei UI, Microsoft YaHei, PingFang SC, Hiragino Sans GB, Noto Sans CJK SC, Source Han Sans CN, sans-serif"
+
+    // ===== 字号（px）=====
+    // 对齐现有最高频取值（13/12/14/11/16/20/18）；后续可叠加 dp 缩放适配 HiDPI
+    readonly property int fontSizeXs: 10        // 极小 / 辅助标记
+    readonly property int fontSizeCaption: 11   // 说明、次要信息
+    readonly property int fontSizeSmall: 12
+    readonly property int fontSizeBody: 13      // 正文（最常用）
+    readonly property int fontSizeBodyLg: 14
+    readonly property int fontSizeTitle: 16
+    readonly property int fontSizeTitleLg: 18
+    readonly property int fontSizeHeadline: 20
+    readonly property int fontSizeDisplay: 24   // 大标题
 }

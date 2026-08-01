@@ -19,8 +19,8 @@ Item {
         visible: canGoBack
         opacity: canGoBack ? 1 : 0
 
-        Behavior on color { ColorAnimation { duration: 150 } }
-        Behavior on opacity { NumberAnimation { duration: 150 } }
+        Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+        Behavior on opacity { NumberAnimation { duration: AppTheme.animFast } }
 
         Image {
             id: backIcon
@@ -52,7 +52,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         spacing: 15
 
-        Behavior on anchors.leftMargin { NumberAnimation { duration: 150 } }
+        Behavior on anchors.leftMargin { NumberAnimation { duration: AppTheme.animFast } }
     }
 
     Row {

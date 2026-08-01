@@ -25,7 +25,7 @@ Item {
             width: 76
             height: 76
             radius: 38
-            color: AppTheme.isDark ? AppTheme.accentDim : "#10FF8A80"
+            color: AppTheme.accentSubtle
             anchors.horizontalCenter: parent.horizontalCenter
 
             Text {
@@ -47,7 +47,7 @@ Item {
         Text {
             visible: root.subtitle !== ""
             text: root.subtitle
-            font.pixelSize: 12
+            font.pixelSize: AppTheme.fontSizeSmall
             font.family: AppTheme.fontFamily
             color: AppTheme.textMuted
             anchors.horizontalCenter: parent.horizontalCenter
@@ -69,7 +69,7 @@ Item {
                 id: btnText
                 anchors.centerIn: parent
                 text: root.buttonText
-                font.pixelSize: 13
+                font.pixelSize: AppTheme.fontSizeBody
                 font.family: AppTheme.fontFamily
                 color: AppTheme.iconActive
             }
@@ -80,7 +80,7 @@ Item {
                 onTapped: root.buttonClicked()
             }
 
-            Behavior on color { ColorAnimation { duration: 150 } }
+            Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
         }
     }
 }
