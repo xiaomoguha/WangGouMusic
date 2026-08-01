@@ -110,7 +110,7 @@ Item {
             }
             filteredSongs = result
         }
-        // 同步 ListView 的行数。加载更多走追加（不清空 → contentY 不变）；
+        // 同步 ListView 的行数。加载更多走追加（不清空 -> contentY 不变）；
         // 其余（初次加载 / 搜索 / 清空）走清空重建。
         if (_songsAppending) {
             _songsAppending = false
@@ -241,7 +241,7 @@ Item {
                 currentSongs = normalized
             } else {
                 // 加载更多：置追加模式，updateFilteredSongs 只往 songsModel 追加差量行，
-                // 不清空重建 → contentY 保持不变，彻底消除弹回顶部 + 闪烁。
+                // 不清空重建 -> contentY 保持不变，彻底消除弹回顶部 + 闪烁。
                 _songsAppending = true
                 var combined = Array.prototype.slice.call(currentSongs).concat(normalized)
                 currentSongs = combined
@@ -399,7 +399,6 @@ Item {
                                     anchors.rightMargin: 12
                                     spacing: 14
 
-                                    // 封面
                                     Rectangle {
                                         width: 50
                                         height: 50
@@ -1050,7 +1049,7 @@ Item {
                                         var songs = (searchKeyword.trim() !== "")
                                                     ? filteredSongs : currentSongs
                                         if (songs.length === 0 || currentListCount <= 0) return
-                                        // 字段映射：hash→songhash, cover→union_cover
+                                        // 字段映射：hash->songhash, cover->union_cover
                                         var batch = []
                                         for (var i = 0; i < songs.length; i++) {
                                             var s = songs[i]

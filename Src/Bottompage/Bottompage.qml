@@ -24,7 +24,7 @@ Rectangle {
         }
         var q = playlistmanager.type === 1 ? playlistmanager.togetherplaylist : playlistmanager.playlist
         var qCount = q.count   // SongListModel::count()，替代原 QVariantList.length
-        // 前缀一致（末尾追加）→ 只 append 差量，保留 contentY；否则整体重建
+        // 前缀一致（末尾追加）-> 只 append 差量，保留 contentY；否则整体重建
         var prefixOk = queueModel.count > 0 && qCount >= queueModel.count
         if (prefixOk) {
             for (var i = 0; i < queueModel.count; i++) {
@@ -608,7 +608,6 @@ Rectangle {
             spacing: 10
             anchors.verticalCenter: parent.verticalCenter
 
-            // 当前时间
             Text {
                 id: currentTimeText
                 text: playlistmanager ? playlistmanager.percentstr : "00:00"
@@ -618,7 +617,6 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
             }
 
-            // 进度条容器
             Item {
                 id: progressContainer
                 height: parent.height
@@ -738,7 +736,6 @@ Rectangle {
                 }
             }
 
-            // 总时间
             Text {
                 id: totalTimeText
                 text: playlistmanager ? playlistmanager.duration : "00:00"
@@ -838,7 +835,6 @@ Rectangle {
                     Column {
                         anchors.fill: parent
 
-                        // 标题栏
                         Rectangle {
                             width: parent.width
                             height: 44
@@ -968,7 +964,6 @@ Rectangle {
                                         horizontalAlignment: Text.AlignHCenter
                                     }
 
-                                    // 歌名 + 歌手
                                     Column {
                                         width: parent.width - 24 - 50 - 24
                                         anchors.verticalCenter: parent.verticalCenter
@@ -992,7 +987,6 @@ Rectangle {
                                         }
                                     }
 
-                                    // 时长
                                     Text {
                                         text: {
                                             var d = model.duration

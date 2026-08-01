@@ -126,8 +126,8 @@ Row {
                 }
                 onAccepted: {
                     BasicConfig.searchKeyword = text;
-                    BasicConfig.pushsearchsongPage("qrc:/Src/ComponentPage/SearchresultPage.qml");
-                    BasicConfig.indexchange(-1);
+                    BasicConfig.pushSearchSongPage("qrc:/Src/ComponentPage/SearchresultPage.qml");
+                    BasicConfig.indexChange(-1);
                     seachPop.close();
                     suggestModel.clear();
                     suggestMaxWidth = 0;
@@ -267,7 +267,7 @@ Row {
                                 onClicked: {
                                     searchTextField.text = hintInfo;
                                     BasicConfig.searchKeyword = hintInfo;
-                                    BasicConfig.pushsearchsongPage("qrc:/Src/ComponentPage/SearchresultPage.qml");
+                                    BasicConfig.pushSearchSongPage("qrc:/Src/ComponentPage/SearchresultPage.qml");
                                     seachPop.close();
                                     suggestModel.clear();
                                     suggestMaxWidth = 0;
@@ -398,7 +398,7 @@ Row {
                                     } else {
                                         searchTextField.text = songName;
                                         BasicConfig.searchKeyword = songName;
-                                        BasicConfig.pushsearchsongPage("qrc:/Src/ComponentPage/SearchresultPage.qml");
+                                        BasicConfig.pushSearchSongPage("qrc:/Src/ComponentPage/SearchresultPage.qml");
                                         seachPop.close();
                                     }
                                 }
@@ -482,7 +482,7 @@ Row {
                                 onClicked: {
                                     searchTextField.text = modelData.keyword;
                                     BasicConfig.searchKeyword = modelData.keyword;
-                                    BasicConfig.pushsearchsongPage("qrc:/Src/ComponentPage/SearchresultPage.qml");
+                                    BasicConfig.pushSearchSongPage("qrc:/Src/ComponentPage/SearchresultPage.qml");
                                     var isExist = false;
                                     for (var i = 0; i < searchsingmodel.count; i++) {
                                         if (searchsingmodel.get(i).songName === modelData.keyword) {

@@ -10,7 +10,7 @@ Item {
     width: parent ? parent.width : 0
     height: parent ? parent.height : 0
 
-    /* ===================== 滚动容器 ===================== */
+    // ===================== 滚动容器 =====================
     Flickable {
         id: flickable
         anchors.fill: parent

@@ -1,7 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Window 2.15
 import QtQuick.Controls
-import Qt5Compat.GraphicalEffects
 import "./Src/BasicConfig"
 import "./Src/Leftpage"
 import "./Src/Rightpage"
@@ -38,7 +37,7 @@ ApplicationWindow {
         }
         Connections {
             target: BasicConfig
-            function onNotice_error(errormessages) {
+            function onNoticeError(errormessages) {
                 loadingToast.showError(errormessages);
             }
         }
@@ -145,30 +144,10 @@ ApplicationWindow {
             }
         }
     }
-    // 内容容器：四周留出投影空间；最大化时自动贴边、无阴影
+    // 内容容器：直接铺满窗口（窗口投影方案在本机 Qt6.10.1 下渲染不稳定，已移除）
     Item {
         id: windowShell
         anchors.fill: parent
-        anchors.margins: root.visibility === Window.Maximized ? 0 : 10
-
-        // 阴影源：与窗口同形状的圆角矩形（不可见，仅用于生成投影）
-        Rectangle {
-            id: shadowSource
-            anchors.fill: parent
-            radius: root.visibility === Window.Maximized ? 0 : 20
-            color: "#000000"
-            visible: false
-        }
-        DropShadow {
-            anchors.fill: parent
-            source: shadowSource
-            horizontalOffset: 0
-            verticalOffset: 4
-            radius: 16
-            samples: 33
-            color: AppTheme.isDark ? "#A0000000" : "#26000000"
-            transparentBorder: true
-        }
     Leftpage {
         id: leftrect
         width: 200

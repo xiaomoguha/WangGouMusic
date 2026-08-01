@@ -303,7 +303,7 @@ Window {
                                     height: hBaseChar.height
                                     property real fillRatio: index < horizontalLyricContainer.charIndex ? 1.0
                                         : (index === horizontalLyricContainer.charIndex ? horizontalLyricContainer.charProgress : 0.0)
-                                    // 唱到字瞬间压到最扁 0.5，前段(0→a) ease-out 慢回弹到 1.0，之后保持等下一字
+                                    // 唱到字瞬间压到最扁 0.5，前段(0->a) ease-out 慢回弹到 1.0，之后保持等下一字
                                     property real squeeze: {
                                         if (!desktopLyrics.jumpEnabled) return 1.0
                                         if (index !== horizontalLyricContainer.charIndex || horizontalLyricContainer.charIndex < 0) return 1.0
@@ -358,7 +358,7 @@ Window {
                         property real fontPx: desktopLyrics.fontSize * desktopLyrics.scale
                         width: fontPx * 0.7
                         height: width
-                        // 唱到字下沉压字顶(1)→前段(0→a)减速上抛到最高(0,慢)→后段(a→1)重力加速下落(1,快)
+                        // 唱到字下沉压字顶(1)->前段(0->a)减速上抛到最高(0,慢)->后段(a->1)重力加速下落(1,快)
                         // 例外：最后一字末段不下落，保持高位往上淡出
                         property real starBob: {
                             if (horizontalLyricContainer.charIndex < 0) return 0
@@ -1074,11 +1074,11 @@ Window {
         target: clickThroughHelper
         function onHoverInWindowChanged(inside) {
             if (inside) {
-                // 鼠标进入窗口区域 → 显示锁按钮
+                // 鼠标进入窗口区域 -> 显示锁按钮
                 hideControlsTimer.stop();
                 desktopLyrics.showControls = true;
             } else {
-                // 鼠标离开窗口区域 → 延迟隐藏
+                // 鼠标离开窗口区域 -> 延迟隐藏
                 hideControlsTimer.restart();
             }
         }

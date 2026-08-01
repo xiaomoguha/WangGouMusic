@@ -63,7 +63,6 @@ Item {
         anchors.centerIn: parent
         spacing: 10
 
-        // 图标
         Rectangle {
             width: 24
             height: 24
@@ -81,7 +80,6 @@ Item {
             }
         }
 
-        // 文字
         Text {
             id: textLabel
             anchors.verticalCenter: parent.verticalCenter
