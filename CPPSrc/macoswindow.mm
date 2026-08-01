@@ -40,4 +40,19 @@ void activateMacOSApp()
     [[NSApplication sharedApplication] activateIgnoringOtherApps:YES];
 }
 
+// QWK 接管后窗口底色默认是 System windowBackgroundColor（白）。内容铺满整窗后，
+// 仅在面板圆角(radius 20)与原生窗口圆角之间留有透明缝隙；把底色设为 clear，让缝隙
+// 透出桌面而非白色，保持原本透明圆角的观感。
+void makeMacWindowBackgroundClear(QWindow *window)
+{
+    if (!window)
+        return;
+    NSView *contentView = reinterpret_cast<NSView *>(window->winId());
+    NSWindow *nsWindow  = [contentView window];
+    if (!nsWindow)
+        return;
+    [nsWindow setOpaque:NO];
+    [nsWindow setBackgroundColor:[NSColor clearColor]];
+}
+
 #endif
