@@ -44,10 +44,10 @@ private:
     static QString secondsToMinutesSeconds(int totalSeconds);
 
     QVariantList m_items;
-    int m_total = 0;
-    int m_page = 1;
-    bool m_hasMore = false;
-    bool m_isLoading = false;
+    int m_total         = 0;
+    int m_page          = 1;
+    bool m_hasMore      = false;
+    bool m_isLoading    = false;
     bool m_isAppendMode = false;
     QString m_currentKeyword;
     static const int PAGE_SIZE = 20;

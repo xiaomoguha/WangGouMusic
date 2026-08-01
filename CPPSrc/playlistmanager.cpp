@@ -9,84 +9,102 @@
 #include <QPropertyAnimation>
 #include <QTimer>
 #include <memory>
-PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent) : QObject(parent), m_recommendation(recommendation)
+PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent)
+    : QObject(parent), m_recommendation(recommendation)
 {
     // QML 列表视图 model（与 m_playlist/m_togetherplaylist/m_recentPlaylist 同步）
-    m_playlistModel = new SongListModel(this);
+    m_playlistModel         = new SongListModel(this);
     m_togetherplaylistModel = new SongListModel(this);
-    m_recentPlaylistModel = new SongListModel(this);
+    m_recentPlaylistModel   = new SongListModel(this);
 
     // 主色调提取模块：extract 异步返回结果，转发到 QML 绑定的 dominantColor 属性
     m_colorExtractor = new DominantColorExtractor(this);
-    connect(m_colorExtractor, &DominantColorExtractor::dominantColorReady,
-            this, [this](const QString &color) {
-        m_dominantColor = color;
-        emit dominantColorChanged();
-    });
+    connect(
+        m_colorExtractor, &DominantColorExtractor::dominantColorReady, this,
+        [this](const QString &color)
+        {
+            m_dominantColor = color;
+            emit dominantColorChanged();
+        }
+    );
 
-    player->setAudioOutput(audioOutput);
-    audioOutput->setVolume(1.0);
+    m_player->setAudioOutput(m_audioOutput);
+    m_audioOutput->setVolume(1.0);
 
     // 跟随系统默认音频输出设备：运行中新接入蓝牙耳机或切换默认播放设备时，自动把音频路由到新设备。
     // 否则 QAudioOutput 会一直绑定启动时捕获的旧设备，必须重启应用才切换。
     // audioOutputsChanged 在「输出设备增删」时触发——新连蓝牙会被识别为新增设备从而触发；
     // 默认设备未变（相同设备）时由下方判等跳过，避免无谓的 sink 重建造成杂音。
     auto *mediaDevices = new QMediaDevices(this);
-    connect(mediaDevices, &QMediaDevices::audioOutputsChanged, this, [this]() {
-        const QAudioDevice def = QMediaDevices::defaultAudioOutput();
-        if (def.isNull() || audioOutput->device() == def)
-            return;
-        audioOutput->setDevice(def);
-    });
+    connect(
+        mediaDevices, &QMediaDevices::audioOutputsChanged, this,
+        [this]()
+        {
+            const QAudioDevice def = QMediaDevices::defaultAudioOutput();
+            if (def.isNull() || m_audioOutput->device() == def)
+                return;
+            m_audioOutput->setDevice(def);
+        }
+    );
 
-    // 音量淡入/淡出：新歌(Stopped→Playing)渐强；暂停/自然结束前渐弱（见 playstop / updatePlaybackProgress）
-    m_prevPlaybackState = player->playbackState();
-    connect(player, &QMediaPlayer::playbackStateChanged, this, [this](QMediaPlayer::PlaybackState state) {
-        if (state == QMediaPlayer::PlayingState && m_prevPlaybackState == QMediaPlayer::StoppedState)
-            fadeInVolume();   // 切歌/首次开播：渐强
-        m_prevPlaybackState = state;
-    });
+    // 音量淡入/淡出：新歌(Stopped->Playing)渐强；暂停/自然结束前渐弱（见 playstop / updatePlaybackProgress）
+    m_prevPlaybackState = m_player->playbackState();
+    connect(
+        m_player, &QMediaPlayer::playbackStateChanged, this,
+        [this](QMediaPlayer::PlaybackState state)
+        {
+            if (state == QMediaPlayer::PlayingState && m_prevPlaybackState == QMediaPlayer::StoppedState)
+                fadeInVolume(); // 切歌/首次开播：渐强
+            m_prevPlaybackState = state;
+        }
+    );
 
     // 延迟到事件循环空闲时加载缓存，避免主线程同步 readAll + JSON 解析阻塞 QML 首屏
     // loadPlaylistFromCache 末尾会 emit playlistUpdated()，QML 绑定会自动刷新
-    QTimer::singleShot(0, this, [this]() {
-        loadPlaylistFromCache();
-        loadRecentFromCache();
-    });
-    //  连接 mediaStatusChanged 信号
-    QObject::connect(player, &QMediaPlayer::mediaStatusChanged, this, [this](QMediaPlayer::MediaStatus status)
-                     {
-        if (status == QMediaPlayer::EndOfMedia)
+    QTimer::singleShot(
+        0, this,
+        [this]()
         {
-            m_isPaused = true;
-            emit isPausedChanged();
-            if (type == LOCAL)
+            loadPlaylistFromCache();
+            loadRecentFromCache();
+        }
+    );
+    //  连接 mediaStatusChanged 信号
+    QObject::connect(
+        m_player, &QMediaPlayer::mediaStatusChanged, this,
+        [this](QMediaPlayer::MediaStatus status)
+        {
+            if (status == QMediaPlayer::EndOfMedia)
             {
-                QTimer::singleShot(200, this, [this]() {
-                    this->playNext();
-                });
+                m_isPaused = true;
+                emit isPausedChanged();
+                if (type == LOCAL)
+                {
+                    QTimer::singleShot(200, this, [this]() { this->playNext(); });
+                }
+            }
+            else if (status == QMediaPlayer::LoadedMedia)
+            {
+                qint64 totalDuration = m_player->duration();
+                m_duration           = formatTime(totalDuration);
+                emit durationChanged();
+                // TOGETHER 模式下，歌曲加载完成后 seek 到目标进度
+                if (type == TOGETHER && m_togetherSeekPercent > 0)
+                {
+                    qint64 targetPos = static_cast<qint64>(m_togetherSeekPercent * totalDuration);
+                    m_player->setPosition(targetPos);
+                    m_togetherSeekPercent = 0;
+                }
             }
         }
-        else if (status == QMediaPlayer::LoadedMedia)
-        {
-            qint64 totalDuration = player->duration();
-            m_duration = formatTime(totalDuration);
-            emit durationChanged();
-            // TOGETHER 模式下，歌曲加载完成后 seek 到目标进度
-            if (type == TOGETHER && m_togetherSeekPercent > 0)
-            {
-                qint64 targetPos = static_cast<qint64>(m_togetherSeekPercent * totalDuration);
-                player->setPosition(targetPos);
-                m_togetherSeekPercent = 0;
-            }
-        } });
+    );
     // 连接播放进度变化信号
-    connect(player, &QMediaPlayer::positionChanged, this, &PlaylistManager::updatePlaybackProgress);
-    connect(player, &QMediaPlayer::errorOccurred, this, &PlaylistManager::handlePlayerError);
-    connect(&lyricParser, &LyricParser::parselyricsuc, this, &PlaylistManager::parlyricsuc);
+    connect(m_player, &QMediaPlayer::positionChanged, this, &PlaylistManager::updatePlaybackProgress);
+    connect(m_player, &QMediaPlayer::errorOccurred, this, &PlaylistManager::handlePlayerError);
+    connect(&m_lyricParser, &LyricParser::parselyricsuc, this, &PlaylistManager::parlyricsuc);
 }
 
-// 静态：从 QVariantMap 构造 SongInfo。统一字段映射（hash→songhash, cover→union_cover 等）
+// 静态：从 QVariantMap 构造 SongInfo。统一字段映射（hash->songhash, cover->union_cover 等）
 SongInfo PlaylistManager::songFromMap(const QVariantMap &map)
 {
     SongInfo song;
@@ -113,16 +131,20 @@ void PlaylistManager::addSong(const QVariantMap &songMap)
 
 void PlaylistManager::addSongNext(const SongInfo &song)
 {
-    if (type != LOCAL) return;
+    if (type != LOCAL)
+        return;
     // 若这首歌就是当前正在播放的，无需操作（它已经是"当前"）
-    if (m_currentIndex >= 0 && m_currentIndex < m_playlist.size()
-        && m_playlist[m_currentIndex].songhash == song.songhash) {
+    if (m_currentIndex >= 0 && m_currentIndex < m_playlist.size() &&
+        m_playlist[m_currentIndex].songhash == song.songhash)
+    {
         return;
     }
     // 去重：若已在队列其它位置，先移除，再重新插到「下一首」位置，
     // 确保它真的成为下一首（而非保留在原位置）
-    for (int i = 0; i < m_playlist.size(); i++) {
-        if (m_playlist[i].songhash == song.songhash) {
+    for (int i = 0; i < m_playlist.size(); i++)
+    {
+        if (m_playlist[i].songhash == song.songhash)
+        {
             m_playlist.removeAt(i);
             break;
         }
@@ -135,7 +157,8 @@ void PlaylistManager::addSongNext(const SongInfo &song)
     else
         m_playlist.insert(insertIndex, copy);
     savePlaylistToCache();
-    m_playlistModel->syncFromList(m_playlist); emit playlistUpdated();
+    m_playlistModel->syncFromList(m_playlist);
+    emit playlistUpdated();
 }
 
 void PlaylistManager::addSongNext(const QVariantMap &songMap)
@@ -147,8 +170,10 @@ void PlaylistManager::removeSong(int index)
     if (index >= 0 && index < (*m_curplaylist).size())
     {
         (*m_curplaylist).removeAt(index);
-        if (type == LOCAL) savePlaylistToCache();
-        m_playlistModel->syncFromList(m_playlist); emit playlistUpdated();
+        if (type == LOCAL)
+            savePlaylistToCache();
+        m_playlistModel->syncFromList(m_playlist);
+        emit playlistUpdated();
         if (index == m_currentIndex)
         {
             m_currentIndex = -1;
@@ -162,11 +187,13 @@ void PlaylistManager::clearPlaylist()
     (*m_curplaylist).clear();
     m_currentIndex = -1;
     m_lazySourceId.clear();
-    m_lazyTotal = 0;
-    m_lazyPage = 0;
+    m_lazyTotal    = 0;
+    m_lazyPage     = 0;
     m_lazyFetching = false;
-    if (type == LOCAL) savePlaylistToCache();
-    m_playlistModel->syncFromList(m_playlist); emit playlistUpdated();
+    if (type == LOCAL)
+        savePlaylistToCache();
+    m_playlistModel->syncFromList(m_playlist);
+    emit playlistUpdated();
     emit currentIndexChanged(-1);
 }
 
@@ -188,11 +215,14 @@ SongListModel *PlaylistManager::recentPlaylistModel()
 
 void PlaylistManager::addToRecent(const SongInfo &song)
 {
-    if (song.songhash.isEmpty()) return;
+    if (song.songhash.isEmpty())
+        return;
 
     // 如果已存在则先移除
-    for (int i = 0; i < m_recentPlaylist.size(); ++i) {
-        if (m_recentPlaylist[i].songhash == song.songhash) {
+    for (int i = 0; i < m_recentPlaylist.size(); ++i)
+    {
+        if (m_recentPlaylist[i].songhash == song.songhash)
+        {
             m_recentPlaylist.removeAt(i);
             break;
         }
@@ -202,12 +232,14 @@ void PlaylistManager::addToRecent(const SongInfo &song)
     m_recentPlaylist.prepend(song);
 
     // 超出上限则移除最旧的
-    while (m_recentPlaylist.size() > MAX_RECENT_SIZE) {
+    while (m_recentPlaylist.size() > MAX_RECENT_SIZE)
+    {
         m_recentPlaylist.removeLast();
     }
 
     saveRecentToCache();
-    m_recentPlaylistModel->syncFromList(m_recentPlaylist); emit recentPlaylistUpdated();
+    m_recentPlaylistModel->syncFromList(m_recentPlaylist);
+    emit recentPlaylistUpdated();
 }
 
 void PlaylistManager::saveRecentToCache()
@@ -236,17 +268,17 @@ int PlaylistManager::is_have_cache(const SongInfo &song, const int index)
         qDebug() << "缓存文件已存在，直接播放:" << cacheFilePath;
 
         // 播放本地缓存文件
-        player->stop();
-        player->setSource(QUrl::fromLocalFile(cacheFilePath));
-        player->play();
-        m_isPaused = false;
+        m_player->stop();
+        m_player->setSource(QUrl::fromLocalFile(cacheFilePath));
+        m_player->play();
+        m_isPaused     = false;
         m_currentIndex = index;
         // 提取专辑封面主色调
         m_colorExtractor->extract(song.union_cover);
         // 重置进度：缓存命中的新歌也从 0 开始（与 startPlayback 一致）。
         // 上一首自然播完时 m_percent 冻在 ~1.0（updatePlaybackProgress 在 EndOfMedia 跳过更新），
         // 不重置的话媒体控制栏（currentSongChanged 触发 getpercent）会把本曲显示在末尾。
-        m_percent = 0.0f;
+        m_percent    = 0.0f;
         m_percentstr = "00:00";
         emit percentChanged();
         emit currentIndexChanged(index);
@@ -261,12 +293,12 @@ int PlaylistManager::is_have_cache(const SongInfo &song, const int index)
 
 QVector<LyricLine> PlaylistManager::LyricLine_get() const
 {
-    return lyricParser.getLyrics();
+    return m_lyricParser.getLyrics();
 }
 
 qint64 PlaylistManager::lyricsindexget()
 {
-    return lyricParser.getcurindex();
+    return m_lyricParser.getcurindex();
 }
 
 // 根据index播放
@@ -276,55 +308,71 @@ void PlaylistManager::loadSongPaused(int index)
         return;
 
     const SongInfo &song = (*m_curplaylist)[index];
-    m_currentIndex = index;
+    m_currentIndex       = index;
     emit currentIndexChanged(index);
 
     // 加载歌词
     if (song.lyric.isEmpty())
     {
         QString cachedLyric = loadLyricFromCache(song.songhash);
-        if (!cachedLyric.isEmpty()) {
+        if (!cachedLyric.isEmpty())
+        {
             (*m_curplaylist)[index].lyric = cachedLyric;
-            lyricParser.parseKRCLyrics(cachedLyric);
-        } else {
-            fetchLyricData(song.songhash, [this, index](const QString &lyric) {
-                if (!lyric.isEmpty()) {
-                    (*m_curplaylist)[index].lyric = lyric;
-                    saveLyricToCache((*m_curplaylist)[index].songhash, lyric);
-                    lyricParser.parseKRCLyrics(lyric);
-                }
-            });
+            m_lyricParser.parseKRCLyrics(cachedLyric);
         }
-    } else {
-        lyricParser.parseKRCLyrics(song.lyric);
+        else
+        {
+            fetchLyricData(
+                song.songhash,
+                [this, index](const QString &lyric)
+                {
+                    if (!lyric.isEmpty())
+                    {
+                        (*m_curplaylist)[index].lyric = lyric;
+                        saveLyricToCache((*m_curplaylist)[index].songhash, lyric);
+                        m_lyricParser.parseKRCLyrics(lyric);
+                    }
+                }
+            );
+        }
+    }
+    else
+    {
+        m_lyricParser.parseKRCLyrics(song.lyric);
     }
 
     // 加载音频到播放器，不播放
-    player->stop();
-    player->setSource(QUrl());
+    m_player->stop();
+    m_player->setSource(QUrl());
 
     PlaylistCacheStore::ensureCacheDir();
     QString cacheFilePath = getCacheDir() + "/" + song.title + "-" + song.singername + ".mp3";
 
     if (QFile::exists(cacheFilePath))
     {
-        player->setSource(QUrl::fromLocalFile(cacheFilePath));
+        m_player->setSource(QUrl::fromLocalFile(cacheFilePath));
     }
     else if (!song.url.isEmpty())
     {
-        player->setSource(QUrl(song.url));
+        m_player->setSource(QUrl(song.url));
     }
     else
     {
         // 异步获取 URL 后加载
-        fetchSongUrl(song.songhash, [this, index](const QString &url) {
-            if (!url.isEmpty()) {
-                (*m_curplaylist)[index].url = url;
-                if (m_currentIndex == index) {
-                    player->setSource(QUrl(url));
+        fetchSongUrl(
+            song.songhash,
+            [this, index](const QString &url)
+            {
+                if (!url.isEmpty())
+                {
+                    (*m_curplaylist)[index].url = url;
+                    if (m_currentIndex == index)
+                    {
+                        m_player->setSource(QUrl(url));
+                    }
                 }
             }
-        });
+        );
     }
 
     m_colorExtractor->extract(song.union_cover);
@@ -349,46 +397,58 @@ void PlaylistManager::playSongbyindex(int index)
             }
             else
             {
-                fetchSongUrl((*m_curplaylist)[index].songhash, [this, index](const QString &url)
-                             {
-                                 if (!url.isEmpty())
-                                 {
-                                     (*m_curplaylist)[index].url = url;
-                                     m_currentIndex = index;
-                                     emit currentIndexChanged(index);
-                                     startPlayback((*m_curplaylist)[index]);
-                                 } else
-                                 {
-                                     qWarning() << "获取播放 URL 失败";
-                                 } });
+                fetchSongUrl(
+                    (*m_curplaylist)[index].songhash,
+                    [this, index](const QString &url)
+                    {
+                        if (!url.isEmpty())
+                        {
+                            (*m_curplaylist)[index].url = url;
+                            m_currentIndex              = index;
+                            emit currentIndexChanged(index);
+                            startPlayback((*m_curplaylist)[index]);
+                        }
+                        else
+                        {
+                            qWarning() << "获取播放 URL 失败";
+                        }
+                    }
+                );
             }
         }
         if ((*m_curplaylist)[index].lyric == "")
         {
             // 先尝试从本地缓存加载歌词
             QString cachedLyric = loadLyricFromCache((*m_curplaylist)[index].songhash);
-            if (!cachedLyric.isEmpty()) {
+            if (!cachedLyric.isEmpty())
+            {
                 (*m_curplaylist)[index].lyric = cachedLyric;
-                lyricParser.parseKRCLyrics(cachedLyric);
+                m_lyricParser.parseKRCLyrics(cachedLyric);
                 qDebug() << "从本地缓存加载歌词";
-            } else {
-                fetchLyricData((*m_curplaylist)[index].songhash, [this, index](const QString &lyric)
-                               {
-                                   if (!lyric.isEmpty())
-                                   {
-                                       (*m_curplaylist)[index].lyric = lyric;
-                                       saveLyricToCache((*m_curplaylist)[index].songhash, lyric);
-                                       lyricParser.parseKRCLyrics(lyric);
-                                   }
-                                   else
-                                   {
-                                       qWarning() << "获取lyric失败";
-                                   } });
+            }
+            else
+            {
+                fetchLyricData(
+                    (*m_curplaylist)[index].songhash,
+                    [this, index](const QString &lyric)
+                    {
+                        if (!lyric.isEmpty())
+                        {
+                            (*m_curplaylist)[index].lyric = lyric;
+                            saveLyricToCache((*m_curplaylist)[index].songhash, lyric);
+                            m_lyricParser.parseKRCLyrics(lyric);
+                        }
+                        else
+                        {
+                            qWarning() << "获取lyric失败";
+                        }
+                    }
+                );
             }
         }
         else
         {
-            lyricParser.parseKRCLyrics((*m_curplaylist)[index].lyric);
+            m_lyricParser.parseKRCLyrics((*m_curplaylist)[index].lyric);
             qDebug() << "已有歌词";
         }
         // 懒加载模式：播放位置接近队列末尾时预加载下一批
@@ -400,13 +460,15 @@ void PlaylistManager::playSongbyindex(int index)
     }
 }
 // 根据hash值播放
-void PlaylistManager::playPlaylistFromSource(const QString &sourceId, int totalCount,
-                                             int startIndexInSource, const QVariantList &firstBatch)
+void PlaylistManager::playPlaylistFromSource(
+    const QString &sourceId, int totalCount, int startIndexInSource, const QVariantList &firstBatch
+)
 {
-    if (type != LOCAL) return;   // 一起听模式不处理
+    if (type != LOCAL)
+        return; // 一起听模式不处理
     m_lazySourceId = sourceId;
-    m_lazyTotal = totalCount;
-    m_lazyPage = 1;              // 首批已由 QML 提供，视为第 1 页已加载
+    m_lazyTotal    = totalCount;
+    m_lazyPage     = 1; // 首批已由 QML 提供，视为第 1 页已加载
     m_lazyFetching = false;
 
     // 清空队列，用首批数据立即建队（无网络延迟）
@@ -416,54 +478,67 @@ void PlaylistManager::playPlaylistFromSource(const QString &sourceId, int totalC
         m_playlist.append(s);
 
     savePlaylistToCache();
-    m_playlistModel->syncFromList(m_playlist); emit playlistUpdated();
+    m_playlistModel->syncFromList(m_playlist);
+    emit playlistUpdated();
 
     // 起始下标在首批内的相对位置
     int localIndex = startIndexInSource;
-    if (localIndex >= m_playlist.size()) localIndex = m_playlist.size() - 1;
-    if (localIndex < 0) localIndex = 0;
+    if (localIndex >= m_playlist.size())
+        localIndex = m_playlist.size() - 1;
+    if (localIndex < 0)
+        localIndex = 0;
     playSongbyindex(localIndex);
 }
 
 void PlaylistManager::tryLazyLoadMore()
 {
     // 仅懒加载模式；非一起听；未在拉取；源还有更多；距末尾 ≤ 5（播放预取）
-    if (m_lazySourceId.isEmpty() || type != LOCAL || m_lazyFetching) return;
-    if (m_lazyPage * m_lazyPageSize >= m_lazyTotal) return;   // 源已全加载
-    if (m_playlist.size() - m_currentIndex > 5) return;       // 余量充足
+    if (m_lazySourceId.isEmpty() || type != LOCAL || m_lazyFetching)
+        return;
+    if (m_lazyPage * m_lazyPageSize >= m_lazyTotal)
+        return; // 源已全加载
+    if (m_playlist.size() - m_currentIndex > 5)
+        return; // 余量充足
     fetchNextSourcePage();
 }
 
 void PlaylistManager::requestMoreSourceTracks()
 {
     // 弹窗滚动按需加载：与 tryLazyLoadMore 共用前置守卫，但不受「距末尾 ≤ 5」限制。
-    if (m_lazySourceId.isEmpty() || type != LOCAL || m_lazyFetching) return;
-    if (m_lazyPage * m_lazyPageSize >= m_lazyTotal) return;   // 源已全加载
+    if (m_lazySourceId.isEmpty() || type != LOCAL || m_lazyFetching)
+        return;
+    if (m_lazyPage * m_lazyPageSize >= m_lazyTotal)
+        return; // 源已全加载
     fetchNextSourcePage();
 }
 
 void PlaylistManager::fetchNextSourcePage()
 {
     m_lazyFetching = true;
-    int nextPage = m_lazyPage + 1;
-    if (m_recommendation) {
+    int nextPage   = m_lazyPage + 1;
+    if (m_recommendation)
+    {
         m_recommendation->fetchPlaylistTracksPage(
             m_lazySourceId, nextPage, m_lazyPageSize,
-            [this](const QVariantList &items) {
-                m_lazyFetching = false;
+            [this](const QVariantList &items)
+            {
+                m_lazyFetching        = false;
                 QList<SongInfo> songs = convertToSongInfoList(items);
                 for (const SongInfo &s : songs)
                     m_playlist.append(s);
                 m_lazyPage += 1;
                 savePlaylistToCache();
-                m_playlistModel->syncFromList(m_playlist); emit playlistUpdated();
+                m_playlistModel->syncFromList(m_playlist);
+                emit playlistUpdated();
                 // playNext 在已加载末尾触发拉取时，下一批到位后续播下一首
-                if (m_pendingNextAfterLoad) {
+                if (m_pendingNextAfterLoad)
+                {
                     m_pendingNextAfterLoad = false;
                     if (m_currentIndex + 1 < m_playlist.size())
                         playSongbyindex(m_currentIndex + 1);
                 }
-            });
+            }
+        );
     }
 }
 // 根据hash值播放
@@ -487,47 +562,59 @@ void PlaylistManager::playSongbyhasg(const QString &songhash)
                 }
                 else
                 {
-                    fetchSongUrl(songhash, [this, index](const QString &url)
-                                 {
-                                     if (!url.isEmpty())
-                                     {
-                                         (*m_curplaylist)[index].url = url;
-                                         m_currentIndex = index;
-                                         emit currentIndexChanged(index);
-                                         startPlayback((*m_curplaylist)[index]);
-                                     } else
-                                     {
-                                         qWarning() << "获取播放 URL 失败";
-                                     } });
+                    fetchSongUrl(
+                        songhash,
+                        [this, index](const QString &url)
+                        {
+                            if (!url.isEmpty())
+                            {
+                                (*m_curplaylist)[index].url = url;
+                                m_currentIndex              = index;
+                                emit currentIndexChanged(index);
+                                startPlayback((*m_curplaylist)[index]);
+                            }
+                            else
+                            {
+                                qWarning() << "获取播放 URL 失败";
+                            }
+                        }
+                    );
                 }
             }
             if ((*m_curplaylist)[index].lyric == "")
             {
                 // 先尝试从本地缓存加载歌词
                 QString cachedLyric = loadLyricFromCache(songhash);
-                if (!cachedLyric.isEmpty()) {
+                if (!cachedLyric.isEmpty())
+                {
                     (*m_curplaylist)[index].lyric = cachedLyric;
-                    lyricParser.parseKRCLyrics(cachedLyric);
+                    m_lyricParser.parseKRCLyrics(cachedLyric);
                     qDebug() << "从本地缓存加载歌词";
-                } else {
-                    fetchLyricData(songhash, [this, index, songhash](const QString &lyric)
-                                   {
-                                       if (!lyric.isEmpty())
-                                       {
-                                           (*m_curplaylist)[index].lyric = lyric;
-                                           saveLyricToCache(songhash, lyric);
-                                           lyricParser.parseKRCLyrics(lyric);
-                                       }
-                                       else
-                                       {
-                                           qWarning() << "获取lyric失败";
-                                       } });
+                }
+                else
+                {
+                    fetchLyricData(
+                        songhash,
+                        [this, index, songhash](const QString &lyric)
+                        {
+                            if (!lyric.isEmpty())
+                            {
+                                (*m_curplaylist)[index].lyric = lyric;
+                                saveLyricToCache(songhash, lyric);
+                                m_lyricParser.parseKRCLyrics(lyric);
+                            }
+                            else
+                            {
+                                qWarning() << "获取lyric失败";
+                            }
+                        }
+                    );
                 }
             }
             else
             {
                 qDebug() << "已有歌词";
-                lyricParser.parseKRCLyrics((*m_curplaylist)[index].lyric);
+                m_lyricParser.parseKRCLyrics((*m_curplaylist)[index].lyric);
             }
             return;
         }
@@ -544,7 +631,8 @@ void PlaylistManager::playNext()
     {
         // 已到已加载队列末尾，但源歌单还有更多：拉取下一批，到位后续播下一首（而非回到第一首）
         m_pendingNextAfterLoad = true;
-        if (!m_lazyFetching) fetchNextSourcePage();
+        if (!m_lazyFetching)
+            fetchNextSourcePage();
     }
     else
     {
@@ -566,27 +654,31 @@ void PlaylistManager::playPrevious()
 
 void PlaylistManager::playstop()
 {
-    QMediaPlayer::PlaybackState state = player->playbackState();
+    QMediaPlayer::PlaybackState state = m_player->playbackState();
 
     if (state == QMediaPlayer::PlayingState)
     {
         // 暂停前 1.5s 渐弱，再真正暂停（图标立即切换为暂停）
         m_isPaused = true;
         emit isPausedChanged();
-        fadeOutVolume(1000, [this]() {
-            if (player->playbackState() == QMediaPlayer::PlayingState)
-                player->pause();
-        });
+        fadeOutVolume(
+            1000,
+            [this]()
+            {
+                if (m_player->playbackState() == QMediaPlayer::PlayingState)
+                    m_player->pause();
+            }
+        );
     }
     else
     {
         // 如果没有设置有效 URL，不允许播放
-        if (player->source().isValid())
+        if (m_player->source().isValid())
         {
-            player->play();
+            m_player->play();
             m_isPaused = false;
             emit isPausedChanged();
-            fadeInVolume();   // 恢复时渐强
+            fadeInVolume(); // 恢复时渐强
         }
         else
         {
@@ -598,10 +690,13 @@ void PlaylistManager::playstop()
 // 插到当前播放歌曲的下一首并立即播放这首
 void PlaylistManager::playNextAndPlay(const SongInfo &song)
 {
-    if (type != LOCAL) return;   // 一起听模式不处理
+    if (type != LOCAL)
+        return; // 一起听模式不处理
     // 去重：若已在队列则直接切过去播
-    for (int i = 0; i < m_playlist.size(); i++) {
-        if (m_playlist[i].songhash == song.songhash) {
+    for (int i = 0; i < m_playlist.size(); i++)
+    {
+        if (m_playlist[i].songhash == song.songhash)
+        {
             playSongbyindex(i);
             return;
         }
@@ -615,7 +710,8 @@ void PlaylistManager::playNextAndPlay(const SongInfo &song)
     else
         m_playlist.insert(insertIndex, copy);
     savePlaylistToCache();
-    m_playlistModel->syncFromList(m_playlist); emit playlistUpdated();
+    m_playlistModel->syncFromList(m_playlist);
+    emit playlistUpdated();
     // 立即播放刚插入的这首
     playSongbyindex(insertIndex);
 }
@@ -629,37 +725,44 @@ void PlaylistManager::playNextAndPlay(const QVariantMap &songMap)
 void PlaylistManager::doAddSong(const SongInfo &song, bool /*toHead*/, bool /*playNow*/)
 {
     QList<SongInfo> &list = *m_curplaylist;
-    for (int index = 0; index < list.size(); index++) {
-        if (list[index].songhash == song.songhash) return;
+    for (int index = 0; index < list.size(); index++)
+    {
+        if (list[index].songhash == song.songhash)
+            return;
     }
     SongInfo copy = song;
     copy.url.clear();
     copy.lyric.clear();
     list.append(copy);
     showplaylist();
-    if (type == LOCAL) {
+    if (type == LOCAL)
+    {
         savePlaylistToCache();
-        m_playlistModel->syncFromList(m_playlist); emit playlistUpdated();
-    } else if (type == TOGETHER) {
-        m_togetherplaylistModel->syncFromList(m_togetherplaylist); emit togetherplaylistUpdated();
+        m_playlistModel->syncFromList(m_playlist);
+        emit playlistUpdated();
+    }
+    else if (type == TOGETHER)
+    {
+        m_togetherplaylistModel->syncFromList(m_togetherplaylist);
+        emit togetherplaylistUpdated();
     }
 }
 
 void PlaylistManager::setposistion(float positionvalue)
 {
-    qint64 position = positionvalue * player->duration();
-    QMediaPlayer::PlaybackState state = player->playbackState();
+    qint64 position                   = positionvalue * m_player->duration();
+    QMediaPlayer::PlaybackState state = m_player->playbackState();
     if (state == QMediaPlayer::PlayingState)
     {
-        player->setPosition(position);
+        m_player->setPosition(position);
     }
-    else if (player->source().isValid())
+    else if (m_player->source().isValid())
     {
-        player->setPosition(position);
-        player->play();
+        m_player->setPosition(position);
+        m_player->play();
         m_isPaused = false;
         emit isPausedChanged();
-        fadeInVolume();   // 暂停/停止态点进度条恢复播放：音量已被暂停淡出降到 0，需淡入恢复
+        fadeInVolume(); // 暂停/停止态点进度条恢复播放：音量已被暂停淡出降到 0，需淡入恢复
     }
     else
     {
@@ -673,15 +776,12 @@ QList<SongInfo> PlaylistManager::convertToSongInfoList(const QVariantList &varia
     for (const QVariant &item : variantList)
     {
         QVariantMap map = item.toMap();
-        result.append(SongInfo{
-            map["songname"].toString(),
-            map["songhash"].toString(),
-            "",
-            map["singername"].toString(),
-            map["union_cover"].toString(),
-            map["album_name"].toString(),
-            map["duration"].toString(),
-            ""});
+        result.append(
+            SongInfo{
+                map["songname"].toString(), map["songhash"].toString(), "", map["singername"].toString(),
+                map["union_cover"].toString(), map["album_name"].toString(), map["duration"].toString(), ""
+            }
+        );
     }
     return result;
 }
@@ -743,7 +843,7 @@ QString PlaylistManager::durationstr()
 
 qint64 PlaylistManager::playerDuration() const
 {
-    return player->duration();
+    return m_player->duration();
 }
 
 QList<SongInfo> PlaylistManager::playlist()
@@ -779,7 +879,8 @@ int PlaylistManager::playlistcount() const
 int PlaylistManager::playlistTotalCount() const
 {
     // 懒加载模式返回源总数，否则返回队列实际大小
-    if (!m_lazySourceId.isEmpty()) return m_lazyTotal;
+    if (!m_lazySourceId.isEmpty())
+        return m_lazyTotal;
     return m_playlist.size();
 }
 
@@ -808,7 +909,7 @@ int PlaylistManager::lyricCharCountget()
     return m_lyricCharCount;
 }
 
-playlist_type PlaylistManager::getplaylist_type() const
+PlaylistType PlaylistManager::getplaylist_type() const
 {
     return type;
 }
@@ -823,7 +924,7 @@ bool PlaylistManager::isBuffering() const
     return m_isBuffering;
 }
 
-void PlaylistManager::changeplaylisttype(enum playlist_type changetype)
+void PlaylistManager::changeplaylisttype(enum PlaylistType changetype)
 {
     if (changetype == type)
     {
@@ -832,13 +933,13 @@ void PlaylistManager::changeplaylisttype(enum playlist_type changetype)
     if (changetype == TOGETHER)
     {
         // 切到一起听前，暂停并保存本地播放状态
-        player->pause();
+        m_player->pause();
         m_isPaused = true;
         emit isPausedChanged();
-        m_localIndex = m_currentIndex;
+        m_localIndex   = m_currentIndex;
         m_localPercent = m_percent;
-        type = TOGETHER;
-        m_curplaylist = &m_togetherplaylist;
+        type           = TOGETHER;
+        m_curplaylist  = &m_togetherplaylist;
         m_currentIndex = -1;
         emit currentIndexChanged(-1);
     }
@@ -854,7 +955,8 @@ void PlaylistManager::changeplaylisttype(enum playlist_type changetype)
             loadSongPaused(m_localIndex);
         }
     }
-    m_playlistModel->syncFromList(m_playlist); emit playlistUpdated();
+    m_playlistModel->syncFromList(m_playlist);
+    emit playlistUpdated();
     emit playlist_typeChanged();
 }
 
@@ -864,108 +966,140 @@ float PlaylistManager::getpercent() const
 }
 
 // 边下边播共享逻辑（startPlayback 与 playTogetherSongFromServer 共用）
-void PlaylistManager::downloadAndStream(const QString &songUrl, const QString &cacheFilePath,
-                                        const QString &coverUrlForColor, double seekPercent,
-                                        std::function<void()> onStreamStart)
+void PlaylistManager::downloadAndStream(
+    const QString &songUrl, const QString &cacheFilePath, const QString &coverUrlForColor, double seekPercent,
+    std::function<void()> onStreamStart
+)
 {
-    const qint64 startThreshold = 500 * 1024;  // 500KB 后开始播放
+    const qint64 startThreshold = 500 * 1024; // 500KB 后开始播放
 
     QFile *tempFile = new QFile(cacheFilePath, this);
-    if (!tempFile->open(QIODevice::WriteOnly)) {
+    if (!tempFile->open(QIODevice::WriteOnly))
+    {
         qCritical() << "Cannot open cache file:" << cacheFilePath;
         return;
     }
 
     QNetworkAccessManager *mgr = new QNetworkAccessManager(this);
-    QNetworkReply *reply = mgr->get(QNetworkRequest(QUrl(songUrl)));
+    QNetworkReply *reply       = mgr->get(QNetworkRequest(QUrl(songUrl)));
 
-    m_downloadProgress = 0.0;
-    m_downloadedBytes = 0;
+    m_downloadProgress   = 0.0;
+    m_downloadedBytes    = 0;
     m_totalDownloadBytes = reply->header(QNetworkRequest::ContentLengthHeader).toLongLong();
     emit downloadProgressChanged();
 
-    QObject::connect(reply, &QNetworkReply::readyRead, this, [=]() {
-        QByteArray chunk = reply->readAll();
-        if (!chunk.isEmpty()) {
-            tempFile->write(chunk);
+    QObject::connect(
+        reply, &QNetworkReply::readyRead, this,
+        [=]()
+        {
+            QByteArray chunk = reply->readAll();
+            if (!chunk.isEmpty())
+            {
+                tempFile->write(chunk);
+                tempFile->flush();
+                m_downloadedBytes += chunk.size();
+                if (m_totalDownloadBytes > 0)
+                {
+                    m_downloadProgress = static_cast<qreal>(m_downloadedBytes) / m_totalDownloadBytes;
+                    emit downloadProgressChanged();
+                }
+            }
+
+            // 达到阈值且尚未开始播放 -> 设置源并播放
+            QFileInfo fi(cacheFilePath);
+            if (fi.size() >= startThreshold && m_player->source().isEmpty())
+            {
+                m_player->setSource(QUrl::fromLocalFile(cacheFilePath));
+                // seekPercent > 0：等 LoadedMedia 后 seek 再播放；否则直接播放
+                if (seekPercent > 0)
+                {
+                    auto conn = std::make_shared<QMetaObject::Connection>();
+                    *conn     = connect(
+                        m_player, &QMediaPlayer::mediaStatusChanged, this,
+                        [this, seekPercent, conn](QMediaPlayer::MediaStatus status)
+                        {
+                            if (status == QMediaPlayer::LoadedMedia)
+                            {
+                                seekToPercent(seekPercent);
+                                m_player->play();
+                                m_isPaused = false;
+                                emit isPausedChanged();
+                                QObject::disconnect(*conn);
+                            }
+                        }
+                    );
+                }
+                else
+                {
+                    m_player->play();
+                    m_isPaused = false;
+                    emit isPausedChanged();
+                }
+                if (onStreamStart)
+                    onStreamStart();
+            }
+        }
+    );
+
+    QObject::connect(
+        reply, &QNetworkReply::finished, this,
+        [=]()
+        {
             tempFile->flush();
-            m_downloadedBytes += chunk.size();
-            if (m_totalDownloadBytes > 0) {
-                m_downloadProgress = static_cast<qreal>(m_downloadedBytes) / m_totalDownloadBytes;
-                emit downloadProgressChanged();
+            tempFile->close();
+            m_downloadProgress = 1.0;
+            m_downloadedBytes  = m_totalDownloadBytes;
+            emit downloadProgressChanged();
+            if (m_isBuffering)
+            {
+                m_isBuffering = false;
+                m_player->play();
+                emit isBufferingChanged();
             }
-        }
+            qDebug() << "下载完成:" << cacheFilePath;
 
-        // 达到阈值且尚未开始播放 → 设置源并播放
-        QFileInfo fi(cacheFilePath);
-        if (fi.size() >= startThreshold && player->source().isEmpty()) {
-            player->setSource(QUrl::fromLocalFile(cacheFilePath));
-            // seekPercent > 0：等 LoadedMedia 后 seek 再播放；否则直接播放
-            if (seekPercent > 0) {
-                auto conn = std::make_shared<QMetaObject::Connection>();
-                *conn = connect(player, &QMediaPlayer::mediaStatusChanged, this,
-                    [this, seekPercent, conn](QMediaPlayer::MediaStatus status) {
-                        if (status == QMediaPlayer::LoadedMedia) {
-                            seekToPercent(seekPercent);
-                            player->play();
-                            m_isPaused = false;
-                            emit isPausedChanged();
-                            QObject::disconnect(*conn);
+            // 文件太小未触发阈值时，手动设置源并播放（一起听场景需要）
+            if (m_player->source().isEmpty() && QFile::exists(cacheFilePath))
+            {
+                m_player->setSource(QUrl::fromLocalFile(cacheFilePath));
+                if (seekPercent > 0)
+                {
+                    auto conn = std::make_shared<QMetaObject::Connection>();
+                    *conn     = connect(
+                        m_player, &QMediaPlayer::mediaStatusChanged, this,
+                        [this, seekPercent, conn](QMediaPlayer::MediaStatus status)
+                        {
+                            if (status == QMediaPlayer::LoadedMedia)
+                            {
+                                seekToPercent(seekPercent);
+                                m_player->play();
+                                m_isPaused = false;
+                                emit isPausedChanged();
+                                QObject::disconnect(*conn);
+                            }
                         }
-                    });
-            } else {
-                player->play();
-                m_isPaused = false;
-                emit isPausedChanged();
+                    );
+                }
+                else
+                {
+                    m_player->play();
+                    m_isPaused = false;
+                    emit isPausedChanged();
+                }
+                if (onStreamStart)
+                    onStreamStart();
             }
-            if (onStreamStart) onStreamStart();
-        }
-    });
 
-    QObject::connect(reply, &QNetworkReply::finished, this, [=]() {
-        tempFile->flush();
-        tempFile->close();
-        m_downloadProgress = 1.0;
-        m_downloadedBytes = m_totalDownloadBytes;
-        emit downloadProgressChanged();
-        if (m_isBuffering) {
-            m_isBuffering = false;
-            player->play();
-            emit isBufferingChanged();
+            // 释放本次下载资源（避免累积泄漏）
+            reply->deleteLater();
+            mgr->deleteLater();
+            tempFile->deleteLater();
         }
-        qDebug() << "下载完成:" << cacheFilePath;
-
-        // 文件太小未触发阈值时，手动设置源并播放（一起听场景需要）
-        if (player->source().isEmpty() && QFile::exists(cacheFilePath)) {
-            player->setSource(QUrl::fromLocalFile(cacheFilePath));
-            if (seekPercent > 0) {
-                auto conn = std::make_shared<QMetaObject::Connection>();
-                *conn = connect(player, &QMediaPlayer::mediaStatusChanged, this,
-                    [this, seekPercent, conn](QMediaPlayer::MediaStatus status) {
-                        if (status == QMediaPlayer::LoadedMedia) {
-                            seekToPercent(seekPercent);
-                            player->play();
-                            m_isPaused = false;
-                            emit isPausedChanged();
-                            QObject::disconnect(*conn);
-                        }
-                    });
-            } else {
-                player->play();
-                m_isPaused = false;
-                emit isPausedChanged();
-            }
-            if (onStreamStart) onStreamStart();
-        }
-
-        // 释放本次下载资源（避免累积泄漏）
-        reply->deleteLater();
-        mgr->deleteLater();
-        tempFile->deleteLater();
-    });
+    );
 
     // 颜色提取：本地播放路径需要，一起听路径 coverUrlForColor 传空跳过
-    if (!coverUrlForColor.isEmpty()) {
+    if (!coverUrlForColor.isEmpty())
+    {
         m_colorExtractor->extract(coverUrlForColor);
     }
 }
@@ -976,20 +1110,20 @@ void PlaylistManager::startPlayback(const SongInfo &song)
     addToRecent(song);
 
     // 停止播放器，防止文件句柄未释放
-    player->stop();
-    player->setSource(QUrl());
+    m_player->stop();
+    m_player->setSource(QUrl());
 
     // 重置下载状态
-    m_downloadProgress = 1.0;
-    m_isBuffering = false;
-    m_downloadedBytes = 0;
+    m_downloadProgress   = 1.0;
+    m_isBuffering        = false;
+    m_downloadedBytes    = 0;
     m_totalDownloadBytes = 0;
     emit downloadProgressChanged();
     emit isBufferingChanged();
 
     // 重置进度：新歌从 0 开始。避免上一首自然播完时的 ~1.0 残留，
     // 导致媒体控制栏(currentSongChanged 触发)把下一首进度显示在末尾。
-    m_percent = 0.0f;
+    m_percent    = 0.0f;
     m_percentstr = "00:00";
     emit percentChanged();
 
@@ -1001,11 +1135,12 @@ void PlaylistManager::startPlayback(const SongInfo &song)
     QString cacheFilePath = getCacheDir() + "/" + song.title + "-" + song.singername + ".mp3";
 
     // 本地缓存命中：直接播放
-    if (QFile::exists(cacheFilePath)) {
+    if (QFile::exists(cacheFilePath))
+    {
         qDebug() << "缓存文件已存在，直接播放:" << cacheFilePath;
-        player->stop();
-        player->setSource(QUrl::fromLocalFile(cacheFilePath));
-        player->play();
+        m_player->stop();
+        m_player->setSource(QUrl::fromLocalFile(cacheFilePath));
+        m_player->play();
         m_isPaused = false;
         m_colorExtractor->extract(song.union_cover);
         emit isPausedChanged();
@@ -1022,7 +1157,7 @@ void PlaylistManager::startPlayback(const SongInfo &song)
 void PlaylistManager::savePlaylistToCache()
 {
     // TOGETHER 模式下保存切换前的本地索引和进度，而非一起听的
-    const int idx = (type == TOGETHER) ? m_localIndex : m_currentIndex;
+    const int idx   = (type == TOGETHER) ? m_localIndex : m_currentIndex;
     const float pct = (type == TOGETHER) ? m_localPercent : m_percent;
     PlaylistCacheStore::savePlaylist(m_playlist, idx, pct);
 }
@@ -1030,21 +1165,25 @@ void PlaylistManager::savePlaylistToCache()
 // 从本地缓存加载播放列表
 void PlaylistManager::loadPlaylistFromCache()
 {
-    int savedIndex = -1;
+    int savedIndex     = -1;
     float savedPercent = 0.0f;
     if (!PlaylistCacheStore::loadPlaylist(m_playlist, savedIndex, savedPercent))
         return;
 
-    m_playlistModel->syncFromList(m_playlist); emit playlistUpdated();
+    m_playlistModel->syncFromList(m_playlist);
+    emit playlistUpdated();
 
     // 恢复上次播放的歌曲和进度
-    if (savedIndex >= 0 && savedIndex < m_playlist.size()) {
-        m_currentIndex = savedIndex;
+    if (savedIndex >= 0 && savedIndex < m_playlist.size())
+    {
+        m_currentIndex   = savedIndex;
         m_restorePercent = savedPercent;
         emit currentIndexChanged(savedIndex);
         emit currentSongChanged();
         qDebug() << "从缓存恢复播放: index=" << savedIndex << "percent=" << savedPercent;
-    } else {
+    }
+    else
+    {
         m_currentIndex = -1;
         emit currentIndexChanged(-1);
     }
@@ -1057,25 +1196,35 @@ void PlaylistManager::restoreLastPlayback()
         return;
 
     float seekPercent = m_restorePercent;
-    m_restorePercent = -1.0f;
+    m_restorePercent  = -1.0f;
 
-    int index = m_currentIndex;
+    int index     = m_currentIndex;
     SongInfo song = m_playlist[index];
 
     // 加载歌词
-    if (song.lyric.isEmpty()) {
+    if (song.lyric.isEmpty())
+    {
         QString cachedLyric = loadLyricFromCache(song.songhash);
-        if (!cachedLyric.isEmpty()) {
+        if (!cachedLyric.isEmpty())
+        {
             m_playlist[index].lyric = cachedLyric;
-            lyricParser.parseKRCLyrics(cachedLyric);
-        } else {
-            fetchLyricData(song.songhash, [this](const QString &lyric) {
-                if (!lyric.isEmpty())
-                    lyricParser.parseKRCLyrics(lyric);
-            });
+            m_lyricParser.parseKRCLyrics(cachedLyric);
         }
-    } else {
-        lyricParser.parseKRCLyrics(song.lyric);
+        else
+        {
+            fetchLyricData(
+                song.songhash,
+                [this](const QString &lyric)
+                {
+                    if (!lyric.isEmpty())
+                        m_lyricParser.parseKRCLyrics(lyric);
+                }
+            );
+        }
+    }
+    else
+    {
+        m_lyricParser.parseKRCLyrics(song.lyric);
     }
 
     m_colorExtractor->extract(song.union_cover);
@@ -1083,32 +1232,43 @@ void PlaylistManager::restoreLastPlayback()
     emit currentSongChanged();
 
     // 加载歌曲但不播放
-    player->stop();
-    player->setSource(QUrl());
+    m_player->stop();
+    m_player->setSource(QUrl());
 
     auto conn = std::make_shared<QMetaObject::Connection>();
-    *conn = connect(player, &QMediaPlayer::mediaStatusChanged, this,
-        [this, seekPercent, conn](QMediaPlayer::MediaStatus status) {
-            if (status == QMediaPlayer::LoadedMedia) {
+    *conn     = connect(
+        m_player, &QMediaPlayer::mediaStatusChanged, this,
+        [this, seekPercent, conn](QMediaPlayer::MediaStatus status)
+        {
+            if (status == QMediaPlayer::LoadedMedia)
+            {
                 if (seekPercent > 0 && seekPercent < 1.0)
                     seekToPercent(seekPercent);
-                player->pause();
+                m_player->pause();
                 m_isPaused = true;
                 emit isPausedChanged();
                 QObject::disconnect(*conn);
             }
-        });
+        }
+    );
 
     // 优先使用本地缓存文件，避免过期 URL 导致 403
     PlaylistCacheStore::ensureCacheDir();
     QString cacheFilePath = getCacheDir() + "/" + song.title + "-" + song.singername + ".mp3";
-    if (QFile::exists(cacheFilePath)) {
-        player->setSource(QUrl::fromLocalFile(cacheFilePath));
-    } else {
-        fetchSongUrl(song.songhash, [this](const QString &url) {
-            if (!url.isEmpty())
-                player->setSource(QUrl(url));
-        });
+    if (QFile::exists(cacheFilePath))
+    {
+        m_player->setSource(QUrl::fromLocalFile(cacheFilePath));
+    }
+    else
+    {
+        fetchSongUrl(
+            song.songhash,
+            [this](const QString &url)
+            {
+                if (!url.isEmpty())
+                    m_player->setSource(QUrl(url));
+            }
+        );
     }
 }
 
@@ -1126,21 +1286,28 @@ QString PlaylistManager::loadLyricFromCache(const QString &songhash)
 
 void PlaylistManager::fetchSongUrl(const QString &hash, std::function<void(QString)> callback)
 {
-    ApiClient::instance().get(QString("https://xjt-togethertracks.top/api/song/url?hash=%1").arg(hash),
-        [callback](QByteArray body) {
+    ApiClient::instance().get(
+        QString("https://xjt-togethertracks.top/api/song/url?hash=%1").arg(hash),
+        [callback](QByteArray body)
+        {
             const QJsonDocument doc = QJsonDocument::fromJson(body);
-            if (doc.isObject()) {
+            if (doc.isObject())
+            {
                 const QJsonArray urlarray = doc.object()["url"].toArray();
                 callback(urlarray.isEmpty() ? QString() : urlarray[0].toString());
-            } else {
+            }
+            else
+            {
                 callback(QString());
             }
         },
-        [callback](QString err, int) {
+        [callback](QString err, int)
+        {
             Q_UNUSED(err);
             callback(QString());
         },
-        10000);
+        10000
+    );
 }
 
 void PlaylistManager::fetchLyricData(const QString &hash, std::function<void(QString)> callback)
@@ -1148,16 +1315,19 @@ void PlaylistManager::fetchLyricData(const QString &hash, std::function<void(QSt
     // 第一步：根据 hash 获取歌词信息
     ApiClient::instance().getJson(
         QString("https://xjt-togethertracks.top/api/search/lyric?hash=%1").arg(hash),
-        [this, hash, callback](QJsonObject root) {
+        [this, hash, callback](QJsonObject root)
+        {
             const QJsonArray candidates = root["candidates"].toArray();
-            if (candidates.isEmpty() || !candidates[0].isObject()) {
+            if (candidates.isEmpty() || !candidates[0].isObject())
+            {
                 callback(QString());
                 return;
             }
             const QJsonObject lyricInfo = candidates[0].toObject();
-            const QString id        = lyricInfo["id"].toString();
-            const QString accesskey = lyricInfo["accesskey"].toString();
-            if (!id.isEmpty() && !accesskey.isEmpty()) {
+            const QString id            = lyricInfo["id"].toString();
+            const QString accesskey     = lyricInfo["accesskey"].toString();
+            if (!id.isEmpty() && !accesskey.isEmpty())
+            {
                 // 第二步：使用 id 和 accesskey 获取具体歌词内容
                 fetchLyricContent(id, accesskey, callback);
                 return;
@@ -1165,28 +1335,37 @@ void PlaylistManager::fetchLyricData(const QString &hash, std::function<void(QSt
             qWarning() << "未找到有效的id或accesskey";
             callback(QString());
         },
-        [callback](QString err, int) {
+        [callback](QString err, int)
+        {
             Q_UNUSED(err);
             callback(QString());
         },
-        10000);
+        10000
+    );
 }
 
-void PlaylistManager::fetchLyricContent(const QString &id, const QString &accesskey, std::function<void(QString)> callback)
+void PlaylistManager::fetchLyricContent(
+    const QString &id, const QString &accesskey, std::function<void(QString)> callback
+)
 {
     const QString urlStr = QString("https://xjt-togethertracks.top/api/lyric?id=%1&accesskey=%2&fmt=krc&decode=true")
-                             .arg(id).arg(accesskey);
+                               .arg(id)
+                               .arg(accesskey);
 
-    ApiClient::instance().getJson(urlStr,
-        [callback](QJsonObject root) {
+    ApiClient::instance().getJson(
+        urlStr,
+        [callback](QJsonObject root)
+        {
             const QString decodeContent = root["decodeContent"].toString();
             callback(decodeContent);
         },
-        [callback](QString err, int) {
+        [callback](QString err, int)
+        {
             Q_UNUSED(err);
             callback(QString());
         },
-        10000);
+        10000
+    );
 }
 
 void PlaylistManager::showplaylist()
@@ -1199,23 +1378,27 @@ void PlaylistManager::showplaylist()
 void PlaylistManager::updatePlaybackProgress(qint64 position)
 {
     // 歌曲播完后 position 会重置到 0，跳过以避免歌词闪回第一句
-    if (player->mediaStatus() == QMediaPlayer::EndOfMedia)
+    if (m_player->mediaStatus() == QMediaPlayer::EndOfMedia)
         return;
 
-    if (player->duration() > 0)
+    if (m_player->duration() > 0)
     {
-        m_percent = static_cast<float>(position) / player->duration();
+        m_percent    = static_cast<float>(position) / m_player->duration();
         m_percentstr = formatTime(position);
         emit percentChanged();
 
         // 末尾 1.5s 渐弱（自然结束前的淡出）；seek 离开末尾则恢复音量
-        const qint64 totalDur = player->duration();
-        if (totalDur > 0) {
-            if (position >= totalDur - 1000 && !m_endFadeStarted) {
+        const qint64 totalDur = m_player->duration();
+        if (totalDur > 0)
+        {
+            if (position >= totalDur - 1000 && !m_endFadeStarted)
+            {
                 m_endFadeStarted = true;
                 fadeOutVolume(1000, nullptr);
-            } else if (position < totalDur - 1500 && m_endFadeStarted) {
-                fadeInVolume();   // 回到非末尾：渐强恢复（同时重置 m_endFadeStarted）
+            }
+            else if (position < totalDur - 1500 && m_endFadeStarted)
+            {
+                fadeInVolume(); // 回到非末尾：渐强恢复（同时重置 m_endFadeStarted）
             }
         }
 
@@ -1225,7 +1408,7 @@ void PlaylistManager::updatePlaybackProgress(qint64 position)
             if (!m_isBuffering && m_percent >= m_downloadProgress - 0.03f)
             {
                 m_isBuffering = true;
-                player->pause();
+                m_player->pause();
                 emit isBufferingChanged();
                 qDebug() << "缓冲中: 播放进度" << m_percent << "下载进度" << m_downloadProgress;
             }
@@ -1234,25 +1417,25 @@ void PlaylistManager::updatePlaybackProgress(qint64 position)
         if (m_isBuffering && m_downloadProgress - m_percent > 0.1)
         {
             m_isBuffering = false;
-            player->play();
+            m_player->play();
             emit isBufferingChanged();
             qDebug() << "缓冲完成，恢复播放";
         }
         // 更新歌词
-        QString newlyric = lyricParser.getLyricAtTime(position);
-        int newCharIndex = lyricParser.getCharIndexAtTime(position);
-        float newCharProgress = lyricParser.getCharProgressAtTime(position);
-        QVariantList newChars = lyricParser.getCurrentChars(position);
+        QString newlyric      = m_lyricParser.getLyricAtTime(position);
+        int newCharIndex      = m_lyricParser.getCharIndexAtTime(position);
+        float newCharProgress = m_lyricParser.getCharProgressAtTime(position);
+        QVariantList newChars = m_lyricParser.getCurrentChars(position);
 
         // 始终更新进度（用于平滑动画）
         bool progressChanged = qAbs(newCharProgress - m_lyricCharProgress) > 0.001f;
-        m_lyricCharProgress = newCharProgress;
+        m_lyricCharProgress  = newCharProgress;
 
         if (newlyric != currlyric || newCharIndex != m_lyricCharIndex)
         {
-            currlyric = newlyric;
+            currlyric        = newlyric;
             m_lyricCharIndex = newCharIndex;
-            m_lyricChars = newChars;
+            m_lyricChars     = newChars;
             // 更新字符数（用于英文歌词高亮计算）
             m_lyricCharCount = newChars.size();
             emit currlyricChanged();
@@ -1269,10 +1452,10 @@ void PlaylistManager::fadeInVolume()
 {
     m_endFadeStarted = false;
     if (!m_volAnim)
-        m_volAnim = new QPropertyAnimation(audioOutput, "volume", this);
+        m_volAnim = new QPropertyAnimation(m_audioOutput, "volume", this);
     m_volAnim->stop();
-    m_volAnim->disconnect(this);   // 清理上次的 finished 回调（如暂停淡出未完成即恢复）
-    audioOutput->setVolume(0.0);
+    m_volAnim->disconnect(this); // 清理上次的 finished 回调（如暂停淡出未完成即恢复）
+    m_audioOutput->setVolume(0.0);
     m_volAnim->setStartValue(0.0);
     m_volAnim->setEndValue(m_targetVolume);
     m_volAnim->setDuration(1500);
@@ -1283,12 +1466,12 @@ void PlaylistManager::fadeInVolume()
 void PlaylistManager::fadeOutVolume(int ms, std::function<void()> onFinished)
 {
     if (!m_volAnim)
-        m_volAnim = new QPropertyAnimation(audioOutput, "volume", this);
+        m_volAnim = new QPropertyAnimation(m_audioOutput, "volume", this);
     m_volAnim->stop();
-    m_volAnim->disconnect(this);   // 清理上次的 finished 回调
+    m_volAnim->disconnect(this); // 清理上次的 finished 回调
     if (onFinished)
         connect(m_volAnim, &QPropertyAnimation::finished, this, [this, onFinished]() { onFinished(); });
-    m_volAnim->setStartValue(audioOutput->volume());
+    m_volAnim->setStartValue(m_audioOutput->volume());
     m_volAnim->setEndValue(0.0);
     m_volAnim->setDuration(ms);
     m_volAnim->setEasingCurve(QEasingCurve::InOutQuad);
@@ -1305,55 +1488,62 @@ void PlaylistManager::handlePlayerError(QMediaPlayer::Error error, const QString
 
     qWarning() << "播放出错:" << errorString << "错误代码:" << error;
 
-    // FormatError 且正在播放本地缓存文件（非边下边播）→ 删除损坏的缓存并重新下载
+    // FormatError 且正在播放本地缓存文件（非边下边播）-> 删除损坏的缓存并重新下载
     if (error == QMediaPlayer::FormatError && type == TOGETHER)
     {
-        QUrl src = player->source();
+        QUrl src = m_player->source();
         if (src.isLocalFile())
         {
             QString localPath = src.toLocalFile();
             QFileInfo fi(localPath);
             // 只处理文件不再增长的情况（非边下边播）
             qint64 size1 = fi.size();
-            QTimer::singleShot(200, this, [this, localPath, size1]() {
-                QFileInfo fi2(localPath);
-                if (fi2.size() != size1 || size1 < 10240)
+            QTimer::singleShot(
+                200, this,
+                [this, localPath, size1]()
                 {
-                    return;
-                }
-                qDebug() << "一起听 - 缓存文件损坏，删除并重新下载:" << localPath;
-                player->stop();
-                player->setSource(QUrl());
-                QFile::remove(localPath);
-                m_currentTogetherSongHash.clear(); // 允许重新播放同一首歌
-
-                if (m_currentIndex >= 0 && m_currentIndex < m_togetherplaylist.size())
-                {
-                    const SongInfo &song = m_togetherplaylist[m_currentIndex];
-                    if (!song.url.isEmpty())
+                    QFileInfo fi2(localPath);
+                    if (fi2.size() != size1 || size1 < 10240)
                     {
-                        playTogetherSongFromServer(song.url, song.title, song.songhash,
-                                                   song.singername, song.union_cover,
-                                                   song.album_name, song.duration);
+                        return;
+                    }
+                    qDebug() << "一起听 - 缓存文件损坏，删除并重新下载:" << localPath;
+                    m_player->stop();
+                    m_player->setSource(QUrl());
+                    QFile::remove(localPath);
+                    m_currentTogetherSongHash.clear(); // 允许重新播放同一首歌
+
+                    if (m_currentIndex >= 0 && m_currentIndex < m_togetherplaylist.size())
+                    {
+                        const SongInfo &song = m_togetherplaylist[m_currentIndex];
+                        if (!song.url.isEmpty())
+                        {
+                            playTogetherSongFromServer(
+                                song.url, song.title, song.songhash, song.singername, song.union_cover, song.album_name,
+                                song.duration
+                            );
+                        }
                     }
                 }
-            });
+            );
             return;
         }
     }
 
     // 检查是否是FFmpeg解复用错误
-    if ((errorString.contains("Demuxing failed") || errorString.contains("AV_NOPTS_VALUE")) && m_repairCount < MAX_REPAIR_ATTEMPTS)
+    if ((errorString.contains("Demuxing failed") || errorString.contains("AV_NOPTS_VALUE")) &&
+        m_repairCount < MAX_REPAIR_ATTEMPTS)
     {
         m_isRepairing = true;
         m_repairCount++;
 
         qDebug() << "尝试第" << m_repairCount << "次重新播放...";
 
-        qint64 lastPos = player->position();
+        qint64 lastPos = m_player->position();
         // 修复：m_currentIndex 可能为 -1（无歌曲加载时任意时刻都可能报错），
         // 导致 m_playlist[-1] 越界崩溃
-        if (m_currentIndex < 0 || m_currentIndex >= m_playlist.size()) {
+        if (m_currentIndex < 0 || m_currentIndex >= m_playlist.size())
+        {
             m_isRepairing = false;
             m_repairCount = MAX_REPAIR_ATTEMPTS;
             return;
@@ -1361,38 +1551,48 @@ void PlaylistManager::handlePlayerError(QMediaPlayer::Error error, const QString
         QString currentUrl = m_playlist[m_currentIndex].url;
 
         // 先停止并清空当前播放
-        player->stop();
-        player->setSource(QUrl());
+        m_player->stop();
+        m_player->setSource(QUrl());
         m_isPaused = true;
         emit isPausedChanged();
         // 延迟后重试
-        QTimer::singleShot(50, this, [=]()
-                           {
-                               player->setSource(QUrl(currentUrl));
-                               player->play();
+        QTimer::singleShot(
+            50, this,
+            [=]()
+            {
+                m_player->setSource(QUrl(currentUrl));
+                m_player->play();
 
-                               connect(player, &QMediaPlayer::mediaStatusChanged, this,
-                                       [=](QMediaPlayer::MediaStatus status) {
-                                           if (status == QMediaPlayer::LoadedMedia)
-                                            {
-                                               player->setPosition(lastPos);
-                                           }
-                                       }, Qt::SingleShotConnection);
-                               m_isPaused = false;
-                               emit isPausedChanged();
-                               m_isRepairing = false; });
+                connect(
+                    m_player, &QMediaPlayer::mediaStatusChanged, this,
+                    [=](QMediaPlayer::MediaStatus status)
+                    {
+                        if (status == QMediaPlayer::LoadedMedia)
+                        {
+                            m_player->setPosition(lastPos);
+                        }
+                    },
+                    Qt::SingleShotConnection
+                );
+                m_isPaused = false;
+                emit isPausedChanged();
+                m_isRepairing = false;
+            }
+        );
     }
     else
     {
         // 修复失败，跳到下一首但不自动播放
         qWarning() << "修复失败，跳过当前歌曲";
         m_repairCount = 0;
-        m_isPaused = true;
+        m_isPaused    = true;
         emit isPausedChanged();
         // 只切歌不播放
         int nextIdx = m_currentIndex + 1;
-        if (nextIdx >= (*m_curplaylist).size()) nextIdx = 0;
-        if (nextIdx != m_currentIndex && nextIdx < (*m_curplaylist).size()) {
+        if (nextIdx >= (*m_curplaylist).size())
+            nextIdx = 0;
+        if (nextIdx != m_currentIndex && nextIdx < (*m_curplaylist).size())
+        {
             m_currentIndex = nextIdx;
             emit currentIndexChanged(nextIdx);
             loadSongPaused(nextIdx);
@@ -1431,14 +1631,14 @@ void PlaylistManager::syncTogetherPlaylistFromServer(const QJsonArray &songs)
             continue;
         QJsonObject obj = val.toObject();
         SongInfo song;
-        song.title = obj["songname"].toString();
-        song.songhash = obj["songhash"].toString();
-        song.singername = obj["singername"].toString();
-        song.album_name = obj["album_name"].toString();
-        song.duration = obj["duration"].toString();
-        song.union_cover = obj["cover_url"].toString();
+        song.title             = obj["songname"].toString();
+        song.songhash          = obj["songhash"].toString();
+        song.singername        = obj["singername"].toString();
+        song.album_name        = obj["album_name"].toString();
+        song.duration          = obj["duration"].toString();
+        song.union_cover       = obj["cover_url"].toString();
         song.added_by_nickname = obj["added_by_nickname"].toString();
-        song.added_by_avatar = obj["added_by_avatar"].toString();
+        song.added_by_avatar   = obj["added_by_avatar"].toString();
         m_togetherplaylist.append(song);
     }
 
@@ -1459,13 +1659,14 @@ void PlaylistManager::syncTogetherPlaylistFromServer(const QJsonArray &songs)
         }
     }
 
-    m_togetherplaylistModel->syncFromList(m_togetherplaylist); emit togetherplaylistUpdated();
+    m_togetherplaylistModel->syncFromList(m_togetherplaylist);
+    emit togetherplaylistUpdated();
 }
 
-void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const QString &songName,
-                                                   const QString &songHash, const QString &singerName,
-                                                   const QString &coverUrl, const QString &albumName,
-                                                   const QString &duration)
+void PlaylistManager::playTogetherSongFromServer(
+    const QString &songUrl, const QString &songName, const QString &songHash, const QString &singerName,
+    const QString &coverUrl, const QString &albumName, const QString &duration
+)
 {
     // 防重入：同一首歌正在播放或下载中，跳过
     if (m_currentTogetherSongHash == songHash)
@@ -1478,12 +1679,12 @@ void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const Q
     // 记录到最近播放
     {
         SongInfo recentSong;
-        recentSong.title = songName;
-        recentSong.songhash = songHash;
-        recentSong.singername = singerName;
+        recentSong.title       = songName;
+        recentSong.songhash    = songHash;
+        recentSong.singername  = singerName;
         recentSong.union_cover = coverUrl;
-        recentSong.album_name = albumName;
-        recentSong.duration = duration;
+        recentSong.album_name  = albumName;
+        recentSong.duration    = duration;
         addToRecent(recentSong);
     }
 
@@ -1494,43 +1695,44 @@ void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const Q
         if (m_togetherplaylist[i].songhash == songHash)
         {
             m_togetherplaylist[i].url = songUrl;
-            playIndex = i;
+            playIndex                 = i;
             break;
         }
     }
     if (playIndex < 0)
     {
         SongInfo song;
-        song.title = songName;
-        song.songhash = songHash;
-        song.url = songUrl;
-        song.singername = singerName;
+        song.title       = songName;
+        song.songhash    = songHash;
+        song.url         = songUrl;
+        song.singername  = singerName;
         song.union_cover = coverUrl;
-        song.album_name = albumName;
-        song.duration = duration;
+        song.album_name  = albumName;
+        song.duration    = duration;
         m_togetherplaylist.append(song);
         playIndex = m_togetherplaylist.size() - 1;
-        m_togetherplaylistModel->syncFromList(m_togetherplaylist); emit togetherplaylistUpdated();
+        m_togetherplaylistModel->syncFromList(m_togetherplaylist);
+        emit togetherplaylistUpdated();
     }
     m_currentIndex = playIndex;
     emit currentIndexChanged(playIndex);
 
-    player->stop();
-    player->setSource(QUrl());
+    m_player->stop();
+    m_player->setSource(QUrl());
 
     // 重置下载状态
-    m_downloadProgress = 1.0;
-    m_isBuffering = false;
-    m_downloadedBytes = 0;
+    m_downloadProgress   = 1.0;
+    m_isBuffering        = false;
+    m_downloadedBytes    = 0;
     m_totalDownloadBytes = 0;
     emit downloadProgressChanged();
     emit isBufferingChanged();
 
     PlaylistCacheStore::ensureCacheDir();
-    QString cacheDir = getCacheDir();
+    QString cacheDir      = getCacheDir();
     QString cacheFileName = songName + "-" + singerName + ".mp3";
     QString cacheFilePath = cacheDir + "/" + cacheFileName;
-    bool useCache = false;
+    bool useCache         = false;
     if (QFile::exists(cacheFilePath))
     {
         QFileInfo cacheInfo(cacheFilePath);
@@ -1546,28 +1748,31 @@ void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const Q
     if (useCache)
     {
         qDebug() << "一起听 - 使用本地缓存:" << cacheFilePath;
-        player->setSource(QUrl::fromLocalFile(cacheFilePath));
+        m_player->setSource(QUrl::fromLocalFile(cacheFilePath));
 
         if (m_togetherSeekPercent > 0)
         {
-            double seekPercent = m_togetherSeekPercent;
+            double seekPercent    = m_togetherSeekPercent;
             m_togetherSeekPercent = 0;
-            auto conn = std::make_shared<QMetaObject::Connection>();
-            *conn = connect(player, &QMediaPlayer::mediaStatusChanged, this,
-                [this, seekPercent, conn](QMediaPlayer::MediaStatus status) {
+            auto conn             = std::make_shared<QMetaObject::Connection>();
+            *conn                 = connect(
+                m_player, &QMediaPlayer::mediaStatusChanged, this,
+                [this, seekPercent, conn](QMediaPlayer::MediaStatus status)
+                {
                     if (status == QMediaPlayer::LoadedMedia)
                     {
                         seekToPercent(seekPercent);
-                        player->play();
+                        m_player->play();
                         m_isPaused = false;
                         emit isPausedChanged();
                         QObject::disconnect(*conn);
                     }
-                });
+                }
+            );
         }
         else
         {
-            player->play();
+            m_player->play();
             m_isPaused = false;
             emit isPausedChanged();
         }
@@ -1575,7 +1780,7 @@ void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const Q
     else if (!songUrl.isEmpty())
     {
         // 无缓存 - 边下边播（下载逻辑与本地播放共用 downloadAndStream）
-        double seekPercent = m_togetherSeekPercent;
+        double seekPercent    = m_togetherSeekPercent;
         m_togetherSeekPercent = 0;
         // 一起听路径不需要再提取封面色（已在调用方处理）也不需要 currentSongChanged
         downloadAndStream(songUrl, cacheFilePath, QString(), seekPercent, nullptr);
@@ -1583,63 +1788,76 @@ void PlaylistManager::playTogetherSongFromServer(const QString &songUrl, const Q
     else
     {
         // URL 为空，通过 hash 获取播放链接
-        m_isPaused = true;
-        double seekPercent = m_togetherSeekPercent;
+        m_isPaused            = true;
+        double seekPercent    = m_togetherSeekPercent;
         m_togetherSeekPercent = 0;
-        fetchSongUrl(songHash, [this, songHash, seekPercent](const QString &url) {
-            if (!url.isEmpty())
+        fetchSongUrl(
+            songHash,
+            [this, songHash, seekPercent](const QString &url)
             {
-                player->setSource(QUrl(url));
-                if (seekPercent > 0) {
-                    auto conn = std::make_shared<QMetaObject::Connection>();
-                    *conn = connect(player, &QMediaPlayer::mediaStatusChanged, this,
-                        [this, seekPercent, conn](QMediaPlayer::MediaStatus status) {
-                            if (status == QMediaPlayer::LoadedMedia)
+                if (!url.isEmpty())
+                {
+                    m_player->setSource(QUrl(url));
+                    if (seekPercent > 0)
+                    {
+                        auto conn = std::make_shared<QMetaObject::Connection>();
+                        *conn     = connect(
+                            m_player, &QMediaPlayer::mediaStatusChanged, this,
+                            [this, seekPercent, conn](QMediaPlayer::MediaStatus status)
                             {
-                                seekToPercent(seekPercent);
-                                player->play();
-                                m_isPaused = false;
-                                emit isPausedChanged();
-                                QObject::disconnect(*conn);
+                                if (status == QMediaPlayer::LoadedMedia)
+                                {
+                                    seekToPercent(seekPercent);
+                                    m_player->play();
+                                    m_isPaused = false;
+                                    emit isPausedChanged();
+                                    QObject::disconnect(*conn);
+                                }
                             }
-                        });
-                } else {
-                    player->play();
-                    m_isPaused = false;
-                    emit isPausedChanged();
+                        );
+                    }
+                    else
+                    {
+                        m_player->play();
+                        m_isPaused = false;
+                        emit isPausedChanged();
+                    }
+                }
+                else
+                {
+                    qWarning() << "一起听模式 - 无法获取歌曲URL，hash:" << songHash;
                 }
             }
-            else
-            {
-                qWarning() << "一起听模式 - 无法获取歌曲URL，hash:" << songHash;
-            }
-        });
+        );
     }
 
     m_colorExtractor->extract(coverUrl);
     emit currentSongChanged();
     emit isPausedChanged();
 
-    fetchLyricData(songHash, [this](const QString &lyric)
-    {
-        if (!lyric.isEmpty())
+    fetchLyricData(
+        songHash,
+        [this](const QString &lyric)
         {
-            lyricParser.parseKRCLyrics(lyric);
-            qDebug() << "一起听模式 - 歌词获取成功，长度:" << lyric.length();
+            if (!lyric.isEmpty())
+            {
+                m_lyricParser.parseKRCLyrics(lyric);
+                qDebug() << "一起听模式 - 歌词获取成功，长度:" << lyric.length();
+            }
+            else
+            {
+                qWarning() << "一起听模式 - 获取歌词失败";
+            }
         }
-        else
-        {
-            qWarning() << "一起听模式 - 获取歌词失败";
-        }
-    });
+    );
 }
 
 void PlaylistManager::seekToPercent(double percent)
 {
-    if (player->duration() > 0)
+    if (m_player->duration() > 0)
     {
-        qint64 targetPos = static_cast<qint64>(percent * player->duration());
-        player->setPosition(targetPos);
+        qint64 targetPos = static_cast<qint64>(percent * m_player->duration());
+        m_player->setPosition(targetPos);
     }
 }
 
@@ -1650,21 +1868,25 @@ void PlaylistManager::setTogetherSeekPercent(double percent)
 
 void PlaylistManager::setPaused(bool paused)
 {
-    if (paused && player->playbackState() == QMediaPlayer::PlayingState)
+    if (paused && m_player->playbackState() == QMediaPlayer::PlayingState)
     {
         // 一起听：暂停前 1.5s 渐弱，再真正暂停（图标立即切换为暂停）
         m_isPaused = true;
         emit isPausedChanged();
-        fadeOutVolume(1000, [this]() {
-            if (player->playbackState() == QMediaPlayer::PlayingState)
-                player->pause();
-        });
+        fadeOutVolume(
+            1000,
+            [this]()
+            {
+                if (m_player->playbackState() == QMediaPlayer::PlayingState)
+                    m_player->pause();
+            }
+        );
     }
-    else if (!paused && player->playbackState() != QMediaPlayer::PlayingState)
+    else if (!paused && m_player->playbackState() != QMediaPlayer::PlayingState)
     {
-        player->play();
+        m_player->play();
         m_isPaused = false;
         emit isPausedChanged();
-        fadeInVolume();   // 一起听：恢复时渐强
+        fadeInVolume(); // 一起听：恢复时渐强
     }
 }

@@ -35,9 +35,7 @@ class HttpGetRequesterHelper : public HttpGetRequester
 {
     Q_OBJECT
 public:
-    HttpGetRequesterHelper(QObject *parent = nullptr)
-        : HttpGetRequester(10000, parent)
-    {}
+    HttpGetRequesterHelper(QObject *parent = nullptr) : HttpGetRequester(10000, parent) {}
 };
 
 // QML 网络图片磁盘缓存
@@ -47,9 +45,8 @@ public:
     QNetworkAccessManager *create(QObject *parent) override
     {
         QNetworkAccessManager *nam = new QNetworkAccessManager(parent);
-        QNetworkDiskCache *cache = new QNetworkDiskCache(nam);
-        cache->setCacheDirectory(
-            QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/images");
+        QNetworkDiskCache *cache   = new QNetworkDiskCache(nam);
+        cache->setCacheDirectory(QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/images");
         cache->setMaximumCacheSize(100 * 1024 * 1024); // 100MB
         nam->setCache(cache);
         return nam;
@@ -79,7 +76,8 @@ int main(int argc, char *argv[])
 
     // 单实例检测：如果已有实例在运行，激活其主窗口并退出
     SingleApplication singleApp("WangGouMusic");
-    if (singleApp.isRunning()) {
+    if (singleApp.isRunning())
+    {
         singleApp.activateRunningInstance();
         return 0;
     }
@@ -101,14 +99,14 @@ int main(int argc, char *argv[])
     const QUrl url(QStringLiteral("qrc:/main.qml"));
 
     QObject::connect(
-        &engine,
-        &QQmlApplicationEngine::objectCreated,
-        &app,
-        [url](QObject *obj, const QUrl &objUrl) {
+        &engine, &QQmlApplicationEngine::objectCreated, &app,
+        [url](QObject *obj, const QUrl &objUrl)
+        {
             if (!obj && url == objUrl)
                 QCoreApplication::exit(-1);
         },
-        Qt::QueuedConnection);
+        Qt::QueuedConnection
+    );
 
     // ---------------- 后端对象（必须在加载 QML 之前创建） ----------------
     GetHostSearch hostSearch;
@@ -139,54 +137,64 @@ int main(int argc, char *argv[])
 
     // 加载 DesktopLyrics.qml 独立窗口（跨平台）
     // 延迟到主窗口 QML 加载后再创建，避免 1079 行 DesktopLyrics.qml 的解析阻塞首屏
-    QTimer::singleShot(0, &engine, [&engine, &lyricsConfig, &clickThroughHelper]() {
-        QQmlComponent comp(&engine, QUrl("qrc:/Src/ComponentPage/DesktopLyrics.qml"));
-        QObject *desktopLyricsObj = comp.create();
-        QWindow *desktopLyricsWindow = qobject_cast<QWindow *>(desktopLyricsObj);
+    QTimer::singleShot(
+        0, &engine,
+        [&engine, &lyricsConfig, &clickThroughHelper]()
+        {
+            QQmlComponent comp(&engine, QUrl("qrc:/Src/ComponentPage/DesktopLyrics.qml"));
+            QObject *desktopLyricsObj    = comp.create();
+            QWindow *desktopLyricsWindow = qobject_cast<QWindow *>(desktopLyricsObj);
 
-        if (desktopLyricsWindow) {
-            // 可见性由 lyricsConfig.enabled 驱动：初始未开启则不显示
-            if (lyricsConfig.enabled())
-                desktopLyricsWindow->show();
+            if (desktopLyricsWindow)
+            {
+                // 可见性由 lyricsConfig.enabled 驱动：初始未开启则不显示
+                if (lyricsConfig.enabled())
+                    desktopLyricsWindow->show();
 
 #ifdef Q_OS_WIN
-            // Windows 特有：每次显示时设置置顶和鼠标不抢焦点
-            QObject::connect(desktopLyricsWindow, &QWindow::visibleChanged, [desktopLyricsWindow]() {
-                if (!desktopLyricsWindow->isVisible())
-                    return;
+                // Windows 特有：每次显示时设置置顶和鼠标不抢焦点
+                QObject::connect(
+                    desktopLyricsWindow, &QWindow::visibleChanged,
+                    [desktopLyricsWindow]()
+                    {
+                        if (!desktopLyricsWindow->isVisible())
+                            return;
 
-                HWND hwnd = (HWND) desktopLyricsWindow->winId();
+                        HWND hwnd = (HWND)desktopLyricsWindow->winId();
 
-                // 总在最上层、不抢焦点
-                SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+                        // 总在最上层、不抢焦点
+                        SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 
-                // 不在任务栏，点击不激活主窗口
-                LONG exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
-                SetWindowLong(hwnd, GWL_EXSTYLE, exStyle | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE);
-            });
+                        // 不在任务栏，点击不激活主窗口
+                        LONG exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
+                        SetWindowLong(hwnd, GWL_EXSTYLE, exStyle | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE);
+                    }
+                );
 #endif
 
 #ifdef Q_OS_MAC
-            // macOS: 使用 Cocoa API 设置窗口层级
-            setupMacOSDesktopLyricsWindow(desktopLyricsWindow);
+                // macOS: 使用 Cocoa API 设置窗口层级
+                setupMacOSDesktopLyricsWindow(desktopLyricsWindow);
 #endif
+            }
+
+            // 把桌面歌词对象暴露给主窗口 QML
+            engine.rootContext()->setContextProperty("desktopLyricsWindow", desktopLyricsObj);
+
+            // 将窗口指针交给穿透控制器
+            clickThroughHelper.setWindow(desktopLyricsWindow);
         }
-
-        // 把桌面歌词对象暴露给主窗口 QML
-        engine.rootContext()->setContextProperty("desktopLyricsWindow", desktopLyricsObj);
-
-        // 将窗口指针交给穿透控制器
-        clickThroughHelper.setWindow(desktopLyricsWindow);
-    });
+    );
 
     // ---------------- 加载 QML ----------------
     engine.load(url);
 
     // 获取根窗口 (ApplicationWindow 需要通过 QQuickWindow 获取)
     QQuickWindow *window = nullptr;
-    if (!engine.rootObjects().isEmpty()) {
+    if (!engine.rootObjects().isEmpty())
+    {
         QObject *rootObj = engine.rootObjects().first();
-        window = qobject_cast<QQuickWindow *>(rootObj);
+        window           = qobject_cast<QQuickWindow *>(rootObj);
     }
 
     // 让单实例管理器持有主窗口引用
@@ -204,14 +212,13 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("trayHandler", &trayHandler);
 
     // 退出时保存播放状态
-    QObject::connect(&app, &QApplication::aboutToQuit, &playlistmanager, [&playlistmanager]() {
-        playlistmanager.savePlaylistToCache();
-    });
+    QObject::connect(
+        &app, &QApplication::aboutToQuit, &playlistmanager,
+        [&playlistmanager]() { playlistmanager.savePlaylistToCache(); }
+    );
 
     // 恢复上次播放状态（延迟执行，等 QML 加载完成）
-    QTimer::singleShot(500, &playlistmanager, [&playlistmanager]() {
-        playlistmanager.restoreLastPlayback();
-    });
+    QTimer::singleShot(500, &playlistmanager, [&playlistmanager]() { playlistmanager.restoreLastPlayback(); });
 
     return app.exec();
 }

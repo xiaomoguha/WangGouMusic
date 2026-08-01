@@ -62,9 +62,9 @@ private:
     static int compareVersions(const QString &v1, const QString &v2);
 
     // 仅用于文件下载（流式 + 进度）
-    QNetworkAccessManager* m_downloadManager;
+    QNetworkAccessManager *m_downloadManager;
     QNetworkReply *m_downloadReply = nullptr;
-    QFile *m_downloadFile = nullptr;
+    QFile *m_downloadFile          = nullptr;
     QString m_downloadedFilePath;
 
     // 版本信息
@@ -76,7 +76,7 @@ private:
     bool m_updateAvailable = false;
 
     double m_downloadProgress = 0.0;
-    bool m_downloading = false;
+    bool m_downloading        = false;
 
     QString m_checkUrl;
 };

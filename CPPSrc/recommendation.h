@@ -1,8 +1,8 @@
 #ifndef RECOMMENDATION_H
 #define RECOMMENDATION_H
+#include "HttpGetRequester.h"
 #include <QObject>
 #include <functional>
-#include "HttpGetRequester.h"
 class Recommendation : public QObject
 {
     Q_OBJECT
@@ -22,16 +22,27 @@ public:
     Q_INVOKABLE void fetchPlaylistTracks(const QString &globalCollectionId);
     Q_INVOKABLE void fetchMorePlaylistTracks();
     Q_INVOKABLE void loadAllPlaylistTracks();
-    // C++ 内部用：按页拉取指定歌单歌曲，结果通过 callback 返回（QVariantList，每项含 songname/songhash/singername/union_cover/album_name/duration）
-    void fetchPlaylistTracksPage(const QString &id, int page, int pagesize,
-                                 std::function<void(const QVariantList&)> callback);
+    // C++ 内部用：按页拉取指定歌单歌曲，结果通过 callback 返回（QVariantList，每项含
+    // songname/songhash/singername/union_cover/album_name/duration）
+    void fetchPlaylistTracksPage(
+        const QString &id, int page, int pagesize, std::function<void(const QVariantList &)> callback
+    );
 
     QVariantList getTopSongsQml() const;
     QVariantList getTopPlaylistsQml() const;
     QVariantList getPlaylistTracksQml() const;
-    int playlistTotal() const { return m_playlistTotal; }
-    bool playlistHasMore() const { return m_playlistHasMore; }
-    bool playlistIsLoading() const { return m_playlistIsLoading; }
+    int playlistTotal() const
+    {
+        return m_playlistTotal;
+    }
+    bool playlistHasMore() const
+    {
+        return m_playlistHasMore;
+    }
+    bool playlistIsLoading() const
+    {
+        return m_playlistIsLoading;
+    }
 
     static QString secondsToMinutesSeconds(int totalSeconds);
 
@@ -58,12 +69,12 @@ private:
     QVariantList m_topPlaylists;
     QVariantList m_playlistTracks;
     QString m_currentPlaylistId;
-    int m_playlistPage = 0;
-    int m_playlistPageSize = 30;
-    int m_playlistTotal = 0;
-    bool m_playlistHasMore = true;
+    int m_playlistPage       = 0;
+    int m_playlistPageSize   = 30;
+    int m_playlistTotal      = 0;
+    bool m_playlistHasMore   = true;
     bool m_playlistIsLoading = false;
     HttpGetRequester m_lazyRequester;
-    std::function<void(const QVariantList&)> m_pendingLazyCallback;
+    std::function<void(const QVariantList &)> m_pendingLazyCallback;
 };
 #endif // RECOMMENDATION_H

@@ -1,9 +1,9 @@
 #ifndef PLAYLIST_CACHE_STORE_H
 #define PLAYLIST_CACHE_STORE_H
 
+#include "SongInfo.h"
 #include <QString>
 #include <QList>
-#include "SongInfo.h"
 
 /**
  * @brief 播放列表/最近播放/歌词的本地缓存读写工具
@@ -42,7 +42,7 @@ public:
     static QString loadLyric(const QString &songhash);
 
 private:
-    PlaylistCacheStore() = delete;  // 纯工具类，禁止实例化
+    PlaylistCacheStore() = delete; // 纯工具类，禁止实例化
 
     static QString playlistCachePath();
     static QString recentCachePath();

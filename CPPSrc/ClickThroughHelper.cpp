@@ -3,13 +3,12 @@
 #include <QDebug>
 
 #ifdef Q_OS_WIN
-#  include <windows.h>
+#include <windows.h>
 #elif defined(Q_OS_MAC)
-#  import <Cocoa/Cocoa.h>
+#import <Cocoa/Cocoa.h>
 #endif
 
-ClickThroughHelper::ClickThroughHelper(QObject *parent)
-    : QObject(parent)
+ClickThroughHelper::ClickThroughHelper(QObject *parent) : QObject(parent)
 {
     m_timer.setInterval(50);
     connect(&m_timer, &QTimer::timeout, this, &ClickThroughHelper::poll);
@@ -23,7 +22,7 @@ void ClickThroughHelper::setWindow(QWindow *window)
 void ClickThroughHelper::setCaptureRegion(int x, int y, int w, int h)
 {
     m_captureRegion = QRect(x, y, w, h);
-    m_hasRegion = true;
+    m_hasRegion     = true;
 }
 
 void ClickThroughHelper::clearCaptureRegion()
@@ -42,14 +41,18 @@ void ClickThroughHelper::setEnabled(bool enabled)
         return;
     m_enabled = enabled;
 
-    if (enabled) {
+    if (enabled)
+    {
         applyPassThrough(true);
         m_timer.start();
-    } else {
+    }
+    else
+    {
         m_timer.stop();
         applyPassThrough(false);
         // 关闭时也通知 QML 隐藏按钮
-        if (m_currentlyInside) {
+        if (m_currentlyInside)
+        {
             m_currentlyInside = false;
             emit hoverInWindowChanged(false);
         }
@@ -64,17 +67,21 @@ void ClickThroughHelper::poll()
 
     const QPoint mouse = QCursor::pos();
 
-    // ── 1. 检测鼠标是否在锁按钮区域（状态③）──
+    // ── 1. 检测鼠标是否在锁按钮区域（状态3.）──
     const bool inCapture = m_captureRegion.contains(mouse);
-    if (inCapture && m_currentlyPassing) {
+    if (inCapture && m_currentlyPassing)
+    {
         applyPassThrough(false);
-    } else if (!inCapture && !m_currentlyPassing) {
+    }
+    else if (!inCapture && !m_currentlyPassing)
+    {
         applyPassThrough(true);
     }
 
-    // ── 2. 检测鼠标是否在窗口区域内（状态②）──
+    // ── 2. 检测鼠标是否在窗口区域内（状态2.）──
     const bool inWindow = m_monitorRegion.contains(mouse);
-    if (inWindow != m_currentlyInside) {
+    if (inWindow != m_currentlyInside)
+    {
         m_currentlyInside = inWindow;
         emit hoverInWindowChanged(inWindow);
     }
@@ -92,7 +99,7 @@ void ClickThroughHelper::applyPassThrough(bool pass)
     emit passThroughChanged(pass);
 
 #ifdef Q_OS_WIN
-    HWND hwnd = (HWND)m_window->winId();
+    HWND hwnd        = (HWND)m_window->winId();
     LONG_PTR exStyle = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
     if (pass)
         SetWindowLongPtrW(hwnd, GWL_EXSTYLE, exStyle | WS_EX_TRANSPARENT);
@@ -101,7 +108,8 @@ void ClickThroughHelper::applyPassThrough(bool pass)
 
 #elif defined(Q_OS_MAC)
     NSView *view = (__bridge NSView *)reinterpret_cast<void *>(m_window->winId());
-    if (view && view.window) {
+    if (view && view.window)
+    {
         [view.window setIgnoresMouseEvents:pass];
     }
 #endif

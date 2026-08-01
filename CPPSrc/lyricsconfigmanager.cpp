@@ -3,16 +3,15 @@
 #include <QGuiApplication>
 #include <QScreen>
 
-LyricsConfigManager::LyricsConfigManager(QObject *parent)
-    : QObject(parent)
+LyricsConfigManager::LyricsConfigManager(QObject *parent) : QObject(parent)
 {
     // 获取屏幕尺寸
     QScreen *screen = QGuiApplication::primaryScreen();
     if (screen)
     {
         QRect screenGeometry = screen->availableGeometry();
-        m_screenWidth = screenGeometry.width();
-        m_screenHeight = screenGeometry.height();
+        m_screenWidth        = screenGeometry.width();
+        m_screenHeight       = screenGeometry.height();
     }
 
     // 设置默认位置
@@ -51,29 +50,29 @@ void LyricsConfigManager::saveConfig()
     QJsonObject config;
     // 横向模式
     QJsonObject horizontal;
-    horizontal["x"] = m_horizontalX;
-    horizontal["y"] = m_horizontalY;
-    horizontal["width"] = m_horizontalWidth;
+    horizontal["x"]      = m_horizontalX;
+    horizontal["y"]      = m_horizontalY;
+    horizontal["width"]  = m_horizontalWidth;
     horizontal["height"] = m_horizontalHeight;
     config["horizontal"] = horizontal;
 
     // 竖向模式
     QJsonObject vertical;
-    vertical["x"] = m_verticalX;
-    vertical["y"] = m_verticalY;
-    vertical["width"] = m_verticalWidth;
+    vertical["x"]      = m_verticalX;
+    vertical["y"]      = m_verticalY;
+    vertical["width"]  = m_verticalWidth;
     vertical["height"] = m_verticalHeight;
     config["vertical"] = vertical;
 
     // 通用配置
-    config["locked"] = m_locked;
-    config["isVertical"] = m_isVertical;
-    config["scale"] = m_scale;
-    config["fontSize"] = m_fontSize;
-    config["isDark"] = m_isDark;
-    config["enabled"] = m_enabled;
+    config["locked"]      = m_locked;
+    config["isVertical"]  = m_isVertical;
+    config["scale"]       = m_scale;
+    config["fontSize"]    = m_fontSize;
+    config["isDark"]      = m_isDark;
+    config["enabled"]     = m_enabled;
     config["lyricsColor"] = m_lyricsColor;
-    config["starColor"] = m_starColor;
+    config["starColor"]   = m_starColor;
     config["jumpEnabled"] = m_jumpEnabled;
 
     // 写入文件
@@ -121,31 +120,31 @@ void LyricsConfigManager::loadConfig()
         if (config.contains("horizontal"))
         {
             QJsonObject horizontal = config["horizontal"].toObject();
-            m_horizontalX = horizontal["x"].toInt(m_horizontalX);
-            m_horizontalY = horizontal["y"].toInt(m_horizontalY);
-            m_horizontalWidth = horizontal["width"].toInt(m_horizontalWidth);
-            m_horizontalHeight = horizontal["height"].toInt(m_horizontalHeight);
+            m_horizontalX          = horizontal["x"].toInt(m_horizontalX);
+            m_horizontalY          = horizontal["y"].toInt(m_horizontalY);
+            m_horizontalWidth      = horizontal["width"].toInt(m_horizontalWidth);
+            m_horizontalHeight     = horizontal["height"].toInt(m_horizontalHeight);
         }
 
         // 读取竖向模式配置
         if (config.contains("vertical"))
         {
             QJsonObject vertical = config["vertical"].toObject();
-            m_verticalX = vertical["x"].toInt(m_verticalX);
-            m_verticalY = vertical["y"].toInt(m_verticalY);
-            m_verticalWidth = vertical["width"].toInt(m_verticalWidth);
-            m_verticalHeight = vertical["height"].toInt(m_verticalHeight);
+            m_verticalX          = vertical["x"].toInt(m_verticalX);
+            m_verticalY          = vertical["y"].toInt(m_verticalY);
+            m_verticalWidth      = vertical["width"].toInt(m_verticalWidth);
+            m_verticalHeight     = vertical["height"].toInt(m_verticalHeight);
         }
 
         // 读取通用配置
-        m_locked = config["locked"].toBool(m_locked);
-        m_isVertical = config["isVertical"].toBool(m_isVertical);
-        m_scale = config["scale"].toDouble(m_scale);
-        m_fontSize = config["fontSize"].toInt(m_fontSize);
-        m_isDark = config["isDark"].toBool(m_isDark);
-        m_enabled = config["enabled"].toBool(m_enabled);
+        m_locked      = config["locked"].toBool(m_locked);
+        m_isVertical  = config["isVertical"].toBool(m_isVertical);
+        m_scale       = config["scale"].toDouble(m_scale);
+        m_fontSize    = config["fontSize"].toInt(m_fontSize);
+        m_isDark      = config["isDark"].toBool(m_isDark);
+        m_enabled     = config["enabled"].toBool(m_enabled);
         m_lyricsColor = config["lyricsColor"].toString(m_lyricsColor);
-        m_starColor = config["starColor"].toString(m_starColor);
+        m_starColor   = config["starColor"].toString(m_starColor);
         m_jumpEnabled = config["jumpEnabled"].toBool(m_jumpEnabled);
 
         qDebug() << "歌词配置已加载:" << filePath;
@@ -156,23 +155,23 @@ void LyricsConfigManager::loadConfig()
 void LyricsConfigManager::resetToDefaults()
 {
     // 横向模式：屏幕下方居中
-    m_horizontalX = (m_screenWidth - 600) / 2;
-    m_horizontalY = m_screenHeight - 150 - 50;
-    m_horizontalWidth = 600;
+    m_horizontalX      = (m_screenWidth - 600) / 2;
+    m_horizontalY      = m_screenHeight - 150 - 50;
+    m_horizontalWidth  = 600;
     m_horizontalHeight = 150;
 
     // 竖向模式：屏幕右侧居中
-    m_verticalX = m_screenWidth - 180 - 20;
-    m_verticalY = (m_screenHeight - 300) / 2;
-    m_verticalWidth = 180;
+    m_verticalX      = m_screenWidth - 180 - 20;
+    m_verticalY      = (m_screenHeight - 300) / 2;
+    m_verticalWidth  = 180;
     m_verticalHeight = 300;
 
     // 通用
-    m_locked = false;
+    m_locked     = false;
     m_isVertical = false;
-    m_scale = 1.0;
-    m_fontSize = 22;
-    m_enabled = true;
+    m_scale      = 1.0;
+    m_fontSize   = 22;
+    m_enabled    = true;
     m_lyricsColor.clear();
     m_starColor.clear();
     m_jumpEnabled = true;

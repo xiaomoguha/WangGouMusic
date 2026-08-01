@@ -38,27 +38,78 @@ public:
     ~LyricsConfigManager();
 
     // 横向模式
-    int horizontalX() const { return m_horizontalX; }
-    int horizontalY() const { return m_horizontalY; }
-    int horizontalWidth() const { return m_horizontalWidth; }
-    int horizontalHeight() const { return m_horizontalHeight; }
+    int horizontalX() const
+    {
+        return m_horizontalX;
+    }
+    int horizontalY() const
+    {
+        return m_horizontalY;
+    }
+    int horizontalWidth() const
+    {
+        return m_horizontalWidth;
+    }
+    int horizontalHeight() const
+    {
+        return m_horizontalHeight;
+    }
 
     // 竖向模式
-    int verticalX() const { return m_verticalX; }
-    int verticalY() const { return m_verticalY; }
-    int verticalWidth() const { return m_verticalWidth; }
-    int verticalHeight() const { return m_verticalHeight; }
+    int verticalX() const
+    {
+        return m_verticalX;
+    }
+    int verticalY() const
+    {
+        return m_verticalY;
+    }
+    int verticalWidth() const
+    {
+        return m_verticalWidth;
+    }
+    int verticalHeight() const
+    {
+        return m_verticalHeight;
+    }
 
     // 通用
-    bool locked() const { return m_locked; }
-    bool isVertical() const { return m_isVertical; }
-    qreal scale() const { return m_scale; }
-    int fontSize() const { return m_fontSize; }
-    bool isDark() const { return m_isDark; }
-    bool enabled() const { return m_enabled; }
-    QString lyricsColor() const { return m_lyricsColor; }
-    QString starColor() const { return m_starColor; }
-    bool jumpEnabled() const { return m_jumpEnabled; }
+    bool locked() const
+    {
+        return m_locked;
+    }
+    bool isVertical() const
+    {
+        return m_isVertical;
+    }
+    qreal scale() const
+    {
+        return m_scale;
+    }
+    int fontSize() const
+    {
+        return m_fontSize;
+    }
+    bool isDark() const
+    {
+        return m_isDark;
+    }
+    bool enabled() const
+    {
+        return m_enabled;
+    }
+    QString lyricsColor() const
+    {
+        return m_lyricsColor;
+    }
+    QString starColor() const
+    {
+        return m_starColor;
+    }
+    bool jumpEnabled() const
+    {
+        return m_jumpEnabled;
+    }
 
     // 横向模式 setters
     void setHorizontalX(int value);
@@ -97,26 +148,26 @@ private:
     // 横向模式默认值
     int m_horizontalX;
     int m_horizontalY;
-    int m_horizontalWidth = 600;
+    int m_horizontalWidth  = 600;
     int m_horizontalHeight = 150;
     // 竖向模式默认值
     int m_verticalX;
     int m_verticalY;
-    int m_verticalWidth = 180;
+    int m_verticalWidth  = 180;
     int m_verticalHeight = 300;
     // 通用默认值
-    bool m_locked = false;
+    bool m_locked     = false;
     bool m_isVertical = false;
-    qreal m_scale = 1.0;
-    int m_fontSize = 22;
-    bool m_isDark = false;
-    bool m_enabled = true;       // 桌面歌词开关
-    QString m_lyricsColor;       // 已播歌词颜色，空 = 跟随主题
-    QString m_starColor;         // 跳跃歌词(星星+拖尾)颜色，空 = 跟随主题
-    bool m_jumpEnabled = true;   // 跳跃歌词开关（关=普通刷过，无压扁无星星）
+    qreal m_scale     = 1.0;
+    int m_fontSize    = 22;
+    bool m_isDark     = false;
+    bool m_enabled    = true;  // 桌面歌词开关
+    QString m_lyricsColor;     // 已播歌词颜色，空 = 跟随主题
+    QString m_starColor;       // 跳跃歌词(星星+拖尾)颜色，空 = 跟随主题
+    bool m_jumpEnabled = true; // 跳跃歌词开关（关=普通刷过，无压扁无星星）
 
     // 屏幕尺寸缓存
-    int m_screenWidth = 1920;
+    int m_screenWidth  = 1920;
     int m_screenHeight = 1080;
 };
 

@@ -1,9 +1,7 @@
 // lyricparser.cpp
 #include "lyricparser.h"
 
-LyricParser::LyricParser(QObject *parent) : QObject(parent)
-{
-}
+LyricParser::LyricParser(QObject *parent) : QObject(parent) {}
 
 bool LyricParser::parseKRCLyrics(const QString &krcText)
 {
@@ -38,12 +36,10 @@ bool LyricParser::parseKRCLyrics(const QString &krcText)
             continue;
 
         // 跳过元数据行
-        if (trimmedLine.startsWith("[id:") || trimmedLine.startsWith("[ar:") ||
-            trimmedLine.startsWith("[ti:") || trimmedLine.startsWith("[by:") ||
-            trimmedLine.startsWith("[hash:") || trimmedLine.startsWith("[al:") ||
-            trimmedLine.startsWith("[sign:") || trimmedLine.startsWith("[qq:") ||
-            trimmedLine.startsWith("[total:") || trimmedLine.startsWith("[offset:") ||
-            trimmedLine.startsWith("[language:"))
+        if (trimmedLine.startsWith("[id:") || trimmedLine.startsWith("[ar:") || trimmedLine.startsWith("[ti:") ||
+            trimmedLine.startsWith("[by:") || trimmedLine.startsWith("[hash:") || trimmedLine.startsWith("[al:") ||
+            trimmedLine.startsWith("[sign:") || trimmedLine.startsWith("[qq:") || trimmedLine.startsWith("[total:") ||
+            trimmedLine.startsWith("[offset:") || trimmedLine.startsWith("[language:"))
         {
             continue;
         }
@@ -52,9 +48,9 @@ bool LyricParser::parseKRCLyrics(const QString &krcText)
         if (!lineMatch.hasMatch())
             continue;
 
-        qint64 lineTime = lineMatch.captured(1).toLongLong();
+        qint64 lineTime     = lineMatch.captured(1).toLongLong();
         qint64 lineDuration = lineMatch.captured(2).toLongLong();
-        QString charPart = lineMatch.captured(3);
+        QString charPart    = lineMatch.captured(3);
 
         // 解析逐字
         QVariantList chars;
@@ -64,14 +60,13 @@ bool LyricParser::parseKRCLyrics(const QString &krcText)
         while (charMatchIt.hasNext())
         {
             QRegularExpressionMatch charMatch = charMatchIt.next();
-            qint64 charStart = charMatch.captured(1).toLongLong();
-            qint64 charDuration = charMatch.captured(2).toLongLong();
-            QString charText = charMatch.captured(3);
+            qint64 charStart                  = charMatch.captured(1).toLongLong();
+            qint64 charDuration               = charMatch.captured(2).toLongLong();
+            QString charText                  = charMatch.captured(3);
 
             // 跳过角色标记（如 "男："、"女："）- 注意：这会改变字符索引
             // 如果需要保留角色标记在显示中，请注释掉这段代码
-            if (charText == "男：" || charText == "女：" ||
-                charText == "男:" || charText == "女:" ||
+            if (charText == "男：" || charText == "女：" || charText == "男:" || charText == "女:" ||
                 charText == "Rap:" || charText == "Rap：")
             {
                 continue;
@@ -90,11 +85,7 @@ bool LyricParser::parseKRCLyrics(const QString &krcText)
     }
 
     // 按时间排序
-    std::sort(m_lyrics.begin(), m_lyrics.end(),
-              [](const LyricLine &a, const LyricLine &b)
-              {
-                  return a.time < b.time;
-              });
+    std::sort(m_lyrics.begin(), m_lyrics.end(), [](const LyricLine &a, const LyricLine &b) { return a.time < b.time; });
 
     qDebug() << "KRC歌词解析完成，共" << m_lyrics.size() << "行";
     emit parselyricsuc();
@@ -123,8 +114,8 @@ QString LyricParser::getLyricAtTime(qint64 positionMs)
     }
 
     // 二分查找算法找到当前时间对应的歌词
-    int left = 0;
-    int right = m_lyrics.size() - 1;
+    int left        = 0;
+    int right       = m_lyrics.size() - 1;
     int resultIndex = 0;
 
     while (left <= right)
@@ -134,7 +125,7 @@ QString LyricParser::getLyricAtTime(qint64 positionMs)
         if (m_lyrics[mid].time <= positionMs)
         {
             resultIndex = mid;
-            left = mid + 1;
+            left        = mid + 1;
         }
         else
         {
@@ -170,7 +161,7 @@ int LyricParser::getCharIndexAtTime(qint64 positionMs)
     // 找到当前字
     for (int i = 0; i < line.chars.size(); ++i)
     {
-        QVariant v = line.chars.at(i);
+        QVariant v   = line.chars.at(i);
         LyricChar lc = v.value<LyricChar>();
 
         // 字开始时间到结束时间之间
@@ -226,7 +217,7 @@ float LyricParser::getCharProgressAtTime(qint64 positionMs)
     // 找到当前字并计算进度
     for (int i = 0; i < line.chars.size(); ++i)
     {
-        QVariant v = line.chars.at(i);
+        QVariant v   = line.chars.at(i);
         LyricChar lc = v.value<LyricChar>();
 
         // 字开始时间到结束时间之间
@@ -284,7 +275,7 @@ int LyricParser::getCurrentLineIndex(qint64 positionMs)
     if (positionMs >= m_lyrics.last().time)
         return m_lyrics.size() - 1;
 
-    int left = 0;
+    int left  = 0;
     int right = m_lyrics.size() - 1;
 
     while (left <= right)
@@ -320,11 +311,12 @@ qint64 LyricParser::getcurindex()
     return curlyricindex;
 }
 
-qint64 LyricParser::timeStringToMs(const QString &minuteStr, const QString &secondStr, const QString &millisecondStr) const
+qint64
+LyricParser::timeStringToMs(const QString &minuteStr, const QString &secondStr, const QString &millisecondStr) const
 {
     // 将字符串转换为整数
-    int minutes = minuteStr.toInt();
-    int seconds = secondStr.toInt();
+    int minutes      = minuteStr.toInt();
+    int seconds      = secondStr.toInt();
     int milliseconds = millisecondStr.toInt(); // 两位数，如84表示840毫秒
 
     return minutes * 60000 + seconds * 1000 + milliseconds * 10;
