@@ -112,7 +112,7 @@ Rectangle {
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.topMargin: 0.03 * root.height
-        anchors.leftMargin: 0.03 * root.width
+        anchors.leftMargin: Qt.platform.os === "osx" ? 90 : 0.03 * root.width
         size: 32; iconSize: 16; iconRotation: -90
         iconSource: "qrc:/image/left_line.png"
         iconColor: "#FFFFFF"
@@ -123,6 +123,7 @@ Rectangle {
 
     // ======================= 右上角窗口控制按钮 =======================
     Row {
+        visible: Qt.platform.os !== "osx"   // mac 用原生 traffic lights
         anchors.top: parent.top
         anchors.right: parent.right
         anchors.topMargin: 0.03 * root.height

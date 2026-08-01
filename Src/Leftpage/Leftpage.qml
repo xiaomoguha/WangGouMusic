@@ -21,7 +21,8 @@ Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        anchors.topMargin: 35
+        // mac 顶部左上角有原生 traffic-light 三按钮，logo 往下让出空间
+        anchors.topMargin: Qt.platform.os === "osx" ? 65 : 35
         height: 50
 
         Row {

@@ -19,7 +19,9 @@ ApplicationWindow {
     visible: false  // 延迟到 Component.onCompleted 计算居中后再显示，避免 (0,0) 闪烁
     title: qsTr("WYYMUSIC")
     color: "transparent"
-    flags: Qt.FramelessWindowHint | Qt.Window
+    // mac 由 QWindowKit (main.cpp) 接管窗口：真原生 traffic lights + 内容铺满标题栏下方（无带）；
+    // 其他平台保持无边框 + 自定义按钮。
+    flags: Qt.platform.os === "osx" ? Qt.Window : (Qt.FramelessWindowHint | Qt.Window)
     NoteWindow {
         id: loadingToast
         Connections {
@@ -82,8 +84,17 @@ ApplicationWindow {
     Component.onCompleted: {
         root.x = (Screen.width - root.width) / 2;
         root.y = (Screen.height - root.height) / 2;
-        // 首帧直接以居中位置显示，消除启动闪烁
-        root.visible = true
+        if (Qt.platform.os === "osx") {
+            // ApplicationWindow 在 mac 上会按标题栏高度把 contentItem 下移 ~32px（顶部白带根源）。
+            // 仅 mac 清零 padding 让内容回到 y=0；其他平台一律不动，保证零影响。
+            root.topPadding = 0
+            root.bottomPadding = 0
+            root.leftPadding = 0
+            root.rightPadding = 0
+        } else {
+            // 非 mac 直接显示；mac 由 main.cpp 配置完原生窗口后再 show（避免闪烁）
+            root.visible = true
+        }
     }
     // 注意：关闭事件已被 TrayHandler 拦截，这里不会执行
     // 真正退出时由 TrayHandler 处理关闭桌面歌词

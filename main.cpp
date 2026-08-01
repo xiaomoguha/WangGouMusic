@@ -16,6 +16,9 @@
 #include <windows.h>
 #endif
 #include "./CPPSrc/macoswindow.h"
+#ifdef Q_OS_MAC
+#include <QWKQuick/quickwindowagent.h>
+#endif
 #include "./CPPSrc/CrashHandler.h"
 #include "./CPPSrc/ClickThroughHelper.h"
 #include "./CPPSrc/HttpGetRequester.h"
@@ -204,6 +207,18 @@ int main(int argc, char *argv[])
         QObject *rootObj = engine.rootObjects().first();
         window           = qobject_cast<QQuickWindow *>(rootObj);
     }
+
+#ifdef Q_OS_MAC
+    // QWindowKit 接管主窗口：真原生 traffic lights（系统级悬停图案 + 关/最小/缩放动作），
+    // 内容铺满到标题栏下方（无透明带）。配置完再 show，避免启动闪烁；QML 在 mac 上不自行 show。
+    if (window)
+    {
+        auto windowAgent = new QWK::QuickWindowAgent(window);
+        windowAgent->setup(window);
+        window->show();
+        makeMacWindowBackgroundClear(window);
+    }
+#endif
 
     // 让单实例管理器持有主窗口引用
     singleApp.listen(window);

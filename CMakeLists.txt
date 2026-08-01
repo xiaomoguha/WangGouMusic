@@ -101,6 +101,16 @@ if(APPLE)
     find_library(COREAUDIO_FRAMEWORK CoreAudio)
     find_library(COREIMAGE_FRAMEWORK CoreImage)
     target_link_libraries(WangGouMusic PRIVATE ${COCOA_FRAMEWORK} ${MEDIAPLAYER_FRAMEWORK} ${COREAUDIO_FRAMEWORK} ${COREIMAGE_FRAMEWORK})
+
+    # QWindowKit：mac 主窗口用真原生 traffic lights（系统级悬停图案 + 动作），
+    # 内容铺满到标题栏下方（无透明带）。静态库，仅 mac 链接；Windows 构建不触及。
+    # QWK 静态目标的 link 接口引用 Qt 私有模块目标，需先显式引入 Qt6FooPrivate。
+    find_package(Qt6CorePrivate REQUIRED)
+    find_package(Qt6GuiPrivate REQUIRED)
+    find_package(Qt6QuickPrivate REQUIRED)
+    find_package(QWindowKit CONFIG COMPONENTS Core Quick REQUIRED
+        PATHS "/Users/xjt/QT_project/qwindowkit-install/lib/cmake/QWindowKit")
+    target_link_libraries(WangGouMusic PRIVATE QWindowKit::Quick)
 endif()
 
 # 固定、明确的 Bundle Identifier。

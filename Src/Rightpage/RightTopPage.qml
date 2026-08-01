@@ -67,6 +67,7 @@ Item {
         }
         //最大化最小化
         MaxMin {
+            visible: Qt.platform.os !== "osx"   // mac 用原生 traffic lights
             spacing: 8
             anchors.verticalCenter: parent.verticalCenter
         }
