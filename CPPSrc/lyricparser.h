@@ -54,9 +54,6 @@ signals:
 public:
     explicit LyricParser(QObject *parent = nullptr);
 
-    // 解析标准LRC歌词
-    bool parseLyrics(const QString &lyricText);
-
     // 解析KRC逐字歌词
     bool parseKRCLyrics(const QString &krcText);
 

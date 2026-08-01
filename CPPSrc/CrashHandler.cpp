@@ -1,4 +1,5 @@
 #include "CrashHandler.h"
+#include "PlaylistCacheStore.h"
 
 #include <QAtomicInt>
 #include <QDateTime>
@@ -380,17 +381,11 @@ static void qtMessageHandler(QtMsgType type, const QMessageLogContext &ctx, cons
 }
 
 // ==================== 日志目录计算 ====================
-// 与 PlaylistCacheStore::cacheDir() 保持一致：
-//   macOS: ~/Downloads/网狗音乐缓存目录/
-//   Windows: C:/网狗音乐缓存目录/
+// 复用 PlaylistCacheStore::cacheDir()：避免在此处再 #ifdef Q_OS_WIN 一次，
+// 缓存目录搬迁时只需改一处。
 static QString computeLogDir()
 {
-#ifdef Q_OS_WIN
-    return QStringLiteral("C:/网狗音乐缓存目录/logs");
-#else
-    return QStandardPaths::writableLocation(QStandardPaths::DownloadLocation)
-           + QStringLiteral("/网狗音乐缓存目录/logs");
-#endif
+    return PlaylistCacheStore::cacheDir() + QStringLiteral("/logs");
 }
 
 // 清理旧日志文件，保留最新的 MAX_LOG_FILES 份

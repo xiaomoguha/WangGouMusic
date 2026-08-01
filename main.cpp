@@ -14,9 +14,7 @@
 #ifdef Q_OS_WIN
 #include <windows.h>
 #endif
-
 #include "./CPPSrc/macoswindow.h"
-
 #include "./CPPSrc/CrashHandler.h"
 #include "./CPPSrc/ClickThroughHelper.h"
 #include "./CPPSrc/HttpGetRequester.h"
@@ -31,8 +29,6 @@
 #include "./CPPSrc/singleapplication.h"
 #include "./CPPSrc/trayhandler.h"
 #include "./CPPSrc/usermanager.h"
-
-// 注册 HttpGetRequester 为 QML 类型
 #include <QQmlEngine>
 
 class HttpGetRequesterHelper : public HttpGetRequester
@@ -203,6 +199,9 @@ int main(int argc, char *argv[])
 
     // 在栈上创建 TrayHandler，确保正确的销毁顺序
     TrayHandler trayHandler(window, &app, trayIcon, nullptr);
+
+    // 将 trayHandler 暴露给 QML（用于发送系统通知）
+    engine.rootContext()->setContextProperty("trayHandler", &trayHandler);
 
     // 退出时保存播放状态
     QObject::connect(&app, &QApplication::aboutToQuit, &playlistmanager, [&playlistmanager]() {

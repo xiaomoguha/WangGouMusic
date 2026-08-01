@@ -9,25 +9,6 @@ HttpGetRequester::HttpGetRequester(int timeoutMs, QObject *parent)
 {
 }
 
-void HttpGetRequester::setTimeout(int milliseconds)
-{
-    if (milliseconds > 0) m_timeoutMs = milliseconds;
-}
-
-void HttpGetRequester::setHeader(const QByteArray &name, const QByteArray &value)
-{
-    // 替换同名头
-    for (auto& h : m_customHeaders) {
-        if (h.first == name) { h.second = value; return; }
-    }
-    m_customHeaders.append({name, value});
-}
-
-void HttpGetRequester::clearHeaders()
-{
-    m_customHeaders.clear();
-}
-
 void HttpGetRequester::abortCurrent()
 {
     // abort() 会同步触发 QNetworkReply::finished 信号（同线程为 DirectConnection），

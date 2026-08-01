@@ -13,6 +13,8 @@ TrayHandler::TrayHandler(QQuickWindow *win, QApplication *app, const QIcon &icon
 {
   // 创建托盘图标和菜单
   m_tray = new QSystemTrayIcon(icon, this);
+  // QMenu 需 QWidget* 作为 parent，TrayHandler 是 QObject 不是 QWidget，
+  // 不能直接 parent；在 ~TrayHandler 中显式 delete（m_tray 的动作以 m_menu 为 parent）。
   m_menu = new QMenu();
 
   QAction *showAction = new QAction(QStringLiteral("显示主界面"), m_menu);
@@ -56,6 +58,12 @@ TrayHandler::~TrayHandler()
     m_app->removeEventFilter(this);
   if (m_window)
     m_window->removeEventFilter(this);
+  // m_menu 无 Qt parent（QMenu 需 QWidget*），手动释放以避免泄漏。
+  // 子 QAction 以 m_menu 为 parent，会被 Qt 自动连带释放。
+  if (m_menu) {
+    delete m_menu;
+    m_menu = nullptr;
+  }
 }
 
 bool TrayHandler::eventFilter(QObject *watched, QEvent *event)
@@ -88,6 +96,12 @@ void TrayHandler::onShowRequested()
   m_window->show();
   m_window->raise();
   m_window->requestActivate();
+}
+
+void TrayHandler::showMessage(const QString &title, const QString &message, int timeoutMs)
+{
+  if (m_tray && m_tray->isVisible())
+    m_tray->showMessage(title, message, QSystemTrayIcon::Information, timeoutMs);
 }
 
 void TrayHandler::onQuitRequested()

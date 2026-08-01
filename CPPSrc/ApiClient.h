@@ -49,13 +49,6 @@ public:
                        SuccessCallback onSuccess,
                        ErrorCallback   onError    = nullptr,
                        int             timeoutMs  = -1);
-    /// POST 表单/任意 body
-    QNetworkReply* post(const QString& url,
-                        const QByteArray& body,
-                        SuccessCallback onSuccess,
-                        ErrorCallback   onError    = nullptr,
-                        int             timeoutMs  = -1);
-
     // ── JSON 便捷（自动 Content-Type: application/json，自动 parse 响应） ──
     /// GET 并解析为 JSON 对象
     QNetworkReply* getJson(const QString& url,
@@ -82,10 +75,16 @@ private:
                     SuccessCallback onSuccess,
                     ErrorCallback   onError);
 
+    /// POST 表单/任意 body（仅内部使用，由 postJson 调用）
+    QNetworkReply* post(const QString& url,
+                        const QByteArray& body,
+                        SuccessCallback onSuccess,
+                        ErrorCallback   onError    = nullptr,
+                        int             timeoutMs  = -1);
+
     QNetworkAccessManager* m_nam;
     QString m_userAgent       = QStringLiteral("WangGouMusic/0.5.7");
     QString m_authToken;
     int     m_defaultTimeout  = 10000;
-    QMap<QString, QString> m_baseHeaders;
     QHash<QNetworkReply*, QTimer*> m_timeoutTimers;  // 跟踪活跃 reply 的超时
 };

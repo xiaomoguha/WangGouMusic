@@ -53,7 +53,6 @@ PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent
         loadPlaylistFromCache();
         loadRecentFromCache();
     });
-    // lyricParser();
     //  连接 mediaStatusChanged 信号
     QObject::connect(player, &QMediaPlayer::mediaStatusChanged, this, [this](QMediaPlayer::MediaStatus status)
                      {
@@ -84,7 +83,7 @@ PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent
     // 连接播放进度变化信号
     connect(player, &QMediaPlayer::positionChanged, this, &PlaylistManager::updatePlaybackProgress);
     connect(player, &QMediaPlayer::errorOccurred, this, &PlaylistManager::handlePlayerError);
-    connect(&lyricParser, &LyricParser::parselyricsuc, this, &PlaylistManager::parselyricsuc);
+    connect(&lyricParser, &LyricParser::parselyricsuc, this, &PlaylistManager::parlyricsuc);
 }
 
 // 静态：从 QVariantMap 构造 SongInfo。统一字段映射（hash→songhash, cover→union_cover 等）
@@ -263,11 +262,6 @@ int PlaylistManager::is_have_cache(const SongInfo &song, const int index)
 QVector<LyricLine> PlaylistManager::LyricLine_get() const
 {
     return lyricParser.getLyrics();
-}
-
-void PlaylistManager::parselyricsuc()
-{
-    emit parlyricsuc();
 }
 
 qint64 PlaylistManager::lyricsindexget()
@@ -723,11 +717,6 @@ QString PlaylistManager::currentSongHash() const
     return "";
 }
 
-int PlaylistManager::count() const
-{
-    return (*m_curplaylist).size();
-}
-
 bool PlaylistManager::isPaused() const
 {
     return m_isPaused;
@@ -1137,7 +1126,7 @@ QString PlaylistManager::loadLyricFromCache(const QString &songhash)
 
 void PlaylistManager::fetchSongUrl(const QString &hash, std::function<void(QString)> callback)
 {
-    ApiClient::instance().get(QString("http://xjt-togethertracks.top/api/song/url?hash=%1").arg(hash),
+    ApiClient::instance().get(QString("https://xjt-togethertracks.top/api/song/url?hash=%1").arg(hash),
         [callback](QByteArray body) {
             const QJsonDocument doc = QJsonDocument::fromJson(body);
             if (doc.isObject()) {

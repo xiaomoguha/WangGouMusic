@@ -13,6 +13,15 @@ WebSocketClient::WebSocketClient(PlaylistManager *playManager, UserManager *user
     initializeWebSocket();
 }
 
+WebSocketClient::~WebSocketClient()
+{
+    if (m_webSocket) {
+        m_webSocket->close();
+        delete m_webSocket;
+        m_webSocket = nullptr;
+    }
+}
+
 void WebSocketClient::initializeWebSocket()
 {
     if (m_webSocket)
@@ -21,6 +30,8 @@ void WebSocketClient::initializeWebSocket()
         m_webSocket->deleteLater();
     }
 
+    // QWebSocket 构造函数首个参数是 origin/protocol，无法直接传 this 作为 parent。
+    // 改为在析构中显式 close + delete（见 ~WebSocketClient）。
     m_webSocket = new QWebSocket();
 
     connect(m_webSocket, &QWebSocket::connected,
@@ -176,31 +187,6 @@ void WebSocketClient::sendJson(const QJsonObject &json)
     QJsonDocument doc(json);
     QString jsonString = QString::fromUtf8(doc.toJson(QJsonDocument::Compact));
     m_webSocket->sendTextMessage(jsonString);
-}
-
-void WebSocketClient::sendString(const QString &message)
-{
-    if (!isConnected() || !m_webSocket)
-    {
-        return;
-    }
-
-    m_webSocket->sendTextMessage(message);
-}
-
-void WebSocketClient::setHeartbeatInterval(int seconds)
-{
-    if (seconds < 5)
-    {
-        seconds = 5;
-    }
-
-    m_heartbeatInterval = seconds;
-
-    if (m_heartbeatTimer)
-    {
-        m_heartbeatTimer->setInterval(seconds * 1000);
-    }
 }
 
 // ==================== 一起听操作命令 ====================

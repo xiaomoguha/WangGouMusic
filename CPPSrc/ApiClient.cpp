@@ -104,9 +104,6 @@ QNetworkReply* ApiClient::get(const QString& url,
     if (!m_authToken.isEmpty()) {
         req.setRawHeader("Authorization", "Bearer " + m_authToken.toUtf8());
     }
-    for (auto it = m_baseHeaders.constBegin(); it != m_baseHeaders.constEnd(); ++it) {
-        req.setRawHeader(it.key().toUtf8(), it.value().toUtf8());
-    }
 
     QNetworkReply* reply = m_nam->get(req);
     setupReply(reply, timeoutMs, url, std::move(onSuccess), std::move(onError));
@@ -123,9 +120,6 @@ QNetworkReply* ApiClient::post(const QString& url,
     req.setHeader(QNetworkRequest::UserAgentHeader, m_userAgent);
     if (!m_authToken.isEmpty()) {
         req.setRawHeader("Authorization", "Bearer " + m_authToken.toUtf8());
-    }
-    for (auto it = m_baseHeaders.constBegin(); it != m_baseHeaders.constEnd(); ++it) {
-        req.setRawHeader(it.key().toUtf8(), it.value().toUtf8());
     }
 
     QNetworkReply* reply = m_nam->post(req, body);
