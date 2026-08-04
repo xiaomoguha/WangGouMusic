@@ -492,6 +492,10 @@ void PlaylistManager::playPlaylistFromSource(
     if (localIndex < 0)
         localIndex = 0;
     playSongbyindex(localIndex);
+    // 立即自动拉取剩余所有页（fetchNextSourcePage 内部会级联到全量），
+    // 让队列真实就是完整播放列表，数量即时对上
+    if (m_lazyPage * m_lazyPageSize < m_lazyTotal)
+        fetchNextSourcePage();
 }
 
 void PlaylistManager::tryLazyLoadMore()
@@ -534,6 +538,11 @@ void PlaylistManager::fetchNextSourcePage()
                 savePlaylistToCache();
                 m_playlistModel->syncFromList(m_playlist);
                 emit playlistUpdated();
+                // 全量填充：剩余页自动续拉直到源全部加载完，
+                // 播放列表不再按需动态拓展，底部弹窗即完整列表。
+                // 空页（含失败兜底的空结果）停下，避免断网时无限重试
+                if (m_lazyPage * m_lazyPageSize < m_lazyTotal && !items.isEmpty())
+                    fetchNextSourcePage();
                 // playNext 在已加载末尾触发拉取时，下一批到位后续播下一首
                 if (m_pendingNextAfterLoad)
                 {

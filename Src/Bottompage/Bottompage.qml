@@ -726,7 +726,10 @@ Rectangle {
                                     anchors.verticalCenter: parent.verticalCenter
                                 }
                                 Text {
-                                    text: "(" + playlistView.count + ")"
+                                    // 懒加载源歌单时直接显示真实总数（拉取过程中也是准的）；
+                                    // 普通/一起听队列 count 即实际大小，两者数值一致
+                                    text: "(" + (playlistmanager && playlistmanager.playlistTotalCount > playlistView.count
+                                                 ? playlistmanager.playlistTotalCount : playlistView.count) + ")"
                                     font.pixelSize: AppTheme.fontSizeSmall
                                     font.family: AppTheme.fontFamily
                                     color: AppTheme.textMuted

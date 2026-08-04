@@ -99,26 +99,12 @@ Item {
                 topPadding: 30
                 spacing: 24
 
-                // ===== 加入房间卡片 =====
+                // ===== 加入房间卡片（背景透明，融入整窗渐变） =====
                 Rectangle {
                     width: parent.width
                     height: joinCol.implicitHeight + 50
                     radius: 16
-                    color: AppTheme.bgCard
-                    border.width: 1
-                    border.color: AppTheme.borderDefault
-
-                    // 浅色模式下的柔和渐变底色
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: 16
-                        visible: !AppTheme.isDark
-                        gradient: Gradient {
-                            orientation: Gradient.Vertical
-                            GradientStop { position: 0.0; color: "#FFF5F5" }
-                            GradientStop { position: 1.0; color: "#F8F8FA" }
-                        }
-                    }
+                    color: "transparent"
 
                     // 顶部装饰线
                     Rectangle {
@@ -154,12 +140,12 @@ Item {
                             anchors.horizontalCenter: parent.horizontalCenter
                         }
 
-                        // 用户信息
+                        // 用户信息（透明融入渐变）
                         Rectangle {
                             width: parent.width
                             height: 52
                             radius: 10
-                            color: AppTheme.bgInput
+                            color: "transparent"
 
                             Row {
                                 anchors.left: parent.left
@@ -203,7 +189,10 @@ Item {
                             height: 48
                             placeholderText: "输入房间号，若无该房间将自动创建"
                             color: AppTheme.textPrimary
-                            palette.placeholderText: AppTheme.textPlaceholder
+                            // 渐变激活时占位文字随背景对比色，保证看得清
+                            palette.placeholderText: BasicConfig.playlistCoverColor !== ""
+                                ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
+                                : AppTheme.textPlaceholder
                             horizontalAlignment: TextInput.AlignHCenter
                             verticalAlignment: TextInput.AlignVCenter
                             font.pixelSize: AppTheme.fontSizeBodyLg
@@ -211,9 +200,12 @@ Item {
                             enabled: websocket ? websocket.connectionState === 0 : true
                             background: Rectangle {
                                 radius: 12
-                                color: AppTheme.bgInput
+                                // 沉浸：透明填充融入渐变，只留边框（渐变时边框随对比色）
+                                color: "transparent"
                                 border.width: roomidtextfield.activeFocus ? 2 : 1
-                                border.color: roomidtextfield.activeFocus ? AppTheme.accent : AppTheme.borderSubtle
+                                border.color: roomidtextfield.activeFocus ? AppTheme.accent : (BasicConfig.playlistCoverColor !== ""
+                                    ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
+                                    : AppTheme.borderSubtle)
                                 Behavior on border.color { ColorAnimation { duration: AppTheme.animFast } }
                                 Behavior on border.width { NumberAnimation { duration: 100 } }
                             }
@@ -413,34 +405,8 @@ Item {
                             width: 480
                             height: 64
                             radius: 12
-                            color: roomCardMA.containsMouse ? AppTheme.bgCardHover : AppTheme.bgCard
-                            border.width: 1
-                            border.color: AppTheme.borderDefault
-
-                            // 浅色模式下柔和渐变底色
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: 12
-                                visible: !AppTheme.isDark
-                                gradient: Gradient {
-                                    orientation: Gradient.Horizontal
-                                    GradientStop { position: 0.0; color: "#FFFAFA" }
-                                    GradientStop { position: 1.0; color: "#F8F8FC" }
-                                }
-                            }
-
-                            // 浅色模式下左侧强调线
-                            Rectangle {
-                                visible: !AppTheme.isDark
-                                anchors.left: parent.left
-                                anchors.top: parent.top
-                                anchors.bottom: parent.bottom
-                                anchors.margins: 8
-                                width: 3
-                                radius: 1.5
-                                color: AppTheme.accent
-                                opacity: 0.5
-                            }
+                            // 沉浸：透明融入渐变，hover 房间号高亮
+                            color: "transparent"
 
                             Row {
                                 anchors.fill: parent
@@ -484,7 +450,8 @@ Item {
                                         text: "房间 " + modelData.room_id
                                         font.pixelSize: AppTheme.fontSizeBodyLg
                                         font.bold: true
-                                        color: AppTheme.textPrimary
+                                        // hover 房间号高亮（网易云风格）
+                                        color: roomCardMA.containsMouse ? AppTheme.accentPlaying : AppTheme.textPrimary
                                         font.family: AppTheme.fontFamily
                                     }
                                     Text {
