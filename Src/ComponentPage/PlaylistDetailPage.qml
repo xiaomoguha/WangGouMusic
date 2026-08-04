@@ -312,10 +312,14 @@ Item {
 
         delegate: Rectangle {
             width: tracksListView.width - 60
-            height: 55
+            height: 60
             x: 30
-            radius: 8
-            color: songHover.hovered ? AppTheme.bgCard : "transparent"
+            radius: 5
+            color: {
+                if (songHover.hovered) return AppTheme.bgCardHover
+                if (isPlaying) return AppTheme.bgCardHover
+                return "transparent"
+            }
 
             readonly property bool isPlaying: playlistmanager && playlistmanager.currentSonghash === modelData.songhash
 
@@ -324,17 +328,21 @@ Item {
                         anchors.fill: parent
                         anchors.leftMargin: 10
                         anchors.rightMargin: 10
-                        spacing: 12
+                        spacing: 15
 
                         Text {
-                            width: 30
-                            height: parent.height
-                            verticalAlignment: Text.AlignVCenter
-                            horizontalAlignment: Text.AlignHCenter
-                            font.pixelSize: AppTheme.fontSizeBody
+                            width: 25
+                            text: (index + 1).toString().padStart(2, "0")
+                            anchors.verticalCenter: parent.verticalCenter
+                            font.pixelSize: AppTheme.fontSizeTitle
                             color: isPlaying ? AppTheme.accentPlaying : AppTheme.textMuted
                             font.family: AppTheme.fontFamily
-                            text: isPlaying ? "♪" : (index + 1)
+                            visible: !isPlaying
+                        }
+
+                        NowPlayingIndicator {
+                            visible: isPlaying
+                            anchors.verticalCenter: parent.verticalCenter
                         }
 
                         Image {
@@ -358,9 +366,9 @@ Item {
                         }
 
                         Column {
-                            width: parent.width - 260
+                            width: 0.3 * tracksListView.width
                             anchors.verticalCenter: parent.verticalCenter
-                            spacing: 2
+                            spacing: 4
 
                             Text {
                                 text: modelData.songname
@@ -378,7 +386,7 @@ Item {
                                 elide: Text.ElideRight
                                 font.pixelSize: AppTheme.fontSizeCaption
                                 font.bold: true
-                                color: AppTheme.textMuted
+                                color: isPlaying ? AppTheme.accentPlaying : AppTheme.textMuted
                                 font.family: AppTheme.fontFamily
                             }
                         }
@@ -392,7 +400,7 @@ Item {
                             Row {
                                 anchors.fill: parent
                                 spacing: 4
-                                visible: songHover.hovered
+                                visible: songHover.hovered && !isPlaying
 
                                 IconButton {
                                     visible: !isTogetherMode
@@ -442,13 +450,33 @@ Item {
                             }
                         }
 
+                        // 专辑名（与最近播放一致的列）
                         Text {
-                            id: durationText
-                            text: modelData.duration
-                            anchors.verticalCenter: parent.verticalCenter
-                            font.pixelSize: AppTheme.fontSizeCaption
-                            color: AppTheme.textMuted
+                            text: modelData.album_name
+                            width: 0.2 * tracksListView.width
+                            elide: Text.ElideRight
+                            font.pixelSize: AppTheme.fontSizeBodyLg
                             font.family: AppTheme.fontFamily
+                            font.bold: true
+                            color: AppTheme.textPrimary
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        Text {
+                            text: {
+                                var d = modelData.duration
+                                if (!d) return "--:--"
+                                if (d.indexOf(":") !== -1) return d
+                                var sec = parseInt(d)
+                                if (isNaN(sec)) return d
+                                var m = Math.floor(sec / 60)
+                                var s = sec % 60
+                                return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s
+                            }
+                            font.pixelSize: AppTheme.fontSizeBodyLg
+                            font.family: AppTheme.fontFamily
+                            color: AppTheme.textMuted
+                            anchors.verticalCenter: parent.verticalCenter
                         }
                     }
 

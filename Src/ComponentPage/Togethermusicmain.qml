@@ -815,10 +815,7 @@ Item {
                                 visible: !(playlistmanager && playlistmanager.currentIndex === index)
                             }
 
-                            AnimatedImage {
-                                width: 20; height: 20
-                                source: "qrc:/image/isplaying.gif"
-                                playing: visible
+                            NowPlayingIndicator {
                                 visible: playlistmanager && playlistmanager.currentIndex === index
                                 anchors.verticalCenter: parent.verticalCenter
                             }
@@ -956,8 +953,6 @@ Item {
                             font.pixelSize: AppTheme.fontSizeCaption; font.family: AppTheme.fontFamily
                             color: AppTheme.textDim
                         }
-
-                        Behavior on color { ColorAnimation { duration: 100 } }
                     }
                 }
             }

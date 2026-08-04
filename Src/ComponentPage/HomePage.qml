@@ -377,12 +377,8 @@ Item {
                                         visible: songCardHover.hovered || isPlaying
                                         radius: 10
 
-                                        AnimatedImage {
+                                        NowPlayingIndicator {
                                             anchors.centerIn: parent
-                                            source: "qrc:/image/isplaying.gif"
-                                            width: 32
-                                            height: 32
-                                            playing: isPlaying
                                             visible: isPlaying
                                         }
 

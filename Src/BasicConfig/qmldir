@@ -4,3 +4,4 @@ singleton AppIcon AppIcon.qml
 LocateCurrentButton LocateCurrentButton.qml
 IconButton IconButton.qml
 ThemedPopup ThemedPopup.qml
+NowPlayingIndicator NowPlayingIndicator.qml
