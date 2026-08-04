@@ -122,11 +122,7 @@ Page {
                             visible: !isPlaying
                         }
 
-                        AnimatedImage {
-                            width: 25
-                            height: 25
-                            source: "qrc:/image/isplaying.gif"
-                            playing: visible
+                        NowPlayingIndicator {
                             visible: isPlaying
                             anchors.verticalCenter: parent.verticalCenter
                         }
