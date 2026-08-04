@@ -226,6 +226,46 @@ int main(int argc, char *argv[])
     }
 #endif
 
+#ifdef Q_OS_WIN
+    // Windows 窗口圆角：Win11 优先用 DWM 系统圆角；Win10（无 DWMWA_WINDOW_CORNER_PREFERENCE）
+    // 退回 SetWindowRgn 系统区域圆角。两者都在系统层裁角，不依赖 QML 透明链路
+    // （渐变激活时面板转透明，部分机器 QML 透明失效会把四角填成背景色）。
+    if (window)
+    {
+        auto applyRoundedCorners = [window]() {
+            HWND hwnd = (HWND)window->winId();
+            if (!hwnd)
+                return;
+
+            // 1) Win11+：DWM 系统圆角
+            typedef HRESULT(WINAPI *DwmSetWindowAttributeFn)(HWND, DWORD, LPCVOID, DWORD);
+            static auto dwmSetAttr = (DwmSetWindowAttributeFn)GetProcAddress(
+                GetModuleHandleW(L"dwmapi.dll"), "DwmSetWindowAttribute");
+            if (dwmSetAttr) {
+                DWORD pref = 2; // DWMWCP_ROUND
+                if (SUCCEEDED(dwmSetAttr(hwnd, 33, &pref, sizeof(pref)))) // DWMWA_WINDOW_CORNER_PREFERENCE
+                    return;
+            }
+
+            // 2) Win10 兜底：区域圆角（最大化时取消，半径与 QML 面板 radius:20 对齐）
+            if (IsZoomed(hwnd)) {
+                SetWindowRgn(hwnd, NULL, TRUE);
+                return;
+            }
+            RECT rc;
+            GetClientRect(hwnd, &rc);
+            int radius = qRound(20 * window->devicePixelRatio());
+            HRGN rgn = CreateRoundRectRgn(0, 0, rc.right + 1, rc.bottom + 1, radius, radius);
+            SetWindowRgn(hwnd, rgn, TRUE);
+        };
+        // 首次 show 后 winId 才有效；resize/再显示时重新应用
+        QObject::connect(window, &QQuickWindow::visibleChanged, window, applyRoundedCorners);
+        QObject::connect(window, &QQuickWindow::widthChanged, window, applyRoundedCorners);
+        QObject::connect(window, &QQuickWindow::heightChanged, window, applyRoundedCorners);
+        QTimer::singleShot(0, window, applyRoundedCorners);
+    }
+#endif
+
     // 让单实例管理器持有主窗口引用
     singleApp.listen(window);
 
