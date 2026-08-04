@@ -14,12 +14,11 @@ Window {
     property real scale: lyricsConfig ? lyricsConfig.scale : 1.0
     property int fontSize: lyricsConfig ? lyricsConfig.fontSize : 22
 
-    // 已播歌词染色（空=固定默认色，与主题无关——用户没调过颜色时深浅主题应一致），
-    // glow 为其 40% 透明描边
-    property color lyricsColor: (lyricsConfig && lyricsConfig.lyricsColor.length > 0) ? lyricsConfig.lyricsColor : "#FF6B6B"
+    // 已播歌词染色（空=跟随主题 accent），glow 为其 40% 透明同色软发光（以前的效果）
+    property color lyricsColor: (lyricsConfig && lyricsConfig.lyricsColor.length > 0) ? lyricsConfig.lyricsColor : AppTheme.accent
     property color lyricsGlow: Qt.rgba(lyricsColor.r, lyricsColor.g, lyricsColor.b, 0.4)
-    // 跳跃歌词（星星+拖尾）颜色（空=固定默认色，不随主题变化）
-    property color starColor: (lyricsConfig && lyricsConfig.starColor.length > 0) ? lyricsConfig.starColor : "#FF6B6B"
+    // 跳跃歌词（星星+拖尾）颜色（空=跟随主题 accent）
+    property color starColor: (lyricsConfig && lyricsConfig.starColor.length > 0) ? lyricsConfig.starColor : AppTheme.accent
     // 跳跃歌词开关（关=普通刷过，无压扁无星星）
     property bool jumpEnabled: lyricsConfig ? lyricsConfig.jumpEnabled : true
 
@@ -326,7 +325,7 @@ Window {
                                         font.pixelSize: desktopLyrics.fontSize * desktopLyrics.scale
                                         font.bold: true
                                     }
-                                    // 已唱色（左半，按 fillRatio 裁剪）+ 深色描边保可读
+                                    // 已唱色（左半，按 fillRatio 裁剪）+ 同色软发光（以前的效果）
                                     Item {
                                         width: hBaseChar.width * fillRatio
                                         height: hBaseChar.height
@@ -337,7 +336,7 @@ Window {
                                             font.bold: true
                                             color: desktopLyrics.lyricsColor
                                             style: Text.Outline
-                                            styleColor: "#40000000"
+                                            styleColor: desktopLyrics.lyricsGlow
                                         }
                                     }
                                     // 未唱色（右半，互补裁剪）+ 深色描边保可读：与已唱色不重叠，无透白也不发糊
@@ -636,9 +635,9 @@ Window {
                                     font.pixelSize: desktopLyrics.fontSize * desktopLyrics.scale
                                     font.bold: true
                                     color: desktopLyrics.lyricsColor
-                                    // 深色描边保可读（替代旧 lyricsGlow 软发光）。竖排整列互补裁剪待后续补，暂保留轻微透白
+                                    // 同色软发光（以前的效果）
                                     style: Text.Outline
-                                    styleColor: "#40000000"
+                                    styleColor: desktopLyrics.lyricsGlow
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                     rotation: isPunctuation ? 90 : 0
