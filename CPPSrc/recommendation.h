@@ -1,6 +1,7 @@
 #ifndef RECOMMENDATION_H
 #define RECOMMENDATION_H
 #include "HttpGetRequester.h"
+#include "models/SongListModel.h"
 #include <QObject>
 #include <functional>
 class Recommendation : public QObject
@@ -8,7 +9,9 @@ class Recommendation : public QObject
     Q_OBJECT
     Q_PROPERTY(QVariantList topSongsQml READ getTopSongsQml NOTIFY topSongsChanged)
     Q_PROPERTY(QVariantList topPlaylistsQml READ getTopPlaylistsQml NOTIFY topPlaylistsChanged)
-    Q_PROPERTY(QVariantList playlistTracksQml READ getPlaylistTracksQml NOTIFY playlistTracksChanged)
+    // 歌单歌曲列表用 QAbstractListModel：增量插入只通知变化行，下拉加载更多不弹顶
+    // （QVariantList + NOTIFY 每次整体替换 model，ListView 会重置滚动位置）
+    Q_PROPERTY(QObject* playlistTracksModel READ playlistTracksModel CONSTANT)
     Q_PROPERTY(int playlistTotal READ playlistTotal NOTIFY playlistTracksChanged)
     Q_PROPERTY(bool playlistHasMore READ playlistHasMore NOTIFY playlistTracksChanged)
     Q_PROPERTY(bool playlistIsLoading READ playlistIsLoading NOTIFY playlistIsLoadingChanged)
@@ -30,7 +33,10 @@ public:
 
     QVariantList getTopSongsQml() const;
     QVariantList getTopPlaylistsQml() const;
-    QVariantList getPlaylistTracksQml() const;
+    SongListModel *playlistTracksModel() const
+    {
+        return m_playlistTracksModel;
+    }
     int playlistTotal() const
     {
         return m_playlistTotal;
@@ -67,7 +73,7 @@ private:
     HttpGetRequester m_playlistTracksRequester;
     QVariantList m_topSongs;
     QVariantList m_topPlaylists;
-    QVariantList m_playlistTracks;
+    SongListModel *m_playlistTracksModel = nullptr;
     QString m_currentPlaylistId;
     int m_playlistPage       = 0;
     int m_playlistPageSize   = 30;

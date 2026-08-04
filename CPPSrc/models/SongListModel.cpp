@@ -69,6 +69,7 @@ QVariant SongListModel::get(int index) const
     const SongInfo &s = m_songs.at(index);
     QVariantMap m;
     m["title"]             = s.title;
+    m["songname"]          = s.title;   // 别名：部分 delegate 走 modelData.songname（DisplayRole map）
     m["songhash"]          = s.songhash;
     m["url"]               = s.url;
     m["singername"]        = s.singername;
