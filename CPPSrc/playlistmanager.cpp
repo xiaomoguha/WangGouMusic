@@ -671,6 +671,8 @@ void PlaylistManager::playstop()
 
     if (state == QMediaPlayer::PlayingState)
     {
+        // 一起听：本地暂停只影响自己，不告知服务器（房间其他人继续播）
+        m_localPaused = true;
         // 暂停前 1.5s 渐弱，再真正暂停（图标立即切换为暂停）
         m_isPaused = true;
         emit isPausedChanged();
@@ -692,6 +694,8 @@ void PlaylistManager::playstop()
             m_isPaused = false;
             emit isPausedChanged();
             fadeInVolume(); // 恢复时渐强
+            // 一起听：手动恢复播放由 WebSocketClient 监听 isPausedChanged
+            // 接管——清掉本地暂停标记，从房间最新进度续上（含错过的切歌）
         }
         else
         {
@@ -949,6 +953,7 @@ void PlaylistManager::changeplaylisttype(enum PlaylistType changetype)
         m_player->pause();
         m_isPaused = true;
         emit isPausedChanged();
+        m_localPaused  = false; // 新房间从无本地暂停状态开始
         m_localIndex   = m_currentIndex;
         m_localPercent = m_percent;
         type           = TOGETHER;
@@ -959,6 +964,7 @@ void PlaylistManager::changeplaylisttype(enum PlaylistType changetype)
     else if (changetype == LOCAL)
     {
         type = LOCAL;
+        m_localPaused = false;
         m_currentTogetherSongHash.clear();
         m_curplaylist = &m_playlist;
         // 恢复本地播放索引并加载歌曲（暂停状态）
@@ -1877,6 +1883,28 @@ void PlaylistManager::seekToPercent(double percent)
 void PlaylistManager::setTogetherSeekPercent(double percent)
 {
     m_togetherSeekPercent = percent;
+}
+
+double PlaylistManager::togetherSeekPercent() const
+{
+    return m_togetherSeekPercent;
+}
+
+// 一起听：本地环境性暂停（播放键/媒体键/拔出耳机）→ 仅本地暂停，不告知服务器
+void PlaylistManager::pauseLocal()
+{
+    m_localPaused = true;
+    setPaused(true);
+}
+
+bool PlaylistManager::localPaused() const
+{
+    return m_localPaused;
+}
+
+void PlaylistManager::clearLocalPaused()
+{
+    m_localPaused = false;
 }
 
 void PlaylistManager::setPaused(bool paused)

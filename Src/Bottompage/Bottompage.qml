@@ -380,17 +380,10 @@ Rectangle {
                     TapHandler {
                         cursorShape: Qt.PointingHandCursor
                         onTapped: {
-                            if (playlistmanager.type === 1) {
-                                // TOGETHER 模式：没有歌曲时不发指令
-                                if (playlistmanager.currentIndex < 0) return;
-                                if (playlistmanager.isPaused) {
-                                    websocket.resumeTogether();
-                                } else {
-                                    websocket.pauseTogether();
-                                }
-                            } else {
-                                playlistmanager.playstop();
-                            }
+                            if (playlistmanager.type === 1 && playlistmanager.currentIndex < 0) return;
+                            // 一起听：暂停/恢复都只影响本机（不向服务器发指令），
+                            // 手动恢复时自动从房间最新进度续上
+                            playlistmanager.playstop();
                         }
                     }
 

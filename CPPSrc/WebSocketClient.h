@@ -83,8 +83,6 @@ public:
     );
     Q_INVOKABLE void removeSongFromTogether(const QString &songhash);
     Q_INVOKABLE void playNextTogether();
-    Q_INVOKABLE void pauseTogether();
-    Q_INVOKABLE void resumeTogether();
     Q_INVOKABLE void playTogetherByHash(const QString &songhash);
     Q_INVOKABLE void upSongByHash(const QString &songhash);
     Q_INVOKABLE void requestPlaylist();
@@ -161,6 +159,8 @@ private:
 
     // 当前一起听播放的歌曲 hash，用于判断是否切歌
     QString m_currentTogetherSongHash;
+    // 一起听：本地暂停期间服务器切歌时暂存的新歌信息，手动播放后再补切
+    QJsonObject m_deferredTogetherSong;
 
     // 心跳机制
     QTimer *m_heartbeatTimer;

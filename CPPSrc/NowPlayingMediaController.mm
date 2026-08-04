@@ -35,7 +35,8 @@ static OSStatus AudioDeviceChangedCallback(
         return noErr;
 
     dispatch_async(dispatch_get_main_queue(), ^{
-      impl.playlistManager->setPaused(true);
+      // 一起听：拔耳机只本地暂停，不告知服务器
+      impl.playlistManager->pauseLocal();
     });
     return noErr;
 }
@@ -65,7 +66,7 @@ static OSStatus AudioDeviceChangedCallback(
 
     MPRemoteCommandCenter *cc = [MPRemoteCommandCenter sharedCommandCenter];
 
-    // 播放 / 暂停
+    // 播放 / 暂停（本地操作：不向服务器发送指令，一起听时只影响本机）
     [cc.playCommand addTargetWithHandler:^MPRemoteCommandHandlerStatus(MPRemoteCommandEvent *event) {
       Q_UNUSED(event)
       self.playlistManager->setPaused(false);
@@ -73,13 +74,16 @@ static OSStatus AudioDeviceChangedCallback(
     }];
     [cc.pauseCommand addTargetWithHandler:^MPRemoteCommandHandlerStatus(MPRemoteCommandEvent *event) {
       Q_UNUSED(event)
-      self.playlistManager->setPaused(true);
+      self.playlistManager->pauseLocal();
       return MPRemoteCommandHandlerStatusSuccess;
     }];
     [cc.togglePlayPauseCommand addTargetWithHandler:^MPRemoteCommandHandlerStatus(MPRemoteCommandEvent *event) {
       Q_UNUSED(event)
       bool paused = self.playlistManager->isPaused();
-      self.playlistManager->setPaused(!paused);
+      if (paused)
+          self.playlistManager->setPaused(false);
+      else
+          self.playlistManager->pauseLocal();
       return MPRemoteCommandHandlerStatusSuccess;
     }];
 
