@@ -14,11 +14,12 @@ Window {
     property real scale: lyricsConfig ? lyricsConfig.scale : 1.0
     property int fontSize: lyricsConfig ? lyricsConfig.fontSize : 22
 
-    // 已播歌词染色（空=跟随主题 accent），glow 为其 40% 透明描边
-    property color lyricsColor: (lyricsConfig && lyricsConfig.lyricsColor.length > 0) ? lyricsConfig.lyricsColor : AppTheme.accent
+    // 已播歌词染色（空=固定默认色，与主题无关——用户没调过颜色时深浅主题应一致），
+    // glow 为其 40% 透明描边
+    property color lyricsColor: (lyricsConfig && lyricsConfig.lyricsColor.length > 0) ? lyricsConfig.lyricsColor : "#FF6B6B"
     property color lyricsGlow: Qt.rgba(lyricsColor.r, lyricsColor.g, lyricsColor.b, 0.4)
-    // 跳跃歌词（星星+拖尾）颜色（空=跟随主题 accent）
-    property color starColor: (lyricsConfig && lyricsConfig.starColor.length > 0) ? lyricsConfig.starColor : AppTheme.accent
+    // 跳跃歌词（星星+拖尾）颜色（空=固定默认色，不随主题变化）
+    property color starColor: (lyricsConfig && lyricsConfig.starColor.length > 0) ? lyricsConfig.starColor : "#FF6B6B"
     // 跳跃歌词开关（关=普通刷过，无压扁无星星）
     property bool jumpEnabled: lyricsConfig ? lyricsConfig.jumpEnabled : true
 
