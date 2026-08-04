@@ -720,26 +720,7 @@ Item {
 
                     Item { width: 8; height: 1 }
 
-                    // 播放/暂停
-                    Rectangle {
-                        width: 26; height: 26; radius: 13
-                        color: ctrlPlayBtn.containsMouse ? AppTheme.iconButtonHover : "transparent"
-                        anchors.verticalCenter: parent.verticalCenter
-                        Image {
-                            id: ctrlPlayIcon; anchors.centerIn: parent
-                            source: playlistmanager && !playlistmanager.isPaused ? AppIcon.pause : AppIcon.play
-                            width: 12; height: 12; fillMode: Image.PreserveAspectFit
-                            sourceSize: Qt.size(128, 128)
-                            mipmap: true
-                            layer.enabled: true
-                            layer.effect: ColorOverlay { source: ctrlPlayIcon; color: AppTheme.textSecondary }
-                        }
-                        MouseArea {
-                            id: ctrlPlayBtn; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                            onClicked: playlistmanager && playlistmanager.isPaused ? websocket.resumeTogether() : websocket.pauseTogether()
-                        }
-                        Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
-                    }
+                    // 一起听不再提供暂停/播放按钮：暂停只影响本机（底部播放栏仍可本地暂停）
 
                     Rectangle {
                         width: 26; height: 26; radius: 13

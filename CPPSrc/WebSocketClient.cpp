@@ -11,6 +11,41 @@ WebSocketClient::WebSocketClient(PlaylistManager *playManager, UserManager *user
       m_heartbeatTimeoutTimer(nullptr), m_heartbeatInterval(30)
 {
     initializeWebSocket();
+    // 一起听：本地手动恢复播放（播放键/媒体键）→ 清掉本地暂停标记，
+    // 从房间最新进度续上；暂停期间错过的切歌在此补播
+    connect(playmanager, &PlaylistManager::isPausedChanged, this, [this]() {
+        if (playmanager->getplaylist_type() != TOGETHER || playmanager->isPaused())
+            return;
+        if (!playmanager->localPaused())
+            return;
+        playmanager->clearLocalPaused();
+
+        // 本地暂停期间服务器切过歌：直接补切（hash 已更新，不能再走切歌广播分支）
+        if (!m_deferredTogetherSong.isEmpty())
+        {
+            QJsonObject data = m_deferredTogetherSong;
+            m_deferredTogetherSong = QJsonObject();
+            // 进度由暂停期间的进度广播持续刷新；兜底用切歌广播自带的进度
+            double pct = playmanager->togetherSeekPercent();
+            if (pct <= 0)
+                pct = data["played_percent"].toDouble();
+            if (pct > 0)
+                playmanager->setTogetherSeekPercent(pct);
+            playmanager->playTogetherSongFromServer(
+                data["song_url"].toString(), data["songname"].toString(), data["songhash"].toString(),
+                data["singername"].toString(), data["cover_url"].toString(), data["album_name"].toString(),
+                data["duration"].toString()
+            );
+            return;
+        }
+        // 同一首歌：从房间最新进度续上（进度广播持续写入该值，含 isPlaying=0 时）
+        if (playmanager->togetherSeekPercent() > 0)
+        {
+            double pct = playmanager->togetherSeekPercent();
+            playmanager->setTogetherSeekPercent(0);
+            playmanager->seekToPercent(pct);
+        }
+    });
 }
 
 WebSocketClient::~WebSocketClient()
@@ -231,22 +266,6 @@ void WebSocketClient::playNextTogether()
     QJsonObject json;
     json["userid"] = m_userId;
     json["action"] = PLAY_NEXT_SONG;
-    sendJson(json);
-}
-
-void WebSocketClient::pauseTogether()
-{
-    QJsonObject json;
-    json["userid"] = m_userId;
-    json["action"] = PAUSE_SONG;
-    sendJson(json);
-}
-
-void WebSocketClient::resumeTogether()
-{
-    QJsonObject json;
-    json["userid"] = m_userId;
-    json["action"] = RESUME_SONG;
     sendJson(json);
 }
 
@@ -772,6 +791,16 @@ void WebSocketClient::handleSongInfoBroadcast(const QJsonObject &data)
     {
         // 切歌：加载新歌曲
         m_currentTogetherSongHash = songHash;
+        if (playmanager->localPaused())
+        {
+            // 本地暂停中：不自动切歌播放，记住进度与新歌信息，手动播放时再续上
+            if (playedPercent > 0)
+            {
+                playmanager->setTogetherSeekPercent(playedPercent);
+            }
+            m_deferredTogetherSong = data;
+            return;
+        }
         // 设置 seek 进度，歌曲加载完成后自动 seek
         if (playedPercent > 0)
         {
@@ -781,7 +810,16 @@ void WebSocketClient::handleSongInfoBroadcast(const QJsonObject &data)
     }
     else
     {
-        // 同一首歌：检测是否为循环重播（进度回到起点）
+        // 同一首歌
+        if (playmanager->localPaused())
+        {
+            // 本地主动暂停过：只记最新进度（手动播放时从此续上），
+            // 不随服务器播放广播恢复，也不循环重播
+            playmanager->setTogetherSeekPercent(playedPercent);
+            return;
+        }
+
+        // 检测是否为循环重播（进度回到起点）
         // 只有本地播放进度也接近结尾时才认为是真正的循环，避免服务端进度临时为0导致误重启
         if (isPlaying == 1 && playedPercent < 0.05)
         {
@@ -799,10 +837,14 @@ void WebSocketClient::handleSongInfoBroadcast(const QJsonObject &data)
         // 正常进度同步
         if (isPlaying == 0)
         {
+            // 记住房间最新进度（本地暂停后手动播放从此续上）
+            playmanager->setTogetherSeekPercent(playedPercent);
             playmanager->setPaused(true);
         }
         else
         {
+            // 记住房间最新进度，手动播放时从此续上
+            playmanager->setTogetherSeekPercent(playedPercent);
             playmanager->setPaused(false);
             // 进度偏差超过 3 秒才 seek，避免频繁跳动
             float localPercent = playmanager->getpercent();
@@ -854,10 +896,19 @@ void WebSocketClient::handleSongProgressBroadcast(const QJsonObject &data)
     // 同一首歌：同步播放状态和进度
     if (isPlaying == 0)
     {
+        // 记住房间最新进度（本地暂停后手动播放从此续上）
+        playmanager->setTogetherSeekPercent(playedPercent);
         playmanager->setPaused(true);
     }
     else
     {
+        // 记住房间最新进度，手动播放时从此续上
+        playmanager->setTogetherSeekPercent(playedPercent);
+        // 本地主动暂停过：不随服务器播放广播恢复，等用户手动播放
+        if (playmanager->localPaused())
+        {
+            return;
+        }
         playmanager->setPaused(false);
         float localPercent = playmanager->getpercent();
         // 用秒数判断偏差，超过 3 秒才 seek，避免网络延迟导致频繁跳动

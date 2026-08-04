@@ -120,6 +120,12 @@ public:
     void seekToPercent(double percent);
     void setPaused(bool paused);
     void setTogetherSeekPercent(double percent);
+    double togetherSeekPercent() const;
+    // 一起听：本地暂停/恢复只影响本机，不向服务器发送指令。
+    // 服务器播放广播在 localPaused() 为 true 时不会恢复播放，直到用户手动播放。
+    void pauseLocal();
+    bool localPaused() const;
+    void clearLocalPaused();
     Q_INVOKABLE void loadPlaylistFromCache();
     void savePlaylistToCache();
     void saveRecentToCache();
@@ -165,6 +171,8 @@ private:
     QList<SongInfo> *m_curplaylist   = &m_playlist;
     int m_currentIndex               = -1;
     bool m_isPaused                  = true;
+    // 一起听：本地主动暂停标记（播放键/媒体键/拔耳机），服务器播放广播不覆盖
+    bool m_localPaused               = false;
     LyricParser m_lyricParser;
     qint64 lyricsindexget();
     QMediaPlayer *m_player      = new QMediaPlayer(this);
