@@ -5,6 +5,7 @@ import "../BasicConfig"
 import "../ToolWindow"
 
 Item {
+    id: root
     objectName: "PlaylistDetailPage"
     width: parent ? parent.width : 0
     height: parent ? parent.height : 0
@@ -15,6 +16,39 @@ Item {
     property string playlistIntro: BasicConfig.playlistDetailIntro
     readonly property bool isTogetherMode: playlistmanager && playlistmanager.type === 1
 
+    // 歌单封面主色（hex，暂存用；空 = 未就绪/无封面）。真正驱动渐变的是
+    // BasicConfig.playlistCoverColor——渐变在主窗口根部，页面只负责同步。
+    property string coverColor: ""
+
+    // 把当前颜色同步到窗口级：仅当本页处于显示状态时生效。
+    // 最终生效色由 BasicConfig.playlistCoverColor 集中计算（歌单页优先于播放歌曲）。
+    function syncWindowTint() {
+        BasicConfig.playlistPageActive = root.visible
+        BasicConfig.playlistPageCoverColor = root.visible ? root.coverColor : ""
+    }
+
+    // 请求封面主色（异步）。切换歌单时**不清空**旧色：旧色保留到新色到达，
+    // GradientStop 的 Behavior 直接平滑过渡到新色，避免渐变闪空再淡入。
+    function requestCoverColor() {
+        if (!playlistCover || playlistCover === "") {
+            coverColor = ""
+            syncWindowTint()
+            return
+        }
+        playlistColorExtractor.extract(playlistCover)
+    }
+
+    // 页面被 Loader 池切走/切回时同步渐变显隐
+    onVisibleChanged: syncWindowTint()
+
+    Connections {
+        target: playlistColorExtractor
+        function onDominantColorReady(color) {
+            coverColor = color
+            syncWindowTint()
+        }
+    }
+
     property bool _pendingPlayAll: false
     property int currentSongIndex: -1        // 当前播放在列表中的下标，-1 = 不在
     property bool _autoLocated: false        // 是否已自动定位过一次
@@ -23,6 +57,7 @@ Item {
     Component.onCompleted: {
         if (recommendation && playlistId !== "")
             recommendation.fetchPlaylistTracks(playlistId)
+        requestCoverColor()
     }
 
     // 计算当前播放在当前列表中的下标
@@ -54,6 +89,7 @@ Item {
                 _autoLocated = false
                 currentSongIndex = -1
                 recommendation.fetchPlaylistTracks(playlistId)
+                requestCoverColor()
             }
         }
     }
@@ -315,11 +351,8 @@ Item {
             height: 60
             x: 30
             radius: 5
-            color: {
-                if (songHover.hovered) return AppTheme.bgCardHover
-                if (isPlaying) return AppTheme.bgCardHover
-                return "transparent"
-            }
+            // hover/播放改为文字高亮（背景透明，渐变下无块状覆盖层）
+            color: "transparent"
 
             readonly property bool isPlaying: playlistmanager && playlistmanager.currentSonghash === modelData.songhash
 
@@ -376,7 +409,8 @@ Item {
                                 elide: Text.ElideRight
                                 font.pixelSize: AppTheme.fontSizeBody
                                 font.bold: true
-                                color: isPlaying ? AppTheme.accentPlaying : AppTheme.textSongTitle
+                                // hover 歌曲名高亮（网易云风格），播放行保持主题色
+                                color: (isPlaying || songHover.hovered) ? AppTheme.accentPlaying : AppTheme.textSongTitle
                                 font.family: AppTheme.fontFamily
                             }
 
@@ -487,6 +521,7 @@ Item {
                         acceptedButtons: Qt.LeftButton
                         enabled: !isTogetherMode
                         acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                        cursorShape: Qt.PointingHandCursor
                         onDoubleTapped: {
                             if (!recommendation) return
                             var total = recommendation.playlistTotal

@@ -26,7 +26,7 @@ public:
 
     /// 提取指定封面图的主色调。结果通过 dominantColorReady 信号异步返回；
     /// 空 URL / 缓存命中时同步发射。
-    void extract(const QString &imageUrl);
+    Q_INVOKABLE void extract(const QString &imageUrl);
 
 signals:
     /// 主色调就绪（hex color，如 "#FF6B6B"）

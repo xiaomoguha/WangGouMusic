@@ -106,7 +106,8 @@ Page {
             width: flick.width
             height: 56
             radius: 8
-            color: itemHover.hovered ? AppTheme.bgCardHover : "transparent"
+            // hover 改为歌曲名高亮（背景透明，渐变下无块状覆盖层）
+            color: "transparent"
 
             property bool showActions: itemHover.hovered
 
@@ -177,14 +178,15 @@ Page {
                                 text: model.songname
                                 font.pixelSize: AppTheme.fontSizeBody; font.family: AppTheme.fontFamily
                                 font.bold: true
-                                color: AppTheme.textSongTitle
+                                // hover 歌曲名高亮（网易云风格）
+                                color: itemHover.hovered ? AppTheme.accentPlaying : AppTheme.textSongTitle
                             }
                             // 第二份副本：仅超出时显示，配合 x 滚到 -unitWidth 实现无缝循环
                             Text {
                                 text: model.songname
                                 font.pixelSize: AppTheme.fontSizeBody; font.family: AppTheme.fontFamily
                                 font.bold: true
-                                color: AppTheme.textSongTitle
+                                color: itemHover.hovered ? AppTheme.accentPlaying : AppTheme.textSongTitle
                                 visible: songNameClip.overflow
                             }
                             NumberAnimation on x {

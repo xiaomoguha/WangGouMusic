@@ -112,9 +112,12 @@ Row {
         width: 260
         height: 36
         radius: 18
-        color: AppTheme.bgInput
+        // 沉浸：背景透明融入渐变，只留细边框（聚焦时边框高亮；渐变时边框随背景对比色）
+        color: "transparent"
         border.width: 1
-        border.color: searchTextField.activeFocus ? AppTheme.borderFocus : AppTheme.borderDefault
+        border.color: searchTextField.activeFocus ? AppTheme.borderFocus : (BasicConfig.playlistCoverColor !== ""
+            ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
+            : AppTheme.borderDefault)
         Behavior on border.color { ColorAnimation { duration: AppTheme.animFast } }
 
         Row {
@@ -132,7 +135,13 @@ Row {
                 fillMode: Image.PreserveAspectFit
                 anchors.verticalCenter: parent.verticalCenter
                 layer.enabled: true
-                layer.effect: ColorOverlay { source: searchicon; color: AppTheme.iconSearch }
+                layer.effect: ColorOverlay {
+                    source: searchicon
+                    // 渐变时图标随背景对比色，保证任何封面下都看得清
+                    color: BasicConfig.playlistCoverColor !== ""
+                        ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
+                        : AppTheme.iconSearch
+                }
             }
 
             TextField {
@@ -141,7 +150,10 @@ Row {
                 height: parent.height
                 placeholderText: "搜索歌曲、歌手"
                 color: AppTheme.textPrimary
-                palette.placeholderText: AppTheme.textPlaceholder
+                // 渐变激活时按背后颜色自动挑白/深字，保证任何封面下都看得清
+                palette.placeholderText: BasicConfig.playlistCoverColor !== ""
+                    ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
+                    : AppTheme.textPlaceholder
                 verticalAlignment: TextInput.AlignVCenter
                 font.pixelSize: AppTheme.fontSizeBodyLg
                 font.family: AppTheme.fontFamily
@@ -166,7 +178,13 @@ Row {
                     mipmap: true
                     fillMode: Image.PreserveAspectFit
                     layer.enabled: true
-                    layer.effect: ColorOverlay { source: clearIcon; color: AppTheme.iconSearch }
+                    layer.effect: ColorOverlay {
+                        source: clearIcon
+                        // 渐变时图标随背景对比色
+                        color: BasicConfig.playlistCoverColor !== ""
+                            ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
+                            : AppTheme.iconSearch
+                    }
                 }
                 MouseArea {
                     anchors.fill: parent

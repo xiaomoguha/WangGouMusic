@@ -9,6 +9,12 @@ Rectangle {
     // 导航栈：记录页面历史，最后一个是当前页面
     property var navStack: []
 
+    // 整窗统一渐变：本面板切片（面板根色在 main.qml 改为透明时生效）
+    WindowTintGradient {
+        baseColor: AppTheme.bgContent
+        panelTopY: 0
+    }
+
     RightTopPage {
         id: righttoppage
         anchors.left: parent.left

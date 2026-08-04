@@ -42,6 +42,13 @@ Rectangle {
         }
     }
 
+    // 整窗统一渐变：本面板切片（面板根色在 main.qml 改为透明时生效）。
+    // 底部栏整段都在淡出线以下，实际渲染为纯底色，但保留切片以维持结构统一。
+    WindowTintGradient {
+        baseColor: AppTheme.bgBottomBar
+        panelTopY: BasicConfig.windowHeight - controlBar.height
+    }
+
     // 顶部渐变分隔线
     Rectangle {
         anchors.top: parent.top
@@ -804,10 +811,8 @@ Rectangle {
                                 // 防护：Popup 首次实例化时 playlistmanager 可能尚未就绪
                                 readonly property int curIdx: playlistmanager ? playlistmanager.currentIndex : -1
                                 readonly property bool isCurrent: index === curIdx
-                                color: {
-                                    if (isCurrent) return AppTheme.accentDim
-                                    return songItemMA.containsMouse ? AppTheme.bgCardHover : "transparent"
-                                }
+                                // hover/播放改为文字高亮（背景透明，渐变下无块状覆盖层）
+                                color: "transparent"
 
                                 Row {
                                     anchors.fill: parent
@@ -837,7 +842,8 @@ Rectangle {
                                             font.pixelSize: AppTheme.fontSizeBody
                                             font.family: AppTheme.fontFamily
                                             font.bold: true
-                                            color: index === curIdx ? AppTheme.accent : AppTheme.textSongTitle
+                                            // hover 歌曲名高亮，当前播放行保持强调色
+                                            color: (index === curIdx || songItemMA.containsMouse) ? AppTheme.accent : AppTheme.textSongTitle
                                             elide: Text.ElideRight
                                             width: parent.width
                                         }

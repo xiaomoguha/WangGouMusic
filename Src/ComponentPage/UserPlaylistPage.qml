@@ -389,7 +389,8 @@ Item {
                                 width: parent.width
                                 height: 70
                                 radius: AppTheme.radiusSmall
-                                color: rowHover.hovered ? AppTheme.bgCardHover : "transparent"
+                                // hover 改为歌单名高亮（背景透明，渐变下无块状覆盖层）
+                                color: "transparent"
 
                                 property var playlistData: playlists[index]
 
@@ -426,7 +427,8 @@ Item {
                                             text: playlistData.name || "未知歌单"
                                             width: parent.width
                                             elide: Text.ElideRight
-                                            color: AppTheme.textPrimary
+                                            // hover 歌单名高亮（网易云风格）
+                                            color: rowHover.hovered ? AppTheme.accentPlaying : AppTheme.textPrimary
                                             font.pixelSize: AppTheme.fontSizeBodyLg
                                             font.family: AppTheme.fontFamily
                                         }
@@ -890,11 +892,8 @@ Item {
                                 width: songsListView.width
                                 height: 60
                                 radius: 5
-                                color: {
-                                    if (songMouse.hovered) return AppTheme.bgCardHover
-                                    if (playlistmanager && filteredSongs[index] && filteredSongs[index].hash && playlistmanager.currentSonghash === filteredSongs[index].hash) return AppTheme.bgCardHover
-                                    return "transparent"
-                                }
+                                // hover/播放改为文字高亮（背景透明，渐变下无块状覆盖层）
+                                color: "transparent"
 
                                 readonly property bool isPlaying: !!(playlistmanager && filteredSongs[index] && filteredSongs[index].hash && playlistmanager.currentSonghash === filteredSongs[index].hash)
 
@@ -942,7 +941,8 @@ Item {
                                             font.pixelSize: AppTheme.fontSizeBody
                                             font.family: AppTheme.fontFamily
                                             font.bold: true
-                                            color: isPlaying ? AppTheme.accentPlaying : AppTheme.textSongTitle
+                                            // hover 歌曲名高亮（网易云风格），播放行保持强调色
+                                            color: (isPlaying || songMouse.hovered) ? AppTheme.accentPlaying : AppTheme.textSongTitle
                                         }
 
                                         Text {
@@ -1053,6 +1053,7 @@ Item {
                                     acceptedButtons: Qt.LeftButton
                                     enabled: !isTogetherMode
                                     acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                                    cursorShape: Qt.PointingHandCursor
                                     onDoubleTapped: {
                                         if (!playlistmanager) return
                                         var songs = (searchKeyword.trim() !== "")

@@ -98,11 +98,8 @@ Page {
                     width: recentCol.width
                     height: 60
                     radius: 5
-                    color: {
-                        if (itemHover.hovered) return AppTheme.bgCardHover
-                        if (songItem.isPlaying) return AppTheme.bgCardHover
-                        return "transparent"
-                    }
+                    // hover/播放改为文字高亮（背景透明，渐变下无块状覆盖层）
+                    color: "transparent"
 
                     // 与歌单详情页一致的「正在播放」高亮：♪/动图 + 强调色
                     readonly property bool isPlaying: !!(playlistmanager && playlistmanager.currentSonghash === modelData.songhash)
@@ -166,7 +163,8 @@ Page {
                                 font.pixelSize: AppTheme.fontSizeBody
                                 font.family: AppTheme.fontFamily
                                 font.bold: true
-                                color: isPlaying ? AppTheme.accentPlaying : AppTheme.textSongTitle
+                                // hover 歌曲名高亮（网易云风格），播放行保持强调色
+                                color: (isPlaying || itemHover.hovered) ? AppTheme.accentPlaying : AppTheme.textSongTitle
                             }
                             Text {
                                 text: modelData.singername

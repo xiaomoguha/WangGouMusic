@@ -25,6 +25,12 @@ Rectangle {
             userManager.fetchUserPlaylist(1, 30);
     }
 
+    // 整窗统一渐变：本面板切片（面板根色在 main.qml 改为透明时生效）
+    WindowTintGradient {
+        baseColor: AppTheme.bgSidebar
+        panelTopY: 0
+    }
+
     Connections {
         target: BasicConfig
         function onIndexChange(index) {
@@ -141,7 +147,8 @@ Rectangle {
                 height: 44
                 radius: 12
                 anchors.horizontalCenter: parent.horizontalCenter
-                color: leftpageRectangle.currentIndex === index ? AppTheme.accent : (navMouseArea.containsMouse ? AppTheme.bgNavHover : AppTheme.bgSidebar)
+                // hover 改为文字/图标变亮（背景保持透明，渐变下无块状覆盖层）
+                color: leftpageRectangle.currentIndex === index ? AppTheme.accent : "transparent"
 
                 property bool isSelected: leftpageRectangle.currentIndex === index
 
@@ -154,7 +161,7 @@ Rectangle {
                     NavIcon {
                         iconType: navColumn.navList[navItemRect.index].iconType
                         selected: navItemRect.isSelected
-                        iconColor: navItemRect.isSelected ? AppTheme.iconActive : AppTheme.iconNav
+                        iconColor: navItemRect.isSelected ? AppTheme.iconActive : (navMouseArea.containsMouse ? AppTheme.textPrimary : AppTheme.iconNav)
                         width: 20
                         height: 20
                         anchors.verticalCenter: parent.verticalCenter
@@ -166,7 +173,7 @@ Rectangle {
                         font.pixelSize: AppTheme.fontSizeBodyLg
                         font.family: AppTheme.fontFamily
                         font.bold: true
-                        color: AppTheme.textPrimary
+                        color: navItemRect.isSelected ? AppTheme.textPrimary : (navMouseArea.containsMouse ? AppTheme.textPrimary : AppTheme.textSecondary)
                     }
                 }
 
@@ -185,11 +192,6 @@ Rectangle {
                     }
                 }
 
-                Behavior on color {
-                    ColorAnimation {
-                        duration: AppTheme.animFast
-                    }
-                }
 
                 scale: navMouseArea.containsMouse && !isSelected ? 1.03 : 1.0
                 Behavior on scale {
@@ -238,9 +240,10 @@ Rectangle {
             height: 44
             radius: 12
             anchors.horizontalCenter: parent.horizontalCenter
+            // hover 改为文字/图标变亮（背景保持透明，渐变下无块状覆盖层）
             color: navColumn2._anyPlaylistActive
                    ? AppTheme.accent
-                   : (headerMA.containsMouse ? AppTheme.bgNavHover : AppTheme.bgSidebar)
+                   : "transparent"
 
             Row {
                 spacing: 12
@@ -251,7 +254,7 @@ Rectangle {
                 NavIcon {
                     iconType: "playlist"
                     selected: navColumn2._anyPlaylistActive
-                    iconColor: navColumn2._anyPlaylistActive ? AppTheme.iconActive : AppTheme.iconNav
+                    iconColor: navColumn2._anyPlaylistActive ? AppTheme.iconActive : (headerMA.containsMouse ? AppTheme.textPrimary : AppTheme.iconNav)
                     width: 20
                     height: 20
                     anchors.verticalCenter: parent.verticalCenter
@@ -263,7 +266,7 @@ Rectangle {
                     font.pixelSize: AppTheme.fontSizeBodyLg
                     font.family: AppTheme.fontFamily
                     font.bold: true
-                    color: AppTheme.textPrimary
+                    color: navColumn2._anyPlaylistActive ? AppTheme.textPrimary : (headerMA.containsMouse ? AppTheme.textPrimary : AppTheme.textSecondary)
                 }
             }
 
@@ -297,9 +300,6 @@ Rectangle {
                 }
             }
 
-            Behavior on color {
-                ColorAnimation { duration: AppTheme.animFast }
-            }
         }
 
         // 展开后：用户歌单子项列表，点击直接进详情页（复用主页推荐歌单详情样式）
@@ -315,9 +315,8 @@ Rectangle {
                 radius: 10
                 anchors.horizontalCenter: parent.horizontalCenter
                 property bool isActive: leftpageRectangle.activePlaylistGid === playlistChild.modelData.global_collection_id
-                color: playlistChild.isActive
-                       ? AppTheme.bgNavHover
-                       : (childMA.containsMouse ? AppTheme.bgNavHover : AppTheme.bgSidebar)
+                // hover/激活改为文字加粗变亮（背景保持透明，渐变下无块状覆盖层）
+                color: "transparent"
 
                 Row {
                     spacing: 8
@@ -348,7 +347,7 @@ Rectangle {
                         font.pixelSize: AppTheme.fontSizeBody
                         font.family: AppTheme.fontFamily
                         font.bold: playlistChild.isActive
-                        color: playlistChild.isActive ? AppTheme.textPrimary : AppTheme.textSecondary
+                        color: (playlistChild.isActive || childMA.containsMouse) ? AppTheme.textPrimary : AppTheme.textSecondary
                         elide: Text.ElideRight
                         anchors.verticalCenter: parent.verticalCenter
                     }
@@ -384,9 +383,6 @@ Rectangle {
                     }
                 }
 
-                Behavior on color {
-                    ColorAnimation { duration: AppTheme.animFast }
-                }
 
                 scale: childMA.containsMouse && !playlistChild.isActive ? 1.02 : 1.0
                 Behavior on scale {
@@ -403,7 +399,8 @@ Rectangle {
             radius: 12
             anchors.horizontalCenter: parent.horizontalCenter
             property bool isSelected: leftpageRectangle.currentIndex === 3
-            color: recentItem.isSelected ? AppTheme.accent : (recentMA.containsMouse ? AppTheme.bgNavHover : AppTheme.bgSidebar)
+            // hover 改为文字/图标变亮（背景保持透明，渐变下无块状覆盖层）
+            color: recentItem.isSelected ? AppTheme.accent : "transparent"
 
             Row {
                 spacing: 12
@@ -414,7 +411,7 @@ Rectangle {
                 NavIcon {
                     iconType: "recent"
                     selected: recentItem.isSelected
-                    iconColor: recentItem.isSelected ? AppTheme.iconActive : AppTheme.iconNav
+                    iconColor: recentItem.isSelected ? AppTheme.iconActive : (recentMA.containsMouse ? AppTheme.textPrimary : AppTheme.iconNav)
                     width: 20
                     height: 20
                     anchors.verticalCenter: parent.verticalCenter
@@ -426,7 +423,7 @@ Rectangle {
                     font.pixelSize: AppTheme.fontSizeBodyLg
                     font.family: AppTheme.fontFamily
                     font.bold: true
-                    color: AppTheme.textPrimary
+                    color: recentItem.isSelected ? AppTheme.textPrimary : (recentMA.containsMouse ? AppTheme.textPrimary : AppTheme.textSecondary)
                 }
             }
 
@@ -444,9 +441,6 @@ Rectangle {
                 }
             }
 
-            Behavior on color {
-                ColorAnimation { duration: AppTheme.animFast }
-            }
 
             scale: recentMA.containsMouse && !recentItem.isSelected ? 1.03 : 1.0
             Behavior on scale {
@@ -465,7 +459,8 @@ Rectangle {
         anchors.bottomMargin: 32
         height: 40
         radius: 10
-        color: updateMouseArea.containsMouse ? AppTheme.bgNavHover : AppTheme.bgSidebar
+        // hover 改为文字变亮（背景保持透明，渐变下无块状覆盖层）
+        color: "transparent"
 
         Row {
             spacing: 8
@@ -473,14 +468,14 @@ Rectangle {
 
             Text {
                 text: "\u21BB"
-                color: AppTheme.textMuted
+                color: updateMouseArea.containsMouse ? AppTheme.textPrimary : AppTheme.textMuted
                 font.pixelSize: AppTheme.fontSizeTitle
                 anchors.verticalCenter: parent.verticalCenter
             }
 
             Text {
                 text: "检查更新"
-                color: AppTheme.textMuted
+                color: updateMouseArea.containsMouse ? AppTheme.textPrimary : AppTheme.textMuted
                 font.pixelSize: AppTheme.fontSizeBody
                 font.family: AppTheme.fontFamily
                 anchors.verticalCenter: parent.verticalCenter
@@ -507,10 +502,5 @@ Rectangle {
             }
         }
 
-        Behavior on color {
-            ColorAnimation {
-                duration: AppTheme.animFast
-            }
-        }
     }
 }
