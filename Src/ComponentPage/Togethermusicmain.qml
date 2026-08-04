@@ -10,14 +10,14 @@ Item {
     height: parent ? parent.height : 0
     clip: true
 
-    // 沉浸遮罩：按背景深浅挑白/黑半透明——浅色背景（浅色渐变或浅色主题无渐变）下白遮罩看不见，
-    // 深色背景（深色渐变）下黑遮罩看不见（与搜索框 contrastText 同思路）。
-    // 深色主题无渐变回退主题卡片色（bgCard 等，深色下本身清晰）。
+    // 沉浸遮罩：渐变激活时统一白系半透明——深色渐变用低浓度（12%）、浅色渐变用
+    // 高浓度（20% 以上，浅底上隐约可见）——用户要求全程不用黑色系遮罩。
+    // 无渐变时回退主题卡片色（用户选定：浅色无渐变=纯卡色无边框）。
     // tint 作为函数绑定会在 playlistCoverColor / 主题变化时自动重算。
     readonly property bool gradientDark: BasicConfig.playlistCoverColor !== ""
         && BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent) === "#FFFFFF"
     function tint(darkHex, lightHex, fallback) {
-        if (BasicConfig.playlistCoverColor === "") return AppTheme.isDark ? fallback : lightHex
+        if (BasicConfig.playlistCoverColor === "") return fallback
         return gradientDark ? darkHex : lightHex
     }
 
@@ -342,9 +342,9 @@ Item {
         radius: 16
         clip: true
         // 沉浸：渐变时半透明卡（深色渐变白/浅色渐变黑），无渐变时回退主题卡片色
-        color: root.tint("#12FFFFFF", "#1E000000", AppTheme.bgCard)
+        color: root.tint("#12FFFFFF", "#33FFFFFF", AppTheme.bgCard)
         border.width: 1
-        border.color: root.tint("#1EFFFFFF", "#33000000", AppTheme.borderSubtle)
+        border.color: root.tint("#1EFFFFFF", "#40FFFFFF", "transparent")
         opacity: root.roomSongData.songname ? 1 : 0
 
         Behavior on height { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
@@ -563,7 +563,7 @@ Item {
                         Rectangle {
                             id: songCover
                             width: 30; height: 30; radius: 6
-                            color: root.tint("#12FFFFFF", "#1E000000", AppTheme.bgCard)
+                            color: root.tint("#12FFFFFF", "#33FFFFFF", AppTheme.bgCard)
 
                             Image {
                                 anchors.fill: parent
@@ -599,7 +599,7 @@ Item {
                                 anchors.margins: -1
                                 radius: 8
                                 color: "transparent"
-                                border.color: root.tint("#1EFFFFFF", "#33000000", AppTheme.bgCard)
+                                border.color: root.tint("#1EFFFFFF", "#40FFFFFF", "transparent")
                                 border.width: 1.5
                                 z: -1
                             }
@@ -848,9 +848,9 @@ Item {
                     width: actionText.implicitWidth + 22
                     height: 26
                     radius: 13
-                    color: root.tint("#12FFFFFF", "#1E000000", AppTheme.bgCard)
+                    color: root.tint("#12FFFFFF", "#33FFFFFF", AppTheme.bgCard)
                     border.width: 1
-                    border.color: root.tint("#1EFFFFFF", "#33000000", AppTheme.borderSubtle)
+                    border.color: root.tint("#1EFFFFFF", "#40FFFFFF", "transparent")
 
                     Text {
                         id: actionText
@@ -1041,7 +1041,8 @@ Item {
             text: "说点什么，或点一首歌一起听"
             font.pixelSize: AppTheme.fontSizeSmall
             font.family: AppTheme.fontFamily
-            color: AppTheme.textDim
+            // 浅色主题下 textDim 太浅看不见，直接黑色
+            color: AppTheme.isDark ? AppTheme.textDim : "#000000"
             anchors.horizontalCenter: parent.horizontalCenter
         }
     }
@@ -1067,7 +1068,17 @@ Item {
                 width: parent.width - sendBtn.width - parent.spacing
                 height: 36
                 placeholderText: "说点什么..."
-                color: AppTheme.textPrimary
+                // 浅色主题下文字/占位符直接黑色（浅色渐变上黑字清晰），深色保持渐变感知白字
+                color: AppTheme.isDark
+                    ? (BasicConfig.playlistCoverColor !== ""
+                        ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
+                        : AppTheme.textPrimary)
+                    : "#000000"
+                palette.placeholderText: AppTheme.isDark
+                    ? (BasicConfig.playlistCoverColor !== ""
+                        ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
+                        : AppTheme.textPlaceholder)
+                    : "#000000"
                 font.pixelSize: AppTheme.fontSizeBody
                 font.family: AppTheme.fontFamily
                 verticalAlignment: Text.AlignVCenter
@@ -1075,10 +1086,10 @@ Item {
                 background: Rectangle {
                     radius: 18
                     // 沉浸：渐变时半透明（深色渐变白/浅色渐变黑），无渐变时主题输入底色
-                    // idle 边框加深（半透明 33%），渐变下也看得清，聚焦才变红
-                    color: root.tint("#1EFFFFFF", "#33000000", AppTheme.bgInput)
+                    // idle 边框：深色主题白边、浅色主题黑边，聚焦变红
+                    color: root.tint("#1EFFFFFF", "#40FFFFFF", AppTheme.bgInput)
                     border.color: chatInput.activeFocus ? AppTheme.borderFocus
-                        : root.tint("#33FFFFFF", "#40000000", AppTheme.borderDefault)
+                        : (AppTheme.isDark ? "#FFFFFF" : "#000000")
                     border.width: 1
                 }
                 onAccepted: {
