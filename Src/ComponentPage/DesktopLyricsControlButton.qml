@@ -47,12 +47,15 @@ Item {
             visible: root.iconSource !== ""
             anchors.centerIn: parent
             source: root.iconSource
-            sourceSize: Qt.size(128, 128)
-            mipmap: true
-            width: 12 * root.scaleFactor
-            height: 12 * root.scaleFactor
+            width: 15 * root.scaleFactor
+            height: 15 * root.scaleFactor
             fillMode: Image.PreserveAspectFit
+            // 与 IconButton 一致：4× 栅格化 + 同分辨率图层着色，避免小图标二次模糊发虚
+            sourceSize: Qt.size(Math.round(15 * root.scaleFactor * 4), Math.round(15 * root.scaleFactor * 4))
+            smooth: true
+            mipmap: true
             layer.enabled: true
+            layer.textureSize: Qt.size(Math.round(15 * root.scaleFactor * 4), Math.round(15 * root.scaleFactor * 4))
             layer.effect: ColorOverlay { source: icon; color: root.textColor }
         }
     }
