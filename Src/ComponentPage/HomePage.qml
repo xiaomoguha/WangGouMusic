@@ -84,12 +84,13 @@ Item {
 
                                 Rectangle {
                                     width: parent.width
-                                    // 横版大圆角矩形封面（高 = 宽 × 3/4，圆角 18）
+                                    // 横版圆角矩形封面（高 = 宽 × 3/4，圆角 12）
                                     height: width * 3 / 4
-                                    radius: 18
+                                    radius: 12
                                     clip: true
 
                                     Image {
+                                        id: songCoverImage
                                         anchors.fill: parent
                                         source: songData.union_cover
                                         asynchronous: true
@@ -97,13 +98,22 @@ Item {
                                         sourceSize.width: 400
                                         sourceSize.height: 300
                                         fillMode: Image.PreserveAspectCrop
+                                        // clip 只裁矩形不裁圆角，这里用 OpacityMask 做真正圆角
+                                        layer.enabled: true
+                                        layer.effect: OpacityMask {
+                                            maskSource: Rectangle {
+                                                width: songCoverImage.width
+                                                height: songCoverImage.height
+                                                radius: 12
+                                            }
+                                        }
                                     }
 
                                     Rectangle {
                                         anchors.fill: parent
                                         color: "#40000000"
                                         visible: songCardHover.hovered || isPlaying
-                                        radius: 18
+                                        radius: 12
 
                                         NowPlayingIndicator {
                                             anchors.centerIn: parent
@@ -113,7 +123,8 @@ Item {
                                         Image {
                                             id: cardPlayIcon
                                             anchors.centerIn: parent
-                                            source: AppIcon.playCircle
+                                            // 一起听模式下图标换成「加入一起听」，点击行为已由 TapHandler 区分
+                                            source: isTogetherMode ? AppIcon.addTogether : AppIcon.playCircle
                                             width: 32
                                             height: 32
                                             fillMode: Image.PreserveAspectFit
@@ -121,7 +132,8 @@ Item {
                                             sourceSize: Qt.size(128, 128)
                                             mipmap: true
                                             layer.enabled: true
-                                            layer.effect: ColorOverlay { source: cardPlayIcon; color: AppTheme.textPrimary }
+                                            // 遮罩是深色压暗，播放按钮一律用白色（浅色主题下也清晰）
+                                            layer.effect: ColorOverlay { source: cardPlayIcon; color: "#FFFFFF" }
                                         }
                                     }
                                 }

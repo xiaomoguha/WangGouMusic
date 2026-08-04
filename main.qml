@@ -171,10 +171,12 @@ ApplicationWindow {
         // 盖住其他角
         Rectangle {
             // 右上角遮挡（在窗口顶，随渐变混入主色保持一致）
+            // z:-1 垫到内容之下：只补圆角接缝，不遮挡按钮 hover 遮罩
             anchors.top: parent.top
             anchors.right: parent.right
             width: 20
             height: 20
+            z: -1
             color: BasicConfig.mixTint(BasicConfig.playlistCoverColor, AppTheme.bgSidebar, 0.5)
             Behavior on color {
                 ColorAnimation {
@@ -188,6 +190,7 @@ ApplicationWindow {
             anchors.bottom: parent.bottom
             width: 20
             height: 20
+            z: -1
             color: AppTheme.bgSidebar
             Behavior on color {
                 ColorAnimation {
@@ -201,6 +204,7 @@ ApplicationWindow {
             anchors.bottom: parent.bottom
             width: 20
             height: 20
+            z: -1
             color: AppTheme.bgSidebar
             Behavior on color {
                 ColorAnimation {
@@ -229,6 +233,7 @@ ApplicationWindow {
             anchors.bottom: parent.bottom
             width: 20
             height: 20
+            z: -1
             color: AppTheme.bgContent
             Behavior on color {
                 ColorAnimation {
@@ -242,6 +247,7 @@ ApplicationWindow {
             anchors.bottom: parent.bottom
             width: 20
             height: 20
+            z: -1
             color: AppTheme.bgContent
             Behavior on color {
                 ColorAnimation {
@@ -251,10 +257,12 @@ ApplicationWindow {
         }
         Rectangle {
             // 左上角遮挡（在窗口顶，随渐变混入主色保持一致）
+            // z:-1 垫到内容之下：只补圆角接缝，不遮挡后退按钮 hover 遮罩
             anchors.left: parent.left
             anchors.top: parent.top
             width: 20
             height: 20
+            z: -1
             color: BasicConfig.mixTint(BasicConfig.playlistCoverColor, AppTheme.bgContent, 0.5)
             Behavior on color {
                 ColorAnimation {
@@ -283,6 +291,7 @@ ApplicationWindow {
             anchors.top: parent.top
             width: 20
             height: 20
+            z: -1
             color: AppTheme.bgBottomBar
             Behavior on color {
                 ColorAnimation {
@@ -296,6 +305,7 @@ ApplicationWindow {
             anchors.right: parent.right
             width: 20
             height: 20
+            z: -1
             color: AppTheme.bgBottomBar
             Behavior on color {
                 ColorAnimation {
