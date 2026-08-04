@@ -50,6 +50,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         CPPSrc/SongInfo.cpp CPPSrc/SongInfo.h
         CPPSrc/CrashHandler.cpp CPPSrc/CrashHandler.h
         CPPSrc/ClickThroughHelper.cpp CPPSrc/ClickThroughHelper.h
+        CPPSrc/searchhistorymanager.cpp CPPSrc/searchhistorymanager.h
         image.qrc
         icons.qrc
         ${FONT_RESOURCES}
