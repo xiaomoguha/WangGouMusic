@@ -19,7 +19,8 @@ Page {
     Rectangle {
         id: loadingOverlay
         anchors.fill: parent
-        color: AppTheme.bgLoadingOverlay
+        // 沉浸：背景透明露出整窗渐变，骨架条用半透明白在任意渐变上都清晰
+        color: "transparent"
         visible: complexsearch && complexsearch.isLoading && complexsearch.page === 1
         z: 9999
 
@@ -36,7 +37,8 @@ Page {
                     width: loadingOverlay.width - 40
                     height: 56
                     radius: 8
-                    color: AppTheme.bgCard
+                    // 半透明白：任何渐变下都隐约可见又不显块状
+                    color: "#12FFFFFF"
                     clip: true
 
                     Row {
@@ -46,18 +48,18 @@ Page {
 
                         Rectangle {
                             width: 40; height: 40; radius: 8
-                            color: AppTheme.progressTrack
+                            color: "#1EFFFFFF"
                         }
                         Column {
                             spacing: 8
                             anchors.verticalCenter: parent.verticalCenter
                             Rectangle {
                                 width: 100 + index * 18; height: 12; radius: 4
-                                color: AppTheme.progressTrack
+                                color: "#1EFFFFFF"
                             }
                             Rectangle {
                                 width: 70 + index * 12; height: 10; radius: 4
-                                color: AppTheme.progressTrack
+                                color: "#1EFFFFFF"
                             }
                         }
                     }
