@@ -29,7 +29,10 @@ Row {
             layer.enabled: true
             layer.effect: ColorOverlay {
                 source: userAvatar
-                color: AppTheme.iconDefault
+                // 渐变时随背景挑白/深色，与搜索框文字一致
+                color: BasicConfig.playlistCoverColor !== ""
+                    ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
+                    : AppTheme.iconDefault
             }
         }
 
@@ -75,7 +78,9 @@ Row {
 
     Text {
         text: userManager ? userManager.nickname : "未登录"
-        color: userManager && userManager.isLoggedIn ? AppTheme.textPrimary : AppTheme.textSecondary
+        color: BasicConfig.playlistCoverColor !== ""
+            ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
+            : (userManager && userManager.isLoggedIn ? AppTheme.textPrimary : AppTheme.textSecondary)
         height: 28
         verticalAlignment: Text.AlignVCenter
         font {
@@ -395,7 +400,10 @@ Row {
             layer.enabled: true
             layer.effect: ColorOverlay {
                 source: moonbuttom
-                color: AppTheme.iconDefault
+                // 渐变时随背景挑白/深色，与搜索框文字一致
+                color: BasicConfig.playlistCoverColor !== ""
+                    ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
+                    : AppTheme.iconDefault
             }
         }
 

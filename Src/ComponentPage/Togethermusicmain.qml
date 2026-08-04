@@ -10,6 +10,17 @@ Item {
     height: parent ? parent.height : 0
     clip: true
 
+    // 沉浸遮罩：按背景深浅挑白/黑半透明——浅色背景（浅色渐变或浅色主题无渐变）下白遮罩看不见，
+    // 深色背景（深色渐变）下黑遮罩看不见（与搜索框 contrastText 同思路）。
+    // 深色主题无渐变回退主题卡片色（bgCard 等，深色下本身清晰）。
+    // tint 作为函数绑定会在 playlistCoverColor / 主题变化时自动重算。
+    readonly property bool gradientDark: BasicConfig.playlistCoverColor !== ""
+        && BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent) === "#FFFFFF"
+    function tint(darkHex, lightHex, fallback) {
+        if (BasicConfig.playlistCoverColor === "") return AppTheme.isDark ? fallback : lightHex
+        return gradientDark ? darkHex : lightHex
+    }
+
     // ========== 离开房间确认弹窗 ==========
     Dialog {
         id: leaveConfirmDialog
@@ -79,7 +90,7 @@ Item {
 
                 Rectangle {
                     width: 100; height: 36; radius: 8
-                    color: confirmLeaveHover.hovered ? "#E04040" : "#FF4D4F"
+                    color: confirmLeaveHover.hovered ? Qt.darker(AppTheme.errorColor, 1.15) : AppTheme.errorColor
                     Text { anchors.centerIn: parent; text: "离开"; font.pixelSize: AppTheme.fontSizeBody; font.family: AppTheme.fontFamily; font.weight: Font.DemiBold; color: "#FFFFFF" }
                     HoverHandler { id: confirmLeaveHover }
                     TapHandler { onTapped: { leaveConfirmDialog.close(); websocket.disconnectFromServer(); } }
@@ -94,6 +105,7 @@ Item {
     property int onlineCount: 0
     property var messages: websocket ? websocket.messages : []
     property var confirmedMsgIds: ({})
+    property var roomSongData: ({})   // 房间当前播放歌曲（由 songInfoUpdated 广播更新，驱动顶部「正在播放」卡）
     property int prevMsgCount: 0      // 上次消息数，用于判断哪些是新增的
     property bool firstLoad: true     // 首次加载不播动画
 
@@ -120,7 +132,7 @@ Item {
         anchors.right: parent.right
         anchors.top: parent.top
         height: 0
-        color: "#30FFA500"
+        color: "#30FF4D4F"
         clip: true
         visible: height > 0
         z: 10
@@ -131,7 +143,7 @@ Item {
             anchors.centerIn: parent
             font.pixelSize: AppTheme.fontSizeBody
             font.family: AppTheme.fontFamily
-            color: "#FFA500"
+            color: AppTheme.errorColor
             text: bannerText.text
         }
         Text { id: bannerText; visible: false }
@@ -277,10 +289,10 @@ Item {
             anchors.rightMargin: 20
             anchors.verticalCenter: parent.verticalCenter
             width: 90; height: 34; radius: 17
-            color: leaveMouseArea.containsMouse ? "#40FF4D4F" : "transparent"
+            color: leaveMouseArea.containsMouse ? AppTheme.accentGlow : "transparent"
             border.width: 1
             // 渐变时边框随背景对比色，保证任何封面下都看得清
-            border.color: leaveMouseArea.containsMouse ? "#FF4D4F"
+            border.color: leaveMouseArea.containsMouse ? AppTheme.errorColor
                 : (BasicConfig.playlistCoverColor !== ""
                     ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
                     : AppTheme.borderDefault)
@@ -290,7 +302,7 @@ Item {
                 text: "离开房间"
                 font.pixelSize: AppTheme.fontSizeBody; font.family: AppTheme.fontFamily
                 // 渐变激活时按背后颜色自动挑白/深字，保证任何封面下都看得清
-                color: leaveMouseArea.containsMouse ? "#FF4D4F"
+                color: leaveMouseArea.containsMouse ? AppTheme.errorColor
                      : (BasicConfig.playlistCoverColor !== ""
                         ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
                         : AppTheme.textMuted)
@@ -308,14 +320,438 @@ Item {
         }
     }
 
+    // ========== 房间「正在播放」卡（点击展开/收起全部播放列表）==========
+    // 数据来自房间广播 songInfoUpdated；无歌曲时高度 0（不占位，消息列表无需重排）
+    Rectangle {
+        id: heroCard
+        property bool listExpanded: false
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: topBar.bottom
+        anchors.topMargin: 6
+        anchors.leftMargin: 20
+        anchors.rightMargin: 20
+        // 无歌 0；有歌收起 68；展开时加播放列表（heroList 含 header，空列表占 130 显示引导）
+        height: root.roomSongData.songname
+                ? (listExpanded
+                    ? 68 + (playlistmanager && playlistmanager.togetherplaylist.count > 0
+                            ? heroList.height
+                            : 130)
+                    : 68)
+                : 0
+        radius: 16
+        clip: true
+        // 沉浸：渐变时半透明卡（深色渐变白/浅色渐变黑），无渐变时回退主题卡片色
+        color: root.tint("#12FFFFFF", "#1E000000", AppTheme.bgCard)
+        border.width: 1
+        border.color: root.tint("#1EFFFFFF", "#33000000", AppTheme.borderSubtle)
+        opacity: root.roomSongData.songname ? 1 : 0
+
+        Behavior on height { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        Behavior on opacity { NumberAnimation { duration: 150 } }
+        Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+        Behavior on border.color { ColorAnimation { duration: AppTheme.animFast } }
+
+        // ---- 上部：封面 + 歌名 + 状态 + 展开箭头（整行点击展开/收起）----
+        Item {
+            id: heroTopRow
+            width: parent.width
+            height: 68
+
+            Rectangle {
+                id: heroCover
+                width: 48; height: 48; radius: 10
+                anchors.left: parent.left; anchors.leftMargin: 10
+                anchors.verticalCenter: parent.verticalCenter
+
+                Image {
+                    anchors.fill: parent
+                    source: root.roomSongData.cover_url || ""
+                    fillMode: Image.PreserveAspectCrop
+                    asynchronous: true
+                    layer.enabled: true
+                    layer.effect: OpacityMask {
+                        maskSource: Rectangle { width: heroCover.width; height: heroCover.height; radius: 10 }
+                    }
+                }
+            }
+
+            Column {
+                anchors.left: heroCover.right
+                anchors.leftMargin: 12
+                anchors.right: heroExpandArrow.left
+                anchors.rightMargin: 10
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 5
+
+                Text {
+                    width: parent.width
+                    elide: Text.ElideRight
+                    text: root.roomSongData.songname || ""
+                    font.pixelSize: AppTheme.fontSizeBodyLg
+                    font.family: AppTheme.fontFamily
+                    font.bold: true
+                    color: AppTheme.textSongTitle
+                }
+
+                Row {
+                    spacing: 6
+
+                    NowPlayingIndicator {
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: root.roomSongData.is_playing !== 0
+                        playing: playlistmanager ? !playlistmanager.isPaused : true
+                    }
+
+                    Text {
+                        text: root.roomSongData.is_playing === 0 ? "已暂停" : "同步播放中"
+                        font.pixelSize: AppTheme.fontSizeCaption
+                        font.family: AppTheme.fontFamily
+                        color: root.roomSongData.is_playing === 0 ? AppTheme.textDim : AppTheme.accent
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                }
+            }
+
+            // 展开/收起箭头
+            Image {
+                id: heroExpandArrow
+                anchors.right: parent.right
+                anchors.rightMargin: 14
+                anchors.verticalCenter: parent.verticalCenter
+                source: AppIcon.caretDown
+                width: 14; height: 14
+                fillMode: Image.PreserveAspectFit
+                sourceSize: Qt.size(128, 128)
+                mipmap: true
+                rotation: heroCard.listExpanded ? 180 : 0
+                layer.enabled: true
+                layer.effect: ColorOverlay {
+                    source: heroExpandArrow
+                    color: heroTopHover.hovered ? AppTheme.textPrimary : AppTheme.textSecondary
+                }
+                Behavior on rotation { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+            }
+
+            HoverHandler { id: heroTopHover }
+            // 点击卡片上部：展开/收起全部播放列表
+            TapHandler { cursorShape: Qt.PointingHandCursor; onTapped: heroCard.listExpanded = !heroCard.listExpanded }
+        }
+
+        // ---- 展开的播放列表（header：数量 + 下一曲 + 刷新）----
+        ListView {
+            id: heroList
+            visible: heroCard.listExpanded && root.roomSongData.songname
+                     && playlistmanager && playlistmanager.togetherplaylist.count > 0
+            anchors.top: heroTopRow.bottom
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.leftMargin: 10
+            anchors.rightMargin: 10
+            height: playlistmanager && playlistmanager.togetherplaylist.count > 0
+                ? Math.min(playlistmanager.togetherplaylist.count * 46, 260) + 40
+                : 0
+            clip: true
+            spacing: 2
+            cacheBuffer: 1200
+            model: playlistmanager ? playlistmanager.togetherplaylist : 0
+
+            header: Item {
+                width: heroList.width
+                height: 40
+
+                Row {
+                    anchors.left: parent.left
+                    anchors.leftMargin: 8
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 6
+
+                    Text {
+                        text: "播放列表"
+                        font.pixelSize: AppTheme.fontSizeSmall; font.family: AppTheme.fontFamily
+                        color: AppTheme.textPrimary; font.weight: Font.Bold
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+
+                    Text {
+                        text: (playlistmanager ? playlistmanager.togetherplaylist.count : 0) + "首"
+                        font.pixelSize: AppTheme.fontSizeSmall; font.family: AppTheme.fontFamily
+                        color: AppTheme.textDim
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                }
+
+                Row {
+                    anchors.right: parent.right
+                    anchors.rightMargin: 8
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 6
+
+                    // 下一曲
+                    Rectangle {
+                        width: 26; height: 26; radius: 13
+                        color: nextBtnHover.containsMouse ? AppTheme.iconButtonHover : "transparent"
+                        anchors.verticalCenter: parent.verticalCenter
+                        Image {
+                            id: nextBtnIcon; anchors.centerIn: parent
+                            source: AppIcon.next; width: 12; height: 12; fillMode: Image.PreserveAspectFit
+                            sourceSize: Qt.size(128, 128)
+                            mipmap: true
+                            layer.enabled: true
+                            layer.effect: ColorOverlay { source: nextBtnIcon; color: AppTheme.textSecondary }
+                        }
+                        MouseArea { id: nextBtnHover; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: websocket.playNextTogether() }
+                        Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+                    }
+
+                    // 刷新
+                    Rectangle {
+                        width: 26; height: 26; radius: 13
+                        color: refreshHover.containsMouse ? AppTheme.iconButtonHover : "transparent"
+                        anchors.verticalCenter: parent.verticalCenter
+                        Image {
+                            id: refreshIcon; anchors.centerIn: parent
+                            source: AppIcon.refresh; width: 12; height: 12; fillMode: Image.PreserveAspectFit
+                            sourceSize: Qt.size(128, 128)
+                            mipmap: true
+                            layer.enabled: true
+                            layer.effect: ColorOverlay { source: refreshIcon; color: AppTheme.textSecondary }
+                        }
+                        MouseArea { id: refreshHover; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: websocket.requestPlaylist() }
+                        Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+                    }
+                }
+            }
+
+            delegate: Rectangle {
+                width: heroList.width
+                height: 46
+                radius: 6
+                // hover/播放改为文字高亮（背景透明，渐变下无块状覆盖层）
+                color: "transparent"
+
+                HoverHandler { id: songHover }
+                // 整行小手光标（悬停行，点击动作在右侧按钮上）
+                TapHandler { cursorShape: Qt.PointingHandCursor }
+
+                Row {
+                    anchors.left: parent.left
+                    anchors.leftMargin: 8
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 8
+
+                    // 序号 / 播放动画
+                    Text {
+                        width: 20
+                        text: (index + 1).toString().padStart(2, "0")
+                        anchors.verticalCenter: parent.verticalCenter
+                        font.pixelSize: AppTheme.fontSizeSmall; color: AppTheme.textDim
+                        visible: !(playlistmanager && playlistmanager.currentIndex === index)
+                    }
+
+                    NowPlayingIndicator {
+                        visible: playlistmanager && playlistmanager.currentIndex === index
+                        playing: playlistmanager ? !playlistmanager.isPaused : true
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+
+                    Item {
+                        width: 30; height: 30
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        // 封面（OpacityMask 真正圆角，clip 只裁矩形）
+                        Rectangle {
+                            id: songCover
+                            width: 30; height: 30; radius: 6
+                            color: root.tint("#12FFFFFF", "#1E000000", AppTheme.bgCard)
+
+                            Image {
+                                anchors.fill: parent
+                                source: model.union_cover
+                                fillMode: Image.PreserveAspectCrop
+                                asynchronous: true
+                                layer.enabled: true
+                                layer.effect: OpacityMask {
+                                    maskSource: Rectangle { width: songCover.width; height: songCover.height; radius: 6 }
+                                }
+                            }
+                        }
+
+                        // 添加人头像（右下角小图标）
+                        Image {
+                            visible: model.added_by_avatar.length > 0
+                            width: 14; height: 14
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            anchors.rightMargin: -3
+                            anchors.bottomMargin: -3
+                            source: model.added_by_avatar
+                            asynchronous: true
+                            layer.enabled: true
+                            layer.effect: OpacityMask {
+                                maskSource: Rectangle {
+                                    width: 14; height: 14; radius: 7
+                                }
+                            }
+
+                            Rectangle {
+                                anchors.fill: parent
+                                anchors.margins: -1
+                                radius: 8
+                                color: "transparent"
+                                border.color: root.tint("#1EFFFFFF", "#33000000", AppTheme.bgCard)
+                                border.width: 1.5
+                                z: -1
+                            }
+                        }
+                    }
+
+                    Column {
+                        width: heroList.width - 230
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 1
+                        Text {
+                            text: model.title
+                            font.pixelSize: AppTheme.fontSizeSmall
+                            font.bold: true
+                            color: playlistmanager && playlistmanager.currentIndex === index ? AppTheme.accentPlaying : (songHover.hovered ? AppTheme.accentPlaying : AppTheme.textSongTitle)
+                            elide: Text.ElideRight
+                            width: parent.width
+                        }
+                        Text {
+                            text: model.singername
+                            font.pixelSize: AppTheme.fontSizeXs
+                            font.bold: true
+                            color: AppTheme.textMuted
+                            elide: Text.ElideRight
+                            width: parent.width
+                        }
+                    }
+
+                    // 悬停操作（固定宽度，用 opacity 避免闪烁）
+                    Row {
+                        property bool isCurrent: playlistmanager && playlistmanager.currentIndex === index
+                        opacity: songHover.hovered ? 1 : 0
+                        visible: opacity > 0
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 2
+                        Behavior on opacity { NumberAnimation { duration: 80 } }
+
+                        // 播放按钮（当前歌曲隐藏）
+                        Rectangle {
+                            width: 22; height: 22; radius: 11
+                            visible: !parent.isCurrent
+                            color: iPlayBtnHover.hovered ? AppTheme.iconButtonHover : "transparent"
+                            Image { id: iPlayIco; anchors.centerIn: parent; source: AppIcon.playCircle; width: 10; height: 10; fillMode: Image.PreserveAspectFit; sourceSize: Qt.size(128, 128); mipmap: true; layer.enabled: true; layer.effect: ColorOverlay { source: iPlayIco; color: AppTheme.textSecondary } }
+                            HoverHandler { id: iPlayBtnHover }
+                            TapHandler { cursorShape: Qt.PointingHandCursor; onTapped: websocket.playTogetherByHash(model.songhash) }
+                        }
+                        // 置顶按钮（当前歌曲隐藏）
+                        Rectangle {
+                            width: 22; height: 22; radius: 11
+                            visible: !parent.isCurrent
+                            color: iUpBtnHover.hovered ? AppTheme.iconButtonHover : "transparent"
+                            Canvas {
+                                anchors.centerIn: parent
+                                width: 12; height: 12
+                                onPaint: {
+                                    var ctx = getContext("2d");
+                                    ctx.clearRect(0, 0, width, height);
+                                    ctx.strokeStyle = AppTheme.textSecondary;
+                                    ctx.lineWidth = 1.5;
+                                    ctx.lineCap = ctx.lineJoin = "round";
+                                    // 上箭头：先画竖线
+                                    ctx.beginPath();
+                                    ctx.moveTo(6, 10);
+                                    ctx.lineTo(6, 2);
+                                    ctx.stroke();
+                                    // 箭头头部 V
+                                    ctx.beginPath();
+                                    ctx.moveTo(2.5, 5.5);
+                                    ctx.lineTo(6, 2);
+                                    ctx.lineTo(9.5, 5.5);
+                                    ctx.stroke();
+                                    // 顶部横线（表示"顶"）
+                                    ctx.beginPath();
+                                    ctx.moveTo(2, 2);
+                                    ctx.lineTo(10, 2);
+                                    ctx.stroke();
+                                }
+                            }
+                            HoverHandler { id: iUpBtnHover }
+                            TapHandler { cursorShape: Qt.PointingHandCursor; onTapped: websocket.upSongByHash(model.songhash) }
+                        }
+                        // 删除按钮（当前歌曲隐藏）
+                        Rectangle {
+                            width: 22; height: 22; radius: 11
+                            visible: !parent.isCurrent
+                            color: iDelBtnHover.hovered ? AppTheme.iconButtonHover : "transparent"
+                            Image { id: iDelIco; anchors.centerIn: parent; source: AppIcon.deleteIcon; width: 10; height: 10; fillMode: Image.PreserveAspectFit; sourceSize: Qt.size(128, 128); mipmap: true; layer.enabled: true; layer.effect: ColorOverlay { source: iDelIco; color: AppTheme.textSecondary } }
+                            HoverHandler { id: iDelBtnHover }
+                            TapHandler { cursorShape: Qt.PointingHandCursor; onTapped: websocket.removeSongFromTogether(model.songhash) }
+                        }
+                    }
+                }
+
+                Text {
+                    anchors.right: parent.right
+                    anchors.rightMargin: 8
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: model.duration
+                    font.pixelSize: AppTheme.fontSizeCaption; font.family: AppTheme.fontFamily
+                    color: AppTheme.textDim
+                }
+            }
+        }
+
+        // 播放列表空状态（展开且无歌时显示）
+        Column {
+            visible: heroCard.listExpanded && root.roomSongData.songname
+                     && playlistmanager && playlistmanager.togetherplaylist.count === 0
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.top: heroTopRow.bottom
+            anchors.topMargin: 18
+            spacing: 8
+
+            Rectangle {
+                width: 52; height: 52; radius: 26
+                color: AppTheme.accentSubtle
+                anchors.horizontalCenter: parent.horizontalCenter
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "♪"
+                    font.pixelSize: 24
+                    color: AppTheme.accent
+                }
+            }
+
+            Text {
+                text: "还没有歌曲"
+                font.pixelSize: AppTheme.fontSizeBodyLg
+                font.family: AppTheme.fontFamily
+                color: AppTheme.textMuted
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+
+            Text {
+                text: "去搜索页点「一起听」加歌吧"
+                font.pixelSize: AppTheme.fontSizeSmall
+                font.family: AppTheme.fontFamily
+                color: AppTheme.textDim
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+        }
+    }
+
     // ========== 消息列表（聊天 + 操作动态统一显示）==========
     ListView {
         id: messageListView
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.top: topBar.bottom
+        anchors.top: heroCard.bottom
         anchors.bottom: inputBar.top
-        anchors.topMargin: 6
+        anchors.topMargin: 10
         anchors.leftMargin: 20
         anchors.rightMargin: 20
         anchors.bottomMargin: 6
@@ -349,7 +785,7 @@ Item {
         delegate: Item {
             id: messageDelegate
             width: messageListView.width
-            height: modelData.type === "action" ? actionRow.height + 6 : chatBubble.height + 8
+            height: modelData.type === "action" ? actionItem.height + 10 : chatBubble.height + 8
 
             property bool isNewMsg: false
             property real slideX: 0
@@ -380,50 +816,52 @@ Item {
                 }
             }
 
-            // --- 操作动态 ---
-            Row {
-                id: actionRow
+            // --- 操作动态（居中胶囊，时间 hover 时显示在右侧）---
+            Item {
+                id: actionItem
                 visible: modelData.type === "action"
-                anchors.horizontalCenter: parent.horizontalCenter
-                spacing: 6
-                height: Math.max(actionAvatar.height, actionText.height + 4)
+                width: parent.width
+                height: Math.max(actionPill.height, actionTime.height)
 
-                Rectangle {
-                    id: actionAvatar
-                    width: 18; height: 18; radius: 9
-                    clip: true
+                HoverHandler { id: actionHover }
+
+                // 时间：鼠标放上消息时淡入，紧贴胶囊右侧
+                Text {
+                    id: actionTime
+                    anchors.left: actionPill.right
+                    anchors.leftMargin: 8
                     anchors.verticalCenter: parent.verticalCenter
-                    color: AppTheme.bgInput
-
-                    Image {
-                        anchors.fill: parent
-                        source: modelData.avatar_url && modelData.avatar_url !== "" ? modelData.avatar_url : "qrc:/image/touxi.jpg"
-                        fillMode: Image.PreserveAspectCrop
-                        asynchronous: true
-                        layer.enabled: true
-                        layer.effect: OpacityMask {
-                            maskSource: Rectangle { width: 18; height: 18; radius: 9 }
-                        }
-                    }
+                    visible: actionHover.hovered && modelData.time > 0
+                    opacity: actionHover.hovered ? 1 : 0
+                    text: Qt.formatTime(new Date(modelData.time * 1000), "hh:mm")
+                    font.pixelSize: AppTheme.fontSizeXs
+                    font.family: AppTheme.fontFamily
+                    color: AppTheme.textDim
+                    Behavior on opacity { NumberAnimation { duration: 120 } }
                 }
 
-                Text {
-                    id: actionText
-                    text: {
-                        var d = modelData;
-                        var timeStr = "";
-                        if (d.time > 0) {
-                            var dt = new Date(d.time * 1000);
-                            timeStr = Qt.formatTime(dt, "hh:mm") + " ";
-                        }
-                        return timeStr + (d.nickname || d.userid || "") + " " + (d.message || "");
-                    }
-                    font.pixelSize: AppTheme.fontSizeSmall
-                    font.family: AppTheme.fontFamily
-                    color: AppTheme.textSecondary
-                    wrapMode: Text.Wrap
-                    width: Math.min(messageListView.width - 60, 360)
+                // 半透明白胶囊：渐变下融入背景，无渐变时回退主题卡片色
+                Rectangle {
+                    id: actionPill
+                    anchors.horizontalCenter: parent.horizontalCenter
                     anchors.verticalCenter: parent.verticalCenter
+                    width: actionText.implicitWidth + 22
+                    height: 26
+                    radius: 13
+                    color: root.tint("#12FFFFFF", "#1E000000", AppTheme.bgCard)
+                    border.width: 1
+                    border.color: root.tint("#1EFFFFFF", "#33000000", AppTheme.borderSubtle)
+
+                    Text {
+                        id: actionText
+                        anchors.centerIn: parent
+                        text: (modelData.nickname || modelData.userid || "") + " " + (modelData.message || "")
+                        font.pixelSize: AppTheme.fontSizeSmall
+                        font.family: AppTheme.fontFamily
+                        color: AppTheme.textSecondary
+                        elide: Text.ElideRight
+                        width: Math.min(implicitWidth, messageListView.width - 240)
+                    }
                 }
             }
 
@@ -572,6 +1010,42 @@ Item {
         }
     }
 
+    // ========== 聊天空状态 ==========
+    Column {
+        anchors.centerIn: messageListView
+        visible: messages.length === 0
+        spacing: 8
+
+        Rectangle {
+            width: 56; height: 56; radius: 28
+            color: AppTheme.accentSubtle
+            anchors.horizontalCenter: parent.horizontalCenter
+
+            Text {
+                anchors.centerIn: parent
+                text: "♪"
+                font.pixelSize: 26
+                color: AppTheme.accent
+            }
+        }
+
+        Text {
+            text: "房间还很安静"
+            font.pixelSize: AppTheme.fontSizeBodyLg
+            font.family: AppTheme.fontFamily
+            color: AppTheme.textMuted
+            anchors.horizontalCenter: parent.horizontalCenter
+        }
+
+        Text {
+            text: "说点什么，或点一首歌一起听"
+            font.pixelSize: AppTheme.fontSizeSmall
+            font.family: AppTheme.fontFamily
+            color: AppTheme.textDim
+            anchors.horizontalCenter: parent.horizontalCenter
+        }
+    }
+
     // ========== 底部输入栏 ==========
     Rectangle {
         id: inputBar
@@ -600,8 +1074,11 @@ Item {
                 leftPadding: 14
                 background: Rectangle {
                     radius: 18
-                    color: AppTheme.bgInput
-                    border.color: chatInput.activeFocus ? AppTheme.borderFocus : AppTheme.borderSubtle
+                    // 沉浸：渐变时半透明（深色渐变白/浅色渐变黑），无渐变时主题输入底色
+                    // idle 边框加深（半透明 33%），渐变下也看得清，聚焦才变红
+                    color: root.tint("#1EFFFFFF", "#33000000", AppTheme.bgInput)
+                    border.color: chatInput.activeFocus ? AppTheme.borderFocus
+                        : root.tint("#33FFFFFF", "#40000000", AppTheme.borderDefault)
                     border.width: 1
                 }
                 onAccepted: {
@@ -642,300 +1119,6 @@ Item {
         }
     }
 
-    // ========== 播放列表侧滑抽屉 ==========
-    Rectangle {
-        id: playlistDrawer
-        property bool open: true
-
-        anchors.top: topBar.bottom
-        anchors.bottom: inputBar.top
-        width: 380
-        z: 20
-        color: "transparent"
-
-        // 滑动：关闭时只露出 toggleTab(26px)，打开时全部露出
-        x: parent.width - (open ? width : 26)
-
-        Behavior on x { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
-
-        // 切换按钮（背景透明融入渐变，hover 箭头变亮）
-        Rectangle {
-            id: toggleTab
-            x: 0
-            anchors.verticalCenter: parent.verticalCenter
-            width: 22
-            height: 56
-            color: "transparent"
-
-            Text {
-                anchors.centerIn: parent
-                text: playlistDrawer.open ? "›" : "‹"
-                font.pixelSize: AppTheme.fontSizeTitleLg
-                font.weight: Font.Bold
-                color: toggleHover.containsMouse ? AppTheme.textPrimary : AppTheme.textSecondary
-            }
-
-            MouseArea {
-                id: toggleHover
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: playlistDrawer.open = !playlistDrawer.open
-            }
-        }
-
-        // 播放列表面板（背景透明，融入整窗渐变）
-        Rectangle {
-            anchors.left: toggleTab.right
-            anchors.leftMargin: 2
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            width: 356
-            color: "transparent"
-            clip: true
-
-            Column {
-                anchors.fill: parent
-                anchors.margins: 14
-                spacing: 10
-
-                // 标题 + 控制（面板内水平居中）
-                Row {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: 12
-
-                    Text {
-                        text: qsTr("播放列表")
-                        font.pixelSize: 15; font.family: AppTheme.fontFamily
-                        color: AppTheme.textPrimary; font.weight: Font.Bold
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-
-                    Text {
-                        text: (playlistmanager ? playlistmanager.togetherplaylist.count : 0) + "首"
-                        font.pixelSize: AppTheme.fontSizeSmall; font.family: AppTheme.fontFamily
-                        color: AppTheme.textDim
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-
-                    Item { width: 8; height: 1 }
-
-                    // 一起听不再提供暂停/播放按钮：暂停只影响本机（底部播放栏仍可本地暂停）
-
-                    Rectangle {
-                        width: 26; height: 26; radius: 13
-                        color: nextBtnHover.containsMouse ? AppTheme.iconButtonHover : "transparent"
-                        anchors.verticalCenter: parent.verticalCenter
-                        Image {
-                            id: nextBtnIcon; anchors.centerIn: parent
-                            source: AppIcon.next; width: 12; height: 12; fillMode: Image.PreserveAspectFit
-                            sourceSize: Qt.size(128, 128)
-                            mipmap: true
-                            layer.enabled: true
-                            layer.effect: ColorOverlay { source: nextBtnIcon; color: AppTheme.textSecondary }
-                        }
-                        MouseArea { id: nextBtnHover; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: websocket.playNextTogether() }
-                        Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
-                    }
-
-                    // 刷新
-                    Rectangle {
-                        width: 26; height: 26; radius: 13
-                        color: refreshHover.containsMouse ? AppTheme.iconButtonHover : "transparent"
-                        anchors.verticalCenter: parent.verticalCenter
-                        Image {
-                            id: refreshIcon; anchors.centerIn: parent
-                            source: AppIcon.refresh; width: 12; height: 12; fillMode: Image.PreserveAspectFit
-                            sourceSize: Qt.size(128, 128)
-                            mipmap: true
-                            layer.enabled: true
-                            layer.effect: ColorOverlay { source: refreshIcon; color: AppTheme.textSecondary }
-                        }
-                        MouseArea { id: refreshHover; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: websocket.requestPlaylist() }
-                        Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
-                    }
-                }
-
-                // 歌曲列表
-                ListView {
-                    id: playlistView
-                    width: parent.width
-                    height: parent.height - 62
-                    clip: true
-                    spacing: 2
-                    cacheBuffer: 1200
-                    model: playlistmanager ? playlistmanager.togetherplaylist : 0
-
-                    delegate: Rectangle {
-                        width: playlistView.width
-                        height: 46
-                        radius: 6
-                        // hover/播放改为文字高亮（背景透明，渐变下无块状覆盖层）
-                        color: "transparent"
-
-                        HoverHandler { id: songHover }
-                        // 整行小手光标（悬停行，点击动作在右侧按钮上）
-                        TapHandler { cursorShape: Qt.PointingHandCursor }
-
-                        Row {
-                            anchors.left: parent.left
-                            anchors.leftMargin: 8
-                            anchors.verticalCenter: parent.verticalCenter
-                            spacing: 8
-
-                            // 序号 / 播放动画
-                            Text {
-                                width: 20
-                                text: (index + 1).toString().padStart(2, "0")
-                                anchors.verticalCenter: parent.verticalCenter
-                                font.pixelSize: AppTheme.fontSizeSmall; color: AppTheme.textDim
-                                visible: !(playlistmanager && playlistmanager.currentIndex === index)
-                            }
-
-                            NowPlayingIndicator {
-                                visible: playlistmanager && playlistmanager.currentIndex === index
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-
-                            Item {
-                                width: 30; height: 30
-                                anchors.verticalCenter: parent.verticalCenter
-
-                                Image {
-                                    width: 30; height: 30
-                                    source: model.union_cover
-                                    asynchronous: true
-                                }
-
-                                // 添加人头像（右下角小图标）
-                                Image {
-                                    visible: model.added_by_avatar.length > 0
-                                    width: 14; height: 14
-                                    anchors.right: parent.right
-                                    anchors.bottom: parent.bottom
-                                    anchors.rightMargin: -3
-                                    anchors.bottomMargin: -3
-                                    source: model.added_by_avatar
-                                    asynchronous: true
-                                    layer.enabled: true
-                                    layer.effect: OpacityMask {
-                                        maskSource: Rectangle {
-                                            width: 14; height: 14; radius: 7
-                                        }
-                                    }
-
-                                    Rectangle {
-                                        anchors.fill: parent
-                                        anchors.margins: -1
-                                        radius: 8
-                                        color: "transparent"
-                                        border.color: AppTheme.bgCard
-                                        border.width: 1.5
-                                        z: -1
-                                    }
-                                }
-                            }
-
-                            Column {
-                                anchors.verticalCenter: parent.verticalCenter
-                                spacing: 1
-                                Text {
-                                    text: model.title
-                                    font.pixelSize: AppTheme.fontSizeSmall
-                                    font.bold: true
-                                    color: playlistmanager && playlistmanager.currentIndex === index ? AppTheme.accentPlaying : (songHover.hovered ? AppTheme.accentPlaying : AppTheme.textSongTitle)
-                                    elide: Text.ElideRight
-                                    width: 140
-                                }
-                                Text {
-                                    text: model.singername
-                                    font.pixelSize: AppTheme.fontSizeXs
-                                    font.bold: true
-                                    color: AppTheme.textMuted
-                                    elide: Text.ElideRight
-                                    width: 140
-                                }
-                            }
-
-                            // 悬停操作（固定宽度，用 opacity 避免闪烁）
-                            Row {
-                                property bool isCurrent: playlistmanager && playlistmanager.currentIndex === index
-                                opacity: songHover.hovered ? 1 : 0
-                                visible: opacity > 0
-                                anchors.verticalCenter: parent.verticalCenter
-                                spacing: 2
-                                Behavior on opacity { NumberAnimation { duration: 80 } }
-
-                                // 播放按钮（当前歌曲隐藏）
-                                Rectangle {
-                                    width: 22; height: 22; radius: 11
-                                    visible: !parent.isCurrent
-                                    color: iPlayBtnHover.hovered ? AppTheme.iconButtonHover : "transparent"
-                                    Image { id: iPlayIco; anchors.centerIn: parent; source: AppIcon.playCircle; width: 10; height: 10; fillMode: Image.PreserveAspectFit; sourceSize: Qt.size(128, 128); mipmap: true; layer.enabled: true; layer.effect: ColorOverlay { source: iPlayIco; color: AppTheme.textSecondary } }
-                                    HoverHandler { id: iPlayBtnHover }
-                                    TapHandler { cursorShape: Qt.PointingHandCursor; onTapped: websocket.playTogetherByHash(model.songhash) }
-                                }
-                                // 置顶按钮（当前歌曲隐藏）
-                                Rectangle {
-                                    width: 22; height: 22; radius: 11
-                                    visible: !parent.isCurrent
-                                    color: iUpBtnHover.hovered ? AppTheme.iconButtonHover : "transparent"
-                                    Canvas {
-                                        anchors.centerIn: parent
-                                        width: 12; height: 12
-                                        onPaint: {
-                                            var ctx = getContext("2d");
-                                            ctx.clearRect(0, 0, width, height);
-                                            ctx.strokeStyle = AppTheme.textSecondary;
-                                            ctx.lineWidth = 1.5;
-                                            ctx.lineCap = ctx.lineJoin = "round";
-                                            // 上箭头：先画竖线
-                                            ctx.beginPath();
-                                            ctx.moveTo(6, 10);
-                                            ctx.lineTo(6, 2);
-                                            ctx.stroke();
-                                            // 箭头头部 V
-                                            ctx.beginPath();
-                                            ctx.moveTo(2.5, 5.5);
-                                            ctx.lineTo(6, 2);
-                                            ctx.lineTo(9.5, 5.5);
-                                            ctx.stroke();
-                                            // 顶部横线（表示"顶"）
-                                            ctx.beginPath();
-                                            ctx.moveTo(2, 2);
-                                            ctx.lineTo(10, 2);
-                                            ctx.stroke();
-                                        }
-                                    }
-                                    HoverHandler { id: iUpBtnHover }
-                                    TapHandler { cursorShape: Qt.PointingHandCursor; onTapped: websocket.upSongByHash(model.songhash) }
-                                }
-                                // 删除按钮（当前歌曲隐藏）
-                                Rectangle {
-                                    width: 22; height: 22; radius: 11
-                                    visible: !parent.isCurrent
-                                    color: iDelBtnHover.hovered ? AppTheme.iconButtonHover : "transparent"
-                                    Image { id: iDelIco; anchors.centerIn: parent; source: AppIcon.deleteIcon; width: 10; height: 10; fillMode: Image.PreserveAspectFit; sourceSize: Qt.size(128, 128); mipmap: true; layer.enabled: true; layer.effect: ColorOverlay { source: iDelIco; color: AppTheme.textSecondary } }
-                                    HoverHandler { id: iDelBtnHover }
-                                    TapHandler { cursorShape: Qt.PointingHandCursor; onTapped: websocket.removeSongFromTogether(model.songhash) }
-                                }
-                            }
-                        }
-
-                        Text {
-                            anchors.right: parent.right
-                            anchors.rightMargin: 8
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: model.duration
-                            font.pixelSize: AppTheme.fontSizeCaption; font.family: AppTheme.fontFamily
-                            color: AppTheme.textDim
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     // ========== 信号连接 ==========
     // togetherplaylist 现为 QAbstractListModel，列表变化由 model 自身信号驱动，
     // 不再需要手动 model=null 重置（原置换会丢失滚动位置并触发入场动画）。
@@ -949,6 +1132,11 @@ Item {
             confirmedMsgIds = copy;
         }
 
+        // 房间广播歌曲信息 → 驱动「正在播放」卡
+        function onSongInfoUpdated(data) {
+            root.roomSongData = data;
+        }
+
         function onConnectionStateChanged(state) {
             if (state === 0) {
                 connectionBanner.height = 36
@@ -956,6 +1144,7 @@ Item {
                 root.firstLoad = true;
                 root.prevMsgCount = 0;
                 root.confirmedMsgIds = ({});
+                root.roomSongData = ({});
             } else if (state === 2) {
                 connectionBanner.height = 0
                 root.firstLoad = true;

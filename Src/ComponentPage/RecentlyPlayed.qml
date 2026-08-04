@@ -121,6 +121,7 @@ Page {
 
                         NowPlayingIndicator {
                             visible: isPlaying
+                            playing: playlistmanager ? !playlistmanager.isPaused : true
                             anchors.verticalCenter: parent.verticalCenter
                         }
 
