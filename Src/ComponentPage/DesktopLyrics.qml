@@ -808,6 +808,22 @@ Window {
                     saveCurrentConfig();
                 }
             }
+
+            // 关闭桌面歌词（未锁定时显示）
+            DesktopLyricsControlButton {
+                visible: !desktopLyrics.locked
+                scaleFactor: desktopLyrics.scale
+                animateColor: true
+                normalColor: btnBgNormal
+                hoverColor: btnBgHover
+                iconSource: AppIcon.close
+                onClicked: {
+                    if (lyricsConfig) {
+                        lyricsConfig.enabled = false
+                        lyricsConfig.saveConfig()
+                    }
+                }
+            }
         }
 
         // 控制面板 - 竖向模式（鼠标悬停时显示）
@@ -955,6 +971,22 @@ Window {
                 onClicked: {
                     desktopLyrics.locked = false;
                     saveCurrentConfig();
+                }
+            }
+
+            // 关闭桌面歌词（未锁定时显示）
+            DesktopLyricsControlButton {
+                visible: !desktopLyrics.locked
+                scaleFactor: desktopLyrics.scale
+                animateColor: true
+                normalColor: btnBgNormal
+                hoverColor: btnBgHover
+                iconSource: AppIcon.close
+                onClicked: {
+                    if (lyricsConfig) {
+                        lyricsConfig.enabled = false
+                        lyricsConfig.saveConfig()
+                    }
                 }
             }
         }
