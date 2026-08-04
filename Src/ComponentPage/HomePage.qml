@@ -39,90 +39,156 @@ Item {
 
             Item { width: 1; height: 5 }
 
-            // ========== Hero Banner ==========
-            Rectangle {
+            // ========== 热门推荐 ==========
+            Column {
                 width: parent.width - parent.leftPadding - parent.rightPadding
-                height: 180
-                radius: 16
-                clip: true
-                gradient: Gradient {
-                    orientation: Gradient.Horizontal
-                    GradientStop { position: 0.0; color: "#1a1a2e" }
-                    GradientStop { position: 0.5; color: "#16213e" }
-                    GradientStop { position: 1.0; color: "#0f3460" }
+                spacing: 12
+
+                Text {
+                    text: "✦ 热门推荐"
+                    font.pixelSize: AppTheme.fontSizeTitleLg
+                    font.bold: true
+                    color: AppTheme.textPrimary
+                    font.family: AppTheme.fontFamily
                 }
 
-                Column {
-                    anchors.left: parent.left
-                    anchors.leftMargin: 30
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 10
+                GridView {
+                    id: songsGrid
+                    width: parent.width
+                    height: contentHeight
+                    // 按窗口宽度自适应列数：约 150px 一列，3~7 列
+                    readonly property int colCount: Math.max(3, Math.min(7, Math.floor((width + 12) / 150)))
+                    cellWidth: width / colCount
+                    // 横版圆角矩形封面（高 = 宽 × 3/4）+ 下方歌名/歌手文字区
+                    cellHeight: (cellWidth - 22) * 3 / 4 + 62
+                    interactive: false
+                    model: recommendation ? recommendation.topSongsQml : []
 
-                    Text {
-                        text: "每日推荐"
-                        font.pixelSize: AppTheme.fontSizeCaption
-                        color: "#aaaacc"
-                        font.family: AppTheme.fontFamily
-                        font.bold: true
-                    }
-                    Text {
-                        text: "发现你的专属旋律"
-                        font.pixelSize: 26
-                        color: "#ffffff"
-                        font.bold: true
-                        font.family: AppTheme.fontFamily
-                    }
-                    Text {
-                        text: "精选音乐，为你的每一个时刻匹配最完美的声音"
-                        font.pixelSize: AppTheme.fontSizeSmall
-                        color: "#aaaacc"
-                        font.family: AppTheme.fontFamily
-                        width: 300
-                        wrapMode: Text.WordWrap
-                    }
+                    delegate: Item {
+                        width: songsGrid.cellWidth - 6
+                        height: songsGrid.cellHeight - 6
 
-                    Rectangle {
-                        visible: !isTogetherMode
-                        width: 100
-                        height: 34
-                        radius: 17
-                        color: playAllBtnHover.hovered ? "#533483" : "#e94560"
+                        property var songData: modelData
+                        readonly property bool isPlaying: playlistmanager && playlistmanager.currentSonghash === songData.songhash
 
-                        Text {
-                            anchors.centerIn: parent
-                            text: "▶ 立即播放"
-                            font.pixelSize: AppTheme.fontSizeBody
-                            color: "#ffffff"
-                            font.family: AppTheme.fontFamily
-                            font.bold: true
-                        }
+                        Rectangle {
+                            anchors.fill: parent
+                            // hover 改为歌曲名高亮（背景透明，渐变下无块状覆盖层）
+                            color: "transparent"
+                            radius: 12
 
-                        HoverHandler { id: playAllBtnHover }
+                            Column {
+                                anchors.fill: parent
+                                anchors.margins: 8
+                                spacing: 6
 
-                        TapHandler {
-                            cursorShape: Qt.PointingCursor
-                            onTapped: {
-                                var songs = recommendation ? recommendation.topSongsQml : []
-                                if (songs.length > 0) {
-                                    playlistmanager.clearPlaylist()
-                                    for (var i = 0; i < songs.length; i++) {
-                                        var s = songs[i]
-                                        playlistmanager.addSong({
-                                            "songname": s.songname,
-                                            "songhash": s.songhash,
-                                            "singername": s.singername,
-                                            "union_cover": s.union_cover,
-                                            "album_name": s.album_name,
-                                            "duration": s.duration
-                                        })
+                                Rectangle {
+                                    width: parent.width
+                                    // 横版大圆角矩形封面（高 = 宽 × 3/4，圆角 18）
+                                    height: width * 3 / 4
+                                    radius: 18
+                                    clip: true
+
+                                    Image {
+                                        anchors.fill: parent
+                                        source: songData.union_cover
+                                        asynchronous: true
+                                        cache: true
+                                        sourceSize.width: 400
+                                        sourceSize.height: 300
+                                        fillMode: Image.PreserveAspectCrop
                                     }
-                                    playlistmanager.playSongbyindex(0)
-                                    BasicConfig.emitSongAdded("正在播放热门推荐")
+
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        color: "#40000000"
+                                        visible: songCardHover.hovered || isPlaying
+                                        radius: 18
+
+                                        NowPlayingIndicator {
+                                            anchors.centerIn: parent
+                                            visible: isPlaying
+                                        }
+
+                                        Image {
+                                            id: cardPlayIcon
+                                            anchors.centerIn: parent
+                                            source: AppIcon.playCircle
+                                            width: 32
+                                            height: 32
+                                            fillMode: Image.PreserveAspectFit
+                                            visible: !isPlaying && songCardHover.hovered
+                                            sourceSize: Qt.size(128, 128)
+                                            mipmap: true
+                                            layer.enabled: true
+                                            layer.effect: ColorOverlay { source: cardPlayIcon; color: AppTheme.textPrimary }
+                                        }
+                                    }
+                                }
+
+                                Text {
+                                    text: songData.songname
+                                    width: parent.width
+                                    elide: Text.ElideRight
+                                    font.pixelSize: AppTheme.fontSizeSmall
+                                    font.bold: true
+                                    // hover 歌曲名高亮（网易云风格），播放行保持强调色
+                                    color: (isPlaying || songCardHover.hovered) ? AppTheme.accentPlaying : AppTheme.textSongTitle
+                                    font.family: AppTheme.fontFamily
+                                }
+
+                                Text {
+                                    text: songData.singername
+                                    width: parent.width
+                                    elide: Text.ElideRight
+                                    font.pixelSize: AppTheme.fontSizeCaption
+                                    font.bold: true
+                                    color: AppTheme.textMuted
+                                    font.family: AppTheme.fontFamily
+                                }
+                            }
+
+                            HoverHandler { id: songCardHover }
+
+                            TapHandler {
+                                cursorShape: Qt.PointingCursor
+                                onTapped: {
+                                    if (isTogetherMode) {
+                                        if (websocket) {
+                                            websocket.addSongToTogether(songData.songname, songData.songhash,
+                                                songData.singername, songData.album_name,
+                                                songData.duration, songData.union_cover)
+                                        }
+                                    } else {
+                                        playlistmanager.playNextAndPlay({
+                                            "songname": songData.songname,
+                                            "songhash": songData.songhash,
+                                            "singername": songData.singername,
+                                            "union_cover": songData.union_cover,
+                                            "album_name": songData.album_name,
+                                            "duration": songData.duration
+                                        })
+                                        BasicConfig.emitSongAdded("正在播放: " + songData.songname)
+                                    }
                                 }
                             }
                         }
+                    }
+                }
 
-                        Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+                EmptyState {
+                    visible: !recommendation || recommendation.topSongsQml.length === 0
+                    width: parent.width
+                    height: 220
+                    iconText: "♪"
+                    title: "暂无推荐内容"
+                    subtitle: "点击下方按钮刷新试试"
+                    buttonText: "刷新推荐"
+                    onButtonClicked: {
+                        if (recommendation) {
+                            recommendation.fetchTopSongs()
+                            recommendation.fetchTopPlaylists()
+                        }
                     }
                 }
             }
@@ -222,7 +288,8 @@ Item {
 
                             Rectangle {
                                 anchors.fill: parent
-                                color: plHover.hovered ? AppTheme.bgCard : "transparent"
+                                // hover 改为歌单名高亮（背景透明，渐变下无块状覆盖层）
+                                color: "transparent"
                                 radius: 12
 
                                 Row {
@@ -257,7 +324,8 @@ Item {
                                             elide: Text.ElideRight
                                             font.pixelSize: AppTheme.fontSizeBody
                                             font.bold: true
-                                            color: AppTheme.textPrimary
+                                            // hover 歌单名高亮（网易云风格）
+                                            color: plHover.hovered ? AppTheme.accentPlaying : AppTheme.textPrimary
                                             font.family: AppTheme.fontFamily
                                         }
                                         Text {
@@ -311,154 +379,6 @@ Item {
                                     }
                                 }
                             }
-                        }
-                    }
-                }
-            }
-
-            // ========== 热门推荐 ==========
-            Column {
-                width: parent.width - parent.leftPadding - parent.rightPadding
-                spacing: 12
-
-                Text {
-                    text: "✦ 热门推荐"
-                    font.pixelSize: AppTheme.fontSizeTitleLg
-                    font.bold: true
-                    color: AppTheme.textPrimary
-                    font.family: AppTheme.fontFamily
-                }
-
-                GridView {
-                    id: songsGrid
-                    width: parent.width
-                    height: contentHeight
-                    cellWidth: width / 6
-                    cellHeight: cellWidth + 50
-                    interactive: false
-                    model: recommendation ? recommendation.topSongsQml : []
-
-                    delegate: Item {
-                        width: songsGrid.cellWidth - 6
-                        height: songsGrid.cellHeight - 6
-
-                        property var songData: modelData
-                        readonly property bool isPlaying: playlistmanager && playlistmanager.currentSonghash === songData.songhash
-
-                        Rectangle {
-                            anchors.fill: parent
-                            color: songCardHover.hovered ? AppTheme.bgCard : "transparent"
-                            radius: 12
-
-                            Column {
-                                anchors.fill: parent
-                                anchors.margins: 8
-                                spacing: 6
-
-                                Rectangle {
-                                    width: parent.width
-                                    height: width
-                                    radius: 10
-                                    clip: true
-
-                                    Image {
-                                        anchors.fill: parent
-                                        source: songData.union_cover
-                                        asynchronous: true
-                                        cache: true
-                                        sourceSize.width: 300
-                                        sourceSize.height: 300
-                                        fillMode: Image.PreserveAspectCrop
-                                    }
-
-                                    Rectangle {
-                                        anchors.fill: parent
-                                        color: "#40000000"
-                                        visible: songCardHover.hovered || isPlaying
-                                        radius: 10
-
-                                        NowPlayingIndicator {
-                                            anchors.centerIn: parent
-                                            visible: isPlaying
-                                        }
-
-                                        Image {
-                                            id: cardPlayIcon
-                                            anchors.centerIn: parent
-                                            source: AppIcon.playCircle
-                                            width: 32
-                                            height: 32
-                                            fillMode: Image.PreserveAspectFit
-                                            visible: !isPlaying && songCardHover.hovered
-                                            sourceSize: Qt.size(128, 128)
-                                            mipmap: true
-                                            layer.enabled: true
-                                            layer.effect: ColorOverlay { source: cardPlayIcon; color: AppTheme.textPrimary }
-                                        }
-                                    }
-                                }
-
-                                Text {
-                                    text: songData.songname
-                                    width: parent.width
-                                    elide: Text.ElideRight
-                                    font.pixelSize: AppTheme.fontSizeSmall
-                                    font.bold: true
-                                    color: isPlaying ? AppTheme.accentPlaying : AppTheme.textSongTitle
-                                    font.family: AppTheme.fontFamily
-                                }
-
-                                Text {
-                                    text: songData.singername
-                                    width: parent.width
-                                    elide: Text.ElideRight
-                                    font.pixelSize: AppTheme.fontSizeCaption
-                                    font.bold: true
-                                    color: AppTheme.textMuted
-                                    font.family: AppTheme.fontFamily
-                                }
-                            }
-
-                            HoverHandler { id: songCardHover }
-
-                            TapHandler {
-                                cursorShape: Qt.PointingCursor
-                                onTapped: {
-                                    if (isTogetherMode) {
-                                        if (websocket) {
-                                            websocket.addSongToTogether(songData.songname, songData.songhash,
-                                                songData.singername, songData.album_name,
-                                                songData.duration, songData.union_cover)
-                                        }
-                                    } else {
-                                        playlistmanager.playNextAndPlay({
-                                            "songname": songData.songname,
-                                            "songhash": songData.songhash,
-                                            "singername": songData.singername,
-                                            "union_cover": songData.union_cover,
-                                            "album_name": songData.album_name,
-                                            "duration": songData.duration
-                                        })
-                                        BasicConfig.emitSongAdded("正在播放: " + songData.songname)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                EmptyState {
-                    visible: !recommendation || recommendation.topSongsQml.length === 0
-                    width: parent.width
-                    height: 220
-                    iconText: "♪"
-                    title: "暂无推荐内容"
-                    subtitle: "点击下方按钮刷新试试"
-                    buttonText: "刷新推荐"
-                    onButtonClicked: {
-                        if (recommendation) {
-                            recommendation.fetchTopSongs()
-                            recommendation.fetchTopPlaylists()
                         }
                     }
                 }

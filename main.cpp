@@ -21,6 +21,7 @@
 #endif
 #include "./CPPSrc/CrashHandler.h"
 #include "./CPPSrc/ClickThroughHelper.h"
+#include "./CPPSrc/DominantColorExtractor.h"
 #include "./CPPSrc/HttpGetRequester.h"
 #include "./CPPSrc/NowPlayingMediaController.h"
 #include "./CPPSrc/WebSocketClient.h"
@@ -126,6 +127,7 @@ int main(int argc, char *argv[])
     SearchHistoryManager searchHistory;
     Recommendation recommendation;
     PlaylistManager playlistmanager(&recommendation);
+    DominantColorExtractor playlistColorExtractor;   // 歌单页专用（独立于播放页的播放管理器提取器）
     UserManager userManager;
     WebSocketClient websocket(&playlistmanager, &userManager);
     NowPlayingMediaController mediaController(&playlistmanager);
@@ -139,6 +141,7 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("complexsearch", &complexsearch);
     engine.rootContext()->setContextProperty("searchHistory", &searchHistory);
     engine.rootContext()->setContextProperty("playlistmanager", &playlistmanager);
+    engine.rootContext()->setContextProperty("playlistColorExtractor", &playlistColorExtractor);
     engine.rootContext()->setContextProperty("recommendation", &recommendation);
     engine.rootContext()->setContextProperty("websocket", &websocket);
     engine.rootContext()->setContextProperty("lyricsConfig", &lyricsConfig);

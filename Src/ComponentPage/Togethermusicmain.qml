@@ -279,13 +279,21 @@ Item {
             width: 90; height: 34; radius: 17
             color: leaveMouseArea.containsMouse ? "#40FF4D4F" : "transparent"
             border.width: 1
-            border.color: leaveMouseArea.containsMouse ? "#FF4D4F" : AppTheme.borderDefault
+            // 渐变时边框随背景对比色，保证任何封面下都看得清
+            border.color: leaveMouseArea.containsMouse ? "#FF4D4F"
+                : (BasicConfig.playlistCoverColor !== ""
+                    ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
+                    : AppTheme.borderDefault)
 
             Text {
                 anchors.centerIn: parent
                 text: "离开房间"
                 font.pixelSize: AppTheme.fontSizeBody; font.family: AppTheme.fontFamily
-                color: leaveMouseArea.containsMouse ? "#FF4D4F" : AppTheme.textMuted
+                // 渐变激活时按背后颜色自动挑白/深字，保证任何封面下都看得清
+                color: leaveMouseArea.containsMouse ? "#FF4D4F"
+                     : (BasicConfig.playlistCoverColor !== ""
+                        ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
+                        : AppTheme.textMuted)
             }
 
             MouseArea {
@@ -650,22 +658,21 @@ Item {
 
         Behavior on x { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
 
-        // 切换按钮
+        // 切换按钮（背景透明融入渐变，hover 箭头变亮）
         Rectangle {
             id: toggleTab
             x: 0
             anchors.verticalCenter: parent.verticalCenter
             width: 22
             height: 56
-            radius: 6
-            color: toggleHover.containsMouse ? AppTheme.bgCard : AppTheme.bgInput
+            color: "transparent"
 
             Text {
                 anchors.centerIn: parent
                 text: playlistDrawer.open ? "›" : "‹"
                 font.pixelSize: AppTheme.fontSizeTitleLg
                 font.weight: Font.Bold
-                color: AppTheme.textSecondary
+                color: toggleHover.containsMouse ? AppTheme.textPrimary : AppTheme.textSecondary
             }
 
             MouseArea {
@@ -675,20 +682,16 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: playlistDrawer.open = !playlistDrawer.open
             }
-            Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
         }
 
-        // 播放列表面板
+        // 播放列表面板（背景透明，融入整窗渐变）
         Rectangle {
             anchors.left: toggleTab.right
             anchors.leftMargin: 2
             anchors.top: parent.top
             anchors.bottom: parent.bottom
             width: 356
-            radius: 10
-            color: AppTheme.bgOverlay
-            border.color: AppTheme.dialogBorder
-            border.width: 1
+            color: "transparent"
             clip: true
 
             Column {
@@ -696,8 +699,9 @@ Item {
                 anchors.margins: 14
                 spacing: 10
 
-                // 标题 + 控制
+                // 标题 + 控制（面板内水平居中）
                 Row {
+                    anchors.horizontalCenter: parent.horizontalCenter
                     spacing: 12
 
                     Text {
@@ -771,13 +775,6 @@ Item {
                     }
                 }
 
-                // 分割线
-                Rectangle {
-                    width: parent.width
-                    height: 1
-                    color: AppTheme.borderSubtle
-                }
-
                 // 歌曲列表
                 ListView {
                     id: playlistView
@@ -792,13 +789,12 @@ Item {
                         width: playlistView.width
                         height: 46
                         radius: 6
-                        color: {
-                            if (playlistmanager && playlistmanager.currentIndex === index)
-                                return AppTheme.accentDim;
-                            return songHover.hovered ? AppTheme.bgCardHover : "transparent";
-                        }
+                        // hover/播放改为文字高亮（背景透明，渐变下无块状覆盖层）
+                        color: "transparent"
 
                         HoverHandler { id: songHover }
+                        // 整行小手光标（悬停行，点击动作在右侧按钮上）
+                        TapHandler { cursorShape: Qt.PointingHandCursor }
 
                         Row {
                             anchors.left: parent.left
@@ -866,7 +862,7 @@ Item {
                                     text: model.title
                                     font.pixelSize: AppTheme.fontSizeSmall
                                     font.bold: true
-                                    color: playlistmanager && playlistmanager.currentIndex === index ? AppTheme.accentPlaying : AppTheme.textSongTitle
+                                    color: playlistmanager && playlistmanager.currentIndex === index ? AppTheme.accentPlaying : (songHover.hovered ? AppTheme.accentPlaying : AppTheme.textSongTitle)
                                     elide: Text.ElideRight
                                     width: 140
                                 }

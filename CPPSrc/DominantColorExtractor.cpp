@@ -1,6 +1,5 @@
 #include "DominantColorExtractor.h"
 
-#include <QDebug>
 #include <QEventLoop>
 #include <QImage>
 #include <QMediaPlayer> // 仅为触发 QImage 完整包含（实际只需 QImage）
@@ -9,6 +8,7 @@
 #include <QNetworkRequest>
 #include <QRunnable>
 #include <QThreadPool>
+#include <QTimer>
 #include <QUrl>
 
 namespace
@@ -26,8 +26,12 @@ QString computeColor(const QImage &image)
 
     QImage small = image.scaled(50, 50, Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
+    // 全图平均会把黑边/白字/暗灰混进主色导致色相失真。
+    // 改为：同时统计全像素与「有彩色像素」（饱和度 ≥50）两套均值，
+    // 有彩色像素占比足够时优先用它——那才是视觉主色区域。
     long totalR = 0, totalG = 0, totalB = 0;
-    int pixelCount = 0;
+    long vividR = 0, vividG = 0, vividB = 0;
+    int pixelCount = 0, vividCount = 0;
     for (int y = 0; y < small.height(); ++y)
     {
         for (int x = 0; x < small.width(); ++x)
@@ -35,23 +39,38 @@ QString computeColor(const QImage &image)
             QColor color   = small.pixelColor(x, y);
             int brightness = (color.red() + color.green() + color.blue()) / 3;
             // 忽略过暗（<20）或过亮（>235）的像素，避免黑/白边干扰
-            if (brightness > 20 && brightness < 235)
+            if (brightness <= 20 || brightness >= 235)
+                continue;
+            totalR += color.red();
+            totalG += color.green();
+            totalB += color.blue();
+            ++pixelCount;
+            int h, s, v;
+            color.getHsv(&h, &s, &v);
+            if (s >= 50)
             {
-                totalR += color.red();
-                totalG += color.green();
-                totalB += color.blue();
-                ++pixelCount;
+                vividR += color.red();
+                vividG += color.green();
+                vividB += color.blue();
+                ++vividCount;
             }
         }
     }
     if (pixelCount == 0)
         return kFallbackColor;
 
-    QColor avg(totalR / pixelCount, totalG / pixelCount, totalB / pixelCount);
+    // 有彩色像素占比 ≥1/7 时优先用它们（黑边白字不参与）；纯黑白封面退回全像素平均
+    const bool useVivid = vividCount > 0 && vividCount * 7 >= pixelCount;
+    const long r = useVivid ? vividR / vividCount : totalR / pixelCount;
+    const long g = useVivid ? vividG / vividCount : totalG / pixelCount;
+    const long b = useVivid ? vividB / vividCount : totalB / pixelCount;
+
+    QColor avg(static_cast<int>(r), static_cast<int>(g), static_cast<int>(b));
     int h, s, v;
     avg.getHsv(&h, &s, &v);
-    s = qMin(255, s + 50); // 提高饱和度
-    v = qMin(255, v + 30); // 提高亮度
+    // 增强让主色更鲜活（vivid 分支本身已高饱和，统一小幅增强）
+    s = qMin(255, s + 60); // 提高饱和度
+    v = qMin(255, v + 40); // 提高亮度
     QColor finalColor;
     finalColor.setHsv(h, s, v);
     return finalColor.name(QColor::HexRgb).toUpper();
@@ -70,12 +89,22 @@ public:
     {
         QString resultColor = kFallbackColor;
         QNetworkAccessManager nam;
-        QNetworkReply *reply = nam.get(QNetworkRequest(QUrl(m_url)));
+        // 必须设超时：缺省无超时，网络挂起会永久占用线程池线程，任务越积越多
+        // 全部卡死（曾导致取色大量 fallback 粉色）。transferTimeout 只覆盖传输
+        // 阶段，连接/DNS 挂起不受管 → 用 QTimer + abort() 强制打断任何阶段。
+        QNetworkRequest request{QUrl(m_url)};
+        request.setTransferTimeout(6000);
+        QNetworkReply *reply = nam.get(request);
         if (!reply)
         {
             m_cb(m_url, resultColor);
             return;
         }
+
+        QTimer timer;
+        timer.setSingleShot(true);
+        QObject::connect(&timer, &QTimer::timeout, reply, &QNetworkReply::abort);
+        timer.start(6000);
 
         QEventLoop loop;
         QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
@@ -85,9 +114,7 @@ public:
         {
             QImage image = QImage::fromData(reply->readAll());
             if (!image.isNull())
-            {
                 resultColor = computeColor(image);
-            }
         }
         reply->deleteLater();
         m_cb(m_url, resultColor);

@@ -164,17 +164,18 @@ ApplicationWindow {
         width: 200
         anchors.top: parent.top
         anchors.bottom: bottomrect.top
-        color: AppTheme.bgSidebar
+        // 整窗渐变激活时面板色转透明，露出内嵌的 WindowTintGradient 切片
+        color: BasicConfig.playlistCoverColor !== "" ? "transparent" : AppTheme.bgSidebar
         radius: 20
         clip: true
         // 盖住其他角
         Rectangle {
-            // 右上角遮挡
+            // 右上角遮挡（在窗口顶，随渐变混入主色保持一致）
             anchors.top: parent.top
             anchors.right: parent.right
             width: 20
             height: 20
-            color: AppTheme.bgSidebar
+            color: BasicConfig.mixTint(BasicConfig.playlistCoverColor, AppTheme.bgSidebar, 0.5)
             Behavior on color {
                 ColorAnimation {
                     duration: AppTheme.animThemeTransition
@@ -219,7 +220,7 @@ ApplicationWindow {
         anchors.top: parent.top
         anchors.right: parent.right
         anchors.bottom: bottomrect.top
-        color: AppTheme.bgContent
+        color: BasicConfig.playlistCoverColor !== "" ? "transparent" : AppTheme.bgContent
         radius: 20
         clip: true
         Rectangle {
@@ -249,12 +250,12 @@ ApplicationWindow {
             }
         }
         Rectangle {
-            // 左上角角遮挡
+            // 左上角遮挡（在窗口顶，随渐变混入主色保持一致）
             anchors.left: parent.left
             anchors.top: parent.top
             width: 20
             height: 20
-            color: AppTheme.bgContent
+            color: BasicConfig.mixTint(BasicConfig.playlistCoverColor, AppTheme.bgContent, 0.5)
             Behavior on color {
                 ColorAnimation {
                     duration: AppTheme.animThemeTransition
@@ -273,7 +274,7 @@ ApplicationWindow {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        color: AppTheme.bgBottomBar
+        color: BasicConfig.playlistCoverColor !== "" ? "transparent" : AppTheme.bgBottomBar
         radius: 20
         clip: true
         Rectangle {
@@ -308,6 +309,27 @@ ApplicationWindow {
             }
         }
     }
+    }
+    // 整窗统一渐变：三个面板（Leftpage/Rightpage/Bottompage）各自内嵌 WindowTintGradient
+    // 切片，把封面主色按全局纵向位置混入面板底色（纯不透明渐变，内容不糊）。
+    // 有渐变时面板根色转透明让切片露出来；无渐变时面板恢复主题底色。
+    // 窗口高度同步给 BasicConfig，供切片换算「整窗 50% 淡出」的位置。
+    Binding {
+        target: BasicConfig
+        property: "windowHeight"
+        value: root.height
+    }
+    // 非歌单页时的渐变来源：正在播放（有歌且未暂停）→ 用当前歌曲封面主色。
+    // dominantColor 由 PlaylistManager 内部提取器维护（播放页主题同源）。
+    Binding {
+        target: BasicConfig
+        property: "playingActive"
+        value: playlistmanager && playlistmanager.currentSonghash !== "" && !playlistmanager.isPaused
+    }
+    Binding {
+        target: BasicConfig
+        property: "playingCoverColor"
+        value: playlistmanager ? playlistmanager.dominantColor : ""
     }
     // 使用 Loader 延迟加载歌词页，减少启动内存
     Loader {
