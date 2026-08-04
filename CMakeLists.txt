@@ -29,6 +29,11 @@ set(PROJECT_SOURCES
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
+    # 字体是大资源（3×23M≈69M）：用 big_resources 直接编译成目标文件，
+    # 避免 rcc 生成 338MB 的 C++ 数组字面量拖垮编译器内存/编译时间（Windows 上易 OOM）
+    set(FONT_RESOURCES "")
+    qt_add_big_resources(FONT_RESOURCES fonts.qrc)
+
     qt_add_executable(WangGouMusic
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
@@ -47,7 +52,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         CPPSrc/ClickThroughHelper.cpp CPPSrc/ClickThroughHelper.h
         image.qrc
         icons.qrc
-        fonts.qrc
+        ${FONT_RESOURCES}
     )
     # Windows 应用程序图标 + 系统媒体传输控件(SMTC)
     if(WIN32)
@@ -136,10 +141,10 @@ install(TARGETS WangGouMusic
     BUNDLE DESTINATION .
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
-# Release/RelWithDebInfo 启用 LTO 与隐藏符号：减小二进制体积、加快加载
+# Release/RelWithDebInfo 仅隐藏符号以减小体积（不开 LTO：链接期并行优化会吃大量内存，
+# Windows 上甚至 OOM，编译时长也翻倍，对桌面客户端收益不值）
 if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     set_target_properties(WangGouMusic PROPERTIES
-        INTERPROCEDURAL_OPTIMIZATION TRUE
         CXX_VISIBILITY_PRESET hidden
         VISIBILITY_INLINES_HIDDEN ON)
 endif()
