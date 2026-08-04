@@ -34,9 +34,26 @@ QtObject {
 
     // 最终生效色：歌单页激活 → 歌单色；否则播放中 → 播放歌曲色；否则空 = 无渐变。
     // 所有消费方（WindowTintGradient / 面板根色 / 角遮挡片）只读这个，来源切换自动平滑过渡。
-    readonly property string playlistCoverColor: playlistPageActive
+    // 深色主题下先过 clampCoverColor 亮度钳制，浅色封面不会把整窗渐变染白。
+    readonly property string playlistCoverColor: clampCoverColor(playlistPageActive
         ? playlistPageCoverColor
-        : (playingActive ? playingCoverColor : "")
+        : (playingActive ? playingCoverColor : ""))
+
+    // 深色主题下把封面主色按最大分量线性压暗到 ≤0.5 亮度（保持色相），
+    // 避免切到浅色封面时整窗渐变与浮层文字一起变白；浅色主题/空色原样返回。
+    function clampCoverColor(hex) {
+        if (!AppTheme.isDark) return hex
+        if (typeof hex !== "string" || hex.length < 7 || hex.charAt(0) !== "#") return hex
+        var c = rgbFromHex(hex, 1)
+        var mx = Math.max(c.r, Math.max(c.g, c.b))
+        if (mx <= 0.5) return hex
+        var k = 0.5 / mx
+        var hexByte = function(v) {
+            var s = Math.round(v).toString(16)
+            return s.length < 2 ? "0" + s : s
+        }
+        return "#" + hexByte(c.r * 255 * k) + hexByte(c.g * 255 * k) + hexByte(c.b * 255 * k)
+    }
 
     // 主窗口高度（由 main.qml 同步）：用于把「整窗 50% 处淡出」换算成每个面板内的渐变位置
     property real windowHeight: 752
