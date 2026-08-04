@@ -33,6 +33,7 @@ QtObject {
     readonly property string clockFill: "qrc:/icons/clock-fill.svg"
     readonly property string lyrics: "qrc:/icons/closed-captioning.svg"
     readonly property string search: "qrc:/icons/magnifying-glass.svg"
+    readonly property string fire: "qrc:/icons/fire.svg"
     readonly property string back: "qrc:/icons/arrow-left.svg"
     readonly property string close: "qrc:/icons/x.svg"
     readonly property string minimize: "qrc:/icons/minus.svg"

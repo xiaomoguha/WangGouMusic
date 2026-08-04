@@ -30,6 +30,7 @@
 #include "./CPPSrc/playlistmanager.h"
 #include "./CPPSrc/recommendation.h"
 #include "./CPPSrc/searchcomplex.h"
+#include "./CPPSrc/searchhistorymanager.h"
 #include "./CPPSrc/singleapplication.h"
 #include "./CPPSrc/trayhandler.h"
 #include "./CPPSrc/usermanager.h"
@@ -122,6 +123,7 @@ int main(int argc, char *argv[])
     // ---------------- 后端对象（必须在加载 QML 之前创建） ----------------
     GetHostSearch hostSearch;
     SearchComplex complexsearch;
+    SearchHistoryManager searchHistory;
     Recommendation recommendation;
     PlaylistManager playlistmanager(&recommendation);
     UserManager userManager;
@@ -135,6 +137,7 @@ int main(int argc, char *argv[])
     qRegisterMetaType<LyricLine>("LyricLine");
     engine.rootContext()->setContextProperty("hostSearch", &hostSearch);
     engine.rootContext()->setContextProperty("complexsearch", &complexsearch);
+    engine.rootContext()->setContextProperty("searchHistory", &searchHistory);
     engine.rootContext()->setContextProperty("playlistmanager", &playlistmanager);
     engine.rootContext()->setContextProperty("recommendation", &recommendation);
     engine.rootContext()->setContextProperty("websocket", &websocket);
