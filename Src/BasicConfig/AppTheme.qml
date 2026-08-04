@@ -22,7 +22,7 @@ QtObject {
     // ===== 背景颜色 =====
     readonly property color bgSidebar: isDark ? "#1a1a21" : "#F5F5F7"
     readonly property color bgContent: isDark ? "#13131a" : "#FFFFFF"
-    readonly property color bgBottomBar: isDark ? "#2d2d37" : "#FAFAFA"
+    readonly property color bgBottomBar: isDark ? "#1a1a21" : "#F5F5F7"
     readonly property color bgBottomBarInner: isDark ? "#1a1a24" : "#F0F0F2"
     readonly property color bgCard: isDark ? "#27272e" : "#F8F8FA"
     readonly property color bgCardHover: isDark ? "#212127" : "#EEEEF2"
