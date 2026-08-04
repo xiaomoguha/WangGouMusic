@@ -66,9 +66,10 @@ Item {
         if (!playlistmanager) return
         var csh = playlistmanager.currentSonghash
         if (!csh) return
-        var list = recommendation ? recommendation.playlistTracksQml : []
-        for (var i = 0; i < list.length; i++) {
-            if (list[i].songhash === csh) { currentSongIndex = i; break }
+        var list = recommendation ? recommendation.playlistTracksModel : null
+        if (!list) return
+        for (var i = 0; i < list.count; i++) {
+            if (list.get(i).songhash === csh) { currentSongIndex = i; break }
         }
     }
 
@@ -111,11 +112,11 @@ Item {
                 // 播放全部触发的全量
                 if (_pendingPlayAll) {
                     _pendingPlayAll = false
-                    var songs = recommendation.playlistTracksQml
-                    if (songs.length > 0) {
+                    var songs = recommendation.playlistTracksModel
+                    if (songs.count > 0) {
                         playlistmanager.clearPlaylist()
-                        for (var i = 0; i < songs.length; i++) {
-                            var s = songs[i]
+                        for (var i = 0; i < songs.count; i++) {
+                            var s = songs.get(i)
                             playlistmanager.addSong({
                                 "songname": s.songname,
                                 "songhash": s.songhash,
@@ -257,16 +258,16 @@ Item {
                                 enabled: recommendation && !recommendation.playlistIsLoading
                                 onTapped: {
                                     if (!recommendation) return
-                                    var songs = recommendation.playlistTracksQml
+                                    var songs = recommendation.playlistTracksModel
                                     if (recommendation.playlistHasMore) {
                                         _pendingPlayAll = true
                                         recommendation.loadAllPlaylistTracks()
                                         return
                                     }
-                                    if (songs.length > 0) {
+                                    if (songs.count > 0) {
                                         playlistmanager.clearPlaylist()
-                                        for (var i = 0; i < songs.length; i++) {
-                                            var s = songs[i]
+                                        for (var i = 0; i < songs.count; i++) {
+                                            var s = songs.get(i)
                                             playlistmanager.addSong({
                                                 "songname": s.songname,
                                                 "songhash": s.songhash,
@@ -319,7 +320,7 @@ Item {
         clip: true
         cacheBuffer: 2000
         // 显示全部已加载歌曲
-        model: recommendation ? recommendation.playlistTracksQml : []
+        model: recommendation ? recommendation.playlistTracksModel : null
         spacing: 2
         leftMargin: 30
         rightMargin: 30
@@ -354,7 +355,7 @@ Item {
             // hover/播放改为文字高亮（背景透明，渐变下无块状覆盖层）
             color: "transparent"
 
-            readonly property bool isPlaying: playlistmanager && playlistmanager.currentSonghash === modelData.songhash
+            readonly property bool isPlaying: playlistmanager && playlistmanager.currentSonghash === model.songhash
 
                     Row {
                         id: mainRow
@@ -375,6 +376,7 @@ Item {
 
                         NowPlayingIndicator {
                             visible: isPlaying
+                            playing: playlistmanager ? !playlistmanager.isPaused : true
                             anchors.verticalCenter: parent.verticalCenter
                         }
 
@@ -382,7 +384,7 @@ Item {
                             width: 40
                             height: 40
                             anchors.verticalCenter: parent.verticalCenter
-                            source: modelData.union_cover
+                            source: model.union_cover
                             asynchronous: true
                             cache: true
                             sourceSize.width: 80
@@ -404,7 +406,7 @@ Item {
                             spacing: 4
 
                             Text {
-                                text: modelData.songname
+                                text: model.title
                                 width: parent.width
                                 elide: Text.ElideRight
                                 font.pixelSize: AppTheme.fontSizeBody
@@ -415,7 +417,7 @@ Item {
                             }
 
                             Text {
-                                text: modelData.singername
+                                text: model.singername
                                 width: parent.width
                                 elide: Text.ElideRight
                                 font.pixelSize: AppTheme.fontSizeCaption
@@ -443,14 +445,14 @@ Item {
                                     iconSize: 16
                                     onClicked: {
                                         playlistmanager.playNextAndPlay({
-                                            "songname": modelData.songname,
-                                            "songhash": modelData.songhash,
-                                            "singername": modelData.singername,
-                                            "union_cover": modelData.union_cover,
-                                            "album_name": modelData.album_name,
-                                            "duration": modelData.duration
+                                            "songname": model.title,
+                                            "songhash": model.songhash,
+                                            "singername": model.singername,
+                                            "union_cover": model.union_cover,
+                                            "album_name": model.album_name,
+                                            "duration": model.duration
                                         })
-                                        BasicConfig.emitSongAdded("正在播放: " + modelData.songname)
+                                        BasicConfig.emitSongAdded("正在播放: " + model.title)
                                     }
                                 }
 
@@ -461,14 +463,14 @@ Item {
                                     iconSize: 16
                                     onClicked: {
                                         playlistmanager.addSongNext({
-                                            "songname": modelData.songname,
-                                            "songhash": modelData.songhash,
-                                            "singername": modelData.singername,
-                                            "union_cover": modelData.union_cover,
-                                            "album_name": modelData.album_name,
-                                            "duration": modelData.duration
+                                            "songname": model.title,
+                                            "songhash": model.songhash,
+                                            "singername": model.singername,
+                                            "union_cover": model.union_cover,
+                                            "album_name": model.album_name,
+                                            "duration": model.duration
                                         })
-                                        BasicConfig.emitSongAdded("已添加到下一首: " + modelData.songname)
+                                        BasicConfig.emitSongAdded("已添加到下一首: " + model.title)
                                     }
                                 }
 
@@ -477,16 +479,16 @@ Item {
                                     iconSource: AppIcon.addTogether
                                     size: 30
                                     iconSize: 16
-                                    onClicked: websocket.addSongToTogether(modelData.songname, modelData.songhash,
-                                                                           modelData.singername, modelData.album_name,
-                                                                           modelData.duration, modelData.union_cover)
+                                    onClicked: websocket.addSongToTogether(model.title, model.songhash,
+                                                                           model.singername, model.album_name,
+                                                                           model.duration, model.union_cover)
                                 }
                             }
                         }
 
                         // 专辑名（与最近播放一致的列）
                         Text {
-                            text: modelData.album_name
+                            text: model.album_name
                             width: 0.2 * tracksListView.width
                             elide: Text.ElideRight
                             font.pixelSize: AppTheme.fontSizeBodyLg
@@ -498,7 +500,7 @@ Item {
 
                         Text {
                             text: {
-                                var d = modelData.duration
+                                var d = model.duration
                                 if (!d) return "--:--"
                                 if (d.indexOf(":") !== -1) return d
                                 var sec = parseInt(d)
@@ -525,8 +527,11 @@ Item {
                         onDoubleTapped: {
                             if (!recommendation) return
                             var total = recommendation.playlistTotal
-                            var firstBatch = recommendation.playlistTracksQml
-                            if (firstBatch.length === 0 || total <= 0) return
+                            var model = recommendation.playlistTracksModel
+                            if (model.count === 0 || total <= 0) return
+                            var firstBatch = []
+                            for (var i = 0; i < model.count; i++)
+                                firstBatch.push(model.get(i))
                             playlistmanager.playPlaylistFromSource(playlistId, total, index, firstBatch)
                             BasicConfig.emitSongAdded("已切换播放列表: " + playlistName)
                         }
@@ -547,7 +552,7 @@ Item {
                 text: {
                     if (!recommendation) return ""
                     if (recommendation.playlistIsLoading) return "加载中..."
-                    var loaded = recommendation.playlistTracksQml ? recommendation.playlistTracksQml.length : 0
+                    var loaded = recommendation.playlistTracksModel ? recommendation.playlistTracksModel.count : 0
                     if (!recommendation.playlistHasMore)
                         return "共 " + recommendation.playlistTotal + " 首"
                     return "已加载 " + loaded + " / " + recommendation.playlistTotal + " 首"
@@ -563,7 +568,7 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        visible: !recommendation || recommendation.playlistTracksQml.length === 0
+        visible: !recommendation || recommendation.playlistTracksModel.count === 0
         iconText: "♪"
         title: "歌单暂无歌曲"
         subtitle: "稍后再来看看吧"

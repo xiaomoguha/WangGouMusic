@@ -11,6 +11,8 @@ Recommendation::Recommendation(QObject *parent)
     : QObject(parent), m_topSongsRequester(10000, this), m_topPlaylistsRequester(10000, this),
       m_playlistTracksRequester(10000, this), m_lazyRequester(10000, this)
 {
+    m_playlistTracksModel = new SongListModel(this);
+
     connect(&m_topSongsRequester, &HttpGetRequester::dataReceived, this, &Recommendation::onTopSongsData);
     connect(&m_topPlaylistsRequester, &HttpGetRequester::dataReceived, this, &Recommendation::onTopPlaylistsData);
     connect(&m_playlistTracksRequester, &HttpGetRequester::dataReceived, this, &Recommendation::onPlaylistTracksData);
@@ -183,19 +185,13 @@ QVariantList Recommendation::getTopPlaylistsQml() const
 {
     return m_topPlaylists;
 }
-QVariantList Recommendation::getPlaylistTracksQml() const
-{
-    return m_playlistTracks;
-}
-
 void Recommendation::fetchPlaylistTracks(const QString &globalCollectionId)
 {
     m_currentPlaylistId = globalCollectionId;
     m_playlistPage      = 0;
     m_playlistTotal     = 0;
     m_playlistHasMore   = true;
-    m_playlistTracks.clear();
-    emit playlistTracksChanged();
+    m_playlistTracksModel->clear();
     fetchMorePlaylistTracks();
 }
 
@@ -217,11 +213,10 @@ void Recommendation::loadAllPlaylistTracks()
 {
     if (m_playlistIsLoading || m_currentPlaylistId.isEmpty())
         return;
-    m_playlistTracks.clear();
+    m_playlistTracksModel->clear();
     m_playlistPage    = 0;
     m_playlistHasMore = false;
     m_playlistTotal   = 0;
-    emit playlistTracksChanged();
     m_playlistIsLoading = true;
     emit playlistIsLoadingChanged();
     QString url = QString("https://xjt-togethertracks.top/api/playlist/track/all?id=%1&page=1&pagesize=1000")
@@ -276,25 +271,26 @@ void Recommendation::onPlaylistTracksData(const QByteArray &data)
         int durationSec   = s["timelen"].toInt(0) / 1000;
         QString albumName = s["albuminfo"].toObject()["name"].toString();
 
-        QVariantMap item;
-        item["songname"]    = songname;
-        item["singername"]  = singername;
-        item["songhash"]    = hash;
-        item["union_cover"] = cover;
-        item["album_name"]  = albumName;
-        item["duration"]    = secondsToMinutesSeconds(durationSec);
-        m_playlistTracks.append(item);
+        // 增量插入 model：只通知新增行，ListView 滚动位置不重置（下拉加载不弹顶）
+        SongInfo song;
+        song.title       = songname;
+        song.songhash    = hash;
+        song.singername  = singername;
+        song.union_cover = cover;
+        song.album_name  = albumName;
+        song.duration    = secondsToMinutesSeconds(durationSec);
+        m_playlistTracksModel->append(song);
     }
     // 更新分页状态：分页模式下，已加载数 < total 则还有更多
     if (m_playlistHasMore && m_playlistTotal > 0)
     {
-        m_playlistHasMore = m_playlistTracks.size() < m_playlistTotal;
+        m_playlistHasMore = m_playlistTracksModel->count() < m_playlistTotal;
     }
     // loadAll 模式下 hasMore 保持 false（已在 loadAllPlaylistTracks 设定）
     m_playlistIsLoading = false;
     emit playlistIsLoadingChanged();
     emit playlistTracksChanged();
-    qDebug() << "歌单曲目加载完成，已加载" << m_playlistTracks.size() << "/" << m_playlistTotal << "首";
+    qDebug() << "歌单曲目加载完成，已加载" << m_playlistTracksModel->count() << "/" << m_playlistTotal << "首";
 }
 
 void Recommendation::fetchPlaylistTracksPage(
