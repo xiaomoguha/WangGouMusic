@@ -24,7 +24,10 @@ Row {
             layer.enabled: true
             layer.effect: ColorOverlay {
                 source: minbutton
-                color: AppTheme.iconDefault
+                // 渐变时随背景挑白/深色，与搜索框文字一致
+                color: BasicConfig.playlistCoverColor !== ""
+                    ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
+                    : AppTheme.iconDefault
             }
         }
 
@@ -63,7 +66,10 @@ Row {
             layer.enabled: true
             layer.effect: ColorOverlay {
                 source: maxbottom
-                color: AppTheme.iconDefault
+                // 渐变时随背景挑白/深色，与搜索框文字一致
+                color: BasicConfig.playlistCoverColor !== ""
+                    ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
+                    : AppTheme.iconDefault
             }
         }
 
@@ -113,7 +119,10 @@ Row {
             layer.enabled: true
             layer.effect: ColorOverlay {
                 source: closebottom
-                color: AppTheme.iconDefault
+                // 渐变时随背景挑白/深色，与搜索框文字一致
+                color: BasicConfig.playlistCoverColor !== ""
+                    ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
+                    : AppTheme.iconDefault
             }
         }
 

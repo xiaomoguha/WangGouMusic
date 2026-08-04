@@ -15,7 +15,7 @@ Item {
         anchors.left: parent.left
         anchors.leftMargin: 12
         anchors.verticalCenter: parent.verticalCenter
-        color: backMA.containsMouse ? AppTheme.bgCard : "transparent"
+        color: backMA.containsMouse ? (BasicConfig.playlistCoverColor !== "" ? "#1EFFFFFF" : AppTheme.bgCard) : "transparent"
         visible: canGoBack
         opacity: canGoBack ? 1 : 0
 
@@ -34,7 +34,10 @@ Item {
             layer.enabled: true
             layer.effect: ColorOverlay {
                 source: backIcon
-                color: AppTheme.textPrimary
+                // 渐变时随背景挑白/深色，与搜索框文字一致
+                color: BasicConfig.playlistCoverColor !== ""
+                    ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
+                    : AppTheme.textPrimary
             }
         }
 

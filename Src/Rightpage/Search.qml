@@ -149,8 +149,10 @@ Row {
                 width: parent.width - searchicon.width - clearBtn.width - parent.spacing * 2
                 height: parent.height
                 placeholderText: "搜索歌曲、歌手"
-                color: AppTheme.textPrimary
                 // 渐变激活时按背后颜色自动挑白/深字，保证任何封面下都看得清
+                color: BasicConfig.playlistCoverColor !== ""
+                    ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
+                    : AppTheme.textPrimary
                 palette.placeholderText: BasicConfig.playlistCoverColor !== ""
                     ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
                     : AppTheme.textPlaceholder

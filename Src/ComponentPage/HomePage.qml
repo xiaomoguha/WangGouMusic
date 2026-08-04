@@ -118,6 +118,7 @@ Item {
                                         NowPlayingIndicator {
                                             anchors.centerIn: parent
                                             visible: isPlaying
+                                            playing: playlistmanager ? !playlistmanager.isPaused : true
                                         }
 
                                         Image {
