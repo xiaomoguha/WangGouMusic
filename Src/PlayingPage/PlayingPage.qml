@@ -215,117 +215,23 @@ Rectangle {
             height: 340
             anchors.horizontalCenter: parent.horizontalCenter
 
-            // 发光层 - 第6层（最外层）
+            // 发光晕：单层柔光（原 6 层 Rectangle + FastBlur 合并为 1 层，
+            // 离屏纹理与 GPU 采样开销降为 1/6；封面清晰度不受影响）
             Rectangle {
-                id: glowLayer6
+                id: glowLayer
                 anchors.centerIn: parent
-                width: 340
-                height: 340
+                width: 350
+                height: 350
                 radius: width / 2
-                color: rgbFromHex(dominantColor,0.06)
+                color: rgbFromHex(dominantColor, 0.38)
                 visible: false
             }
             FastBlur {
                 anchors.centerIn: parent
-                width: 500
-                height: 500
-                source: glowLayer6
-                radius: 80
-                transparentBorder: true
-            }
-
-            // 发光层 - 第5层
-            Rectangle {
-                id: glowLayer5
-                anchors.centerIn: parent
-                width: 340
-                height: 340
-                radius: width / 2
-                color: rgbFromHex(dominantColor,0.10)
-                visible: false
-            }
-            FastBlur {
-                anchors.centerIn: parent
-                width: 455
-                height: 455
-                source: glowLayer5
-                radius: 62
-                transparentBorder: true
-            }
-
-            // 发光层 - 第4层
-            Rectangle {
-                id: glowLayer4
-                anchors.centerIn: parent
-                width: 340
-                height: 340
-                radius: width / 2
-                color: rgbFromHex(dominantColor,0.15)
-                visible: false
-            }
-            FastBlur {
-                anchors.centerIn: parent
-                width: 415
-                height: 415
-                source: glowLayer4
-                radius: 48
-                transparentBorder: true
-            }
-
-            // 发光层 - 第3层
-            Rectangle {
-                id: glowLayer3
-                anchors.centerIn: parent
-                width: 340
-                height: 340
-                radius: width / 2
-                color: rgbFromHex(dominantColor,0.22)
-                visible: false
-            }
-            FastBlur {
-                anchors.centerIn: parent
-                width: 385
-                height: 385
-                source: glowLayer3
-                radius: 35
-                transparentBorder: true
-            }
-
-            // 发光层 - 第2层
-            Rectangle {
-                id: glowLayer2
-                anchors.centerIn: parent
-                width: 340
-                height: 340
-                radius: width / 2
-                color: rgbFromHex(dominantColor,0.32)
-                visible: false
-            }
-            FastBlur {
-                anchors.centerIn: parent
-                width: 360
-                height: 360
-                source: glowLayer2
-                radius: 24
-                transparentBorder: true
-            }
-
-            // 发光层 - 第1层（最内层）
-            Rectangle {
-                id: glowLayer1
-                anchors.centerIn: parent
-                width: 340
-                height: 340
-                radius: width / 2
-                color: rgbFromHex(dominantColor,0.45)
-                visible: false
-            }
-            FastBlur {
-                anchors.centerIn: parent
-                width: 345
-                height: 345
-                source: glowLayer1
-                radius: 14
+                width: 520
+                height: 520
+                source: glowLayer
+                radius: 90
                 transparentBorder: true
             }
 
