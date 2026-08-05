@@ -15,6 +15,8 @@ class Recommendation : public QObject
     Q_PROPERTY(int playlistTotal READ playlistTotal NOTIFY playlistTracksChanged)
     Q_PROPERTY(bool playlistHasMore READ playlistHasMore NOTIFY playlistTracksChanged)
     Q_PROPERTY(bool playlistIsLoading READ playlistIsLoading NOTIFY playlistIsLoadingChanged)
+    // 精选歌单请求中（首页「换一批」按钮的旋转时长）
+    Q_PROPERTY(bool playlistsLoading READ playlistsLoading NOTIFY playlistsLoadingChanged)
 
 public:
     explicit Recommendation(QObject *parent = nullptr);
@@ -22,6 +24,8 @@ public:
     Q_INVOKABLE void fetchTopSongs();
     Q_INVOKABLE void fetchTopPlaylists();
     Q_INVOKABLE void refreshTopPlaylists();
+    // 首页「热门推荐换一批」：外部（RankList.randomSongsReady）把随机榜单歌曲注入推荐区
+    Q_INVOKABLE void showRankSongs(const QVariantList &songs);
     Q_INVOKABLE void fetchPlaylistTracks(const QString &globalCollectionId);
     Q_INVOKABLE void fetchMorePlaylistTracks();
     Q_INVOKABLE void loadAllPlaylistTracks();
@@ -49,6 +53,10 @@ public:
     {
         return m_playlistIsLoading;
     }
+    bool playlistsLoading() const
+    {
+        return m_playlistsLoading;
+    }
 
     static QString secondsToMinutesSeconds(int totalSeconds);
 
@@ -57,6 +65,7 @@ signals:
     void topPlaylistsChanged();
     void playlistTracksChanged();
     void playlistIsLoadingChanged();
+    void playlistsLoadingChanged();
 
 private slots:
     void onTopSongsData(const QByteArray &data);
@@ -65,6 +74,7 @@ private slots:
     void onLazyTracksData(const QByteArray &data);
 
 private:
+    void setPlaylistsLoading(bool loading);
     // 网络失败/超时兜底：重置 loading 态，避免 QML 永久卡在加载中
     void onPlaylistTracksFailed();
     void onLazyTracksFailed();
@@ -80,6 +90,7 @@ private:
     int m_playlistTotal      = 0;
     bool m_playlistHasMore   = true;
     bool m_playlistIsLoading = false;
+    bool m_playlistsLoading  = false;
     HttpGetRequester m_lazyRequester;
     std::function<void(const QVariantList &)> m_pendingLazyCallback;
 };

@@ -42,6 +42,21 @@ ApplicationWindow {
             function onNoticeError(errormessages) {
                 loadingToast.showError(errormessages);
             }
+            function onNoticeSuccess(messages) {
+                loadingToast.showSuccess(messages, 2000);
+            }
+        }
+        Connections {
+            target: playlistCollection
+            function onOperationFinished(success, message) {
+                if (success) {
+                    loadingToast.showSuccess(message, 2000);
+                    // 加歌/删歌后刷新「我喜欢」hash 集合（红心状态）
+                    playlistCollection.refreshFavoriteHashes();
+                } else {
+                    loadingToast.showError(message);
+                }
+            }
         }
         Connections {
             target: websocket
@@ -120,6 +135,8 @@ ApplicationWindow {
         onTriggered: {
             if (userManager && userManager.isLoggedIn) {
                 userManager.refreshToken()
+                // 登录态就绪后预取「我喜欢」hash 集合（红心状态）
+                playlistCollection.refreshFavoriteHashes()
             }
         }
     }
