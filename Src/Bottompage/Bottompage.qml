@@ -132,12 +132,18 @@ Rectangle {
                     }
                 }
 
-                // hover 遮罩：深色压暗 + 向上箭头（提示点击向上展开播放详情页）
+                // 遮罩：播放中常显（动画）；hover 时（无论是否播放）换成向上箭头提示展开播放页
                 Rectangle {
                     anchors.fill: parent
                     radius: 14
                     color: "#40000000"
-                    visible: coverHover.hovered
+                    visible: albumCoverContainer.isCoverPlaying || coverHover.hovered
+
+                    NowPlayingIndicator {
+                        anchors.centerIn: parent
+                        visible: albumCoverContainer.isCoverPlaying && !coverHover.hovered
+                        playing: playlistmanager ? !playlistmanager.isPaused : true
+                    }
 
                     Image {
                         id: coverUpIcon
@@ -148,6 +154,7 @@ Rectangle {
                         height: 28
                         fillMode: Image.PreserveAspectFit
                         mipmap: true
+                        visible: coverHover.hovered
                         layer.enabled: true
                         layer.effect: ColorOverlay {
                             source: coverUpIcon
@@ -156,6 +163,8 @@ Rectangle {
                     }
                 }
                 HoverHandler { id: coverHover }
+                // 封面在播 = 有歌且未暂停
+                readonly property bool isCoverPlaying: playlistmanager && playlistmanager.currentSonghash !== "" && !playlistmanager.isPaused
             }
 
             // 歌曲名称和歌手
