@@ -8,6 +8,7 @@ Page {
     readonly property bool isTogetherMode: playlistmanager && playlistmanager.type === 1
     background: Rectangle { color: "transparent" }
 
+
     Connections {
         target: BasicConfig
         function onSearchKeywordChange() {
@@ -107,7 +108,7 @@ Page {
         delegate: Rectangle {
             id: songItem
             width: flick.width
-            height: 56
+            height: 56 + aiExpand.expandedHeight
             radius: 8
             // hover 改为歌曲名高亮（背景透明，渐变下无块状覆盖层）
             color: "transparent"
@@ -128,6 +129,11 @@ Page {
                 duration: 280
                 easing.type: Easing.OutCubic
             }
+
+            // 行内容固定在 56 高，下方让位给 AI 展开
+            Item {
+                width: parent.width
+                height: 56
 
             // 左侧：序号 + 封面 + 歌名/歌手
             Row {
@@ -226,7 +232,7 @@ Page {
             // 操作按钮（悬停显示，固定位置，不影响布局）
             Row {
                 visible: songItem.showActions
-                x: 0.35 * root.width
+                x: 0.33 * root.width
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 4
                 z: 1
@@ -250,14 +256,27 @@ Page {
                     }
                 }
 
-                // 添加到列表
+                // AI 推荐（点击展开/收回生成的 AI 歌单；有数据时切换为箭头）
+                IconButton {
+
+                    iconSource: aiExpand.expanded ? AppIcon.caretDown
+
+                        : (aiExpand.aiSongs.length > 0 ? AppIcon.caretRight : AppIcon.sparkle)
+                    size: 30
+                    iconSize: 16
+                    onClicked: {
+                        aiExpand.toggle(model.songhash, model.songname)
+                    }
+                }
+
+                // 添加到下一首播放（已有则移动到下一首）
                 IconButton {
                     visible: !isTogetherMode
                     iconSource: AppIcon.addToList
                     size: 30
                     iconSize: 16
                     onClicked: {
-                        playlistmanager.addSong({
+                        playlistmanager.addSongNext({
                             "songname": model.songname,
                             "songhash": model.songhash,
                             "singername": model.singername,
@@ -265,7 +284,7 @@ Page {
                             "album_name": model.album_name,
                             "duration": model.duration
                         });
-                        BasicConfig.emitSongAdded();
+                        BasicConfig.emitSongAdded("已添加到下一首: " + model.songname);
                     }
                 }
 
@@ -308,6 +327,18 @@ Page {
                     return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
                 }
                 font.pixelSize: AppTheme.fontSizeBody; font.family: AppTheme.fontFamily; color: AppTheme.textMuted
+            }
+            }
+
+            // AI 推荐展开（点 ✨ 后在行下方撑开几小行）
+            AiRecommendExpand {
+                id: aiExpand
+                anchors.top: parent.top
+                anchors.topMargin: 56
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.leftMargin: 44
+                anchors.rightMargin: 14
             }
         }
 

@@ -10,6 +10,7 @@ Item {
     width: parent ? parent.width : 0
     height: parent ? parent.height : 0
 
+
     property string playlistId: BasicConfig.playlistDetailId
     property string playlistName: BasicConfig.playlistDetailName
     property string playlistCover: BasicConfig.playlistDetailCover
@@ -533,14 +534,20 @@ Item {
         }
 
         delegate: Rectangle {
+            id: songRow
             width: tracksListView.width - 60
-            height: 60
+            height: 60 + aiExpand.expandedHeight
             x: 30
             radius: 5
             // hover/播放改为文字高亮（背景透明，渐变下无块状覆盖层）
             color: "transparent"
 
             readonly property bool isPlaying: playlistmanager && playlistmanager.currentSonghash === model.songhash
+
+                    // 行内容固定在 60 高，下方让位给 AI 展开
+                    Item {
+                        width: parent.width
+                        height: 60
 
                     Row {
                         id: mainRow
@@ -614,17 +621,17 @@ Item {
 
                         // 操作按钮区（固定宽度占位，悬停时显示；时长始终可见，不再被覆盖）
                         Item {
-                            width: isTogetherMode ? 34 : 108
+                            width: isTogetherMode ? 70 : 170
                             height: 30
                             anchors.verticalCenter: parent.verticalCenter
 
                             Row {
                                 anchors.fill: parent
                                 spacing: 4
-                                visible: songHover.hovered && !isPlaying
+                                visible: songHover.hovered
 
                                 IconButton {
-                                    visible: !isTogetherMode
+                                    visible: !isTogetherMode && !isPlaying
                                     iconSource: AppIcon.playCircle
                                     size: 30
                                     iconSize: 16
@@ -641,8 +648,21 @@ Item {
                                     }
                                 }
 
+                                // AI 推荐（点击展开/收回生成的 AI 歌单；有数据时切换为箭头）
                                 IconButton {
-                                    visible: !isTogetherMode
+
+                                    iconSource: aiExpand.expanded ? AppIcon.caretDown
+
+                                        : (aiExpand.aiSongs.length > 0 ? AppIcon.caretRight : AppIcon.sparkle)
+                                    size: 30
+                                    iconSize: 16
+                                    onClicked: {
+                                        aiExpand.toggle(model.songhash, model.title)
+                                    }
+                                }
+
+                                IconButton {
+                                    visible: !isTogetherMode && !isPlaying
                                     iconSource: AppIcon.addToList
                                     size: 30
                                     iconSize: 16
@@ -661,7 +681,7 @@ Item {
 
                                 // 收藏到歌单（弹出歌单选择器）
                                 IconButton {
-                                    visible: !isTogetherMode
+                                    visible: !isTogetherMode && !isPlaying
                                     iconSource: AppIcon.heart
                                     iconColor: AppTheme.textSecondary
                                     size: 30
@@ -672,7 +692,7 @@ Item {
 
                                 // 从歌单移除（仅自己创建的歌单显示）
                                 IconButton {
-                                    visible: !isTogetherMode && root.isMyOwnPlaylist
+                                    visible: !isTogetherMode && root.isMyOwnPlaylist && !isPlaying
                                     iconSource: AppIcon.deleteIcon
                                     iconColor: AppTheme.textSecondary
                                     size: 30
@@ -685,7 +705,7 @@ Item {
                                 }
 
                                 IconButton {
-                                    visible: isTogetherMode
+                                    visible: isTogetherMode && !isPlaying
                                     iconSource: AppIcon.addTogether
                                     size: 30
                                     iconSize: 16
@@ -724,6 +744,19 @@ Item {
                             color: AppTheme.textMuted
                             anchors.verticalCenter: parent.verticalCenter
                         }
+                    }
+
+                    }   // 行内容固定高容器结束
+
+                    // AI 推荐展开（点 ✨ 后在行下方撑开几小行）
+                    AiRecommendExpand {
+                        id: aiExpand
+                        anchors.top: parent.top
+                        anchors.topMargin: 60
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.leftMargin: 44
+                        anchors.rightMargin: 14
                     }
 
                     // 双击切换播放列表。用 TapHandler 而非 MouseArea：

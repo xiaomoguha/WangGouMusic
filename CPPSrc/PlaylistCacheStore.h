@@ -29,9 +29,9 @@ public:
 
     // ── 播放列表缓存 ─────────────────────────────────────
     /// 序列化播放列表 + 播放位置到 playlist_cache.json
-    static bool savePlaylist(const QList<SongInfo> &playlist, int currentIndex, float percent);
+    static bool savePlaylist(const QList<SongInfo> &playlist, int currentIndex, float percent, int playMode);
     /// 从 playlist_cache.json 反序列化。返回是否成功读取（含索引/进度）
-    static bool loadPlaylist(QList<SongInfo> &outPlaylist, int &outCurrentIndex, float &outPercent);
+    static bool loadPlaylist(QList<SongInfo> &outPlaylist, int &outCurrentIndex, float &outPercent, int &outPlayMode);
 
     // ── 最近播放缓存 ─────────────────────────────────────
     static bool saveRecent(const QList<SongInfo> &recent);
