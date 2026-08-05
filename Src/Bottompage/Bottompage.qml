@@ -3,6 +3,7 @@ import QtQuick.Controls 2.15
 import QtQuick.Window 2.15
 import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
+import "../ToolWindow"
 
 Rectangle {
     id: controlBar
@@ -92,32 +93,16 @@ Rectangle {
             id: leftSection
             width: albumCoverContainer.width + spacing + songInfoColumn.width
             height: parent.height
-            spacing: 5
+            spacing: 12
 
-            // 专辑封面（旋转动画）
+            // 专辑封面（圆角正方形，静态）
             Rectangle {
                 id: albumCoverContainer
                 width: 65
                 height: 65
-                radius: 32
+                radius: 14
                 anchors.verticalCenter: parent.verticalCenter
                 clip: true
-
-                // 外圈发光
-                Rectangle {
-                    anchors.centerIn: parent
-                    width: parent.width + 4
-                    height: parent.height + 4
-                    radius: (parent.width + 4) / 2
-                    color: "transparent"
-                    border.width: 2
-                    border.color: playlistmanager && !playlistmanager.isPaused ? AppTheme.accentGlow : "transparent"
-                    Behavior on border.color {
-                        ColorAnimation {
-                            duration: AppTheme.animThemeTransition
-                        }
-                    }
-                }
 
                 Image {
                     id: albumCover
@@ -129,50 +114,15 @@ Rectangle {
                     mipmap: true
                     sourceSize.width: 130
                     sourceSize.height: 130
-                    // Rectangle.clip 不裁圆角，圆形需 OpacityMask。
+                    // Rectangle.clip 不裁圆角，圆角正方形需 OpacityMask。
                     // 此处为静态单实例（非 delegate），离屏 FBO 开销可接受。
                     layer.enabled: true
                     layer.effect: OpacityMask {
                         maskSource: Rectangle {
                             width: 65
                             height: 65
-                            radius: 32
+                            radius: 14
                         }
-                    }
-
-                    property real currentRotation: 0
-                    rotation: currentRotation
-
-                    NumberAnimation on currentRotation {
-                        id: rotationAnim
-                        from: 0
-                        to: 360
-                        duration: 20000
-                        loops: Animation.Infinite
-                        running: true  // 创建即转；下面用 pause/resume 控制启停
-                    }
-                    // pause/resume（而非 stop/start）：保留角度、恢复不跳变（不闪角）；
-                    // 最小化时暂停，避免底栏封面持续旋转驱动整窗渲染拉高 CPU。
-                    function updateRotation() {
-                        const active = playlistmanager && !playlistmanager.isPaused
-                                       && root.visible && root.visibility !== Window.Minimized;
-                        if (active) {
-                            if (rotationAnim.paused)
-                                rotationAnim.resume();
-                        } else {
-                            if (!rotationAnim.paused)
-                                rotationAnim.pause();
-                        }
-                    }
-                    Component.onCompleted: albumCover.updateRotation()
-                    Connections {
-                        target: playlistmanager
-                        function onIsPausedChanged() { albumCover.updateRotation(); }
-                    }
-                    Connections {
-                        target: root
-                        function onVisibleChanged() { albumCover.updateRotation(); }
-                        function onVisibilityChanged() { albumCover.updateRotation(); }
                     }
 
                     MouseArea {
@@ -181,6 +131,31 @@ Rectangle {
                         onClicked: root.lyricsOpened = !root.lyricsOpened
                     }
                 }
+
+                // hover 遮罩：深色压暗 + 向上箭头（提示点击向上展开播放详情页）
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 14
+                    color: "#40000000"
+                    visible: coverHover.hovered
+
+                    Image {
+                        id: coverUpIcon
+                        anchors.centerIn: parent
+                        source: AppIcon.caretUp
+                        sourceSize: Qt.size(64, 64)
+                        width: 22
+                        height: 22
+                        fillMode: Image.PreserveAspectFit
+                        mipmap: true
+                        layer.enabled: true
+                        layer.effect: ColorOverlay {
+                            source: coverUpIcon
+                            color: "#FFFFFF"
+                        }
+                    }
+                }
+                HoverHandler { id: coverHover }
             }
 
             // 歌曲名称和歌手
@@ -292,6 +267,62 @@ Rectangle {
                 id: controlButtonsLayer
                 anchors.centerIn: parent
                 spacing: 16
+
+                // 添加到「我喜欢」（已喜欢 → 红色填充心）
+                Rectangle {
+                    id: favBtn
+                    width: 36
+                    height: 36
+                    radius: 18
+                    color: favHandler.hovered ? AppTheme.iconButtonHover : "transparent"
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    // 当前歌是否已在「我喜欢」。
+                    // 引用 favoriteHashes 属性让绑定监听 favoriteHashesChanged：
+                    // 启动恢复播放时 hash 集合后到，不引用的话红心不会自动点亮
+                    readonly property bool isFav: playlistmanager
+                                                  && playlistCollection
+                                                  && playlistmanager.currentSonghash !== ""
+                                                  && playlistCollection.favoriteHashes
+                                                  && playlistCollection.containsHash(playlistmanager.currentSonghash)
+
+                    Image {
+                        id: favIcon
+                        anchors.centerIn: parent
+                        source: favBtn.isFav ? AppIcon.heartFill : AppIcon.heart
+                        sourceSize: Qt.size(128, 128)
+                        mipmap: true
+                        width: 20
+                        height: 20
+                        fillMode: Image.PreserveAspectFit
+                        layer.enabled: true
+                        layer.effect: ColorOverlay {
+                            source: favIcon
+                            color: favBtn.isFav ? "#e94560" : (favHandler.hovered ? AppTheme.accent : AppTheme.iconDefault)
+                        }
+                    }
+
+                    HoverHandler { id: favHandler }
+                    TapHandler {
+                        cursorShape: Qt.PointingHandCursor
+                        onTapped: {
+                            if (!playlistmanager || playlistmanager.currentIndex < 0) return;
+                            playlistCollection.addToFavorite(
+                                playlistmanager.currentTitle,
+                                playlistmanager.currentSonghash,
+                                playlistmanager.currentsingername
+                            );
+                        }
+                    }
+
+                    scale: favHandler.hovered ? 1.1 : 1.0
+                    Behavior on scale {
+                        NumberAnimation { duration: 100; easing.type: Easing.OutCubic }
+                    }
+                    Behavior on color {
+                        ColorAnimation { duration: AppTheme.animFast }
+                    }
+                }
 
                 // 上一曲
                 Rectangle {
@@ -816,16 +847,31 @@ Rectangle {
                                     anchors.rightMargin: 14
                                     spacing: 8
 
-                                    // 序号或播放指示
+                                    // 序号或播放指示（当前行显示动态图，与全站一致）
                                     Text {
                                         width: 24
                                         height: parent.height
-                                        text: index === curIdx ? "♪" : (index + 1)
-                                        font.pixelSize: index === curIdx ? 14 : 12
+                                        text: (index + 1)
+                                        font.pixelSize: 12
                                         font.family: AppTheme.fontFamily
-                                        color: index === curIdx ? AppTheme.accent : AppTheme.textMuted
+                                        color: AppTheme.textMuted
                                         verticalAlignment: Text.AlignVCenter
                                         horizontalAlignment: Text.AlignHCenter
+                                        visible: !isCurrent
+                                    }
+
+                                    // 用与序号同宽的槽位容器承载动图，避免 Row 内直接加 anchors 把动图甩到行中间
+                                    Item {
+                                        width: 24
+                                        height: parent.height
+                                        visible: isCurrent
+
+                                        NowPlayingIndicator {
+                                            anchors.centerIn: parent
+                                            width: 16
+                                            height: 16
+                                            playing: playlistmanager ? !playlistmanager.isPaused : true
+                                        }
                                     }
 
                                     Column {
