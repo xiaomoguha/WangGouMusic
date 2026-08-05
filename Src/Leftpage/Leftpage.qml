@@ -486,5 +486,60 @@ Rectangle {
                 NumberAnimation { duration: AppTheme.animFast; easing.type: Easing.OutCubic }
             }
         }
+
+        // 听歌历史（云端同步）
+        Rectangle {
+            id: historyItem
+            width: parent.width - 24
+            height: 44
+            radius: 12
+            anchors.horizontalCenter: parent.horizontalCenter
+            property bool isSelected: leftpageRectangle.currentIndex === 5
+            color: historyItem.isSelected ? AppTheme.accent : "transparent"
+
+            Row {
+                spacing: 12
+                anchors.left: parent.left
+                anchors.leftMargin: 16
+                anchors.verticalCenter: parent.verticalCenter
+
+                NavIcon {
+                    iconType: "history"
+                    selected: historyItem.isSelected
+                    iconColor: historyItem.isSelected ? AppTheme.iconActive : (historyMA.containsMouse ? AppTheme.textPrimary : AppTheme.iconNav)
+                    width: 20
+                    height: 20
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: qsTr("听歌历史")
+                    font.pixelSize: AppTheme.fontSizeBodyLg
+                    font.family: AppTheme.fontFamily
+                    font.bold: true
+                    color: historyItem.isSelected ? AppTheme.textPrimary : (historyMA.containsMouse ? AppTheme.textPrimary : AppTheme.textSecondary)
+                }
+            }
+
+            MouseArea {
+                id: historyMA
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    leftpageRectangle.activePlaylistGid = "";
+                    if (leftpageRectangle.currentIndex !== 5) {
+                        leftpageRectangle.currentIndex = 5;
+                        BasicConfig.pushPage("qrc:/Src/ComponentPage/HistoryPage.qml");
+                    }
+                }
+            }
+
+            scale: historyMA.containsMouse && !historyItem.isSelected ? 1.03 : 1.0
+            Behavior on scale {
+                NumberAnimation { duration: AppTheme.animFast; easing.type: Easing.OutCubic }
+            }
+        }
     }
 }
