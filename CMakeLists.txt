@@ -55,6 +55,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         CPPSrc/dailyrecommend.cpp CPPSrc/dailyrecommend.h
         CPPSrc/personalfm.cpp CPPSrc/personalfm.h
         CPPSrc/ranklist.cpp CPPSrc/ranklist.h
+        CPPSrc/songcomments.cpp CPPSrc/songcomments.h
         image.qrc
         icons.qrc
         ${FONT_RESOURCES}
