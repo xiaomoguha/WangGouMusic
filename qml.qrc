@@ -23,6 +23,8 @@
         <file>Src/ComponentPage/RankPage.qml</file>
         <file>Src/ComponentPage/PlaylistDetailPage.qml</file>
         <file>Src/ComponentPage/SearchresultPage.qml</file>
+        <file>Src/ComponentPage/AlbumPage.qml</file>
+        <file>Src/ComponentPage/ArtistPage.qml</file>
         <file>Src/ComponentPage/musictogether.qml</file>
         <file>Src/ComponentPage/RecentlyPlayed.qml</file>
         <file>Src/ComponentPage/DesktopLyrics.qml</file>

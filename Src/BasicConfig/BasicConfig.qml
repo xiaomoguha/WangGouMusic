@@ -24,6 +24,15 @@ QtObject {
     property string playlistDetailCover: ""
     property string playlistDetailIntro: ""
 
+    // 歌手页参数
+    property string artistId: ""
+    property string artistName: ""
+
+    // 专辑页参数
+    property string albumId: ""
+    property string albumName: ""
+    property string albumCover: ""
+
     // ---- 渐变主色来源 ----
     // 歌单页封面主色（歌单详情页驱动）；歌单页是否显示中
     property string playlistPageCoverColor: ""
@@ -107,6 +116,19 @@ QtObject {
         playlistDetailCover = cover;
         playlistDetailIntro = intro;
         pushPage("qrc:/Src/ComponentPage/PlaylistDetailPage.qml");
+    }
+
+    function openArtist(id, name) {
+        artistId = id;
+        artistName = name;
+        pushPage("qrc:/Src/ComponentPage/ArtistPage.qml");
+    }
+
+    function openAlbum(id, name, cover) {
+        albumId = id;
+        albumName = name;
+        albumCover = cover;
+        pushPage("qrc:/Src/ComponentPage/AlbumPage.qml");
     }
 
     function goBack() {
