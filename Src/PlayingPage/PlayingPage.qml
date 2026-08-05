@@ -208,32 +208,12 @@ Rectangle {
             width: 1
         }
 
-        // 专辑图片容器（带发光效果）
+        // 专辑图片容器
         Item {
             id: albumContainer
             width: 340
             height: 340
             anchors.horizontalCenter: parent.horizontalCenter
-
-            // 发光晕：单层柔光（原 6 层 Rectangle + FastBlur 合并为 1 层，
-            // 离屏纹理与 GPU 采样开销降为 1/6；封面清晰度不受影响）
-            Rectangle {
-                id: glowLayer
-                anchors.centerIn: parent
-                width: 350
-                height: 350
-                radius: width / 2
-                color: rgbFromHex(dominantColor, 0.38)
-                visible: false
-            }
-            FastBlur {
-                anchors.centerIn: parent
-                width: 520
-                height: 520
-                source: glowLayer
-                radius: 90
-                transparentBorder: true
-            }
 
             // 专辑图片
             Rectangle {
