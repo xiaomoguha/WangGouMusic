@@ -142,10 +142,10 @@ Rectangle {
                     Image {
                         id: coverUpIcon
                         anchors.centerIn: parent
-                        source: AppIcon.caretUp
+                        source: AppIcon.arrowUp
                         sourceSize: Qt.size(64, 64)
-                        width: 22
-                        height: 22
+                        width: 28
+                        height: 28
                         fillMode: Image.PreserveAspectFit
                         mipmap: true
                         layer.enabled: true
