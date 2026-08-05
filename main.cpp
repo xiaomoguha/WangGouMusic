@@ -173,8 +173,10 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("albumManager", &albumManager);
     engine.rootContext()->setContextProperty("historyManager", &historyManager);
 
-    // 播放切歌 → 上报听歌历史（批量解析 mxid 后上传）
+    // 播放切歌 → 上报听歌历史（批量解析 mxid 后上传；未登录不上报）
     QObject::connect(&playlistmanager, &PlaylistManager::currentSongChanged, &historyManager, [&]() {
+        if (!userManager.isLoggedIn())
+            return;
         historyManager.reportPlayed(playlistmanager.currentTitle(), playlistmanager.currentSongHash());
     });
     engine.rootContext()->setContextProperty("artistManager", &artistManager);
