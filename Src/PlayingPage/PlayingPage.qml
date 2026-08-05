@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls 2.15
 import QtQuick.Layouts
 import QtQuick.Window
 import Qt5Compat.GraphicalEffects
@@ -74,20 +75,20 @@ Rectangle {
         }
     }
 
+    // 全页拖动窗口（评论列表/歌词在上层自行滚动，未消费的拖动落到这里）
     MouseArea {
         id: eventBlocker
         anchors.fill: parent
         property real pressX: 0
         property real pressY: 0
         property bool dragged: false
-        property real dragThreshold: 5 // 判断是否真的拖动的最小距离
+        property real dragThreshold: 5
         onPressed: mouse => {
             pressX = mouse.x;
             pressY = mouse.y;
             dragged = false;
         }
         onPositionChanged: mouse => {
-            // 判断是否拖动超过阈值
             if (!dragged && (Math.abs(mouse.x - pressX) > dragThreshold || Math.abs(mouse.y - pressY) > dragThreshold)) {
                 dragged = true;
                 if (root.visibility === Window.Maximized) {
@@ -106,13 +107,43 @@ Rectangle {
         }
     }
 
+    // ── 评论页状态 ──
+    property bool showComments: false
+    property string commentsLoadedHash: ""
+    function ensureComments() {
+        if (!playlistmanager || !songComments) return
+        var hash = playlistmanager.currentSonghash
+        if (hash === "") return
+        if (lyricspage.commentsLoadedHash !== hash) {
+            // fetchComments 返回 false = 有请求在途，不标记已加载，等下一轮重试
+            if (songComments.fetchComments(songName, hash))
+                lyricspage.commentsLoadedHash = hash
+        } else if (songComments.comments.length === 0 && !songComments.isLoading) {
+            songComments.fetchComments(songName, hash)
+        }
+    }
+
+    // 切歌后后台预拉评论列表：tab 上的评论数（取列表响应 count）不用点击即可显示
+    Connections {
+        target: playlistmanager
+        function onCurrentSongChanged() {
+            lyricspage.ensureComments()
+        }
+    }
+
+    // 页面加载时预拉当前歌曲评论（打开播放页立即显示评论数）
+    Component.onCompleted: {
+        lyricspage.ensureComments()
+    }
+
     // ======================= 左上角收起按钮 =======================
     IconButton {
         id: collapseBtn
+        z: 200
         anchors.top: parent.top
         anchors.left: parent.left
-        anchors.topMargin: 0.03 * root.height
-        anchors.leftMargin: Qt.platform.os === "osx" ? 90 : 0.03 * root.width
+        anchors.topMargin: Qt.platform.os === "osx" ? 52 : 0.03 * root.height
+        anchors.leftMargin: Qt.platform.os === "osx" ? 22 : 0.03 * root.width
         size: 32; iconSize: 16; iconRotation: -90
         iconSource: AppIcon.back
         iconColor: "#FFFFFF"
@@ -123,6 +154,7 @@ Rectangle {
 
     // ======================= 右上角窗口控制按钮 =======================
     Row {
+        z: 200
         visible: Qt.platform.os !== "osx"   // mac 用原生 traffic lights
         anchors.top: parent.top
         anchors.right: parent.right
@@ -172,6 +204,12 @@ Rectangle {
             onClicked: root.close()
         }
     }
+
+    // ================== 右侧区：歌词 | 评论（二选一显示） ==================
+    Item {
+        id: lyricsPageView
+        width: parent.width
+        height: parent.height
 
     // ================== 左侧唱片区 ==========================
     Column {
@@ -286,16 +324,88 @@ Rectangle {
     }
 
     // ================== 右侧歌词区 ==========================
-    ListView {
-        id: lyricList
+
+    // 歌词 / 评论 切换 tab（点击平滑滑页，水平居中于歌词/评论区）
+    Row {
+        id: panelTabs
+        anchors.horizontalCenter: panelHost.horizontalCenter
+        anchors.top: parent.top
+        anchors.topMargin: 40
+        spacing: 10
+
+        Rectangle {
+            width: 60
+            height: 30
+            radius: 15
+            color: !lyricspage.showComments ? "#FFFFFF" : "transparent"
+            Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+
+            Text {
+                anchors.centerIn: parent
+                text: "歌词"
+                color: !lyricspage.showComments ? "#222222" : "#AAFFFFFF"
+                font.bold: true
+                font.pixelSize: AppTheme.fontSizeBody
+                font.family: AppTheme.fontFamily
+            }
+            HoverHandler { cursorShape: Qt.PointingHandCursor }
+            TapHandler { onTapped: lyricspage.showComments = false }
+        }
+
+        Rectangle {
+            width: commentTabLabel.implicitWidth + 34
+            height: 30
+            radius: 15
+            color: lyricspage.showComments ? "#FFFFFF" : "transparent"
+            Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+
+            Text {
+                id: commentTabLabel
+                anchors.centerIn: parent
+                text: "评论" + (songComments && songComments.totalCount > 0 ? " " + songComments.totalCount : "")
+                color: lyricspage.showComments ? "#222222" : "#AAFFFFFF"
+                font.bold: true
+                font.pixelSize: AppTheme.fontSizeBody
+                font.family: AppTheme.fontFamily
+            }
+            HoverHandler { cursorShape: Qt.PointingHandCursor }
+            TapHandler {
+                onTapped: {
+                    lyricspage.showComments = true
+                    lyricspage.ensureComments()
+                }
+            }
+        }
+    }
+
+    // 歌词/评论滑动切换容器（两页各占半宽，x 平移切换）
+    Item {
+        id: panelHost
         anchors.left: leftAlbumSection.right
         anchors.leftMargin: parent.width * 0.13
         anchors.top: parent.top
+        anchors.topMargin: 80
         anchors.bottom: parent.bottom
         anchors.bottomMargin: 0.2 * root.height
-        anchors.topMargin: 80
-        clip: true
         width: parent.width * 0.32
+        clip: true
+
+        Item {
+            id: panelContent
+            width: panelHost.width * 2
+            height: panelHost.height
+            x: lyricspage.showComments ? -panelHost.width : 0
+            Behavior on x {
+                NumberAnimation { duration: 300; easing.type: Easing.InOutQuad }
+            }
+
+    ListView {
+        id: lyricList
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        width: panelHost.width
+        clip: true
         cacheBuffer: 1500
 
         model: playlistmanager ? playlistmanager.m_lyrics : 0
@@ -613,6 +723,307 @@ Rectangle {
         Behavior on opacity { NumberAnimation { duration: 200 } }
     }
 
+
+        // 评论列表（右半页）
+        ListView {
+            id: commentList
+            x: panelHost.width
+            width: panelHost.width
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            clip: true
+            model: songComments ? songComments.comments : []
+            spacing: 18
+            cacheBuffer: 1500
+
+        ScrollBar.vertical: ScrollBar {
+            anchors.right: parent.right
+            anchors.rightMargin: 1
+            width: 8
+            policy: ScrollBar.AlwaysOn
+            contentItem: Rectangle {
+                width: 8
+                radius: 4
+                color: parent.pressed ? "#99FFFFFF" : "#66FFFFFF"
+            }
+        }
+
+        // 滚动到底加载下一页
+        onContentYChanged: {
+            if (songComments && !songComments.isLoading && songComments.hasMore
+                && contentHeight > height && contentY >= contentHeight - height - 300) {
+                songComments.fetchMore()
+            }
+        }
+
+        header: Item {
+            width: commentList.width - 14
+            height: 40
+            Text {
+                anchors.centerIn: parent
+                text: songComments ? "共 " + songComments.totalCount + " 条评论" : ""
+                color: "#99FFFFFF"
+                font.pixelSize: AppTheme.fontSizeSmall
+                font.family: AppTheme.fontFamily
+            }
+        }
+
+        delegate: Item {
+            id: commentDelegate
+            width: commentList.width - 14
+            height: delegateColumn.height
+
+            // 本评论是否处于展开态（显示回复）
+            property bool open: false
+
+            Column {
+                id: delegateColumn
+                width: parent.width
+                spacing: 8
+
+                Row {
+                    width: parent.width
+                    spacing: 12
+
+                    // 头像
+                    Rectangle {
+                        width: 36
+                        height: 36
+                        radius: 18
+                        clip: true
+                        color: "#33FFFFFF"
+
+                        Image {
+                            anchors.fill: parent
+                            source: modelData.user_pic
+                            asynchronous: true
+                            cache: true
+                            sourceSize: Qt.size(72, 72)
+                            fillMode: Image.PreserveAspectCrop
+                        }
+                        // 无头像时显示昵称首字
+                        Text {
+                            visible: !modelData.user_pic
+                            anchors.centerIn: parent
+                            text: modelData.user_name ? modelData.user_name.charAt(0) : "?"
+                            color: "#FFFFFF"
+                            font.bold: true
+                            font.pixelSize: 16
+                            font.family: AppTheme.fontFamily
+                        }
+                    }
+
+                    Column {
+                        width: parent.width - 48
+                        spacing: 4
+
+                        Row {
+                            width: parent.width
+                            spacing: 10
+                            Text {
+                                text: modelData.user_name
+                                color: "#FFFFFF"
+                                font.bold: true
+                                font.pixelSize: AppTheme.fontSizeBody
+                                font.family: AppTheme.fontFamily
+                            }
+                            Text {
+                                text: modelData.addtime
+                                color: "#66FFFFFF"
+                                font.pixelSize: AppTheme.fontSizeCaption
+                                font.family: AppTheme.fontFamily
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                        }
+
+                        Text {
+                            width: parent.width
+                            text: modelData.content
+                            color: "#E6FFFFFF"
+                            font.pixelSize: AppTheme.fontSizeBody
+                            font.family: AppTheme.fontFamily
+                            wrapMode: Text.Wrap
+                            lineHeight: 1.5
+                        }
+
+                        Row {
+                            spacing: 16
+                            Text {
+                                text: "♥ " + modelData.like_count
+                                color: "#99FFFFFF"
+                                font.pixelSize: AppTheme.fontSizeCaption
+                                font.family: AppTheme.fontFamily
+                            }
+                        }
+
+                        // 展开回复按钮（未展开 >，展开后旋转为 ↓）
+                        Rectangle {
+                            width: expandRow.implicitWidth + 22
+                            height: 26
+                            radius: 13
+                            color: expandHover.hovered ? "#33FFFFFF" : "#22FFFFFF"
+                            Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+
+                            Row {
+                                id: expandRow
+                                anchors.centerIn: parent
+                                spacing: 5
+
+                                Text {
+                                    text: modelData.reply_num > 0 ? "展开 " + modelData.reply_num + " 条回复" : "暂无回复"
+                                    color: "#B3FFFFFF"
+                                    font.pixelSize: AppTheme.fontSizeCaption
+                                    font.family: AppTheme.fontFamily
+                                }
+                                Text {
+                                    text: "❯"
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    anchors.verticalCenterOffset: -1
+                                    color: "#99FFFFFF"
+                                    font.pixelSize: AppTheme.fontSizeCaption
+                                    font.bold: true
+                                    font.family: AppTheme.fontFamily
+                                    rotation: commentDelegate.open ? 90 : 0
+                                    Behavior on rotation { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+                                }
+                            }
+                            HoverHandler { id: expandHover; cursorShape: Qt.PointingHandCursor }
+                            TapHandler {
+                                onTapped: {
+                                    if (modelData.reply_num <= 0) return
+                                    commentDelegate.open = !commentDelegate.open
+                                    if (commentDelegate.open
+                                            && songComments.repliesCommentId !== String(modelData.id)) {
+                                        songComments.fetchReplies(modelData.audio_id, String(modelData.id))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 回复区块（缩进显示）
+                Column {
+                    visible: commentDelegate.open
+                    width: parent.width - 24
+                    anchors.right: parent.right
+                    spacing: 10
+
+                    // 加载中
+                    Text {
+                        visible: songComments && songComments.repliesLoading
+                        text: "回复加载中..."
+                        color: "#99FFFFFF"
+                        font.pixelSize: AppTheme.fontSizeCaption
+                        font.family: AppTheme.fontFamily
+                    }
+
+                    // 该评论没有回复
+                    Text {
+                        visible: commentDelegate.open && songComments
+                                 && !songComments.repliesLoading
+                                 && songComments.repliesCommentId === String(modelData.id)
+                                 && songComments.replies.length === 0
+                        text: "暂无回复"
+                        color: "#77FFFFFF"
+                        font.pixelSize: AppTheme.fontSizeCaption
+                        font.family: AppTheme.fontFamily
+                    }
+
+                    Repeater {
+                        model: (commentDelegate.open && songComments
+                                && songComments.repliesCommentId === String(modelData.id))
+                               ? songComments.replies : []
+
+                        Row {
+                            width: parent.width
+                            spacing: 10
+
+                            Rectangle {
+                                width: 28
+                                height: 28
+                                radius: 14
+                                clip: true
+                                color: "#26FFFFFF"
+
+                                Image {
+                                    anchors.fill: parent
+                                    source: modelData.user_pic
+                                    asynchronous: true
+                                    cache: true
+                                    sourceSize: Qt.size(56, 56)
+                                    fillMode: Image.PreserveAspectCrop
+                                }
+                                Text {
+                                    visible: !modelData.user_pic
+                                    anchors.centerIn: parent
+                                    text: modelData.user_name ? modelData.user_name.charAt(0) : "?"
+                                    color: "#FFFFFF"
+                                    font.bold: true
+                                    font.pixelSize: 12
+                                    font.family: AppTheme.fontFamily
+                                }
+                            }
+
+                            Column {
+                                width: parent.width - 38
+                                spacing: 2
+
+                                Row {
+                                    width: parent.width
+                                    spacing: 8
+                                    Text {
+                                        text: modelData.user_name
+                                        color: "#D9FFFFFF"
+                                        font.bold: true
+                                        font.pixelSize: AppTheme.fontSizeCaption
+                                        font.family: AppTheme.fontFamily
+                                    }
+                                    Text {
+                                        text: modelData.addtime
+                                        color: "#55FFFFFF"
+                                        font.pixelSize: AppTheme.fontSizeCaption
+                                        font.family: AppTheme.fontFamily
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                    Text {
+                                        text: "♥ " + modelData.like_count
+                                        color: "#77FFFFFF"
+                                        font.pixelSize: AppTheme.fontSizeCaption
+                                        font.family: AppTheme.fontFamily
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                }
+
+                                Text {
+                                    width: parent.width
+                                    text: modelData.content
+                                    color: "#B3FFFFFF"
+                                    font.pixelSize: AppTheme.fontSizeCaption
+                                    font.family: AppTheme.fontFamily
+                                    wrapMode: Text.Wrap
+                                    lineHeight: 1.5
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+            // 空状态 / 加载中
+            Text {
+                visible: songComments && songComments.comments.length === 0
+                anchors.centerIn: parent
+                text: songComments && songComments.isLoading ? "正在加载评论..." : "暂无评论"
+                color: "#99FFFFFF"
+                font.pixelSize: AppTheme.fontSizeSmall
+                font.family: AppTheme.fontFamily
+            }
+        }
+        }
+    }
+    } // ── 歌词页容器结束 ──
     // ================== 底部播放控制区 ==================
     RowLayout {
         id: bottomControlBar
