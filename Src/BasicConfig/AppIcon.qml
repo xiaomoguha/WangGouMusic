@@ -53,6 +53,7 @@ QtObject {
     readonly property string caretLeft: "qrc:/icons/caret-left.svg"
     readonly property string caretDown: "qrc:/icons/caret-down.svg"
     readonly property string caretUp: "qrc:/icons/caret-up.svg"
+    readonly property string caretRight: "qrc:/icons/caret-right.svg"
     readonly property string sparkle: "qrc:/icons/sparkle.svg"
     // 播放模式：顺序 / 单曲循环 / 随机
     readonly property string playModeOrder: "qrc:/icons/order.svg"

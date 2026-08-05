@@ -60,6 +60,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         CPPSrc/artistlistmodel.cpp CPPSrc/artistlistmodel.h
         CPPSrc/artistmanager.cpp CPPSrc/artistmanager.h
         CPPSrc/songcomments.cpp CPPSrc/songcomments.h
+        CPPSrc/airecommendmanager.cpp CPPSrc/airecommendmanager.h
         image.qrc
         icons.qrc
         ${FONT_RESOURCES}
