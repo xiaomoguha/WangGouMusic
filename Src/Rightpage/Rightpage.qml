@@ -54,13 +54,23 @@ Rectangle {
             Behavior on opacity {
                 NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
             }
-            onLoaded: opacity = 1
+            onLoaded: {
+                opacity = 1
+                console.log("[Rightpage] loader loaded:", source)
+            }
             onOpacityChanged: {
                 if (opacity === 0 && !activeOverlay) {
                     visible = false;
                 }
             }
             property bool activeOverlay: false
+
+            // 调试：Loader 加载状态（1=Loading 2=Ready 3=Error）
+            onStatusChanged: {
+                console.log("[Rightpage] loader status:", status, "url:", source)
+                if (status === Loader.Error)
+                    console.log("[Rightpage] loader ERROR:", source, "->", lastError ? lastError.toString() : "unknown")
+            }
         }
     }
 

@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls
 import "../BasicConfig"
+import "../ToolWindow"
 
 Page {
     id: complexPage
@@ -113,6 +114,9 @@ Page {
 
             property bool showActions: itemHover.hovered
 
+            // 当前播放行（hash 相等）：序号换成动态图 + 歌名高亮
+            readonly property bool isPlaying: playlistmanager && playlistmanager.currentSonghash === model.songhash
+
             HoverHandler { id: itemHover }
 
             // 入场动画
@@ -136,8 +140,17 @@ Page {
                     text: (index + 1).toString().padStart(2, "0")
                     anchors.verticalCenter: parent.verticalCenter
                     font.pixelSize: AppTheme.fontSizeBodyLg
-                    color: AppTheme.textMuted
+                    color: isPlaying ? AppTheme.accentPlaying : AppTheme.textMuted
                     font.family: AppTheme.fontFamily
+                    visible: !songItem.isPlaying
+                }
+
+                NowPlayingIndicator {
+                    width: 20
+                    height: 20
+                    visible: songItem.isPlaying
+                    playing: playlistmanager ? !playlistmanager.isPaused : true
+                    anchors.verticalCenter: parent.verticalCenter
                 }
 
                 Rectangle {
@@ -180,15 +193,15 @@ Page {
                                 text: model.songname
                                 font.pixelSize: AppTheme.fontSizeBody; font.family: AppTheme.fontFamily
                                 font.bold: true
-                                // hover 歌曲名高亮（网易云风格）
-                                color: itemHover.hovered ? AppTheme.accentPlaying : AppTheme.textSongTitle
+                                // 当前播放行 / hover 歌曲名高亮（网易云风格）
+                                color: (songItem.isPlaying || itemHover.hovered) ? AppTheme.accentPlaying : AppTheme.textSongTitle
                             }
                             // 第二份副本：仅超出时显示，配合 x 滚到 -unitWidth 实现无缝循环
                             Text {
                                 text: model.songname
                                 font.pixelSize: AppTheme.fontSizeBody; font.family: AppTheme.fontFamily
                                 font.bold: true
-                                color: itemHover.hovered ? AppTheme.accentPlaying : AppTheme.textSongTitle
+                                color: (songItem.isPlaying || itemHover.hovered) ? AppTheme.accentPlaying : AppTheme.textSongTitle
                                 visible: songNameClip.overflow
                             }
                             NumberAnimation on x {
@@ -204,7 +217,7 @@ Page {
                         text: model.singername
                         font.pixelSize: AppTheme.fontSizeCaption; font.family: AppTheme.fontFamily
                         font.bold: true
-                        color: AppTheme.textMuted
+                        color: songItem.isPlaying ? AppTheme.accentPlaying : AppTheme.textMuted
                         elide: Text.ElideRight; width: parent.width; wrapMode: Text.NoWrap
                     }
                 }

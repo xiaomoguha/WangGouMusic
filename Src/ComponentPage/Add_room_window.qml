@@ -353,7 +353,7 @@ Item {
 
                             HoverHandler { id: roomRefreshHover }
                             TapHandler {
-                                cursorShape: Qt.PointingCursor
+                                cursorShape: Qt.PointingHandCursor
                                 onTapped: { if (websocket) websocket.fetchRoomList() }
                             }
                         }

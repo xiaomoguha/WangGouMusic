@@ -426,12 +426,10 @@ static void qtMessageHandler(QtMsgType type, const QMessageLogContext &ctx, cons
         }
     }
 
-    // 3. Debug 构建同时输出到 stderr
-#ifdef QT_DEBUG
+    // 3. 始终输出到 stderr（Release 下终端启动也能看到日志，便于排查）
     fputs(utf8.constData(), stderr);
     fputc('\n', stderr);
     fflush(stderr);
-#endif
 }
 
 // ==================== 日志目录计算 ====================
@@ -451,7 +449,7 @@ static void pruneOldLogs()
         return;
 
     QStringList filters;
-    filters << "session_*.log" << "session_*.log.old" << "crash_*.log" << "crash_*.dmp";
+    filters << "session_*.log" << "session_*.log.old" << "crash_*.log" << "crash_*.log.notified" << "crash_*.dmp";
     dir.setNameFilters(filters);
     dir.setSorting(QDir::Time); // 按修改时间排序（最新在前）
 
@@ -589,6 +587,9 @@ void CrashHandler::checkPreviousCrash()
             {
                 openLogDir();
             }
+
+            // 提示过一次就不再重复弹：加 .notified 后缀（保留日志供查，不再被 checkPreviousCrash 匹配）
+            QFile::rename(latest.absoluteFilePath(), latest.absoluteFilePath() + QStringLiteral(".notified"));
         }
     );
 }
