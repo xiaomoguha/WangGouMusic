@@ -146,6 +146,7 @@ Item {
                     // 换一批（请求期间图标持续旋转；FM 模式下播放队列自动接上）
                     SectionRefreshButton {
                         anchors.verticalCenter: parent.verticalCenter
+                        anchors.verticalCenterOffset: -3
                         busy: personalFM && personalFM.isLoading
                         onClicked: root.fmFetchNext()
                     }
@@ -387,6 +388,7 @@ Item {
                     // 换一批：随机挑一个排行榜，把榜单歌曲注入推荐区（请求期间图标持续旋转）
                     SectionRefreshButton {
                         anchors.verticalCenter: parent.verticalCenter
+                        anchors.verticalCenterOffset: -3
                         busy: rankList && rankList.isLoading
                         onClicked: {
                             if (rankList)
@@ -427,9 +429,9 @@ Item {
 
                                 Rectangle {
                                     width: parent.width
-                                    // 横版圆角矩形封面（高 = 宽 × 3/4，圆角 12）
+                                    // 横版圆角矩形封面（高 = 宽 × 3/4，圆角与 FM 卡片视觉统一）
                                     height: width * 3 / 4
-                                    radius: 12
+                                    radius: 10
                                     clip: true
 
                                     Image {
@@ -447,7 +449,7 @@ Item {
                                             maskSource: Rectangle {
                                                 width: songCoverImage.width
                                                 height: songCoverImage.height
-                                                radius: 12
+                                                radius: 10
                                             }
                                         }
                                     }
@@ -567,6 +569,7 @@ Item {
 
                     SectionRefreshButton {
                         anchors.verticalCenter: parent.verticalCenter
+                        anchors.verticalCenterOffset: -3
                         busy: recommendation && recommendation.playlistsLoading
                         onClicked: {
                             if (recommendation) {
@@ -631,7 +634,7 @@ Item {
                                         fillMode: Image.PreserveAspectCrop
                                         layer.enabled: true
                                         layer.effect: OpacityMask {
-                                            maskSource: Rectangle { width: 80; height: 80; radius: 10 }
+                                            maskSource: Rectangle { width: 80; height: 80; radius: 8 }
                                         }
                                     }
 

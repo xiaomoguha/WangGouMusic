@@ -47,6 +47,9 @@ void RankList::onRequestFailed(const QString &err)
 
 void RankList::fetchRanks()
 {
+    if (m_isLoading)
+        return;
+    setLoading(true);
     m_ranksRequester.fetchData(QString("%1/rank/list").arg(kApiRoot));
 }
 
@@ -114,9 +117,11 @@ void RankList::onRanksData(const QByteArray &data)
     }
     m_ranks = ranks;
     emit ranksChanged();
+    setLoading(false);
     qDebug() << "[RankList] 榜单列表加载完成，共" << m_ranks.size() << "个";
 
     // 随机模式的等待链：榜单已就绪 → 随机挑一个续接
+    // （先复位 isLoading，避免 fetchRankSongs 的 m_isLoading 检查被阻塞）
     if (m_pendingRandomFetch)
     {
         m_pendingRandomFetch = false;
