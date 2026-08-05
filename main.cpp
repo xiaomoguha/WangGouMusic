@@ -33,6 +33,7 @@
 #include "./CPPSrc/ranklist.h"
 #include "./CPPSrc/albummanager.h"
 #include "./CPPSrc/historymanager.h"
+#include "./CPPSrc/airecommendmanager.h"
 #include "./CPPSrc/artistmanager.h"
 #include "./CPPSrc/songcomments.h"
 #include "./CPPSrc/playlistcollection.h"
@@ -143,6 +144,7 @@ int main(int argc, char *argv[])
     RankList rankList;
     AlbumManager albumManager;
     HistoryManager historyManager;
+    AiRecommendManager aiRecommendManager;
     ArtistManager artistManager;
     SongComments songComments;
     dailyRecommend.setUserManager(&userManager);
@@ -172,6 +174,7 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("rankList", &rankList);
     engine.rootContext()->setContextProperty("albumManager", &albumManager);
     engine.rootContext()->setContextProperty("historyManager", &historyManager);
+    engine.rootContext()->setContextProperty("aiRecommendManager", &aiRecommendManager);
 
     // 播放切歌 → 上报听歌历史（批量解析 mxid 后上传；未登录不上报）
     QObject::connect(&playlistmanager, &PlaylistManager::currentSongChanged, &historyManager, [&]() {
