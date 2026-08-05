@@ -696,6 +696,15 @@ Rectangle {
                 Popup {
                     id: playlistPopup
                     x: -(320 - playlistBtn.width)
+
+                    // 打开播放详情页时自动关闭（弹窗浮在 Overlay 层，会挡住详情页点击）
+                    Connections {
+                        target: root
+                        function onLyricsOpenedChanged() {
+                            if (root.lyricsOpened)
+                                playlistPopup.close()
+                        }
+                    }
                     y: -420
                     width: 320
                     height: 400

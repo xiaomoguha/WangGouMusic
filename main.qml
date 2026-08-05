@@ -172,10 +172,13 @@ ApplicationWindow {
             }
         }
     }
-    // 内容容器：直接铺满窗口（窗口投影方案在本机 Qt6.10.1 下渲染不稳定，已移除）
+    // 内容容器：直接铺满窗口（窗口投影方案在本机 Qt6.10.1 下渲染不稳定，已移除）。
+    // 播放详情页打开时禁用底层交互：否则点击会沿 z 序穿透到下面页面的 TapHandler
+    // （曾导致点「展开回复」误触底层歌曲卡片，直接切歌）
     Item {
         id: windowShell
         anchors.fill: parent
+        enabled: !root.lyricsOpened
     Leftpage {
         id: leftrect
         width: 200
