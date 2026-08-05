@@ -1,5 +1,6 @@
 #include "historymanager.h"
 
+#include <QDateTime>
 #include <QDebug>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -56,6 +57,8 @@ void HistoryManager::reportPlayed(const QString &title, const QString &hash)
     QVariantMap song;
     song["title"] = title;
     song["hash"]  = hash.toUpper();
+    // 记录真实播放开始时间（批量上传时每首歌保持各自的播放时刻，而不是统一用上传时刻）
+    song["time"] = QDateTime::currentSecsSinceEpoch();
     m_pending.append(song);
     m_flushTimer.start();
 }
@@ -151,12 +154,14 @@ void HistoryManager::doUpload(const QVariantList &songs)
     m_uploadWorking = true;
     emit uploadWorkingChanged();
 
-    // 批量上传：{songs: [{mxid, op, ot}]}
+    // 批量上传：{songs: [{mxid, time(→ot 播放时间戳), pc(播放次数)]}
     QJsonArray arr;
     for (const QVariant &v : songs)
     {
         QJsonObject o;
         o["mxid"] = v.toMap()["mxid"].toInt();
+        o["time"] = v.toMap()["time"].toLongLong();
+        o["pc"]   = 1;
         arr.append(o);
     }
     QUrl url(QStringLiteral("%1/user/history/upload").arg(kApiRoot));
