@@ -101,6 +101,8 @@ Rectangle {
             pageLoaders[currentOverlayUrl].opacity = 0;
         }
         currentOverlayUrl = "";
+        // 回首页：没有详情页显示，关闭页面渐变（详情页隐藏时不再自行关闭）
+        BasicConfig.playlistPageActive = false;
     }
 
     // 导航：更新栈 + 显示页面（用新数组赋值确保绑定更新）

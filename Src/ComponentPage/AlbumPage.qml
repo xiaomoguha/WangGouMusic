@@ -19,8 +19,14 @@ Item {
     property string coverColor: ""
 
     function syncWindowTint() {
-        BasicConfig.playlistPageActive = root.visible
-        BasicConfig.playlistPageCoverColor = root.visible ? root.coverColor : ""
+        // 隐藏时不操作 BasicConfig：多个详情页同色时隐藏页误关会杀掉显示页的渐变；
+        // 回首页由 Rightpage.hideOverlay 统一关闭。
+        if (!root.visible)
+            return
+        if (root.coverColor !== "") {
+            BasicConfig.playlistPageActive = true
+            BasicConfig.playlistPageCoverColor = root.coverColor
+        }
     }
 
     function requestCoverColor() {
@@ -83,7 +89,7 @@ Item {
                     width: 36
                     height: 36
                     radius: 18
-                    color: backHover.hovered ? AppTheme.bgCard : "transparent"
+                    color: backHover.hovered ? (BasicConfig.playlistCoverColor !== "" ? "#1EFFFFFF" : AppTheme.bgCard) : "transparent"
                     anchors.verticalCenter: parent.verticalCenter
 
                     Image {
@@ -98,7 +104,10 @@ Item {
                         layer.enabled: true
                         layer.effect: ColorOverlay {
                             source: backIcon
-                            color: AppTheme.textPrimary
+                            // 渐变时随背景挑白/深色，与全局返回键一致
+                            color: BasicConfig.playlistCoverColor !== ""
+                                ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
+                                : AppTheme.textPrimary
                         }
                     }
                     HoverHandler { id: backHover }

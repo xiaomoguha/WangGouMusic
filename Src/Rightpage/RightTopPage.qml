@@ -74,7 +74,10 @@ Item {
             iconSource: AppIcon.arrowUp
             size: 32
             iconSize: 17
-            iconColor: updateIconHover.hovered ? AppTheme.textPrimary : AppTheme.textMuted
+            // 渐变激活时随背景挑白/深色（同搜索框文字），否则 hover 提亮
+            iconColor: BasicConfig.playlistCoverColor !== ""
+                ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
+                : (updateIconHover.hovered ? AppTheme.textPrimary : AppTheme.textMuted)
 
             ToolTip {
                 visible: updateIconHover.hovered
