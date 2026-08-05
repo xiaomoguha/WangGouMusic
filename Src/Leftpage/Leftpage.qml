@@ -115,32 +115,6 @@ Rectangle {
             }
         }
 
-        // 检查更新（右上角小图标；hover 显示版本号）
-        IconButton {
-            id: updateIconBtn
-            anchors.right: parent.right
-            anchors.rightMargin: 12
-            anchors.verticalCenter: parent.verticalCenter
-            iconSource: AppIcon.refresh
-            size: 30
-            iconSize: 14
-            iconColor: updateIconHover.hovered ? AppTheme.textPrimary : AppTheme.textMuted
-
-            ToolTip {
-                visible: updateIconHover.hovered
-                delay: 400
-                text: appUpdater ? "检查更新 v" + appUpdater.currentVersion : "检查更新"
-            }
-
-            HoverHandler { id: updateIconHover }
-
-            onClicked: {
-                if (appUpdater) {
-                    root.autoCheckUpdate = false;
-                    appUpdater.checkForUpdate();
-                }
-            }
-        }
     }
 
     // 第一组导航（固定，不随歌单列表滚动）

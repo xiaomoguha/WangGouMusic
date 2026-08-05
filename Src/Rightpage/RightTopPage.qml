@@ -1,4 +1,5 @@
 import QtQuick 2.15
+import QtQuick.Controls 2.15
 import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
 
@@ -65,6 +66,32 @@ Item {
         anchors.rightMargin: 0.02 * root.width
         anchors.verticalCenter: parent.verticalCenter
         spacing: 15
+
+        // 检查更新（头像左侧，向上箭头；hover 显示版本号）
+        IconButton {
+            id: updateIconBtn
+            anchors.verticalCenter: parent.verticalCenter
+            iconSource: AppIcon.arrowUp
+            size: 32
+            iconSize: 17
+            iconColor: updateIconHover.hovered ? AppTheme.textPrimary : AppTheme.textMuted
+
+            ToolTip {
+                visible: updateIconHover.hovered
+                delay: 400
+                text: appUpdater ? "检查更新 v" + appUpdater.currentVersion : "检查更新"
+            }
+
+            HoverHandler { id: updateIconHover }
+
+            onClicked: {
+                if (appUpdater) {
+                    root.autoCheckUpdate = false;
+                    appUpdater.checkForUpdate();
+                }
+            }
+        }
+
         //登录信息
         LoginStatus {
             spacing: 15

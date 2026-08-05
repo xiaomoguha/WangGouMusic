@@ -2,6 +2,7 @@
   <qresource prefix="/">
     <file>icons/arrow-clockwise.svg</file>
     <file>icons/arrow-left.svg</file>
+    <file>icons/arrow-up.svg</file>
     <file>icons/arrows-in-simple.svg</file>
     <file>icons/arrows-out-simple.svg</file>
     <file>icons/article.svg</file>
@@ -9,6 +10,7 @@
     <file>icons/caret-left.svg</file>
     <file>icons/caret-up.svg</file>
     <file>icons/chat-circle-text.svg</file>
+    <file>icons/check.svg</file>
     <file>icons/clock-fill.svg</file>
     <file>icons/clock.svg</file>
     <file>icons/closed-captioning.svg</file>
