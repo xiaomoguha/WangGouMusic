@@ -32,6 +32,7 @@
 #include "./CPPSrc/personalfm.h"
 #include "./CPPSrc/ranklist.h"
 #include "./CPPSrc/albummanager.h"
+#include "./CPPSrc/historymanager.h"
 #include "./CPPSrc/artistmanager.h"
 #include "./CPPSrc/songcomments.h"
 #include "./CPPSrc/playlistcollection.h"
@@ -141,6 +142,7 @@ int main(int argc, char *argv[])
     PersonalFM personalFM;
     RankList rankList;
     AlbumManager albumManager;
+    HistoryManager historyManager;
     ArtistManager artistManager;
     SongComments songComments;
     dailyRecommend.setUserManager(&userManager);
@@ -169,6 +171,12 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("personalFM", &personalFM);
     engine.rootContext()->setContextProperty("rankList", &rankList);
     engine.rootContext()->setContextProperty("albumManager", &albumManager);
+    engine.rootContext()->setContextProperty("historyManager", &historyManager);
+
+    // 播放切歌 → 上报听歌历史（批量解析 mxid 后上传）
+    QObject::connect(&playlistmanager, &PlaylistManager::currentSongChanged, &historyManager, [&]() {
+        historyManager.reportPlayed(playlistmanager.currentTitle(), playlistmanager.currentSongHash());
+    });
     engine.rootContext()->setContextProperty("artistManager", &artistManager);
     engine.rootContext()->setContextProperty("songComments", &songComments);
 

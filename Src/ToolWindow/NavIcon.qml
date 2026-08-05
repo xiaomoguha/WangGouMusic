@@ -22,7 +22,8 @@ Item {
         "rank": [AppIcon.fire, AppIcon.fire],
         "playlist": [AppIcon.heart, AppIcon.heartFill],
         "list": [AppIcon.list, AppIcon.listFill],
-        "recent": [AppIcon.clock, AppIcon.clockFill]
+        "recent": [AppIcon.clock, AppIcon.clockFill],
+        "history": [AppIcon.clock, AppIcon.clockFill]
     })
     readonly property string _source: {
         var pair = root._icons[root.iconType];
