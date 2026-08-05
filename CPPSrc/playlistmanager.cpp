@@ -5,6 +5,7 @@
 #include <QAudioDevice>
 #include <QDebug>
 #include <QEventLoop>
+#include <QRandomGenerator>
 #include <QMediaDevices>
 #include <QPropertyAnimation>
 #include <QTimer>
@@ -633,10 +634,34 @@ void PlaylistManager::playSongbyhasg(const QString &songhash)
         }
     }
 }
-// 循环播放下一首
+// 按播放模式取下一首并播放（顺序 / 单曲循环 / 随机）
 void PlaylistManager::playNext()
 {
-    if (m_currentIndex + 1 < (*m_curplaylist).size())
+    const int size = (*m_curplaylist).size();
+    if (size <= 0)
+        return;
+
+    if (m_playMode == MODE_RANDOM)
+    {
+        // 随机：避免连续重复同一首（单首歌时只能循环自己）
+        int next = m_currentIndex;
+        if (size > 1)
+            while (next == m_currentIndex)
+                next = QRandomGenerator::global()->bounded(size);
+        playSongbyindex(next);
+        return;
+    }
+
+    if (m_playMode == MODE_SINGLE_LOOP)
+    {
+        // 单曲循环：重播当前歌（走完整管线：重置进度/封面色/歌词）
+        int target = m_currentIndex >= 0 ? m_currentIndex : 0;
+        playSongbyindex(target);
+        return;
+    }
+
+    // 顺序播放
+    if (m_currentIndex + 1 < size)
     {
         playSongbyindex(m_currentIndex + 1);
     }
@@ -651,6 +676,17 @@ void PlaylistManager::playNext()
     {
         playSongbyindex(0);
     }
+}
+
+void PlaylistManager::cyclePlayMode()
+{
+    m_playMode = (m_playMode + 1) % 3;
+    emit playModeChanged();
+}
+
+int PlaylistManager::playMode() const
+{
+    return m_playMode;
 }
 
 void PlaylistManager::playPrevious()

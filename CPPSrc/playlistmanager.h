@@ -35,6 +35,14 @@ enum PlaylistType
     TOGETHER
 };
 
+// 播放模式：顺序 / 单曲循环 / 随机
+enum PlayMode
+{
+    MODE_ORDER = 0,
+    MODE_SINGLE_LOOP = 1,
+    MODE_RANDOM = 2
+};
+
 class PlaylistManager : public QObject
 {
     Q_OBJECT
@@ -63,6 +71,7 @@ class PlaylistManager : public QObject
     Q_PROPERTY(int lyricCharCount READ lyricCharCountget NOTIFY currlyricChanged)
     Q_PROPERTY(qreal downloadProgress READ downloadProgress NOTIFY downloadProgressChanged)
     Q_PROPERTY(bool isBuffering READ isBuffering NOTIFY isBufferingChanged)
+    Q_PROPERTY(int playMode READ playMode NOTIFY playModeChanged)
 public:
     explicit PlaylistManager(Recommendation *recommendation, QObject *parent = nullptr);
     Q_INVOKABLE void addSong(const SongInfo &song);
@@ -75,6 +84,8 @@ public:
     Q_INVOKABLE void playNext();
     Q_INVOKABLE void playPrevious();
     Q_INVOKABLE void playstop();
+    Q_INVOKABLE void cyclePlayMode(); // 顺序 → 单曲循环 → 随机 → 顺序
+    int playMode() const;
     Q_INVOKABLE void playNextAndPlay(const SongInfo &song);
     Q_INVOKABLE void playNextAndPlay(const QVariantMap &songMap);
     Q_INVOKABLE void addSongNext(const SongInfo &song);
@@ -157,6 +168,7 @@ signals:
     void dominantColorChanged();
     void downloadProgressChanged();
     void isBufferingChanged();
+    void playModeChanged();
 
 private:
     enum PlaylistType type = LOCAL;
@@ -231,6 +243,7 @@ private:
     int m_lyricCharCount         = 0;
     double m_togetherSeekPercent = 0;
     qreal m_downloadProgress     = 1.0; // 下载进度 0~1，默认1表示已就绪
+    int m_playMode               = MODE_ORDER;
     bool m_isBuffering           = false;
     qint64 m_downloadedBytes     = 0;
     qint64 m_totalDownloadBytes  = 0;

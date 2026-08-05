@@ -650,7 +650,7 @@ Rectangle {
         // ========== 右侧：功能按钮 ==========
         Row {
             id: rightSection
-            width: 72
+            width: 108
             height: parent.height
             spacing: 4
             layoutDirection: Qt.RightToLeft
@@ -1031,6 +1031,48 @@ Rectangle {
                         duration: AppTheme.animFast
                     }
                 }
+            }
+
+            // 播放模式（顺序/单曲循环/随机）：点击循环切换（放桌面歌词左边）
+            Rectangle {
+                id: modeBtn
+                width: 32
+                height: 32
+                radius: 16
+                enabled: playlistmanager ? playlistmanager.type !== 1 : true
+                color: modeBtnHandler.hovered ? AppTheme.iconButtonHover : "transparent"
+                anchors.verticalCenter: parent.verticalCenter
+
+                Image {
+                    id: modeIcon
+                    anchors.centerIn: parent
+                    source: playlistmanager ? (playlistmanager.playMode === 2 ? AppIcon.playModeShuffle
+                        : playlistmanager.playMode === 1 ? AppIcon.playModeRepeatOne : AppIcon.playModeOrder)
+                        : AppIcon.playModeOrder
+                    sourceSize: Qt.size(128, 128)
+                    mipmap: true
+                    width: 17
+                    height: 17
+                    fillMode: Image.PreserveAspectFit
+                    layer.enabled: true
+                    layer.effect: ColorOverlay {
+                        source: modeIcon
+                        color: modeBtnHandler.hovered ? AppTheme.iconHover : AppTheme.textMuted
+                    }
+                }
+
+                HoverHandler { id: modeBtnHandler }
+                MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        if (playlistmanager) playlistmanager.cyclePlayMode()
+                    }
+                }
+
+                opacity: enabled ? 1.0 : 0.3
+                Behavior on opacity { NumberAnimation { duration: AppTheme.animFast } }
             }
         }
     }
