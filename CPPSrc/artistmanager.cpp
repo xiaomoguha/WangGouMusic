@@ -56,11 +56,9 @@ bool ArtistManager::fetchArtist(const QString &id)
     m_hasMoreSongs  = false;
     m_hasMoreAlbums = false;
     m_artist.clear();
-    m_songs.clear();
-    m_albums.clear();
+    m_songsModel.clear();
+    m_albumsModel.clear();
     emit artistChanged();
-    emit songsChanged();
-    emit albumsChanged();
 
     // 详情 + 两个列表第一页并行
     m_detailRequester.fetchData(QStringLiteral("%1/artist/detail?id=%2").arg(kApiRoot, id));
@@ -71,17 +69,22 @@ bool ArtistManager::fetchArtist(const QString &id)
 
 void ArtistManager::fetchMoreSongs()
 {
-    if (m_artistId.isEmpty())
+    if (m_artistId.isEmpty() || m_loadingSongs)
         return;
+    m_loadingSongs = true;
+    emit songsLoadingChanged();
     m_songPage++;
-    m_audiosRequester.fetchData(QStringLiteral("%1/artist/audios?id=%2&page=%3&pagesize=30")
+    // sort=hot：歌手页默认最热排序（不传默认最新）
+    m_audiosRequester.fetchData(QStringLiteral("%1/artist/audios?id=%2&page=%3&pagesize=30&sort=hot")
                                     .arg(kApiRoot, m_artistId).arg(m_songPage));
 }
 
 void ArtistManager::fetchMoreAlbums()
 {
-    if (m_artistId.isEmpty())
+    if (m_artistId.isEmpty() || m_loadingAlbums)
         return;
+    m_loadingAlbums = true;
+    emit albumsLoadingChanged();
     m_albumPage++;
     m_albumsRequester.fetchData(QStringLiteral("%1/artist/albums?id=%2&page=%3&pagesize=30")
                                     .arg(kApiRoot, m_artistId).arg(m_albumPage));
@@ -144,9 +147,15 @@ void ArtistManager::onAudiosData(const QByteArray &data)
     }
     const QJsonObject root = doc.object();
     const int total        = root["total"].toInt(0);
-    const int loaded       = m_songs.size() + root["data"].toArray().size();
-    m_hasMoreSongs         = total > loaded;
+    const int loaded       = m_songsModel.count() + root["data"].toArray().size();
+    const bool newHasMore  = total > loaded;
+    if (newHasMore != m_hasMoreSongs)
+    {
+        m_hasMoreSongs = newHasMore;
+        emit hasMoreSongsChanged();
+    }
 
+    QVariantList newSongs;
     const QJsonArray list = root["data"].toArray();
     for (const QJsonValue &val : list)
     {
@@ -155,16 +164,18 @@ void ArtistManager::onAudiosData(const QByteArray &data)
         QString cover = tp["union_cover"].toString();
         cover.replace("{size}", "720");
 
-        QVariantMap s;
-        s["songname"]   = o["audio_name"].toString();
-        s["singername"] = o["author_name"].toString();
-        s["songhash"]   = o["hash"].toString();
-        s["album_name"] = o["album_name"].toString();
-        s["duration"]   = secondsToMinutesSeconds(o["timelength"].toInt() / 1000);
-        s["union_cover"] = cover;
-        m_songs.append(s);
+        QVariantMap song;
+        song["songname"]   = o["audio_name"].toString();
+        song["singername"] = o["author_name"].toString();
+        song["songhash"]   = o["hash"].toString();
+        song["album_name"] = o["album_name"].toString();
+        song["duration"]   = secondsToMinutesSeconds(o["timelength"].toInt() / 1000);
+        song["union_cover"] = cover;
+        newSongs.append(song);
     }
-    emit songsChanged();
+    m_songsModel.appendList(newSongs);
+    m_loadingSongs = false;
+    emit songsLoadingChanged();
     finishOne();
 }
 
@@ -179,9 +190,15 @@ void ArtistManager::onAlbumsData(const QByteArray &data)
     }
     const QJsonObject root  = doc.object();
     const int total         = root["total"].toInt(0);
-    const int loaded        = m_albums.size() + root["data"].toArray().size();
-    m_hasMoreAlbums         = total > loaded;
+    const int loaded        = m_albumsModel.count() + root["data"].toArray().size();
+    const bool newHasMore   = total > loaded;
+    if (newHasMore != m_hasMoreAlbums)
+    {
+        m_hasMoreAlbums = newHasMore;
+        emit hasMoreAlbumsChanged();
+    }
 
+    QVariantList newAlbums;
     const QJsonArray list = root["data"].toArray();
     for (const QJsonValue &val : list)
     {
@@ -195,11 +212,14 @@ void ArtistManager::onAlbumsData(const QByteArray &data)
         // album_id 响应里是数字，toString() 对数字返回空 → 用 toInt（QML 侧 String() 转回）
         a["album_id"]  = o["album_id"].toInt();
         a["album_name"] = o["album_name"].toString();
+        a["intro"]     = o["intro"].toString();
         a["cover"]     = cover;
         a["publish_date"] = o["publish_date"].toString();
-        m_albums.append(a);
+        newAlbums.append(a);
     }
-    emit albumsChanged();
+    m_albumsModel.appendList(newAlbums);
+    m_loadingAlbums = false;
+    emit albumsLoadingChanged();
     finishOne();
 }
 
@@ -230,6 +250,10 @@ void ArtistManager::onSearchData(const QByteArray &data)
 void ArtistManager::onFailed(const QString &err)
 {
     qWarning() << "[ArtistManager] request error:" << err;
+    m_loadingSongs = false;
+    m_loadingAlbums = false;
+    emit songsLoadingChanged();
+    emit albumsLoadingChanged();
     finishOne();
 }
 
