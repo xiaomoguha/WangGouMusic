@@ -68,7 +68,7 @@ QString PlaylistCacheStore::normalizeCoverUrl(const QString &url)
 // 播放列表缓存
 // ──────────────────────────────────────────────
 
-bool PlaylistCacheStore::savePlaylist(const QList<SongInfo> &playlist, int currentIndex, float percent)
+bool PlaylistCacheStore::savePlaylist(const QList<SongInfo> &playlist, int currentIndex, float percent, int playMode)
 {
     ensureCacheDir();
     QJsonArray arr;
@@ -88,6 +88,7 @@ bool PlaylistCacheStore::savePlaylist(const QList<SongInfo> &playlist, int curre
     root["playlist"]     = arr;
     root["currentIndex"] = currentIndex;
     root["percent"]      = static_cast<double>(percent);
+    root["playMode"]     = playMode;
     QJsonDocument doc(root);
 
     QFile file(playlistCachePath());
@@ -101,7 +102,7 @@ bool PlaylistCacheStore::savePlaylist(const QList<SongInfo> &playlist, int curre
     return false;
 }
 
-bool PlaylistCacheStore::loadPlaylist(QList<SongInfo> &outPlaylist, int &outCurrentIndex, float &outPercent)
+bool PlaylistCacheStore::loadPlaylist(QList<SongInfo> &outPlaylist, int &outCurrentIndex, float &outPercent, int &outPlayMode)
 {
     QFile file(playlistCachePath());
     if (!file.exists() || !file.open(QIODevice::ReadOnly))
@@ -115,6 +116,7 @@ bool PlaylistCacheStore::loadPlaylist(QList<SongInfo> &outPlaylist, int &outCurr
 
     outCurrentIndex = -1;
     outPercent      = 0.0f;
+    outPlayMode     = -1;   // 旧缓存无该字段：调用方保持默认
     QJsonArray arr;
 
     if (doc.isObject())
@@ -123,6 +125,7 @@ bool PlaylistCacheStore::loadPlaylist(QList<SongInfo> &outPlaylist, int &outCurr
         arr              = root["playlist"].toArray();
         outCurrentIndex  = root["currentIndex"].toInt(-1);
         outPercent       = static_cast<float>(root["percent"].toDouble(0.0));
+        outPlayMode      = root["playMode"].toInt(-1);
     }
     else if (doc.isArray())
     {

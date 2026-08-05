@@ -1,10 +1,12 @@
 import QtQuick 2.15
 import QtQuick.Controls
 import "../BasicConfig"
+import "../ToolWindow"
 
 Page {
     id: recentPage
     background: Rectangle { color: "transparent" }
+
 
     readonly property bool isTogetherMode: playlistmanager && playlistmanager.type === 1
 
@@ -96,13 +98,18 @@ Page {
                     required property int index
                     required property var modelData
                     width: recentCol.width
-                    height: 60
+                    height: 60 + aiExpand.expandedHeight
                     radius: 5
                     // hover/播放改为文字高亮（背景透明，渐变下无块状覆盖层）
                     color: "transparent"
 
                     // 与歌单详情页一致的「正在播放」高亮：♪/动图 + 强调色
                     readonly property bool isPlaying: !!(playlistmanager && playlistmanager.currentSonghash === modelData.songhash)
+
+                    // 行内容固定在 60 高，下方让位给 AI 展开
+                    Item {
+                        width: parent.width
+                        height: 60
 
                     Row {
                         anchors.fill: parent
@@ -180,18 +187,18 @@ Page {
 
                         // 操作按钮区（固定宽度占位，悬停时显示；专辑/时长不再随悬停跳动）
                         Item {
-                            width: isTogetherMode ? 34 : 68
+                            width: isTogetherMode ? 70 : 100
                             height: 30
                             anchors.verticalCenter: parent.verticalCenter
 
                             Row {
                                 anchors.fill: parent
                                 spacing: 4
-                                visible: itemHover.hovered && !isPlaying
+                                visible: itemHover.hovered
 
                                 IconButton {
                                     id: playBtn
-                                    visible: !isTogetherMode
+                                    visible: !isTogetherMode && !isPlaying
                                     size: 30
                                     iconSize: 16
                                     iconSource: AppIcon.playCircle
@@ -217,16 +224,29 @@ Page {
                                     }
                                 }
 
+                                // AI 推荐（点击展开/收回生成的 AI 歌单；有数据时切换为箭头）
+                                IconButton {
+                                    size: 30
+                                    iconSize: 16
+
+                                    iconSource: aiExpand.expanded ? AppIcon.caretDown
+
+                                        : (aiExpand.aiSongs.length > 0 ? AppIcon.caretRight : AppIcon.sparkle)
+                                    onClicked: {
+                                        aiExpand.toggle(modelData.songhash, modelData.title)
+                                    }
+                                }
+
                                 IconButton {
                                     id: addBtn
-                                    visible: !isTogetherMode
+                                    visible: !isTogetherMode && !isPlaying
                                     size: 30
                                     iconSize: 16
                                     iconSource: AppIcon.addToList
                                     iconColor: AppTheme.isDark ? (addBtn.hovered ? AppTheme.accent : "#FFFFFF") : AppTheme.iconDefault
                                     onClicked: {
                                         var md = modelData
-                                        playlistmanager.addSong({
+                                        playlistmanager.addSongNext({
                                             "songname": md.title,
                                             "songhash": md.songhash,
                                             "singername": md.singername,
@@ -234,7 +254,7 @@ Page {
                                             "album_name": md.album_name,
                                             "duration": md.duration
                                         })
-                                        BasicConfig.emitSongAdded("已添加到播放列表: " + md.title)
+                                        BasicConfig.emitSongAdded("已添加到下一首: " + md.title)
                                     }
                                 }
 
@@ -280,6 +300,19 @@ Page {
                             color: AppTheme.textMuted
                             anchors.verticalCenter: parent.verticalCenter
                         }
+                    }
+
+                    }   // 行内容固定高容器结束
+
+                    // AI 推荐展开（点 ✨ 后在行下方撑开几小行）
+                    AiRecommendExpand {
+                        id: aiExpand
+                        anchors.top: parent.top
+                        anchors.topMargin: 60
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.leftMargin: 44
+                        anchors.rightMargin: 14
                     }
 
                     HoverHandler { id: itemHover }

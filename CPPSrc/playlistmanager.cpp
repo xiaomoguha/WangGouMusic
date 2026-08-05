@@ -682,6 +682,7 @@ void PlaylistManager::cyclePlayMode()
 {
     m_playMode = (m_playMode + 1) % 3;
     emit playModeChanged();
+    savePlaylistToCache();   // 播放模式持久化：下次启动恢复
 }
 
 int PlaylistManager::playMode() const
@@ -1214,7 +1215,7 @@ void PlaylistManager::savePlaylistToCache()
     // TOGETHER 模式下保存切换前的本地索引和进度，而非一起听的
     const int idx   = (type == TOGETHER) ? m_localIndex : m_currentIndex;
     const float pct = (type == TOGETHER) ? m_localPercent : m_percent;
-    PlaylistCacheStore::savePlaylist(m_playlist, idx, pct);
+    PlaylistCacheStore::savePlaylist(m_playlist, idx, pct, m_playMode);
 }
 
 // 从本地缓存加载播放列表
@@ -1222,8 +1223,17 @@ void PlaylistManager::loadPlaylistFromCache()
 {
     int savedIndex     = -1;
     float savedPercent = 0.0f;
-    if (!PlaylistCacheStore::loadPlaylist(m_playlist, savedIndex, savedPercent))
+    int savedPlayMode  = -1;
+    if (!PlaylistCacheStore::loadPlaylist(m_playlist, savedIndex, savedPercent, savedPlayMode))
         return;
+
+    // 恢复播放模式（旧缓存无该字段时保持默认顺序播放）
+    if (savedPlayMode >= MODE_ORDER && savedPlayMode <= MODE_RANDOM)
+    {
+        m_playMode = savedPlayMode;
+        emit playModeChanged();
+        qDebug() << "从缓存恢复播放模式:" << m_playMode;
+    }
 
     m_playlistModel->syncFromList(m_playlist);
     emit playlistUpdated();

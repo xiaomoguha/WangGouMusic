@@ -71,6 +71,9 @@ private:
     void parseResult(QJsonObject root, const QString &successMsg);
     void onFavoriteHashesData(const QByteArray &data);
     void requestFavPage(int page);
+    // 红心 hash 集合本地缓存：启动即显示，网络刷新后台更新
+    void loadFavoriteHashesFromCache();
+    void saveFavoriteHashesToCache();
 
     UserManager *m_userManager = nullptr;
     HttpGetRequester m_favRequester;

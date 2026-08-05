@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
+import "../ToolWindow"
 
 // 听歌历史（云端）：展示酷狗账号的听歌记录，行样式同歌单详情页
 Item {
@@ -9,6 +10,7 @@ Item {
     width: parent ? parent.width : 0
     height: parent ? parent.height : 0
     objectName: "HistoryPage"
+
 
     readonly property bool isTogetherMode: playlistmanager && playlistmanager.type === 1
 
@@ -149,13 +151,19 @@ Item {
         }
 
         delegate: Rectangle {
+            id: songRow
             width: historyList.width - 60
-            height: 60
+            height: 60 + aiExpand.expandedHeight
             radius: 6
             color: "transparent"
 
             readonly property var songData: modelData
             readonly property bool isPlaying: playlistmanager && playlistmanager.currentSonghash === songData.songhash
+
+            // 行内容固定在 60 高，下方让位给 AI 展开
+            Item {
+                width: parent.width
+                height: 60
 
             Row {
                 anchors.fill: parent
@@ -226,6 +234,21 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                 }
 
+                // AI 推荐（hover 显示，点击展开/收回生成的 AI 歌单；有数据时切换为箭头）
+                IconButton {
+                    visible: songHover.hovered
+
+                    iconSource: aiExpand.expanded ? AppIcon.caretDown
+
+                        : (aiExpand.aiSongs.length > 0 ? AppIcon.caretRight : AppIcon.sparkle)
+                    size: 30
+                    iconSize: 16
+                    anchors.verticalCenter: parent.verticalCenter
+                    onClicked: {
+                        aiExpand.toggle(songData.songhash, songData.songname)
+                    }
+                }
+
                 Text {
                     text: songData.album_name
                     width: 0.2 * historyList.width
@@ -244,6 +267,19 @@ Item {
                     color: AppTheme.textMuted
                     anchors.verticalCenter: parent.verticalCenter
                 }
+            }
+
+            }   // 行内容固定高容器结束
+
+            // AI 推荐展开（点 ✨ 后在行下方撑开几小行）
+            AiRecommendExpand {
+                id: aiExpand
+                anchors.top: parent.top
+                anchors.topMargin: 60
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.leftMargin: 44
+                anchors.rightMargin: 14
             }
 
             HoverHandler { id: songHover }

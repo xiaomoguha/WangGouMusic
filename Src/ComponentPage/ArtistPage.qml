@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
+import "../ToolWindow"
 
 // 歌手页：顶部歌手信息 + 单曲/专辑 tab（数据来自 artistManager）
 Item {
@@ -9,6 +10,7 @@ Item {
     width: parent ? parent.width : 0
     height: parent ? parent.height : 0
     objectName: "ArtistPage"
+
 
     property string artistId: BasicConfig.artistId
     property string artistName: BasicConfig.artistName
@@ -367,8 +369,9 @@ Item {
             }
 
             delegate: Rectangle {
+                id: songRow
                 width: songsList.width - 60
-                height: 60
+                height: 60 + aiExpand.expandedHeight
                 radius: 6
                 color: "transparent"
 
@@ -382,6 +385,11 @@ Item {
                     "union_cover": model.union_cover
                 })
                 readonly property bool isPlaying: playlistmanager && playlistmanager.currentSonghash === songData.songhash
+
+                // 行内容固定在 60 高，下方让位给 AI 展开
+                Item {
+                    width: parent.width
+                    height: 60
 
                 Row {
                     anchors.fill: parent
@@ -447,7 +455,7 @@ Item {
                     // 操作按钮区（悬停显示；一起听模式只留「加入一起听」）
                     Item {
                         id: actionArea
-                        width: isTogetherMode ? 34 : 108
+                        width: isTogetherMode ? 70 : 138
                         height: 30
                         anchors.verticalCenter: parent.verticalCenter
                         HoverHandler { id: actionHover }
@@ -455,10 +463,10 @@ Item {
                         Row {
                             anchors.fill: parent
                             spacing: 4
-                            visible: songHover.hovered && !isPlaying
+                            visible: songHover.hovered
 
                             IconButton {
-                                visible: !isTogetherMode
+                                visible: !isTogetherMode && !isPlaying
                                 iconSource: AppIcon.playCircle
                                 size: 30
                                 iconSize: 16
@@ -475,8 +483,21 @@ Item {
                                 }
                             }
 
+                            // AI 推荐（点击展开/收回生成的 AI 歌单；有数据时切换为箭头）
                             IconButton {
-                                visible: !isTogetherMode
+
+                                iconSource: aiExpand.expanded ? AppIcon.caretDown
+
+                                    : (aiExpand.aiSongs.length > 0 ? AppIcon.caretRight : AppIcon.sparkle)
+                                size: 30
+                                iconSize: 16
+                                onClicked: {
+                                    aiExpand.toggle(songData.songhash, songData.songname)
+                                }
+                            }
+
+                            IconButton {
+                                visible: !isTogetherMode && !isPlaying
                                 iconSource: AppIcon.addToList
                                 size: 30
                                 iconSize: 16
@@ -494,7 +515,7 @@ Item {
                             }
 
                             IconButton {
-                                visible: !isTogetherMode
+                                visible: !isTogetherMode && !isPlaying
                                 iconSource: AppIcon.heart
                                 iconColor: AppTheme.textSecondary
                                 size: 30
@@ -538,6 +559,19 @@ Item {
                         color: AppTheme.textMuted
                         anchors.verticalCenter: parent.verticalCenter
                     }
+                }
+
+                }   // 行内容固定高容器结束
+
+                // AI 推荐展开（点 ✨ 后在行下方撑开几小行）
+                AiRecommendExpand {
+                    id: aiExpand
+                    anchors.top: parent.top
+                    anchors.topMargin: 60
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.leftMargin: 44
+                    anchors.rightMargin: 14
                 }
 
                 HoverHandler { id: songHover }

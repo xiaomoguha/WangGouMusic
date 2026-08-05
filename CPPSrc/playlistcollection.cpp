@@ -1,7 +1,9 @@
 #include "playlistcollection.h"
 #include "ApiClient.h"
+#include "PlaylistCacheStore.h"
 #include "usermanager.h"
 
+#include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -15,6 +17,8 @@ PlaylistCollection::PlaylistCollection(QObject *parent) : QObject(parent)
     connect(&m_favRequester, &HttpGetRequester::dataReceived, this, &PlaylistCollection::onFavoriteHashesData);
     connect(&m_favRequester, &HttpGetRequester::requestFailed, this, [](const QString &) {});
     connect(&m_favRequester, &HttpGetRequester::requestTimeout, this, []() {});
+    // 启动即从缓存恢复红心（无需等网络），网络刷新成功后更新
+    loadFavoriteHashesFromCache();
 }
 
 void PlaylistCollection::setUserManager(UserManager *um)
@@ -304,6 +308,41 @@ void PlaylistCollection::onFavoriteHashesData(const QByteArray &data)
     }
     qDebug() << "[PlaylistCollection] 我喜欢 hash 集合更新，共" << m_favoriteHashes.size() << "个 / 总量" << m_favTotal;
     emit favoriteHashesChanged();
+    saveFavoriteHashesToCache();
+}
+
+void PlaylistCollection::loadFavoriteHashesFromCache()
+{
+    const QString path = PlaylistCacheStore::cacheDir() + "/favorite_hashes.json";
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly))
+        return;
+    const QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
+    if (!doc.isArray())
+        return;
+    QStringList hashes;
+    for (const QJsonValue &v : doc.array())
+    {
+        const QString h = v.toString().toUpper();
+        if (!h.isEmpty())
+            hashes << h;
+    }
+    if (hashes.isEmpty())
+        return;
+    m_favoriteHashes = hashes;
+    qDebug() << "[PlaylistCollection] 从缓存加载我喜欢 hash" << m_favoriteHashes.size() << "个";
+    emit favoriteHashesChanged();
+}
+
+void PlaylistCollection::saveFavoriteHashesToCache()
+{
+    PlaylistCacheStore::ensureCacheDir();
+    QJsonArray arr;
+    for (const QString &h : m_favoriteHashes)
+        arr.append(h);
+    QFile f(PlaylistCacheStore::cacheDir() + "/favorite_hashes.json");
+    if (f.open(QIODevice::WriteOnly | QIODevice::Truncate))
+        f.write(QJsonDocument(arr).toJson(QJsonDocument::Indented));
 }
 
 bool PlaylistCollection::containsHash(const QString &songhash) const
