@@ -21,8 +21,14 @@ Item {
     property string coverColor: ""
 
     function syncWindowTint() {
-        BasicConfig.playlistPageActive = root.visible
-        BasicConfig.playlistPageCoverColor = root.visible ? root.coverColor : ""
+        // 隐藏时不操作 BasicConfig：多个详情页同色时隐藏页误关会杀掉显示页的渐变；
+        // 回首页由 Rightpage.hideOverlay 统一关闭。
+        if (!root.visible)
+            return
+        if (root.coverColor !== "") {
+            BasicConfig.playlistPageActive = true
+            BasicConfig.playlistPageCoverColor = root.coverColor
+        }
     }
 
     // 请求头像主色（异步）。换歌手时不清空旧色，新色到达后平滑过渡。
@@ -94,7 +100,7 @@ Item {
                     width: 36
                     height: 36
                     radius: 18
-                    color: backHover.hovered ? AppTheme.bgCard : "transparent"
+                    color: backHover.hovered ? (BasicConfig.playlistCoverColor !== "" ? "#1EFFFFFF" : AppTheme.bgCard) : "transparent"
                     anchors.verticalCenter: parent.verticalCenter
 
                     Image {
@@ -109,7 +115,10 @@ Item {
                         layer.enabled: true
                         layer.effect: ColorOverlay {
                             source: backIcon
-                            color: AppTheme.textPrimary
+                            // 渐变时随背景挑白/深色，与全局返回键一致
+                            color: BasicConfig.playlistCoverColor !== ""
+                                ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
+                                : AppTheme.textPrimary
                         }
                     }
                     HoverHandler { id: backHover }
@@ -119,14 +128,15 @@ Item {
                     }
                 }
 
-                // 歌手头像
+                // 歌手头像（图片未就绪时整块透明，不露占位灰圆）
                 Rectangle {
                     width: 120
                     height: 120
                     radius: 60
                     clip: true
                     anchors.verticalCenter: parent.verticalCenter
-                    color: AppTheme.bgCard
+                    color: artistAvatar.status === Image.Ready ? AppTheme.bgCard : "transparent"
+                    Behavior on color { ColorAnimation { duration: 150 } }
 
                     Image {
                         id: artistAvatar
@@ -136,12 +146,15 @@ Item {
                         cache: true
                         fillMode: Image.PreserveAspectCrop
                         sourceSize: Qt.size(240, 240)
+                        // 加载完成才淡入，避免头像还没到的时候露出占位圆
+                        opacity: status === Image.Ready ? 1 : 0
+                        Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
                     }
-                    // 无头像显示名字首字
+                    // 仅当歌手确实没有头像时显示名字首字（加载中不显示任何东西）
                     Text {
-                        visible: !(artistManager && artistManager.artist && artistManager.artist.avatar)
+                        visible: artistManager && artistManager.artist && !artistManager.artist.avatar
                         anchors.centerIn: parent
-                        text: artistManager && artistManager.artist ? artistManager.artist.name.charAt(0) : "?"
+                        text: artistManager.artist.name.charAt(0)
                         font.pixelSize: 40
                         font.bold: true
                         color: AppTheme.textMuted
@@ -166,22 +179,24 @@ Item {
 
                     Row {
                         spacing: 16
+                        // 浅色模式用更黑的灰保证可读，深色模式保持 muted
+                        property color statColor: AppTheme.isDark ? AppTheme.textMuted : AppTheme.textSecondary
                         Text {
                             text: "粉丝 " + (artistManager && artistManager.artist ? root.formatCount(artistManager.artist.fans) : "—")
                             font.pixelSize: AppTheme.fontSizeSmall
-                            color: AppTheme.textMuted
+                            color: parent.statColor
                             font.family: AppTheme.fontFamily
                         }
                         Text {
                             text: "单曲 " + (artistManager && artistManager.artist ? artistManager.artist.audioCount : "—")
                             font.pixelSize: AppTheme.fontSizeSmall
-                            color: AppTheme.textMuted
+                            color: parent.statColor
                             font.family: AppTheme.fontFamily
                         }
                         Text {
                             text: "专辑 " + (artistManager && artistManager.artist ? artistManager.artist.albumCount : "—")
                             font.pixelSize: AppTheme.fontSizeSmall
-                            color: AppTheme.textMuted
+                            color: parent.statColor
                             font.family: AppTheme.fontFamily
                         }
                     }

@@ -221,9 +221,16 @@ Row {
         transformOrigin: Item.Top
         // 高度随内容自适应，上限 440，超出滚动
         height: Math.min(contentColumn.height + contentColumn.pad * 2, 440)
+        onHeightChanged: console.log(">>> seachPop height =", height, "contentColumn.height =", contentColumn.height)
         // 宽度随内容平滑缩放
         Behavior on width { NumberAnimation { duration: AppTheme.animNormal; easing.type: Easing.OutCubic } }
-        onAboutToShow: updateHotWidth()
+        onAboutToShow: {
+            updateHotWidth()
+            console.log(">>> popup show: suggestCount =", suggestModel.count,
+                        "historyLen =", searchHistory ? searchHistory.history.length : -1,
+                        "hotItems =", hostSearch ? hostSearch.items.length : -1,
+                        "contentColumn.h =", contentColumn.height)
+        }
 
         enter: Transition {
             ParallelAnimation {
@@ -275,6 +282,7 @@ Row {
 
                 // ═══ 建议区（打字时） ═══
                 Column {
+                    id: suggestArea
                     width: parent.width
                     spacing: 2
                     visible: suggestModel.count > 0
@@ -283,7 +291,6 @@ Row {
                     Rectangle {
                         width: parent.width; height: 40; radius: AppTheme.radiusSmall
                         color: directHover.containsMouse ? AppTheme.bgSuggestionHover : "transparent"
-                        Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
                         Row {
                             anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 12; spacing: 10
                             Image {
@@ -312,7 +319,6 @@ Row {
                         delegate: Rectangle {
                             width: contentColumn.width; height: 40; radius: AppTheme.radiusSmall
                             color: suggestHover.containsMouse ? AppTheme.bgSuggestionHover : "transparent"
-                            Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
                             Row {
                                 anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 12; spacing: 10
                                 Image {

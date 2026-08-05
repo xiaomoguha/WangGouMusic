@@ -20,14 +20,55 @@ Item {
             artistManager.searchSinger(keyword)
     }
 
+    // 歌手卡片主色 → 整窗渐变（命中歌手时沉浸，机制同歌手页）
+    property string coverColor: ""
+
+    function syncWindowTint() {
+        // 隐藏时不操作 BasicConfig：多个详情页同色时隐藏页误关会杀掉显示页的渐变；
+        // 回首页由 Rightpage.hideOverlay 统一关闭。
+        if (!searchResultRoot.visible)
+            return
+        if (searchResultRoot.coverColor !== "") {
+            BasicConfig.playlistPageActive = true
+            BasicConfig.playlistPageCoverColor = searchResultRoot.coverColor
+        }
+    }
+
+    function requestCoverColor() {
+        var avatar = searchResultRoot.singerData ? searchResultRoot.singerData.avatar : ""
+        console.log(">>> Searchresult requestCoverColor, avatar =", avatar)
+        if (!avatar || avatar === "") {
+            coverColor = ""
+            syncWindowTint()
+            return
+        }
+        playlistColorExtractor.extract(avatar)
+    }
+
+    onVisibleChanged: syncWindowTint()
+
     Connections {
         target: artistManager
         function onSingerFound(singer) {
             searchResultRoot.singerData = singer
+            searchResultRoot.requestCoverColor()
         }
     }
 
-    onKeywordChanged: searchResultRoot.searchSinger()
+    Connections {
+        target: playlistColorExtractor
+        function onDominantColorReady(color) {
+            console.log(">>> Searchresult dominantColor =", color)
+            searchResultRoot.coverColor = color
+            searchResultRoot.syncWindowTint()
+        }
+    }
+
+    onKeywordChanged: {
+        searchResultRoot.singerData = ({})
+        searchResultRoot.requestCoverColor()
+        searchResultRoot.searchSinger()
+    }
     Component.onCompleted: searchResultRoot.searchSinger()
 
     // ===== 顶部信息栏 =====
@@ -61,29 +102,6 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
         }
 
-        // 返回按钮
-        Rectangle {
-            width: 28; height: 28; radius: 14
-            color: backH.hovered ? AppTheme.iconButtonHover : "transparent"
-            anchors.verticalCenter: parent.verticalCenter
-
-            Image {
-                id: backIco
-                anchors.centerIn: parent
-                source: AppIcon.back
-                sourceSize: Qt.size(128, 128)
-                mipmap: true
-                width: 14; height: 14; fillMode: Image.PreserveAspectFit
-                layer.enabled: true
-                layer.effect: ColorOverlay { source: backIco; color: AppTheme.iconDefault }
-            }
-            HoverHandler { id: backH }
-            TapHandler {
-                cursorShape: Qt.PointingHandCursor
-                onTapped: BasicConfig.goBack()
-            }
-            Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
-        }
     }
 
     // ===== 歌手卡片（命中歌手时显示） =====
@@ -98,8 +116,8 @@ Item {
         anchors.rightMargin: 30
         height: 72
         radius: 10
-        color: singerHover.hovered ? AppTheme.bgNavHover : AppTheme.bgCard
-        Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+        // 透明融入渐变；hover 只文字高亮（同歌曲行，无黑色遮罩）
+        color: "transparent"
 
         Row {
             anchors.fill: parent
@@ -107,25 +125,29 @@ Item {
             anchors.rightMargin: 12
             spacing: 12
 
-            // 歌手头像
+            // 歌手头像（图片未就绪时透明，不露占位灰圆）
             Rectangle {
                 width: 52
                 height: 52
                 radius: 26
                 clip: true
                 anchors.verticalCenter: parent.verticalCenter
-                color: AppTheme.bgSidebar
+                color: singerAvatarImg.status === Image.Ready ? AppTheme.bgSidebar : "transparent"
 
                 Image {
+                    id: singerAvatarImg
                     anchors.fill: parent
                     source: singerData.avatar
                     asynchronous: true
                     cache: true
                     fillMode: Image.PreserveAspectCrop
                     sourceSize: Qt.size(104, 104)
+                    // 加载完成才淡入，避免露出深色占位圆
+                    opacity: status === Image.Ready ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
                 }
                 Text {
-                    visible: !singerData.avatar
+                    visible: singerAvatarImg.status !== Image.Ready
                     anchors.centerIn: parent
                     text: singerData.name ? singerData.name.charAt(0) : "?"
                     font.pixelSize: 20
@@ -143,8 +165,9 @@ Item {
                     text: singerData.name
                     font.pixelSize: AppTheme.fontSizeBodyLg
                     font.bold: true
-                    color: AppTheme.textPrimary
+                    color: singerHover.hovered ? AppTheme.accentPlaying : AppTheme.textPrimary
                     font.family: AppTheme.fontFamily
+                    Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
                 }
                 Text {
                     text: "粉丝 " + (singerData.fans > 0 ? singerData.fans : "—")
