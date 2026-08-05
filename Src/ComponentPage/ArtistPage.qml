@@ -196,7 +196,7 @@ Item {
 
                         Text {
                             anchors.centerIn: parent
-                            text: (artistManager && artistManager.isLoading && artistManager.songs.length === 0) ? "加载中..." : "▶ 播放全部"
+                            text: (artistManager && artistManager.isLoading && artistManager.songsModel.count === 0) ? "加载中..." : "▶ 播放全部"
                             font.pixelSize: AppTheme.fontSizeSmall
                             font.bold: true
                             color: "#ffffff"
@@ -206,10 +206,10 @@ Item {
                         TapHandler {
                             cursorShape: Qt.PointingHandCursor
                             onTapped: {
-                                if (!artistManager || artistManager.songs.length === 0) return
+                                if (!artistManager || artistManager.songsModel.count === 0) return
                                 playlistmanager.clearPlaylist()
-                                for (var i = 0; i < artistManager.songs.length; i++) {
-                                    var s = artistManager.songs[i]
+                                for (var i = 0; i < artistManager.songsModel.count; i++) {
+                                    var s = artistManager.songsModel.get(i)
                                     playlistmanager.addSong({
                                         "songname": s.songname,
                                         "songhash": s.songhash,
@@ -288,7 +288,7 @@ Item {
         anchors.topMargin: 4
         clip: true
             cacheBuffer: 2000
-            model: artistManager ? artistManager.songs : []
+            model: artistManager ? artistManager.songsModel : null
             spacing: 2
             leftMargin: 30
             rightMargin: 30
@@ -312,13 +312,60 @@ Item {
                 }
             }
 
+            // 滚动加载 footer：加载中显示旋转动画
+            footer: Item {
+                width: songsList.width
+                height: 44
+                visible: artistManager && artistManager.songsLoading
+
+                Image {
+                    id: songsLoadingIcon
+                    anchors.centerIn: parent
+                    source: AppIcon.refresh
+                    sourceSize: Qt.size(48, 48)
+                    width: 20
+                    height: 20
+                    fillMode: Image.PreserveAspectFit
+                    layer.enabled: true
+                    layer.effect: ColorOverlay {
+                        source: songsLoadingIcon
+                        color: AppTheme.textMuted
+                    }
+                    NumberAnimation on rotation {
+                        from: 0
+                        to: 360
+                        duration: 800
+                        loops: Animation.Infinite
+                        running: artistManager && artistManager.songsLoading
+                    }
+                }
+
+                Text {
+                    anchors.left: parent.horizontalCenter
+                    anchors.leftMargin: 30
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "正在加载..."
+                    font.pixelSize: AppTheme.fontSizeCaption
+                    font.family: AppTheme.fontFamily
+                    color: AppTheme.textMuted
+                }
+            }
+
             delegate: Rectangle {
                 width: songsList.width - 60
                 height: 60
                 radius: 6
                 color: "transparent"
 
-                readonly property var songData: modelData
+                // QAbstractListModel：delegate 用 model.xxx 访问（modelData 失效）
+                readonly property var songData: ({
+                    "songname": model.songname,
+                    "singername": model.singername,
+                    "songhash": model.songhash,
+                    "album_name": model.album_name,
+                    "duration": model.duration,
+                    "union_cover": model.union_cover
+                })
                 readonly property bool isPlaying: playlistmanager && playlistmanager.currentSonghash === songData.songhash
 
                 Row {
@@ -518,7 +565,7 @@ Item {
         anchors.topMargin: 4
         clip: true
         cacheBuffer: 2000
-        model: artistManager ? artistManager.albums : []
+        model: artistManager ? artistManager.albumsModel : null
         // cellWidth 按「可用宽」（减左右 margin）算，否则 floor 后放不下两个 cell 退成 1 列
         cellWidth: (width - leftMargin - rightMargin) / 2
         cellHeight: 100
@@ -545,6 +592,45 @@ Item {
             }
         }
 
+        // 滚动加载 footer：加载中显示旋转动画
+        footer: Item {
+            width: albumsGrid.width
+            height: 44
+            visible: artistManager && artistManager.albumsLoading
+
+            Image {
+                id: albumsLoadingIcon
+                anchors.centerIn: parent
+                source: AppIcon.refresh
+                sourceSize: Qt.size(48, 48)
+                width: 20
+                height: 20
+                fillMode: Image.PreserveAspectFit
+                layer.enabled: true
+                layer.effect: ColorOverlay {
+                    source: albumsLoadingIcon
+                    color: AppTheme.textMuted
+                }
+                NumberAnimation on rotation {
+                    from: 0
+                    to: 360
+                    duration: 800
+                    loops: Animation.Infinite
+                    running: artistManager && artistManager.albumsLoading
+                }
+            }
+
+            Text {
+                anchors.left: parent.horizontalCenter
+                anchors.leftMargin: 30
+                anchors.verticalCenter: parent.verticalCenter
+                text: "正在加载..."
+                font.pixelSize: AppTheme.fontSizeCaption
+                font.family: AppTheme.fontFamily
+                color: AppTheme.textMuted
+            }
+        }
+
         // 卡片：80 封面在左 + 右侧专辑名/日期（与主页精选歌单完全一致）
         delegate: Item {
             width: albumsGrid.cellWidth - 10
@@ -564,7 +650,7 @@ Item {
                         id: albumCoverImg
                         width: 80
                         height: 80
-                        source: modelData.cover
+                        source: model.cover
                         asynchronous: true
                         cache: true
                         sourceSize.width: 160
@@ -582,7 +668,7 @@ Item {
                         spacing: 4
 
                         Text {
-                            text: modelData.album_name
+                            text: model.album_name
                             width: parent.width
                             elide: Text.ElideRight
                             font.pixelSize: AppTheme.fontSizeBody
@@ -591,8 +677,20 @@ Item {
                             color: albumHover.hovered ? AppTheme.accentPlaying : AppTheme.textPrimary
                             font.family: AppTheme.fontFamily
                         }
+                        // 专辑简介（2 行，同精选歌单 intro）
                         Text {
-                            text: modelData.publish_date
+                            text: model.intro
+                            width: parent.width
+                            height: 32
+                            wrapMode: Text.WordWrap
+                            elide: Text.ElideRight
+                            maximumLineCount: 2
+                            font.pixelSize: AppTheme.fontSizeCaption
+                            color: AppTheme.textMuted
+                            font.family: AppTheme.fontFamily
+                        }
+                        Text {
+                            text: model.publish_date
                             width: parent.width
                             elide: Text.ElideRight
                             font.pixelSize: AppTheme.fontSizeCaption
@@ -607,7 +705,7 @@ Item {
             // 专辑点击 → 专辑页
             TapHandler {
                 cursorShape: Qt.PointingHandCursor
-                onTapped: BasicConfig.openAlbum(String(modelData.album_id), modelData.album_name, modelData.cover)
+                onTapped: BasicConfig.openAlbum(String(model.album_id), model.album_name, model.cover)
             }
         }
     }
@@ -615,7 +713,7 @@ Item {
     // 空状态 / 加载中
     Text {
         anchors.centerIn: parent
-        visible: artistManager && artistManager.isLoading && artistManager.songs.length === 0
+        visible: artistManager && artistManager.isLoading && artistManager.songsModel.count === 0
         text: "正在加载..."
         font.pixelSize: AppTheme.fontSizeBody
         color: AppTheme.textMuted
