@@ -21,6 +21,7 @@
 #endif
 #include "./CPPSrc/CrashHandler.h"
 #include "./CPPSrc/ClickThroughHelper.h"
+#include "./CPPSrc/dailyrecommend.h"
 #include "./CPPSrc/DominantColorExtractor.h"
 #include "./CPPSrc/HttpGetRequester.h"
 #include "./CPPSrc/NowPlayingMediaController.h"
@@ -28,6 +29,9 @@
 #include "./CPPSrc/appupdater.h"
 #include "./CPPSrc/gethostsearch.h"
 #include "./CPPSrc/lyricsconfigmanager.h"
+#include "./CPPSrc/personalfm.h"
+#include "./CPPSrc/ranklist.h"
+#include "./CPPSrc/playlistcollection.h"
 #include "./CPPSrc/playlistmanager.h"
 #include "./CPPSrc/recommendation.h"
 #include "./CPPSrc/searchcomplex.h"
@@ -129,6 +133,13 @@ int main(int argc, char *argv[])
     PlaylistManager playlistmanager(&recommendation);
     DominantColorExtractor playlistColorExtractor;   // 歌单页专用（独立于播放页的播放管理器提取器）
     UserManager userManager;
+    PlaylistCollection playlistCollection;
+    DailyRecommend dailyRecommend;
+    PersonalFM personalFM;
+    RankList rankList;
+    dailyRecommend.setUserManager(&userManager);
+    personalFM.setUserManager(&userManager);
+    playlistCollection.setUserManager(&userManager);
     WebSocketClient websocket(&playlistmanager, &userManager);
     NowPlayingMediaController mediaController(&playlistmanager);
     LyricsConfigManager lyricsConfig;
@@ -147,6 +158,10 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("lyricsConfig", &lyricsConfig);
     engine.rootContext()->setContextProperty("appUpdater", &appUpdater);
     engine.rootContext()->setContextProperty("userManager", &userManager);
+    engine.rootContext()->setContextProperty("playlistCollection", &playlistCollection);
+    engine.rootContext()->setContextProperty("dailyRecommend", &dailyRecommend);
+    engine.rootContext()->setContextProperty("personalFM", &personalFM);
+    engine.rootContext()->setContextProperty("rankList", &rankList);
 
     // 桌面歌词鼠标穿透控制器（锁定时窗口穿透，仅解锁按钮可点击）
     ClickThroughHelper clickThroughHelper;

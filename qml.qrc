@@ -19,6 +19,8 @@
         <file>Src/BasicConfig/WindowTintGradient.qml</file>
         <file>Src/ComponentPage/DesktopLyricsControlButton.qml</file>
         <file>Src/ComponentPage/ComplexPage.qml</file>
+        <file>Src/ComponentPage/DailyRecommendPage.qml</file>
+        <file>Src/ComponentPage/RankPage.qml</file>
         <file>Src/ComponentPage/PlaylistDetailPage.qml</file>
         <file>Src/ComponentPage/SearchresultPage.qml</file>
         <file>Src/ComponentPage/musictogether.qml</file>
@@ -33,6 +35,7 @@
         <file>Src/ToolWindow/SongAddedToast.qml</file>
         <file>Src/ToolWindow/EmptyState.qml</file>
         <file>Src/ToolWindow/NavIcon.qml</file>
+        <file>Src/ToolWindow/SectionRefreshButton.qml</file>
         <file>Src/ComponentPage/HomePage.qml</file>
         <file>Src/ComponentPage/UpdateDialog.qml</file>
         <file>Src/ComponentPage/LoginPage.qml</file>

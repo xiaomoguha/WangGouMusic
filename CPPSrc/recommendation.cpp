@@ -20,6 +20,11 @@ Recommendation::Recommendation(QObject *parent)
 
     // 分页/全量加载失败时必须重置 loading 态，否则 QML「加载更多」按钮会永久失效。
     // topSongs/topPlaylists 无 loading 态，失败静默即可（数据保留上次结果）。
+    // 精选歌单请求失败/超时：复位 loading 态（否则「换一批」按钮一直转）
+    connect(&m_topPlaylistsRequester, &HttpGetRequester::requestFailed, this,
+            [this](const QString &) { setPlaylistsLoading(false); });
+    connect(&m_topPlaylistsRequester, &HttpGetRequester::requestTimeout, this,
+            [this]() { setPlaylistsLoading(false); });
     connect(
         &m_playlistTracksRequester, &HttpGetRequester::requestFailed, this,
         [this](const QString &) { onPlaylistTracksFailed(); }
@@ -54,21 +59,39 @@ void Recommendation::onLazyTracksFailed()
     }
 }
 
+void Recommendation::setPlaylistsLoading(bool loading)
+{
+    if (m_playlistsLoading == loading)
+        return;
+    m_playlistsLoading = loading;
+    emit playlistsLoadingChanged();
+}
+
 void Recommendation::fetchTopSongs()
 {
     m_topSongsRequester.fetchData("https://xjt-togethertracks.top/api/top/song");
 }
 
+void Recommendation::showRankSongs(const QVariantList &songs)
+{
+    m_topSongs = songs;
+    emit topSongsChanged();
+    qDebug() << "热门推荐已切换到榜单歌曲，共" << songs.size() << "首";
+}
+
 void Recommendation::fetchTopPlaylists()
 {
+    setPlaylistsLoading(true);
     m_topPlaylistsRequester.fetchData("https://xjt-togethertracks.top/api/top/playlist?pagesize=6");
 }
 
 void Recommendation::refreshTopPlaylists()
 {
-    QStringList categories = {"0", "587", "583", "20", "577", "12", "35"};
+    // 只轮换实测有内容的分类（583/577/35 返回空列表，会让刷新看起来“没反应”）
+    QStringList categories = {"0", "587", "20", "12"};
     QString categoryId     = categories[QRandomGenerator::global()->bounded(categories.size())];
     QString url = QString("https://xjt-togethertracks.top/api/top/playlist?pagesize=6&category_id=%1").arg(categoryId);
+    setPlaylistsLoading(true);
     m_topPlaylistsRequester.fetchData(url);
     qDebug() << "刷新歌单，分类 ID:" << categoryId;
 }
@@ -135,6 +158,7 @@ void Recommendation::onTopPlaylistsData(const QByteArray &data)
     if (error.error != QJsonParseError::NoError || !doc.isObject())
     {
         qWarning() << "Top playlists JSON parse error:" << error.errorString();
+        setPlaylistsLoading(false);
         return;
     }
 
@@ -169,10 +193,12 @@ void Recommendation::onTopPlaylistsData(const QByteArray &data)
     if (parsed.isEmpty())
     {
         qWarning() << "精选歌单响应为空，保留现有" << m_topPlaylists.size() << "个歌单";
+        setPlaylistsLoading(false);
         return;
     }
 
     m_topPlaylists = parsed;
+    setPlaylistsLoading(false);
     emit topPlaylistsChanged();
     qDebug() << "精选歌单加载完成，共" << m_topPlaylists.size() << "个";
 }
@@ -279,6 +305,8 @@ void Recommendation::onPlaylistTracksData(const QByteArray &data)
         song.union_cover = cover;
         song.album_name  = albumName;
         song.duration    = secondsToMinutesSeconds(durationSec);
+        // 歌单内歌曲标识（从歌单移除歌曲用；播放队列等其他数据源无此字段）
+        song.fileid = QString::number(s["fileid"].toInt(0));
         m_playlistTracksModel->append(song);
     }
     // 更新分页状态：分页模式下，已加载数 < total 则还有更多

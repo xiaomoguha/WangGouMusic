@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick 2.15
+import QtQuick.Controls 2.15
 import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
 import "../ToolWindow"
@@ -113,9 +114,36 @@ Rectangle {
                 color: AppTheme.textPrimary
             }
         }
+
+        // 检查更新（右上角小图标；hover 显示版本号）
+        IconButton {
+            id: updateIconBtn
+            anchors.right: parent.right
+            anchors.rightMargin: 12
+            anchors.verticalCenter: parent.verticalCenter
+            iconSource: AppIcon.refresh
+            size: 30
+            iconSize: 14
+            iconColor: updateIconHover.hovered ? AppTheme.textPrimary : AppTheme.textMuted
+
+            ToolTip {
+                visible: updateIconHover.hovered
+                delay: 400
+                text: appUpdater ? "检查更新 v" + appUpdater.currentVersion : "检查更新"
+            }
+
+            HoverHandler { id: updateIconHover }
+
+            onClicked: {
+                if (appUpdater) {
+                    root.autoCheckUpdate = false;
+                    appUpdater.checkForUpdate();
+                }
+            }
+        }
     }
 
-    // 第一组导航
+    // 第一组导航（固定，不随歌单列表滚动）
     Column {
         id: navColumn
         anchors.left: parent.left
@@ -129,6 +157,16 @@ Rectangle {
                 iconType: "discover",
                 text: "云音乐精选",
                 pageurl: "qrc:/Src/ComponentPage/HomePage.qml"
+            },
+            {
+                iconType: "daily",
+                text: "每日推荐",
+                pageurl: "qrc:/Src/ComponentPage/DailyRecommendPage.qml"
+            },
+            {
+                iconType: "rank",
+                text: "排行榜",
+                pageurl: "qrc:/Src/ComponentPage/RankPage.qml"
             },
             {
                 iconType: "together",
@@ -222,13 +260,15 @@ Rectangle {
         }
     }
 
-    // 第二组导航
+    // 第二组导航（底部锚到窗口底：歌单展开较多时，列表区域滚动，导航项不受影响）
     Column {
         id: navColumn2
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: navColumn.bottom
         anchors.topMargin: 20
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 8
         spacing: 4
 
         property bool _anyPlaylistActive: leftpageRectangle.activePlaylistGid !== ""
@@ -302,9 +342,29 @@ Rectangle {
 
         }
 
-        // 展开后：用户歌单子项列表，点击直接进详情页（复用主页推荐歌单详情样式）
-        Repeater {
-            model: leftpageRectangle.playlistsExpanded ? leftpageRectangle.userPlaylists : []
+        // 展开后：用户歌单子项列表（点击直接进详情页）。
+        // 歌单较多时列表自身滚动（占满 表头 与 最近播放 之间的空间），导航项保持固定。
+        ListView {
+            id: playlistList
+            width: parent.width
+            height: parent.height - 44 - 44 - 8   // 减去 表头 44 + 最近播放 44 + 间距
+            clip: true
+            spacing: 2
+            visible: leftpageRectangle.playlistsExpanded
+            model: leftpageRectangle.userPlaylists
+
+            ScrollBar.vertical: ScrollBar {
+                anchors.right: parent.right
+                anchors.rightMargin: 2
+                width: 5
+                policy: ScrollBar.AsNeeded
+                contentItem: Rectangle {
+                    visible: parent.active
+                    width: 5
+                    radius: 2.5
+                    color: AppTheme.scrollbarColor
+                }
+            }
 
             delegate: Rectangle {
                 id: playlistChild
@@ -367,7 +427,12 @@ Rectangle {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        var gid = playlistChild.modelData.global_collection_id || "";
+                        // 收藏的歌单是空壳（自己的壳里没有歌曲），
+                        // 数据源用原歌单 gid（list_create_gid）；自己创建的歌单没有该字段，退回壳 gid
+                        var gid = playlistChild.modelData.list_create_gid
+                                  || playlistChild.modelData.global_collection_id
+                                  || "";
+                        console.log("[Leftpage] open playlist, gid:", gid, "name:", playlistChild.modelData.name)
                         if (gid === "")
                             return;
                         leftpageRectangle.activePlaylistGid = gid;
@@ -398,7 +463,7 @@ Rectangle {
             height: 44
             radius: 12
             anchors.horizontalCenter: parent.horizontalCenter
-            property bool isSelected: leftpageRectangle.currentIndex === 3
+            property bool isSelected: leftpageRectangle.currentIndex === 4
             // hover 改为文字/图标变亮（背景保持透明，渐变下无块状覆盖层）
             color: recentItem.isSelected ? AppTheme.accent : "transparent"
 
@@ -434,8 +499,8 @@ Rectangle {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
                     leftpageRectangle.activePlaylistGid = "";
-                    if (leftpageRectangle.currentIndex !== 3) {
-                        leftpageRectangle.currentIndex = 3;
+                    if (leftpageRectangle.currentIndex !== 4) {
+                        leftpageRectangle.currentIndex = 4;
                         BasicConfig.pushPage("qrc:/Src/ComponentPage/RecentlyPlayed.qml");
                     }
                 }
@@ -447,60 +512,5 @@ Rectangle {
                 NumberAnimation { duration: AppTheme.animFast; easing.type: Easing.OutCubic }
             }
         }
-    }
-
-    // 检查更新按钮（底部）
-    Rectangle {
-        id: updateBtn
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        anchors.margins: 12
-        anchors.bottomMargin: 32
-        height: 40
-        radius: 10
-        // hover 改为文字变亮（背景保持透明，渐变下无块状覆盖层）
-        color: "transparent"
-
-        Row {
-            spacing: 8
-            anchors.centerIn: parent
-
-            Text {
-                text: "\u21BB"
-                color: updateMouseArea.containsMouse ? AppTheme.textPrimary : AppTheme.textMuted
-                font.pixelSize: AppTheme.fontSizeTitle
-                anchors.verticalCenter: parent.verticalCenter
-            }
-
-            Text {
-                text: "检查更新"
-                color: updateMouseArea.containsMouse ? AppTheme.textPrimary : AppTheme.textMuted
-                font.pixelSize: AppTheme.fontSizeBody
-                font.family: AppTheme.fontFamily
-                anchors.verticalCenter: parent.verticalCenter
-            }
-
-            Text {
-                text: appUpdater ? "v" + appUpdater.currentVersion : ""
-                color: AppTheme.textDim
-                font.pixelSize: AppTheme.fontSizeCaption
-                anchors.verticalCenter: parent.verticalCenter
-            }
-        }
-
-        MouseArea {
-            id: updateMouseArea
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: {
-                if (appUpdater) {
-                    root.autoCheckUpdate = false;
-                    appUpdater.checkForUpdate();
-                }
-            }
-        }
-
     }
 }
