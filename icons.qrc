@@ -58,5 +58,8 @@
     <file>icons/users-three.svg</file>
     <file>icons/users.svg</file>
     <file>icons/x.svg</file>
+    <file>icons/order.svg</file>
+    <file>icons/repeat-one.svg</file>
+    <file>icons/shuffle.svg</file>
   </qresource>
 </RCC>
