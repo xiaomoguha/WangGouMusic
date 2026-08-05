@@ -16,6 +16,7 @@ Item {
     Repeater {
         model: root._barCount
         delegate: Rectangle {
+            id: bar
             width: root.barWidth
             radius: root.barWidth / 2
             color: root.barColor
@@ -27,6 +28,16 @@ Item {
                 loops: Animation.Infinite
                 NumberAnimation { from: 3; to: root.height; duration: 340 + index * 110; easing.type: Easing.InOutQuad }
                 NumberAnimation { from: root.height; to: 3; duration: 340 + index * 110; easing.type: Easing.InOutQuad }
+            }
+
+            // 暂停/不可见：平滑落到静止高度（中间高两边低）。
+            // 若直接停住动画，条可能停在最低点看起来像消失——静止态保持可见完整形态。
+            // 动画停止后动画驱动结束，这里显式赋值静止高度（Behavior 负责平滑过渡）。
+            property bool paused: !root.playing || !root.visible
+            Behavior on height { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+            onPausedChanged: {
+                if (paused)
+                    height = [10, 16, 12][index]
             }
         }
     }

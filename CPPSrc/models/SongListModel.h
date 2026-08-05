@@ -34,6 +34,7 @@ public:
         LyricRole,
         AddedByNicknameRole,
         AddedByAvatarRole,
+        FileIdRole,
     };
     Q_ENUM(Roles)
 

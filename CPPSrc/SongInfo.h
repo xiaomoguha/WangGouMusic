@@ -23,6 +23,8 @@ struct SongInfo
     Q_PROPERTY(QString lyric MEMBER lyric)
     Q_PROPERTY(QString added_by_nickname MEMBER added_by_nickname)
     Q_PROPERTY(QString added_by_avatar MEMBER added_by_avatar)
+    // 歌单内歌曲标识（删歌用）：仅歌单 track/all 数据源填充，其他场景为空
+    Q_PROPERTY(QString fileid MEMBER fileid)
 
 public:
     QString title;
@@ -35,6 +37,7 @@ public:
     QString lyric;
     QString added_by_nickname;
     QString added_by_avatar;
+    QString fileid;
 };
 
 #endif // SONG_INFO_H

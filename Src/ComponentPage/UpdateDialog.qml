@@ -90,6 +90,17 @@ ThemedPopup {
                 contentHeight: notesText.implicitHeight
                 clip: true
 
+                // 长日志可见滚动条提示
+                ScrollBar.vertical: ScrollBar {
+                    width: 4
+                    policy: ScrollBar.AsNeeded
+                    background: null
+                    contentItem: Rectangle {
+                        radius: 2
+                        color: AppTheme.textMuted
+                    }
+                }
+
                 Text {
                     id: notesText
                     width: parent.width
