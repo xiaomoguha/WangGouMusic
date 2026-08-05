@@ -31,6 +31,8 @@
 #include "./CPPSrc/lyricsconfigmanager.h"
 #include "./CPPSrc/personalfm.h"
 #include "./CPPSrc/ranklist.h"
+#include "./CPPSrc/albummanager.h"
+#include "./CPPSrc/artistmanager.h"
 #include "./CPPSrc/songcomments.h"
 #include "./CPPSrc/playlistcollection.h"
 #include "./CPPSrc/playlistmanager.h"
@@ -138,6 +140,8 @@ int main(int argc, char *argv[])
     DailyRecommend dailyRecommend;
     PersonalFM personalFM;
     RankList rankList;
+    AlbumManager albumManager;
+    ArtistManager artistManager;
     SongComments songComments;
     dailyRecommend.setUserManager(&userManager);
     personalFM.setUserManager(&userManager);
@@ -164,6 +168,8 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("dailyRecommend", &dailyRecommend);
     engine.rootContext()->setContextProperty("personalFM", &personalFM);
     engine.rootContext()->setContextProperty("rankList", &rankList);
+    engine.rootContext()->setContextProperty("albumManager", &albumManager);
+    engine.rootContext()->setContextProperty("artistManager", &artistManager);
     engine.rootContext()->setContextProperty("songComments", &songComments);
 
     // 桌面歌词鼠标穿透控制器（锁定时窗口穿透，仅解锁按钮可点击）
