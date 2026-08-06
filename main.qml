@@ -121,8 +121,9 @@ ApplicationWindow {
     Connections {
         target: userManager
         function onTokenRefreshResult(success) {
-            if (!success) {
-                // token 过期或无效，弹出登录页
+            // 仅真过期（C++ 已清空登录态）才弹登录页；
+            // 网络错误会保留登录态（token 可能还有效），不弹窗避免误登出
+            if (!success && userManager && !userManager.isLoggedIn) {
                 loginPopup.open()
             }
         }

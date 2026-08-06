@@ -68,7 +68,6 @@ ThemedPopup {
                 font.weight: Font.DemiBold
                 font.family: AppTheme.fontFamily
                 color: !loginPopup.qrTabActive ? AppTheme.accent : AppTheme.textMuted
-                anchors.horizontalCenter: parent.horizontalCenter
                 width: parent.width / 2 - 14
 
                 HoverHandler { cursorShape: Qt.PointingHandCursor }
@@ -86,7 +85,6 @@ ThemedPopup {
                 font.weight: Font.DemiBold
                 font.family: AppTheme.fontFamily
                 color: loginPopup.qrTabActive ? AppTheme.accent : AppTheme.textMuted
-                anchors.horizontalCenter: parent.horizontalCenter
                 width: parent.width / 2 - 14
 
                 HoverHandler { cursorShape: Qt.PointingHandCursor }
@@ -94,7 +92,8 @@ ThemedPopup {
                     onTapped: {
                         loginPopup.qrTabActive = true
                         loginPopup.errorMsg = ""
-                        if (loginPopup.qrKey === "" && userManager)
+                        // 每次进入扫码 tab 都用全新 key：旧码可能已过期/已授权，复用会卡死
+                        if (userManager)
                             userManager.fetchQrKey()
                     }
                 }
@@ -282,13 +281,14 @@ ThemedPopup {
             radius: AppTheme.radiusMedium
             color: {
                 if (userManager && userManager.isLoading) return AppTheme.textMuted
-                return loginBtnHover.hovered ? AppTheme.accentHover : AppTheme.accent
+                // 浅色模式深底（白字）/ 深色模式白底（黑字），保证文字对比度
+                return loginBtnHover.hovered ? AppTheme.textSecondary : AppTheme.textPrimary
             }
 
             Text {
                 anchors.centerIn: parent
                 text: userManager && userManager.isLoading ? "登录中..." : "登录"
-                color: "white"
+                color: AppTheme.isDark ? "#1A1A2E" : "#FFFFFF"
                 font.pixelSize: AppTheme.fontSizeBodyLg
                 font.weight: Font.DemiBold
                 font.family: AppTheme.fontFamily
@@ -321,6 +321,7 @@ ThemedPopup {
         repeat: true
         running: loginPopup.qrTabActive && loginPopup.opened && loginPopup.qrKey !== "" && loginPopup.qrStatus !== 4
         onTriggered: {
+            console.log("[LoginPage] QR 轮询 key=" + loginPopup.qrKey + " status=" + loginPopup.qrStatus)
             if (userManager) userManager.checkQrStatus(loginPopup.qrKey)
         }
     }
@@ -397,15 +398,18 @@ ThemedPopup {
         function onQrStatusReady(status) {
             loginPopup.qrStatus = status
             if (status === 0) {
-                // 过期：停止轮询，展示刷新按钮（用户点击后重新生成）
+                // 过期：自动换新码继续等（二维码有效期 ~90s，用户扫码动作慢，手动刷新容易卡死）
                 qrPollTimer.stop()
+                if (userManager)
+                    userManager.fetchQrKey()
             }
         }
     }
 
     onOpened: {
         if (qrTabActive) {
-            if (qrKey === "" && userManager)
+            // 重开弹窗一律换新码（旧码过期/已授权都会卡死轮询）
+            if (userManager)
                 userManager.fetchQrKey()
         } else {
             phoneInput.forceActiveFocus()
