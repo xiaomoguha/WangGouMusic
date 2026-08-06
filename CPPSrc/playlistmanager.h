@@ -77,6 +77,7 @@ class PlaylistManager : public QObject
     Q_PROPERTY(int quality READ quality NOTIFY qualityChanged)  // 0自动/1标准128/2高品320/3无损flac
 public:
     explicit PlaylistManager(Recommendation *recommendation, QObject *parent = nullptr);
+    ~PlaylistManager(); // 清理退出中断留下的半截下载文件
     Q_INVOKABLE void addSong(const SongInfo &song);
     Q_INVOKABLE void addSong(const QVariantMap &songMap);
     Q_INVOKABLE void removeSong(int index);
@@ -273,6 +274,10 @@ private:
     qint64 m_totalDownloadBytes  = 0;
     // 缓存目录访问（转发到 PlaylistCacheStore，保留供内部使用）
     QString getCacheDir() const;
+
+    // 正在下载的缓存文件路径：app 退出时进程中断下载会留下半截 flac，
+    // 下次播放 probe 失败（0 channels 无声音）——析构时删除它们
+    QSet<QString> m_activeDownloadFiles;
 
     // 主色调提取（独立模块）：异步后台线程 + 内存 LRU 缓存
     DominantColorExtractor *m_colorExtractor;
