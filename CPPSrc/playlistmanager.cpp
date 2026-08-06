@@ -722,9 +722,13 @@ void PlaylistManager::setQuality(int q)
         s.url.clear();
     // 当前歌即时换源：走标准播放管线（缓存优先 + 边下边播，与切歌完全同路径）。
     // 不能直接 setSource 网络流——无损网络流播放走 ffmpeg 后端直连，
-    // 与标准音质的缓存播放路径不一致（实测无损网络流卡顿）
+    // 与标准音质的缓存播放路径不一致（实测无损网络流卡顿）。
+    // 续播：记录当前进度，startPlayback 新源就绪后 seek 到该位置（不从 0 重播）
     if (m_currentIndex >= 0 && m_currentIndex < (*m_curplaylist).size())
+    {
+        m_resumePercentAfterSwitch = m_percent > 0.02f ? m_percent : -1.0f;
         playSongbyindex(m_currentIndex);
+    }
 }
 
 void PlaylistManager::playPrevious()
@@ -1091,6 +1095,10 @@ void PlaylistManager::downloadAndStream(
     m_downloadedBytes    = 0;
     m_totalDownloadBytes = reply->header(QNetworkRequest::ContentLengthHeader).toLongLong();
     emit downloadProgressChanged();
+    // 续播（音质切换）：seek 目标对应的字节数，下载到该位置才开播，避免 seek 超出已下载区
+    const qint64 seekBytes = seekPercent > 0 && m_totalDownloadBytes > 0
+                                 ? static_cast<qint64>(seekPercent * m_totalDownloadBytes)
+                                 : 0;
 
     QObject::connect(
         reply, &QNetworkReply::readyRead, this,
@@ -1110,8 +1118,10 @@ void PlaylistManager::downloadAndStream(
             }
 
             // 达到阈值且尚未开始播放 -> 设置源并播放
+            // 续播时额外要求 seek 目标字节已下载到位（flac 2MB 阈值 < 3 分钟处的 ~12MB）
             QFileInfo fi(cacheFilePath);
-            if (fi.size() >= startThreshold && m_player->source().isEmpty())
+            if (fi.size() >= startThreshold && m_player->source().isEmpty()
+                && (seekBytes == 0 || fi.size() >= seekBytes))
             {
                 m_player->setSource(QUrl::fromLocalFile(cacheFilePath));
                 // seekPercent > 0：等 LoadedMedia 后 seek 再播放；否则直接播放
@@ -1141,6 +1151,24 @@ void PlaylistManager::downloadAndStream(
                 }
                 if (onStreamStart)
                     onStreamStart();
+            }
+        }
+    );
+
+    // 下载失败：删除半截文件，避免下次缓存命中播放损坏文件（FormatError 死循环）
+    QObject::connect(
+        reply, &QNetworkReply::errorOccurred, this,
+        [=](QNetworkReply::NetworkError err)
+        {
+            if (err == QNetworkReply::OperationCanceledError)
+                return; // 主动取消（切歌/退出）不视为损坏，保留已下载部分下次续用
+            qWarning() << "下载失败:" << err << songUrl;
+            tempFile->remove();
+            if (m_player->source().isEmpty())
+            {
+                m_isPaused    = true;
+                m_isBuffering = false;
+                emit isPausedChanged();
             }
         }
     );
@@ -1240,6 +1268,10 @@ void PlaylistManager::startPlayback(const SongInfo &song)
     m_isPaused = false;
     emit isPausedChanged();
 
+    // 音质切换续播：取出本次换源的续播进度（消费一次，其余调用不受影响）
+    const double resumePercent = m_resumePercentAfterSwitch;
+    m_resumePercentAfterSwitch = -1.0f;
+
     PlaylistCacheStore::ensureCacheDir();
     QString cacheFilePath = PlaylistCacheStore::songCachePath(song.title, song.singername, m_quality);
 
@@ -1249,7 +1281,29 @@ void PlaylistManager::startPlayback(const SongInfo &song)
         qDebug() << "缓存文件已存在，直接播放:" << cacheFilePath;
         m_player->stop();
         m_player->setSource(QUrl::fromLocalFile(cacheFilePath));
-        m_player->play();
+        if (resumePercent > 0 && resumePercent < 1.0)
+        {
+            // 续播：LoadedMedia 后 seek 再播放
+            auto conn = std::make_shared<QMetaObject::Connection>();
+            *conn     = connect(
+                m_player, &QMediaPlayer::mediaStatusChanged, this,
+                [this, resumePercent, conn](QMediaPlayer::MediaStatus status)
+                {
+                    if (status == QMediaPlayer::LoadedMedia)
+                    {
+                        seekToPercent(resumePercent);
+                        m_player->play();
+                        m_isPaused = false;
+                        emit isPausedChanged();
+                        QObject::disconnect(*conn);
+                    }
+                }
+            );
+        }
+        else
+        {
+            m_player->play();
+        }
         m_isPaused = false;
         m_colorExtractor->extract(song.union_cover);
         emit isPausedChanged();
@@ -1259,7 +1313,7 @@ void PlaylistManager::startPlayback(const SongInfo &song)
 
     // 无缓存：边下边播（下载逻辑与一起听路径共用 downloadAndStream）
     // onStreamStart 无需再 emit currentSongChanged（已在入口 emit）
-    downloadAndStream(song.url, cacheFilePath, song.union_cover, 0.0, nullptr);
+    downloadAndStream(song.url, cacheFilePath, song.union_cover, resumePercent, nullptr);
 }
 
 // 保存播放列表到本地缓存
@@ -1361,7 +1415,24 @@ void PlaylistManager::restoreLastPlayback()
             if (status == QMediaPlayer::LoadedMedia)
             {
                 if (seekPercent > 0 && seekPercent < 1.0)
-                    seekToPercent(seekPercent);
+                {
+                    if (m_player->duration() > 0)
+                        seekToPercent(seekPercent);
+                    else
+                    {
+                        // duration 未就绪时 seek 无效（实测 LoadedMedia 时 duration 可能为 0）
+                        // -> 延迟到 durationChanged 后再 seek，否则恢复播放会从头开始
+                        auto dconn = std::make_shared<QMetaObject::Connection>();
+                        *dconn     = connect(
+                            m_player, &QMediaPlayer::durationChanged, this,
+                            [this, seekPercent, dconn]()
+                            {
+                                seekToPercent(seekPercent);
+                                QObject::disconnect(*dconn);
+                            }
+                        );
+                    }
+                }
                 // 用户曾点过播放（source 未就绪时排队）：就绪后自动续播
                 if (m_pendingPlayWhenReady)
                 {
@@ -1651,15 +1722,33 @@ void PlaylistManager::handlePlayerError(QMediaPlayer::Error error, const QString
 
     qWarning() << "播放出错:" << errorString << "错误代码:" << error;
 
+    // Qt ffmpeg 后端解码酷狗 flac 尾部不兼容（最小复现：播到 ~99.1% 报 FormatError，文件本身完好，
+    // md5 与服务器一致）。接近末尾的错误按自然播完处理：不删缓存、直接下一首
+    if (error == QMediaPlayer::FormatError)
+    {
+        const qint64 dur = m_player->duration();
+        if (dur > 0 && m_player->position() >= dur * 95 / 100)
+        {
+            qWarning() << "播放接近末尾报错（ffmpeg 尾部解码不兼容），按自然播完处理";
+            emit playbackFinished();
+            m_isPaused = true;
+            emit isPausedChanged();
+            // 错误回调中同步切歌可能被播放器状态机吞掉：延迟到事件循环再播下一首
+            QTimer::singleShot(0, this, [this]() { playNext(); });
+            return;
+        }
+    }
+
     // FormatError 且正在播放本地缓存文件（非边下边播）-> 删除损坏的缓存并重新下载
-    if (error == QMediaPlayer::FormatError && type == TOGETHER)
+    // LOCAL 与 TOGETHER 统一处理：损坏的缓存不删除会永久卡死（每次播放都在同一处报错）
+    if (error == QMediaPlayer::FormatError)
     {
         QUrl src = m_player->source();
         if (src.isLocalFile())
         {
             QString localPath = src.toLocalFile();
             QFileInfo fi(localPath);
-            // 只处理文件不再增长的情况（非边下边播）
+            // 只处理文件不再增长的情况（非边下边播：下载中文件会持续增长，等它下完）
             qint64 size1 = fi.size();
             QTimer::singleShot(
                 200, this,
@@ -1670,22 +1759,31 @@ void PlaylistManager::handlePlayerError(QMediaPlayer::Error error, const QString
                     {
                         return;
                     }
-                    qDebug() << "一起听 - 缓存文件损坏，删除并重新下载:" << localPath;
+                    qDebug() << "缓存文件损坏，删除并重新下载:" << localPath;
                     m_player->stop();
                     m_player->setSource(QUrl());
                     QFile::remove(localPath);
-                    m_currentTogetherSongHash.clear(); // 允许重新播放同一首歌
 
-                    if (m_currentIndex >= 0 && m_currentIndex < m_togetherplaylist.size())
+                    if (type == TOGETHER)
                     {
-                        const SongInfo &song = m_togetherplaylist[m_currentIndex];
-                        if (!song.url.isEmpty())
+                        m_currentTogetherSongHash.clear(); // 允许重新播放同一首歌
+                        if (m_currentIndex >= 0 && m_currentIndex < m_togetherplaylist.size())
                         {
-                            playTogetherSongFromServer(
-                                song.url, song.title, song.songhash, song.singername, song.union_cover, song.album_name,
-                                song.duration
-                            );
+                            const SongInfo &song = m_togetherplaylist[m_currentIndex];
+                            if (!song.url.isEmpty())
+                            {
+                                playTogetherSongFromServer(
+                                    song.url, song.title, song.songhash, song.singername, song.union_cover,
+                                    song.album_name, song.duration
+                                );
+                            }
                         }
+                    }
+                    else
+                    {
+                        // LOCAL：重播当前歌，走标准管线（缓存已删 -> 重新边下边播）
+                        if (m_currentIndex >= 0 && m_currentIndex < (*m_curplaylist).size())
+                            playSongbyindex(m_currentIndex);
                     }
                 }
             );
@@ -1745,21 +1843,10 @@ void PlaylistManager::handlePlayerError(QMediaPlayer::Error error, const QString
     }
     else
     {
-        // 修复失败，跳到下一首但不自动播放
-        qWarning() << "修复失败，跳过当前歌曲";
+        // 修复失败：自动跳到下一首并播放（连续播放体验，坏歌自动跳过）
+        qWarning() << "修复失败，跳过当前歌曲，自动播放下一首";
         m_repairCount = 0;
-        m_isPaused    = true;
-        emit isPausedChanged();
-        // 只切歌不播放
-        int nextIdx = m_currentIndex + 1;
-        if (nextIdx >= (*m_curplaylist).size())
-            nextIdx = 0;
-        if (nextIdx != m_currentIndex && nextIdx < (*m_curplaylist).size())
-        {
-            m_currentIndex = nextIdx;
-            emit currentIndexChanged(nextIdx);
-            loadSongPaused(nextIdx);
-        }
+        playNext();
     }
 }
 // 将毫秒转换为 "分:秒" 格式

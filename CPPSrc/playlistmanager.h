@@ -209,6 +209,8 @@ private:
     void fadeInVolume(); // 0 -> 目标音量（1.5s）
     void fadeOutVolume(int ms, std::function<void()> onFinished);
     QString m_duration = "00:00";
+    // 音质切换续播：setQuality 换源时记录当前进度，startPlayback 新源就绪后 seek 到该位置（-1 = 无续播）
+    float m_resumePercentAfterSwitch = -1.0f;
     void updatePlaybackProgress(qint64 position);
     // 逐字进度刷新：本地文件播放 positionChanged 实测仅 ~11Hz（无损缓存）、网络流 ~20Hz，
     // 不足以驱动 60fps 动画——16ms 定时器按真实播放位置重算补足。渲染已优化
