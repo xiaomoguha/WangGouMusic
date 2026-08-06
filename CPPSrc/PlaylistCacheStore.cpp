@@ -34,19 +34,93 @@ void PlaylistCacheStore::ensureCacheDir()
     }
 }
 
+// 旧版平铺结构 → 新版分类目录（songs/128|320|flac、config、lyrics），迁移后删旧文件。
+// .cache_v2 标记文件保证只迁移一次（后续版本不再扫描根目录）。
+void PlaylistCacheStore::migrateLegacyCache()
+{
+    ensureCacheDir();
+    if (QFile::exists(cacheDir() + QStringLiteral("/.cache_v2")))
+        return;
+    QDir root(cacheDir());
+    // 根目录旧歌曲缓存（平铺 mp3 都是默认音质）→ songs/128/
+    const QStringList songs = root.entryList({QStringLiteral("*.mp3")}, QDir::Files);
+    for (const QString &f : songs)
+        migrateFile(root, f, QStringLiteral("songs/128"));
+    // 旧配置文件 → config/
+    migrateFile(root, QStringLiteral("playlist_cache.json"), QStringLiteral("config"));
+    migrateFile(root, QStringLiteral("recent_cache.json"), QStringLiteral("config"));
+    migrateFile(root, QStringLiteral("history_cache.json"), QStringLiteral("config"));
+    migrateFile(root, QStringLiteral("lyrics_config.json"), QStringLiteral("config"));
+    migrateFile(root, QStringLiteral("favorite_hashes.json"), QStringLiteral("config"));
+    migrateFile(root, QStringLiteral("playlists_cache.json"), QStringLiteral("config"));
+    migrateFile(root, QStringLiteral("search_history.json"), QStringLiteral("config"));
+    migrateFile(root, QStringLiteral("user_detail_cache.json"), QStringLiteral("config"));
+    // 用户歌单详情缓存 playlist_collection_*.json（注意别误匹配 playlist_cache.json，前缀不同）
+    const QStringList collections = root.entryList({QStringLiteral("playlist_*.json")}, QDir::Files);
+    for (const QString &f : collections)
+        migrateFile(root, f, QStringLiteral("config"));
+    // 旧歌词文件 → lyrics/
+    const QStringList lyrics = root.entryList({QStringLiteral("lyrics_*.json")}, QDir::Files);
+    for (const QString &f : lyrics)
+        migrateFile(root, f, QStringLiteral("lyrics"));
+    // 写迁移标记
+    QFile marker(cacheDir() + QStringLiteral("/.cache_v2"));
+    if (marker.open(QIODevice::WriteOnly))
+    {
+        marker.write("1");
+        marker.close();
+    }
+    qDebug() << "[PlaylistCacheStore] 旧版缓存迁移完成";
+}
+
+void PlaylistCacheStore::migrateFile(QDir &root, const QString &name, const QString &subDir)
+{
+    const QString from = root.filePath(name);
+    if (!QFile::exists(from))
+        return;
+    QDir target(cacheDir() + QStringLiteral("/") + subDir);
+    if (!target.exists())
+        target.mkpath(QStringLiteral("."));
+    // 目标已存在（新结构已写入同文件）：直接删旧的，保留新的
+    if (QFile::exists(target.filePath(name)))
+    {
+        QFile::remove(from);
+        return;
+    }
+    if (QFile::rename(from, target.filePath(name)))
+        qDebug() << "[PlaylistCacheStore] 迁移" << name << "→" << subDir;
+    else
+        qWarning() << "[PlaylistCacheStore] 迁移失败:" << name;
+}
+
+// 歌曲缓存按音质分目录：0自动/1标准 → songs/128/*.mp3，2高品 → songs/320/*.mp3，3无损 → songs/flac/*.flac
+QString PlaylistCacheStore::songCachePath(const QString &title, const QString &singer, int quality)
+{
+    static const char *const dirs[] = {"128", "128", "320", "flac"};
+    static const char *const exts[] = {".mp3", ".mp3", ".mp3", ".flac"};
+    const int q = qBound(0, quality, 3);
+    return QStringLiteral("%1/songs/%2/%3-%4%5")
+        .arg(cacheDir(), QLatin1String(dirs[q]), title, singer, QLatin1String(exts[q]));
+}
+
+QString PlaylistCacheStore::configPath(const QString &name)
+{
+    return cacheDir() + QStringLiteral("/config/") + name;
+}
+
 QString PlaylistCacheStore::playlistCachePath()
 {
-    return cacheDir() + QStringLiteral("/playlist_cache.json");
+    return configPath(QStringLiteral("playlist_cache.json"));
 }
 
 QString PlaylistCacheStore::recentCachePath()
 {
-    return cacheDir() + QStringLiteral("/recent_cache.json");
+    return configPath(QStringLiteral("recent_cache.json"));
 }
 
 QString PlaylistCacheStore::lyricCachePath(const QString &songhash)
 {
-    return cacheDir() + QStringLiteral("/lyrics_") + songhash + QStringLiteral(".json");
+    return cacheDir() + QStringLiteral("/lyrics/lyrics_") + songhash + QStringLiteral(".json");
 }
 
 // 封面 URL 升级：低清尺寸路径段统一替换为 /720/

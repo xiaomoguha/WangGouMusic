@@ -62,7 +62,7 @@ void SearchHistoryManager::clearHistory()
 
 QString SearchHistoryManager::filePath() const
 {
-    return PlaylistCacheStore::cacheDir() + "/search_history.json";
+    return PlaylistCacheStore::configPath("search_history.json");
 }
 
 void SearchHistoryManager::load()

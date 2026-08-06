@@ -146,6 +146,11 @@ Rectangle {
                 iconType: "together",
                 text: "一起听歌",
                 pageurl: "qrc:/Src/ComponentPage/musictogether.qml"
+            },
+            {
+                iconType: "discoverpl",
+                text: "歌单发现",
+                pageurl: "qrc:/Src/ComponentPage/DiscoverPage.qml"
             }
         ]
 

@@ -31,6 +31,27 @@ Window {
         }
     }
 
+    // 歌词进度同步（可见性隔离）：仅窗口可见时响应 currlyricChanged（60Hz 动画源），
+    // 隐藏时 Connections 关闭 → 容器属性不变 → 逐字绑定零重算，主线程不卡
+    Connections {
+        target: playlistmanager
+        enabled: desktopLyrics.visible
+        function onCurrlyricChanged() { syncLyricValues() }
+    }
+    function syncLyricValues() {
+        if (!playlistmanager) return
+        horizontalLyricContainer.lyricText    = playlistmanager.currlyric || "网狗音乐"
+        horizontalLyricContainer.charIndex    = playlistmanager.lyricCharIndex
+        horizontalLyricContainer.charProgress = playlistmanager.lyricCharProgress || 0
+        verticalTextContainer.lyricText       = playlistmanager.currlyric || "网狗音乐"
+        verticalTextContainer.charIndex       = playlistmanager.lyricCharIndex
+        verticalTextContainer.charProgress    = playlistmanager.lyricCharProgress || 0
+    }
+    onVisibleChanged: {
+        if (desktopLyrics.visible)
+            syncLyricValues()  // 重新可见时立即同步（隐藏期间值已陈旧）
+    }
+
     // 竖排歌词可视区固定高度上限（px）：长歌词不再顶满 80% 屏幕高，超出部分裁剪+滚动
     property int verticalHeightLimit: 350
     // 横排歌词可视区固定宽度上限（px）：长歌词在固定宽度内裁剪+滚动
@@ -224,29 +245,10 @@ Window {
                     height: bgTextHorizontal.implicitHeight
                     clip: false   // 星星 y 为负需伸出容器顶，裁剪交给内层 clipTextMask
 
-                    property string lyricText: {
-                        try {
-                            return playlistmanager ? (playlistmanager.currlyric || "网狗音乐") : "网狗音乐";
-                        } catch (e) {
-                            return "网狗音乐";
-                        }
-                    }
-
-                    property int charIndex: {
-                        try {
-                            return playlistmanager ? playlistmanager.lyricCharIndex : -1;
-                        } catch (e) {
-                            return -1;
-                        }
-                    }
-
-                    property real charProgress: {
-                        try {
-                            return playlistmanager ? (playlistmanager.lyricCharProgress || 0) : 0;
-                        } catch (e) {
-                            return 0;
-                        }
-                    }
+                    // 由根级 syncLyricValues() 赋值（可见性隔离：窗口隐藏时零重算）
+                    property string lyricText: "网狗音乐"
+                    property int charIndex: -1
+                    property real charProgress: 0
 
                     // 高亮比例
                     property real highlightRatio: {
@@ -256,7 +258,7 @@ Window {
                         return (horizontalLyricContainer.charIndex + horizontalLyricContainer.charProgress) / totalChars;
                     }
 
-                    // 跳跃星星的实际像素位置（由当前字 delegate 写入）
+                    // 跳跃星星的实际像素位置（由当前字 delegate 的 Binding 写入）
                     property real starX: 0
 
                     // 滚动偏移：跟随高亮位置
@@ -283,11 +285,13 @@ Window {
                     }
 
                     // 横向裁剪层：只裁字、不裁星星
+                    // 逐字渲染（原版效果：白色从左刷成红色、整行连续推进）。
+                    // 每帧只重绘当前字（其他字 fillRatio 值不变不重绘）；
+                    // 60fps 帧率由 C++ 16ms 定时器 + position 外推保证
                     Item {
                         anchors.fill: parent
                         clip: true
 
-                        // 逐字渲染 + 压扁染色，整体随 scrollOffset 滚动
                         Row {
                             id: hLineRow
                             anchors.verticalCenter: parent.verticalCenter
@@ -325,7 +329,7 @@ Window {
                                         font.pixelSize: desktopLyrics.fontSize * desktopLyrics.scale
                                         font.bold: true
                                     }
-                                    // 已唱色（左半，按 fillRatio 裁剪）+ 同色软发光（以前的效果）
+                                    // 已唱色（左半，按 fillRatio 裁剪）+ 同色软发光
                                     Item {
                                         width: hBaseChar.width * fillRatio
                                         height: hBaseChar.height
@@ -339,7 +343,7 @@ Window {
                                             styleColor: desktopLyrics.lyricsGlow
                                         }
                                     }
-                                    // 未唱色（右半，互补裁剪）+ 深色描边保可读：与已唱色不重叠，无透白也不发糊
+                                    // 未唱色（右半，互补裁剪）+ 深色描边保可读
                                     Item {
                                         x: hBaseChar.width * fillRatio
                                         width: hBaseChar.width * (1 - fillRatio)
@@ -376,6 +380,7 @@ Window {
                         height: width
                         // 唱到字下沉压字顶(1)->前段(0->a)减速上抛到最高(0,慢)->后段(a->1)重力加速下落(1,快)
                         // 例外：最后一字末段不下落，保持高位往上淡出
+                        // （charProgress 由 16ms 定时器刷新，60fps 平滑）
                         property real starBob: {
                             if (horizontalLyricContainer.charIndex < 0) return 0
                             var p = horizontalLyricContainer.charProgress
@@ -505,29 +510,10 @@ Window {
                     height: Math.min(verticalBgColumn.height, Screen.desktopAvailableHeight * 0.8 - 30, desktopLyrics.verticalHeightLimit)
                     clip: true
 
-                    property string lyricText: {
-                        try {
-                            return playlistmanager ? (playlistmanager.currlyric || "网狗音乐") : "网狗音乐";
-                        } catch (e) {
-                            return "网狗音乐";
-                        }
-                    }
-
-                    property int charIndex: {
-                        try {
-                            return playlistmanager ? playlistmanager.lyricCharIndex : -1;
-                        } catch (e) {
-                            return -1;
-                        }
-                    }
-
-                    property real charProgress: {
-                        try {
-                            return playlistmanager ? (playlistmanager.lyricCharProgress || 0) : 0;
-                        } catch (e) {
-                            return 0;
-                        }
-                    }
+                    // 由根级 syncLyricValues() 赋值（可见性隔离：窗口隐藏时零重算）
+                    property string lyricText: "网狗音乐"
+                    property int charIndex: -1
+                    property real charProgress: 0
 
                     // 高亮比例
                     property real highlightRatio: {

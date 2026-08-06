@@ -463,4 +463,33 @@ ApplicationWindow {
             desktopLyricsSettings.show()
         }
     }
+
+    // MV 播放窗口：打开时暂停主播放器，关闭后按原状态恢复（playstop 是 toggle）
+    ComponentPage.MvWindow {
+        id: mvWindow
+        transientParent: root
+    }
+
+    property bool mvPausedOnOpen: false
+    Connections {
+        target: BasicConfig
+        function onRequestMvPlay(songhash, title) {
+            mvPausedOnOpen = playlistmanager && !playlistmanager.isPaused
+            if (mvPausedOnOpen)
+                playlistmanager.playstop()
+            mvWindow.mvHash = songhash
+            mvWindow.mvTitle = title
+            mvWindow.show()
+        }
+    }
+    Connections {
+        target: mvWindow
+        function onVisibleChanged() {
+            if (!mvWindow.visible && mvPausedOnOpen) {
+                mvPausedOnOpen = false
+                if (playlistmanager)
+                    playlistmanager.playstop()
+            }
+        }
+    }
 }

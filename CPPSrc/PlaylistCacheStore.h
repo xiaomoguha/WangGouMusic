@@ -2,6 +2,7 @@
 #define PLAYLIST_CACHE_STORE_H
 
 #include "SongInfo.h"
+#include <QDir>
 #include <QString>
 #include <QList>
 
@@ -26,6 +27,13 @@ public:
     static QString cacheDir();
     /// 确保缓存目录存在
     static void ensureCacheDir();
+    /// 旧版平铺结构（根目录 .mp3/*.json）→ 新版分类目录（songs/128|320|flac、config、lyrics），
+    /// 移动后删旧文件；已迁移过（.cache_v2 标记）则跳过。启动时调用一次。
+    static void migrateLegacyCache();
+    /// 歌曲缓存路径：按音质分目录（0自动/1标准→songs/128/*.mp3，2高品→songs/320/*.mp3，3无损→songs/flac/*.flac）
+    static QString songCachePath(const QString &title, const QString &singer, int quality);
+    /// config 子目录下指定配置文件的完整路径（history_cache.json 等）
+    static QString configPath(const QString &name);
 
     // ── 播放列表缓存 ─────────────────────────────────────
     /// 序列化播放列表 + 播放位置到 playlist_cache.json
@@ -47,6 +55,8 @@ private:
     static QString playlistCachePath();
     static QString recentCachePath();
     static QString lyricCachePath(const QString &songhash);
+    /// 迁移单个文件到子目录（目标已存在则直接删旧文件）
+    static void migrateFile(QDir &root, const QString &name, const QString &subDir);
 
     // 封面 URL 升级：旧缓存里的低清尺寸统一升到 720（消除 playlistmanager 的两处自重复）
     static QString normalizeCoverUrl(const QString &url);

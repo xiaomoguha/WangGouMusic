@@ -57,6 +57,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         CPPSrc/ranklist.cpp CPPSrc/ranklist.h
         CPPSrc/albummanager.cpp CPPSrc/albummanager.h
         CPPSrc/historymanager.cpp CPPSrc/historymanager.h
+        CPPSrc/discovermanager.cpp CPPSrc/discovermanager.h
+        CPPSrc/mvmanager.cpp CPPSrc/mvmanager.h
         CPPSrc/artistlistmodel.cpp CPPSrc/artistlistmodel.h
         CPPSrc/artistmanager.cpp CPPSrc/artistmanager.h
         CPPSrc/songcomments.cpp CPPSrc/songcomments.h

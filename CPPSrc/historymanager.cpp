@@ -10,6 +10,7 @@
 #include <QJsonObject>
 #include <QJsonParseError>
 #include <QList>
+#include <QSet>
 #include <QUrl>
 #include <QUrlQuery>
 
@@ -188,18 +189,27 @@ void HistoryManager::onPrivilegeData(const QByteArray &data)
     }
 
     QVariantList batch;
+    QSet<QString> seenHash;   // 同一首歌只报一次（sessionCount 已累计多次播放）
     for (const QVariant &v : m_pending)
     {
         const QVariantMap s = v.toMap();
         const QString hash  = s["hash"].toString();
+        if (seenHash.contains(hash))
+            continue;
+        seenHash.insert(hash);
         const QString mxid  = hashToMxid.value(hash);
         if (!mxid.isEmpty())
         {
+            // 增量：只传「上次成功上报后新增」的次数，避免与已推进的 pc 基线叠加
+            const int total  = m_sessionCount.value(hash, 0);
+            const int inc    = total - m_reportedCount.value(hash, 0);
+            if (inc <= 0)
+                continue;   // 该歌次数已全部上报（如上次上传成功后窗口内又入队）
             QVariantMap b;
-            b["mxid"]    = mxid;
-            b["time"]    = s["time"];
-            b["hash"]    = hash;   // 酷狗记录新歌历史必须带 hash（小写），否则不写入
-            b["session"] = m_sessionCount.value(hash, 1);  // 本次会话该歌播放次数
+            b["mxid"] = mxid;
+            b["time"] = s["time"];
+            b["hash"] = hash;   // 酷狗记录新歌历史必须带 hash（小写），否则不写入
+            b["inc"]  = inc;    // 本次新增次数
             batch.append(b);
         }
     }
@@ -215,14 +225,16 @@ void HistoryManager::doUpload(const QVariantList &songs)
 
     // 批量上传：{songs: [{mxid, time(→ot 播放时间戳), pc, hash]}]
     // 路由是 /playhistory/upload（不是 /user/history/upload —— 那个是查询接口，会静默假成功）。
-    // pc = 云端基线 + 本次会话播放次数（覆盖语义，先取基线再覆盖，避免清零已有次数）
+    // pc = 云端基线 + 本次新增次数（覆盖语义，先取基线再覆盖，避免清零已有次数）。
+    // 基线推进放在 onUploadDone 成功确认后，失败不推进（下次按云端值重新算增量）
+    m_pendingCommit.clear();
     QJsonArray arr;
     for (const QVariant &v : songs)
     {
         const QVariantMap m = v.toMap();
         const qint64 mxid   = m["mxid"].toLongLong();
-        const int session   = m["session"].toInt();
-        const int pc        = m_pcCache.value(mxid, 0) + session;
+        const int inc       = m["inc"].toInt();
+        const int pc        = m_pcCache.value(mxid, 0) + inc;
         QJsonObject o;
         o["mxid"] = mxid;
         o["time"] = m["time"].toLongLong();
@@ -231,7 +243,11 @@ void HistoryManager::doUpload(const QVariantList &songs)
         if (!hash.isEmpty())
             o["hash"] = hash.toLower();
         arr.append(o);
-        m_pcCache[mxid] = pc;  // 本地基线同步，后续上报在本次基础上累加
+        QVariantMap commit;
+        commit["mxid"] = mxid;
+        commit["hash"] = hash;
+        commit["pc"]   = pc;
+        m_pendingCommit.append(commit);
     }
     QUrl url(QStringLiteral("%1/playhistory/upload").arg(kApiRoot));
     QUrlQuery query;
@@ -334,9 +350,33 @@ bool HistoryManager::parsePlayhistoryData(const QByteArray &data, QVariantList &
     return true;
 }
 
-// playhistory upload 响应：忽略内容，仅复位上传状态
-void HistoryManager::onUploadDone(const QByteArray &)
+// playhistory upload 响应：成功（status==1）才推进 pc 基线 + 已上报次数，
+// 失败不推进（下次上传仍按云端基线算增量，不会叠加也不会丢次数）
+void HistoryManager::onUploadDone(const QByteArray &data)
 {
+    bool success = false;
+    QJsonParseError perr;
+    const QJsonDocument doc = QJsonDocument::fromJson(data, &perr);
+    if (perr.error == QJsonParseError::NoError && doc.isObject())
+        success = doc.object()["status"].toInt() == 1;
+    if (success)
+    {
+        for (const QVariant &v : m_pendingCommit)
+        {
+            const QVariantMap c    = v.toMap();
+            const qint64 mxid      = c["mxid"].toLongLong();
+            m_pcCache[mxid]        = c["pc"].toInt();
+            const QString hash     = c["hash"].toString();
+            if (!hash.isEmpty())
+                m_reportedCount[hash] = m_sessionCount.value(hash, 0);
+        }
+        qDebug() << "[HistoryManager] 上传成功，已推进" << m_pendingCommit.size() << "首歌的基线";
+    }
+    else
+    {
+        qWarning() << "[HistoryManager] 上传未确认成功，基线不推进";
+    }
+    m_pendingCommit.clear();
     if (m_uploadWorking)
     {
         m_uploadWorking = false;
@@ -348,7 +388,7 @@ void HistoryManager::onUploadDone(const QByteArray &)
 
 void HistoryManager::loadHistoryFromCache()
 {
-    QFile file(PlaylistCacheStore::cacheDir() + "/history_cache.json");
+    QFile file(PlaylistCacheStore::configPath("history_cache.json"));
     if (!file.exists() || !file.open(QIODevice::ReadOnly))
         return;
     const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
@@ -393,7 +433,7 @@ void HistoryManager::saveHistoryToCache()
         o["play_count"]  = s["play_count"].toInt();
         arr.append(o);
     }
-    QFile file(PlaylistCacheStore::cacheDir() + "/history_cache.json");
+    QFile file(PlaylistCacheStore::configPath("history_cache.json"));
     if (file.open(QIODevice::WriteOnly))
     {
         file.write(QJsonDocument(arr).toJson(QJsonDocument::Compact));
@@ -406,6 +446,7 @@ void HistoryManager::onFailed(const QString &err)
     qWarning() << "[HistoryManager] request error:" << err;
     // privilege 批量查询失败：清空队列（下次播放重新攒），不逐个重试
     m_pending.clear();
+    m_pendingCommit.clear();  // 上传未确认：基线不推进，下次按云端重新算增量
     if (m_isLoading)
     {
         m_isLoading = false;

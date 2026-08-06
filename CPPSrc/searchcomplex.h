@@ -33,6 +33,7 @@ public:
         AlbumNameRole,
         SonghashRole,
         UnionCoverRole,
+        MvhashRole,
     };
     Q_ENUM(Roles)
 

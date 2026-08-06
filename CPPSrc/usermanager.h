@@ -37,6 +37,10 @@ public:
     Q_INVOKABLE void login(const QString &username, const QString &password);
     Q_INVOKABLE void sendCaptcha(const QString &mobile);
     Q_INVOKABLE void loginByPhone(const QString &mobile, const QString &code);
+    /// 二维码登录：获取二维码 key + base64 图片（imgBase64 不含 data: 前缀）
+    Q_INVOKABLE void fetchQrKey();
+    /// 轮询扫码状态：status 0过期/1等待/2待确认/4授权成功（成功时自动完成登录并发 loginSuccess）
+    Q_INVOKABLE void checkQrStatus(const QString &key);
     Q_INVOKABLE void refreshToken();
     Q_INVOKABLE void logout();
     Q_INVOKABLE void fetchUserDetail();
@@ -56,6 +60,9 @@ signals:
     void loginSuccess();
     void loginFailed(const QString &error);
     void captchaSent(bool success, const QString &msg);
+    void qrKeyReady(const QString &key, const QString &imgBase64);
+    void qrStatusReady(int status);  // 0过期/1等待/2待确认/4授权成功
+    void qrKeyFailed(const QString &error);
     void tokenRefreshResult(bool success);
     void userDetailReceived(const QVariantMap &data);
     void userPlaylistReceived(const QVariantMap &data);

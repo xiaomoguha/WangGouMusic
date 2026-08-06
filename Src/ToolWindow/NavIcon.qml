@@ -22,6 +22,7 @@ Item {
         "rank": [AppIcon.fire, AppIcon.fire],
         "playlist": [AppIcon.heart, AppIcon.heartFill],
         "list": [AppIcon.list, AppIcon.listFill],
+        "discoverpl": [AppIcon.compass, AppIcon.compass],
         "recent": [AppIcon.clock, AppIcon.clockFill],
         "history": [AppIcon.clock, AppIcon.clockFill]
     })

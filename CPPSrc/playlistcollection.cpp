@@ -313,7 +313,7 @@ void PlaylistCollection::onFavoriteHashesData(const QByteArray &data)
 
 void PlaylistCollection::loadFavoriteHashesFromCache()
 {
-    const QString path = PlaylistCacheStore::cacheDir() + "/favorite_hashes.json";
+    const QString path = PlaylistCacheStore::configPath("favorite_hashes.json");
     QFile f(path);
     if (!f.open(QIODevice::ReadOnly))
         return;
@@ -340,7 +340,7 @@ void PlaylistCollection::saveFavoriteHashesToCache()
     QJsonArray arr;
     for (const QString &h : m_favoriteHashes)
         arr.append(h);
-    QFile f(PlaylistCacheStore::cacheDir() + "/favorite_hashes.json");
+    QFile f(PlaylistCacheStore::configPath("favorite_hashes.json"));
     if (f.open(QIODevice::WriteOnly | QIODevice::Truncate))
         f.write(QJsonDocument(arr).toJson(QJsonDocument::Indented));
 }

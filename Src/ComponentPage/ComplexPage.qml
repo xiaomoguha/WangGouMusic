@@ -256,6 +256,19 @@ Page {
                     }
                 }
 
+                // MV 播放（仅含 MV 的歌曲显示；点击弹独立视频窗口）
+                // 注意传 mvhash（MV 专用 hash），不是 songhash——音频 hash 在 /video/url 会 502
+                IconButton {
+                    visible: !isTogetherMode && model.mvhash !== ""
+                    iconSource: AppIcon.video
+                    iconColor: AppTheme.textSecondary
+                    size: 30
+                    iconSize: 16
+                    onClicked: {
+                        BasicConfig.requestMvPlay(model.mvhash, model.songname)
+                    }
+                }
+
                 // AI 推荐（点击展开/收回生成的 AI 歌单；有数据时切换为箭头）
                 IconButton {
 

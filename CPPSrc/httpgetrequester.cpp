@@ -9,6 +9,20 @@ HttpGetRequester::HttpGetRequester(int timeoutMs, QObject *parent)
 {
 }
 
+HttpGetRequester::~HttpGetRequester()
+{
+    // 析构时清理挂起请求：先断开自身信号（接收方 manager 可能已析构），
+    // 再 abort 当前 reply——否则 ApiClient 析构 abort 时回调会访问本对象（SIGSEGV）
+    QObject::disconnect(this, nullptr, nullptr, nullptr);
+    QNetworkReply *reply = m_currentReply;
+    m_currentReply       = nullptr;
+    if (reply)
+    {
+        reply->abort();
+        reply->deleteLater();
+    }
+}
+
 void HttpGetRequester::abortCurrent()
 {
     // abort() 会同步触发 QNetworkReply::finished 信号（同线程为 DirectConnection），
