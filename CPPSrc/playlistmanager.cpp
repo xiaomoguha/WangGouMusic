@@ -1709,6 +1709,17 @@ void PlaylistManager::fadeOutVolume(int ms, std::function<void()> onFinished)
 // 隐藏歌词页的 Connections 关闭（可见性隔离），重算只发生在可见页
 void PlaylistManager::updateLyricProgress(qint64 position)
 {
+    // 歌词偏移按歌生效：切歌/换一起听歌曲时自动归零（同一首歌 seek、修复重播不受影响）
+    const QString songHash = (type == TOGETHER) ? m_currentTogetherSongHash : currentSongHash();
+    if (songHash != m_lyricOffsetSongHash)
+    {
+        m_lyricOffsetSongHash = songHash;
+        if (m_lyricOffsetMs != 0)
+        {
+            m_lyricOffsetMs = 0;
+            emit lyricOffsetChanged();
+        }
+    }
     // position 值外推：flac 音频帧 4096 采样（≈92ms）导致 position 值 92ms 才前进一次，
     // 阶梯间隙按真实时间外推——跳跃歌词动画（星星/字压扁）因此 60Hz 平滑
     const qint64 tickNow = QDateTime::currentMSecsSinceEpoch();
@@ -1722,6 +1733,8 @@ void PlaylistManager::updateLyricProgress(qint64 position)
         m_lastRawPosMs  = position;
         m_lastRawTickMs = tickNow;
     }
+    // 歌词偏移：正值=歌词提前显示（在真实进度上提前 offset 查歌词行/逐字进度）
+    position += m_lyricOffsetMs;
     QString newlyric      = m_lyricParser.getLyricAtTime(position);
     int newCharIndex      = m_lyricParser.getCharIndexAtTime(position);
     float newCharProgress = m_lyricParser.getCharProgressAtTime(position);
@@ -1746,6 +1759,29 @@ void PlaylistManager::updateLyricProgress(qint64 position)
         // 进度变化 16ms 定时器高频通知（60Hz 动画）
         emit currlyricChanged();
     }
+}
+
+int PlaylistManager::lyricOffsetMs() const
+{
+    return int(m_lyricOffsetMs);
+}
+
+void PlaylistManager::adjustLyricOffset(int deltaMs)
+{
+    // ±10s 上限，防止连点调飞
+    m_lyricOffsetMs = qBound(-10000LL, m_lyricOffsetMs + qint64(deltaMs), 10000LL);
+    emit lyricOffsetChanged();
+    // 立即按新偏移刷新当前行（暂停时 16ms 定时器不跑，直接刷一次）
+    updateLyricProgress(m_player->position());
+}
+
+void PlaylistManager::resetLyricOffset()
+{
+    if (m_lyricOffsetMs == 0)
+        return;
+    m_lyricOffsetMs = 0;
+    emit lyricOffsetChanged();
+    updateLyricProgress(m_player->position());
 }
 
 void PlaylistManager::handlePlayerError(QMediaPlayer::Error error, const QString &errorString)

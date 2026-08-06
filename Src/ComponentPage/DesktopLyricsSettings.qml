@@ -264,6 +264,118 @@ Window {
                     }
                 }
 
+                // 歌词偏移（±0.25s 微调，歌词与演唱不同步时用）
+                Item {
+                    width: parent.width
+                    height: 74
+
+                    Column {
+                        anchors.left: parent.left
+                        anchors.top: parent.top
+                        spacing: 2
+
+                        Row {
+                            spacing: 6
+                            Text {
+                                text: "歌词偏移"
+                                color: AppTheme.textPrimary
+                                font.pixelSize: AppTheme.fontSizeBodyLg
+                            }
+                            Text {
+                                text: {
+                                    if (!playlistmanager || playlistmanager.lyricOffsetMs === 0) return "0.00s"
+                                    var sign = playlistmanager.lyricOffsetMs > 0 ? "+" : ""
+                                    return sign + (playlistmanager.lyricOffsetMs / 1000).toFixed(2) + "s"
+                                }
+                                font.pixelSize: AppTheme.fontSizeBody
+                                font.bold: true
+                                color: (playlistmanager && playlistmanager.lyricOffsetMs !== 0)
+                                    ? AppTheme.accent : AppTheme.textMuted
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                        }
+                        Text {
+                            text: "歌词比演唱提前/延后时微调，逐字滚动随动"
+                            color: AppTheme.textMuted
+                            font.pixelSize: AppTheme.fontSizeCaption
+                        }
+                    }
+
+                    // 按钮放下方一行，避免与文字重叠（窗口内容区宽 312，横排放不下）
+                    Row {
+                        anchors.left: parent.left
+                        anchors.top: parent.top
+                        anchors.topMargin: 40
+                        spacing: 6
+
+                        Rectangle {
+                            width: 76
+                            height: 28
+                            radius: 14
+                            color: offsetEarlyHover.containsMouse ? AppTheme.iconButtonHover : "transparent"
+                            border.width: 1
+                            border.color: AppTheme.borderDefault
+                            Text {
+                                anchors.centerIn: parent
+                                text: "提前 0.25s"
+                                font.pixelSize: AppTheme.fontSizeCaption
+                                color: AppTheme.textSecondary
+                            }
+                            MouseArea {
+                                id: offsetEarlyHover
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: if (playlistmanager) playlistmanager.adjustLyricOffset(250)
+                            }
+                        }
+
+                        Rectangle {
+                            width: 56
+                            height: 28
+                            radius: 14
+                            color: offsetResetHover.containsMouse ? AppTheme.iconButtonHover : "transparent"
+                            border.width: 1
+                            border.color: AppTheme.borderDefault
+                            Text {
+                                anchors.centerIn: parent
+                                text: "复原"
+                                font.pixelSize: AppTheme.fontSizeCaption
+                                color: AppTheme.textSecondary
+                            }
+                            MouseArea {
+                                id: offsetResetHover
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: if (playlistmanager) playlistmanager.resetLyricOffset()
+                            }
+                        }
+
+                        Rectangle {
+                            width: 76
+                            height: 28
+                            radius: 14
+                            color: offsetLateHover.containsMouse ? AppTheme.iconButtonHover : "transparent"
+                            border.width: 1
+                            border.color: AppTheme.borderDefault
+                            Text {
+                                anchors.centerIn: parent
+                                text: "延后 0.25s"
+                                font.pixelSize: AppTheme.fontSizeCaption
+                                color: AppTheme.textSecondary
+                            }
+                            MouseArea {
+                                id: offsetLateHover
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: if (playlistmanager) playlistmanager.adjustLyricOffset(-250)
+                            }
+                        }
+                    }
+                }
+
                 // 分隔线
                 Rectangle {
                     width: parent.width
