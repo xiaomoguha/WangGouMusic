@@ -10,6 +10,13 @@
 #include <QPropertyAnimation>
 #include <QTimer>
 #include <memory>
+// 退出时进程中断的下载会留下半截 flac（probe 失败 -> 播放无声音），析构时删除
+PlaylistManager::~PlaylistManager()
+{
+    for (const QString &path : std::as_const(m_activeDownloadFiles))
+        QFile::remove(path);
+}
+
 PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent)
     : QObject(parent), m_recommendation(recommendation)
 {
@@ -304,6 +311,27 @@ int PlaylistManager::is_have_cache(const SongInfo &song, const int index)
         emit isPausedChanged();
         qDebug() << "正在播放:" << song.title << "(" << song.url << ")";
         addToRecent(song);
+
+        // 鲁棒性兜底：半截 flac（退出时下载中断）probe 失败后播放器可能静默无响应
+        // （无声音、进度条不走，且 errorOccurred 可能延迟甚至不触发）。
+        // 5 秒仍未解析出时长且未开播 -> 判定文件损坏，删除并重新下载（走完整播放管线）
+        QTimer::singleShot(
+            5000, this,
+            [this, cacheFilePath, index, songhash = song.songhash]()
+            {
+                if (m_player->duration() > 0 || m_player->playbackState() == QMediaPlayer::PlayingState)
+                    return; // 已正常解析/播放
+                if (m_currentIndex != index || !QFile::exists(cacheFilePath))
+                    return; // 已切歌或文件已处理
+                if (m_player->source().toLocalFile() != cacheFilePath)
+                    return; // 播放器已换源
+                qWarning() << "缓存文件播放无响应，删除并重新下载:" << cacheFilePath;
+                m_player->stop();
+                m_player->setSource(QUrl());
+                QFile::remove(cacheFilePath);
+                playSongbyindex(index);
+            }
+        );
         return 1;
     }
     return 0;
@@ -1099,6 +1127,8 @@ void PlaylistManager::downloadAndStream(
     const qint64 seekBytes = seekPercent > 0 && m_totalDownloadBytes > 0
                                  ? static_cast<qint64>(seekPercent * m_totalDownloadBytes)
                                  : 0;
+    // 登记下载中文件：退出时析构删除半截（见 ~PlaylistManager）
+    m_activeDownloadFiles.insert(cacheFilePath);
 
     QObject::connect(
         reply, &QNetworkReply::readyRead, this,
@@ -1155,14 +1185,15 @@ void PlaylistManager::downloadAndStream(
         }
     );
 
-    // 下载失败：删除半截文件，避免下次缓存命中播放损坏文件（FormatError 死循环）
+    // 下载失败/取消：一律删除半截文件。
+    // 半截 flac 无法被播放器 probe（实测 0 channels、Duration N/A -> 播放无声音进度条不走），
+    // 留着只会污染缓存被下次命中；flac 也无从半截文件续播的机制，保留无意义
     QObject::connect(
         reply, &QNetworkReply::errorOccurred, this,
         [=](QNetworkReply::NetworkError err)
         {
-            if (err == QNetworkReply::OperationCanceledError)
-                return; // 主动取消（切歌/退出）不视为损坏，保留已下载部分下次续用
             qWarning() << "下载失败:" << err << songUrl;
+            m_activeDownloadFiles.remove(cacheFilePath);
             tempFile->remove();
             if (m_player->source().isEmpty())
             {
@@ -1177,6 +1208,7 @@ void PlaylistManager::downloadAndStream(
         reply, &QNetworkReply::finished, this,
         [=]()
         {
+            m_activeDownloadFiles.remove(cacheFilePath);
             tempFile->flush();
             tempFile->close();
             m_downloadProgress = 1.0;
