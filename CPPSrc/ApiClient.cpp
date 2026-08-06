@@ -102,9 +102,24 @@ void ApiClient::setupReply(
             if (reply->error() != QNetworkReply::NoError)
             {
                 const QString err = reply->errorString();
+                const int status  = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+                // 服务器业务错误以非 2xx（如 502）+ 可解析 JSON（status/error_code）返回，
+                // body 仍含有效业务信息，按正常响应解析（如 token 过期让 refreshToken 能清登录态）。
+                // 真网络错误（超时/断连/网关 502 的 HTML 页）body 为空或非 JSON，仍走 onError。
+                const QByteArray body = reply->readAll();
                 reply->deleteLater();
+                if (onSuccess && !body.isEmpty())
+                {
+                    QJsonParseError perr;
+                    QJsonDocument::fromJson(body, &perr);
+                    if (perr.error == QJsonParseError::NoError)
+                    {
+                        onSuccess(body);
+                        return;
+                    }
+                }
                 if (onError)
-                    onError(err, httpStatus);
+                    onError(err, status);
                 return;
             }
 

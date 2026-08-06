@@ -255,6 +255,7 @@ void UserManager::refreshToken()
                 clearSettings();
                 m_token.clear();
                 m_userid.clear();
+                syncTokenToApiClient(); // 登录态清除同步到 ApiClient，后续请求不再携带死 token
                 emit loginStatusChanged();
                 emit tokenRefreshResult(false);
                 return;
