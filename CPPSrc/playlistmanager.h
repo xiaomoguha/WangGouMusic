@@ -71,6 +71,7 @@ class PlaylistManager : public QObject
     Q_PROPERTY(float lyricCharProgress READ lyricCharProgressget NOTIFY currlyricChanged)
     Q_PROPERTY(QVariantList lyricChars READ lyricCharsget NOTIFY currlyricChanged)
     Q_PROPERTY(int lyricCharCount READ lyricCharCountget NOTIFY currlyricChanged)
+    Q_PROPERTY(int lyricOffsetMs READ lyricOffsetMs NOTIFY lyricOffsetChanged)  // 歌词偏移（毫秒，正值=歌词提前显示）
     Q_PROPERTY(qreal downloadProgress READ downloadProgress NOTIFY downloadProgressChanged)
     Q_PROPERTY(bool isBuffering READ isBuffering NOTIFY isBufferingChanged)
     Q_PROPERTY(int playMode READ playMode NOTIFY playModeChanged)
@@ -155,6 +156,9 @@ public:
     float lyricCharProgressget();
     QVariantList lyricCharsget();
     int lyricCharCountget();
+    int lyricOffsetMs() const;
+    Q_INVOKABLE void adjustLyricOffset(int deltaMs); // 每次 ±250ms 微调歌词显示时间
+    Q_INVOKABLE void resetLyricOffset();             // 偏移归零
     qreal downloadProgress() const;
     bool isBuffering() const;
 
@@ -167,6 +171,7 @@ signals:
     void percentChanged();
     void durationChanged();
     void currlyricChanged();
+    void lyricOffsetChanged();
     void playlist_typeChanged();
     void togetherplaylistUpdated();
     void recentPlaylistUpdated();
@@ -264,6 +269,8 @@ private:
     float m_lyricCharProgress = 0.0f;
     QVariantList m_lyricChars;
     int m_lyricCharCount         = 0;
+    qint64 m_lyricOffsetMs       = 0; // 歌词偏移（毫秒，正值=歌词提前显示）；按歌生效，切歌归零
+    QString m_lyricOffsetSongHash;    // 当前偏移所属歌曲（用于切歌时自动归零）
     double m_togetherSeekPercent = 0;
     qreal m_downloadProgress     = 1.0; // 下载进度 0~1，默认1表示已就绪
     int m_playMode               = MODE_ORDER;
