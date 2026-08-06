@@ -634,6 +634,11 @@ Rectangle {
                         Behavior on opacity { NumberAnimation { duration: 180 } }
                         Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
                     }
+
+                    // 高潮开始点：小圆点（颜色与已播放进度一致），点击可直接跳到高潮
+                    ClimaxDot {
+                        color: AppTheme.isDark ? "#B0FFFFFF" : AppTheme.accent
+                    }
                 }
             }
 
