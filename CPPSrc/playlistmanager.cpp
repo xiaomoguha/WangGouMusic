@@ -80,6 +80,8 @@ PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent
         {
             if (status == QMediaPlayer::EndOfMedia)
             {
+                // 歌曲自然播完：供外部听歌上报（中途切歌不算，由 main.cpp 连接）
+                emit playbackFinished();
                 m_isPaused = true;
                 emit isPausedChanged();
                 if (type == LOCAL)

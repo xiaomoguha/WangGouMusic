@@ -188,43 +188,13 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("mvManager", &mvManager);
     engine.rootContext()->setContextProperty("aiRecommendManager", &aiRecommendManager);
 
-    // 播放上报听歌历史：本次新播放累计满 30 秒上报一次；单曲循环重播（位置回退）可再次上报，次数累加
-    // 未登录不上报；pc = 云端基线 + 本次会话次数（见 HistoryManager::doUpload）
-    // 基线 = 本首歌第一个进度 tick 的位置：启动恢复播放（位置可能已在 30 秒后）不会启动即上报，
-    // 必须从恢复点继续新播 30 秒才算一次
-    QString reportSongHash;
-    bool reportSongDone = false;
-    bool reportBaseSet  = false;
-    qint64 reportBasePos = 0;
-    qint64 reportLastPos = 0;
-    QObject::connect(&playlistmanager, &PlaylistManager::currentSongChanged, &historyManager, [&]() {
+    // 播放上报听歌历史：歌曲自然播完（EndOfMedia）才上报一次；中途切歌/退出不算
+    // 单曲循环每圈播完可再报，次数累加；未登录不上报
+    // pc = 云端基线 + 本次会话次数（见 HistoryManager::doUpload）
+    QObject::connect(&playlistmanager, &PlaylistManager::playbackFinished, &historyManager, [&]() {
         if (!userManager.isLoggedIn())
             return;
-        reportSongHash = playlistmanager.currentSongHash();
-        reportSongDone = false;
-        reportBaseSet  = false;
-        reportLastPos  = 0;
-    });
-    QObject::connect(&playlistmanager, &PlaylistManager::playbackPositionChanged, &historyManager, [&](qint64 pos) {
-        if (!userManager.isLoggedIn() || reportSongHash.isEmpty())
-            return;
-        if (!reportBaseSet)
-        {
-            reportBasePos = pos;
-            reportBaseSet = true;
-        }
-        // 位置回退超过 30 秒（单曲循环重播/重头开始）：视为新一轮播放，基线重置，可再次上报
-        if (pos < reportLastPos - 30000)
-        {
-            reportSongDone = false;
-            reportBasePos  = pos;
-        }
-        reportLastPos = pos;
-        if (!reportSongDone && pos - reportBasePos >= 30000)
-        {
-            reportSongDone = true;
-            historyManager.reportPlayed(playlistmanager.currentTitle(), playlistmanager.currentSongHash());
-        }
+        historyManager.reportPlayed(playlistmanager.currentTitle(), playlistmanager.currentSongHash());
     });
     engine.rootContext()->setContextProperty("artistManager", &artistManager);
     engine.rootContext()->setContextProperty("songComments", &songComments);
