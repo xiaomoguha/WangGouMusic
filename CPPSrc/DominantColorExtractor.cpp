@@ -139,14 +139,14 @@ void DominantColorExtractor::cacheAndEmit(const QString &imageUrl, const QString
             m_colorCache.erase(m_colorCache.begin());
         m_colorCache.insert(imageUrl, color);
     }
-    emit dominantColorReady(color);
+    emit dominantColorReady(imageUrl, color);
 }
 
 void DominantColorExtractor::extract(const QString &imageUrl)
 {
     if (imageUrl.isEmpty())
     {
-        emit dominantColorReady(kFallbackColor);
+        emit dominantColorReady(QString(), kFallbackColor);
         return;
     }
 
@@ -155,7 +155,7 @@ void DominantColorExtractor::extract(const QString &imageUrl)
         QMutexLocker lock(&m_colorCacheMutex);
         if (m_colorCache.contains(imageUrl))
         {
-            emit dominantColorReady(m_colorCache.value(imageUrl));
+            emit dominantColorReady(imageUrl, m_colorCache.value(imageUrl));
             return;
         }
     }
@@ -197,7 +197,7 @@ void DominantColorExtractor::extract(const QString &imageUrl)
                 m_colorCache.erase(m_colorCache.begin());
             m_colorCache.insert(url, color);
             // 回到主线程发射信号
-            QMetaObject::invokeMethod(this, [this, color]() { emit dominantColorReady(color); }, Qt::QueuedConnection);
+            QMetaObject::invokeMethod(this, [this, url, color]() { emit dominantColorReady(url, color); }, Qt::QueuedConnection);
         }
     );
     QThreadPool::globalInstance()->start(task);

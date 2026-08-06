@@ -11,9 +11,65 @@ Item {
     height: parent ? parent.height : 0
     readonly property bool isTogetherMode: playlistmanager && playlistmanager.type === 1
 
+    // 封面主色（hex，暂存用；空 = 未就绪/无封面）。真正驱动渐变的是
+    // BasicConfig.playlistCoverColor——渐变在主窗口根部，页面只负责同步。
+    property string coverColor: ""
+    property string requestedCoverUrl: ""   // 本次请求的封面 URL：回调核对防串扰
+
+    // 把当前颜色同步到窗口级：仅当本页处于显示状态时生效。
+    function syncWindowTint() {
+        if (!root.visible)
+            return
+        if (root.coverColor !== "") {
+            BasicConfig.playlistPageActive = true
+            BasicConfig.playlistPageCoverColor = root.coverColor
+        }
+    }
+
+    // 请求封面主色（异步）。每日推荐封面来自网络，数据到达后才提取。
+    function requestCoverColor() {
+        var cover = dailyRecommend ? dailyRecommend.coverUrl : ""
+        if (!cover || cover === "")
+            return
+        requestedCoverUrl = cover
+        playlistColorExtractor.extract(cover)
+    }
+
+    onVisibleChanged: {
+        syncWindowTint()
+        // 可见且尚无颜色时，若数据已就绪（非首进），补提取一次
+        if (root.visible && root.coverColor === "")
+            requestCoverColor()
+    }
+
+    Connections {
+        target: playlistColorExtractor
+        // 只接受自己发起的请求结果（imageUrl 匹配），其他页面的结果不污染本页
+        function onDominantColorReady(imageUrl, color) {
+            if (imageUrl !== root.requestedCoverUrl)
+                return
+            coverColor = color
+            syncWindowTint()
+        }
+    }
+
+    // 数据加载完成（coverUrl 随 songsChanged 一起 emit）后提取封面主色
+    Connections {
+        target: dailyRecommend
+        function onSongsChanged() {
+            requestCoverColor()
+        }
+    }
+
+    function refreshDaily() {
+        if (dailyRecommend) dailyRecommend.fetch()
+    }
+
     Component.onCompleted: {
         if (dailyRecommend && dailyRecommend.songs.length === 0)
-            dailyRecommend.fetch()
+            refreshDaily()
+        else
+            requestCoverColor()
     }
 
     // 播放全部（直接播每日推荐列表）
@@ -356,8 +412,7 @@ Item {
                 subtitle: dailyRecommend && dailyRecommend.isLoading ? "" : "点击重试"
                 buttonText: dailyRecommend && dailyRecommend.isLoading ? "" : "重新加载"
                 onButtonClicked: {
-                    if (dailyRecommend)
-                        dailyRecommend.fetch()
+                    refreshDaily()
                 }
             }
 

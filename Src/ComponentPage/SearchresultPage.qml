@@ -22,6 +22,7 @@ Item {
 
     // 歌手卡片主色 → 整窗渐变（命中歌手时沉浸，机制同歌手页）
     property string coverColor: ""
+    property string requestedCoverUrl: ""   // 本次请求的封面 URL：回调核对防串扰
 
     function syncWindowTint() {
         // 隐藏时不操作 BasicConfig：多个详情页同色时隐藏页误关会杀掉显示页的渐变；
@@ -36,12 +37,13 @@ Item {
 
     function requestCoverColor() {
         var avatar = searchResultRoot.singerData ? searchResultRoot.singerData.avatar : ""
-        console.log(">>> Searchresult requestCoverColor, avatar =", avatar)
         if (!avatar || avatar === "") {
+            requestedCoverUrl = ""
             coverColor = ""
             syncWindowTint()
             return
         }
+        requestedCoverUrl = avatar
         playlistColorExtractor.extract(avatar)
     }
 
@@ -57,8 +59,10 @@ Item {
 
     Connections {
         target: playlistColorExtractor
-        function onDominantColorReady(color) {
-            console.log(">>> Searchresult dominantColor =", color)
+        // 只接受自己发起的请求结果（imageUrl 匹配），其他页面的结果不污染本页
+        function onDominantColorReady(imageUrl, color) {
+            if (imageUrl !== searchResultRoot.requestedCoverUrl)
+                return
             searchResultRoot.coverColor = color
             searchResultRoot.syncWindowTint()
         }

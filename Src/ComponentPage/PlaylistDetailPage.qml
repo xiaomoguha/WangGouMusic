@@ -92,6 +92,7 @@ Item {
     // 歌单封面主色（hex，暂存用；空 = 未就绪/无封面）。真正驱动渐变的是
     // BasicConfig.playlistCoverColor——渐变在主窗口根部，页面只负责同步。
     property string coverColor: ""
+    property string requestedCoverUrl: ""   // 本次请求的封面 URL：回调核对防串扰
 
     // 把当前颜色同步到窗口级：仅当本页处于显示状态时生效。
     // 最终生效色由 BasicConfig.playlistCoverColor 集中计算（歌单页优先于播放歌曲）。
@@ -110,10 +111,12 @@ Item {
     // GradientStop 的 Behavior 直接平滑过渡到新色，避免渐变闪空再淡入。
     function requestCoverColor() {
         if (!playlistCover || playlistCover === "") {
+            requestedCoverUrl = ""
             coverColor = ""
             syncWindowTint()
             return
         }
+        requestedCoverUrl = playlistCover
         playlistColorExtractor.extract(playlistCover)
     }
 
@@ -122,7 +125,10 @@ Item {
 
     Connections {
         target: playlistColorExtractor
-        function onDominantColorReady(color) {
+        // 只接受自己发起的请求结果（imageUrl 匹配），其他页面的结果不污染本页
+        function onDominantColorReady(imageUrl, color) {
+            if (imageUrl !== root.requestedCoverUrl)
+                return
             coverColor = color
             syncWindowTint()
         }
