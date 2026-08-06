@@ -215,10 +215,8 @@ void UserManager::refreshToken()
         [this](QString err, int)
         {
             setIsLoading(false);
-            clearSettings();
-            m_token.clear();
-            m_userid.clear();
-            emit loginStatusChanged();
+            // 网络错误 ≠ token 失效：保留登录态，下次启动/操作再试；
+            // 只有服务器明确返回 status != 1（token 真过期）才清空登录态
             emit tokenRefreshResult(false);
         }
     );
