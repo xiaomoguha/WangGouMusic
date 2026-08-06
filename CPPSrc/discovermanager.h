@@ -9,8 +9,10 @@
  * @brief 歌单发现页数据源。
  *
  * 分类标签：GET /playlist/tags（data[] 顶层 parent 一级分类，如场景/语种/风格）。
- * 歌单列表：GET /top/playlist?category_id=&page=&pagesize=30（data.special_list[]，
- * has_next 翻页，字段与首页精选歌单同源，见 Recommendation::onTopPlaylistsData）。
+ * 歌单列表：
+ *  - 全部：GET /top/playlist?category_id=&page=&pagesize=30（data.special_list[]，has_next 翻页）
+ *  - 分类：GET /playlist/category?keyword={分类名}（服务端转发 mobilecdnbj 歌单搜索，
+ *    酷狗无按分类 id 取歌单的可用接口，官方做法即按分类名搜索，data.info[]，has_next 翻页）
  */
 class DiscoverManager : public QObject
 {
@@ -29,8 +31,8 @@ public:
     bool hasMore() const { return m_hasMore; }
 
     Q_INVOKABLE void fetchTags();
-    /// 切换分类：清空已有歌单重新拉第一页
-    Q_INVOKABLE void fetchPlaylists(const QString &categoryId);
+    /// 切换分类：清空已有歌单重新拉第一页（keyword 空 = 全部，非空 = 按分类名搜索）
+    Q_INVOKABLE void fetchPlaylists(const QString &keyword);
     /// 下拉加载更多：同一分类翻下一页
     Q_INVOKABLE void fetchMorePlaylists();
 
@@ -52,7 +54,9 @@ private:
 
     QVariantList m_tags;
     QVariantList m_playlists;
-    QString m_categoryId;
+    QString m_keyword;
+    QString m_session; // 酷狗特殊推荐翻页游标（返回的 session 传给下一页，不传则永远第一页）
+    int m_total = 0;   // 分类搜索总结果数（搜索接口无 has_next，用 total 推算是否还有下一页）
     int m_page      = 0;
     bool m_hasMore  = true;
     bool m_isLoading = false;

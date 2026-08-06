@@ -133,7 +133,8 @@ Item {
                     onTapped: {
                         if (currentTagId === model.tag_id) return
                         currentTagId = model.tag_id
-                        discoverManager.fetchPlaylists(model.tag_id)
+                        // 分类取歌单按分类名搜索（服务端 /playlist/category）
+                        discoverManager.fetchPlaylists(model.tag_name)
                     }
                 }
             }
@@ -209,6 +210,16 @@ Item {
             }
         }
 
+        // 首屏加载中（切分类）：居中文字提示，不遮罩
+        Text {
+            anchors.centerIn: parent
+            visible: discoverManager && discoverManager.isLoading && playlistModel.count === 0
+            text: "正在加载..."
+            font.pixelSize: AppTheme.fontSizeBody
+            color: AppTheme.textMuted
+            font.family: AppTheme.fontFamily
+        }
+
         // 空状态
         Column {
             visible: playlistModel.count === 0 && (!discoverManager || !discoverManager.isLoading)
@@ -237,16 +248,6 @@ Item {
                 font.family: AppTheme.fontFamily
                 anchors.horizontalCenter: parent.horizontalCenter
             }
-        }
-
-        // 加载中
-        Text {
-            anchors.centerIn: parent
-            visible: discoverManager && discoverManager.isLoading && playlistModel.count === 0
-            text: "正在加载..."
-            font.pixelSize: AppTheme.fontSizeBody
-            color: AppTheme.textMuted
-            font.family: AppTheme.fontFamily
         }
 
         delegate: Item {
