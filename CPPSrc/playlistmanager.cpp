@@ -746,6 +746,10 @@ void PlaylistManager::setQuality(int q)
     // 队列里已取过的 URL 全部作废（旧音质）：下次播放自动按新音质重取
     for (SongInfo &s : m_playlist)
         s.url.clear();
+    // 一起听：播放由服务器广播驱动（URL 来自广播），音质调整不换源、不打扰房间同步，
+    // 档位仅记录，供退出一起听后的本地播放使用
+    if (type == TOGETHER)
+        return;
     for (SongInfo &s : m_togetherplaylist)
         s.url.clear();
     // 当前歌即时换源：走标准播放管线（缓存优先 + 边下边播，与切歌完全同路径）。
