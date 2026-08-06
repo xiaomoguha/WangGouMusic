@@ -21,6 +21,7 @@ Item {
     // 歌手头像主色（hex，暂存用）。真正驱动渐变的是 BasicConfig.playlistCoverColor——
     // 渐变在主窗口根部，页面只负责同步（机制同歌单详情页）。
     property string coverColor: ""
+    property string requestedCoverUrl: ""   // 本次请求的封面 URL：回调核对防串扰
 
     function syncWindowTint() {
         // 隐藏时不操作 BasicConfig：多个详情页同色时隐藏页误关会杀掉显示页的渐变；
@@ -37,10 +38,12 @@ Item {
     function requestCoverColor() {
         var avatar = artistManager && artistManager.artist ? artistManager.artist.avatar : ""
         if (!avatar || avatar === "") {
+            requestedCoverUrl = ""
             coverColor = ""
             syncWindowTint()
             return
         }
+        requestedCoverUrl = avatar
         playlistColorExtractor.extract(avatar)
     }
 
@@ -49,7 +52,10 @@ Item {
 
     Connections {
         target: playlistColorExtractor
-        function onDominantColorReady(color) {
+        // 只接受自己发起的请求结果（imageUrl 匹配），其他页面的结果不污染本页
+        function onDominantColorReady(imageUrl, color) {
+            if (imageUrl !== root.requestedCoverUrl)
+                return
             root.coverColor = color
             root.syncWindowTint()
         }

@@ -22,7 +22,7 @@ PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent
     m_colorExtractor = new DominantColorExtractor(this);
     connect(
         m_colorExtractor, &DominantColorExtractor::dominantColorReady, this,
-        [this](const QString &color)
+        [this](const QString &, const QString &color)
         {
             m_dominantColor = color;
             emit dominantColorChanged();

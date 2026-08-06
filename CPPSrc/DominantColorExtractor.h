@@ -29,8 +29,9 @@ public:
     Q_INVOKABLE void extract(const QString &imageUrl);
 
 signals:
-    /// 主色调就绪（hex color，如 "#FF6B6B"）
-    void dominantColorReady(const QString &hexColor);
+    /// 主色调就绪（imageUrl = 本次提取的封面，hex color 如 "#FF6B6B"）
+    /// 带 imageUrl 是为让多页面区分各自请求，避免串扰（A 提取的结果被 B 误收）
+    void dominantColorReady(const QString &imageUrl, const QString &hexColor);
 
 private:
     void cacheAndEmit(const QString &imageUrl, const QString &color);

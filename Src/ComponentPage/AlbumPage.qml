@@ -17,6 +17,7 @@ Item {
 
     // 封面主色 → 整窗渐变（机制同歌单详情页）
     property string coverColor: ""
+    property string requestedCoverUrl: ""   // 本次请求的封面 URL：回调核对防串扰
 
     function syncWindowTint() {
         // 隐藏时不操作 BasicConfig：多个详情页同色时隐藏页误关会杀掉显示页的渐变；
@@ -32,10 +33,12 @@ Item {
     function requestCoverColor() {
         var cover = albumManager && albumManager.album ? albumManager.album.cover : albumCover
         if (!cover || cover === "") {
+            requestedCoverUrl = ""
             coverColor = ""
             syncWindowTint()
             return
         }
+        requestedCoverUrl = cover
         playlistColorExtractor.extract(cover)
     }
 
@@ -43,7 +46,10 @@ Item {
 
     Connections {
         target: playlistColorExtractor
-        function onDominantColorReady(color) {
+        // 只接受自己发起的请求结果（imageUrl 匹配），其他页面的结果不污染本页
+        function onDominantColorReady(imageUrl, color) {
+            if (imageUrl !== root.requestedCoverUrl)
+                return
             root.coverColor = color
             root.syncWindowTint()
         }
