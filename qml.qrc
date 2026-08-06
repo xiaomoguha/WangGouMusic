@@ -40,6 +40,7 @@
         <file>Src/ToolWindow/NavIcon.qml</file>
         <file>Src/ToolWindow/SectionRefreshButton.qml</file>
         <file>Src/ToolWindow/AiRecommendExpand.qml</file>
+        <file>Src/ToolWindow/ClimaxDot.qml</file>
         <file>Src/ComponentPage/HomePage.qml</file>
         <file>Src/ComponentPage/UpdateDialog.qml</file>
         <file>Src/ComponentPage/LoginPage.qml</file>

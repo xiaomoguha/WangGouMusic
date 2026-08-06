@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import QtQuick.Window
 import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
+import "../ToolWindow"
 
 Rectangle {
     id: lyricspage
@@ -1228,6 +1229,11 @@ Rectangle {
                         color: dominantColor
                         anchors.verticalCenter: parent.verticalCenter
                         x: progressFill.width - width / 2
+                    }
+
+                    // 高潮开始点：小圆点（颜色与已播放进度一致），点击可直接跳到高潮
+                    ClimaxDot {
+                        color: dominantColor
                     }
 
                     MouseArea {
