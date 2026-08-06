@@ -28,13 +28,15 @@ void DiscoverManager::fetchTags()
     m_tagsRequester.fetchData(QStringLiteral("%1/playlist/tags").arg(kApiRoot));
 }
 
-void DiscoverManager::fetchPlaylists(const QString &categoryId)
+void DiscoverManager::fetchPlaylists(const QString &keyword)
 {
     if (m_isLoading)
         return;
-    m_categoryId = categoryId;
-    m_page       = 0;
-    m_hasMore    = true;
+    m_keyword = keyword;
+    m_session.clear(); // 切分类/切回全部：游标重置，从第一页重新拉
+    m_total   = 0;
+    m_page    = 0;
+    m_hasMore = true;
     m_playlists.clear();
     emit playlistsChanged();
     fetchMorePlaylists();
@@ -46,13 +48,19 @@ void DiscoverManager::fetchMorePlaylists()
         return;
     m_isLoading = true;
     emit isLoadingChanged();
-    // category_id=0 传空即可（服务端默认全部）
-    const QString url = QStringLiteral("%1/top/playlist?pagesize=30&page=%2%3")
-                            .arg(kApiRoot)
-                            .arg(m_page + 1)
-                            .arg(m_categoryId.isEmpty() || m_categoryId == QLatin1String("0")
-                                     ? QString()
-                                     : QStringLiteral("&category_id=%1").arg(m_categoryId));
+    // 全部：top/playlist（sort=2 与首页推荐 sort=1 区分，避免两页内容重复；session 游标翻页）；
+    // 分类：playlist/category 按分类名搜索（酷狗无按分类 id 取歌单接口）
+    const QString url = m_keyword.isEmpty()
+                            ? QStringLiteral("%1/top/playlist?pagesize=30&page=%2&sort=2%3")
+                                  .arg(kApiRoot)
+                                  .arg(m_page + 1)
+                                  .arg(m_session.isEmpty()
+                                           ? QString()
+                                           : QStringLiteral("&session=%1").arg(m_session))
+                            : QStringLiteral("%1/playlist/category?pagesize=30&page=%2&keyword=%3")
+                                  .arg(kApiRoot)
+                                  .arg(m_page + 1)
+                                  .arg(QUrl::toPercentEncoding(m_keyword));
     m_playlistsRequester.fetchData(url);
 }
 
@@ -100,7 +108,13 @@ void DiscoverManager::onTagsData(const QByteArray &data)
 void DiscoverManager::onPlaylistsData(const QByteArray &data)
 {
     QJsonParseError perr;
-    const QJsonDocument doc = QJsonDocument::fromJson(data, &perr);
+    // mobilecdnbj 歌单搜索响应带 <!--KG_TAG_RES_START--> 前缀和 <!--KG_TAG_RES_END--> 后缀，
+    // 截取首个 '{' 到最后一个 '}' 之间才是纯 JSON
+    const int jsonStart = data.indexOf('{');
+    const int jsonEnd   = data.lastIndexOf('}');
+    const QByteArray body =
+        jsonStart >= 0 && jsonEnd > jsonStart ? data.mid(jsonStart, jsonEnd - jsonStart + 1) : data;
+    const QJsonDocument doc = QJsonDocument::fromJson(body, &perr);
     if (perr.error != QJsonParseError::NoError || !doc.isObject())
     {
         qWarning() << "[DiscoverManager] playlists parse error:" << perr.errorString();
@@ -109,7 +123,15 @@ void DiscoverManager::onPlaylistsData(const QByteArray &data)
         return;
     }
     const QJsonObject dataObj = doc.object()["data"].toObject();
-    const QJsonArray list     = dataObj["special_list"].toArray();
+    // 翻页游标：下一页请求必须带上（top/playlist 无游标时永远返回第一页）
+    m_session = dataObj["session"].toString(m_session);
+    m_total   = dataObj["total"].toInt(m_total);
+    // 全部：special_list[]；分类搜索：info[]（字段名与 special_list 不同）
+    QJsonArray list;
+    if (dataObj.contains("special_list") && dataObj["special_list"].isArray())
+        list = dataObj["special_list"].toArray();
+    else if (dataObj.contains("info"))
+        list = dataObj["info"].toArray();
 
     QVariantList parsed;
     for (const QJsonValue &v : list)
@@ -121,8 +143,10 @@ void DiscoverManager::onPlaylistsData(const QByteArray &data)
         item["specialname"]          = pl["specialname"].toString();
         item["imgurl"]               = imgurl;
         item["intro"]                = pl["intro"].toString();
-        item["play_count"]           = pl["play_count"].toInt();
-        item["global_collection_id"] = pl["global_collection_id"].toString();
+        item["play_count"]           = pl["playcount"].toInt(pl["play_count"].toInt());
+        // 分类搜索无 global_collection_id，用 gid（collection_3_xxx 格式）或 specialid 兜底
+        item["global_collection_id"] = pl["global_collection_id"].toString(
+            pl["gid"].toString(pl["specialid"].toString()));
         item["nickname"]             = pl["nickname"].toString();
         parsed.append(item);
     }
@@ -131,7 +155,9 @@ void DiscoverManager::onPlaylistsData(const QByteArray &data)
     {
         const bool isReset = m_page == 0;  // 第一页 = 切分类后的重置；否则是追加
         m_playlists.append(parsed);
-        m_hasMore = dataObj["has_next"].toInt() > 0;
+        // 全部：has_next；分类搜索：无该字段，用 total 推算（已加载 < 总数则还有下一页）
+        m_hasMore = dataObj.contains("has_next") ? dataObj["has_next"].toInt() > 0
+                                                 : m_playlists.size() < m_total;
         m_page++;
         if (isReset)
             emit playlistsReset(parsed);
