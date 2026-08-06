@@ -41,6 +41,8 @@ QVariant SongListModel::data(const QModelIndex &index, int role) const
         return song.added_by_avatar;
     case FileIdRole:
         return song.fileid;
+    case MvHashRole:
+        return song.mvhash;
     }
     return {};
 }
@@ -61,6 +63,7 @@ QHash<int, QByteArray> SongListModel::roleNames() const
         {AddedByNicknameRole, "added_by_nickname"},
         {AddedByAvatarRole, "added_by_avatar"},
         {FileIdRole, "fileid"},
+        {MvHashRole, "mvhash"},
     };
 }
 
@@ -83,6 +86,7 @@ QVariant SongListModel::get(int index) const
     m["added_by_nickname"] = s.added_by_nickname;
     m["added_by_avatar"]   = s.added_by_avatar;
     m["fileid"]            = s.fileid;
+    m["mvhash"]            = s.mvhash;
     return m;
 }
 

@@ -28,6 +28,7 @@ QVariant SearchComplex::data(const QModelIndex &index, int role) const
     case AlbumNameRole:  return m.value("album_name");
     case SonghashRole:   return m.value("songhash");
     case UnionCoverRole: return m.value("union_cover");
+    case MvhashRole:     return m.value("mvhash");
     }
     return {};
 }
@@ -41,6 +42,7 @@ QHash<int, QByteArray> SearchComplex::roleNames() const
         {AlbumNameRole, "album_name"},
         {SonghashRole, "songhash"},
         {UnionCoverRole, "union_cover"},
+        {MvhashRole, "mvhash"},
     };
 }
 
@@ -140,6 +142,7 @@ void SearchComplex::parseAndAppend(const QJsonObject &root, bool isAppend)
         m["album_name"]  = v["album_name"].toString();
         m["songhash"]    = v["hash"].toString();
         m["union_cover"] = union_cover;
+        m["mvhash"]      = v["mvhash"].toString();
         return m;
     };
 

@@ -471,7 +471,7 @@ Item {
                             HoverHandler { id: collectHover }
                             TapHandler {
                                 cursorShape: Qt.PointingHandCursor
-                                enabled: !playlistCollection.isWorking
+                                enabled: !(playlistCollection && playlistCollection.isWorking)
                                 onTapped: root.toggleCollect()
                             }
                             Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
@@ -627,7 +627,7 @@ Item {
 
                         // 操作按钮区（固定宽度占位，悬停时显示；时长始终可见，不再被覆盖）
                         Item {
-                            width: isTogetherMode ? 70 : 170
+                            width: isTogetherMode ? 70 : 200
                             height: 30
                             anchors.verticalCenter: parent.verticalCenter
 
@@ -651,6 +651,19 @@ Item {
                                             "duration": model.duration
                                         })
                                         BasicConfig.emitSongAdded("正在播放: " + model.title)
+                                    }
+                                }
+
+                                // MV 播放（仅含 MV 的歌曲显示；点击弹独立视频窗口）
+                                // 注意传 mvhash（MV 专用 hash），不是 songhash——音频 hash 在 /video/url 会 502
+                                IconButton {
+                                    visible: !isTogetherMode && model.mvhash !== ""
+                                    iconSource: AppIcon.video
+                                    iconColor: AppTheme.textSecondary
+                                    size: 30
+                                    iconSize: 16
+                                    onClicked: {
+                                        BasicConfig.requestMvPlay(model.mvhash, model.title)
                                     }
                                 }
 
@@ -895,7 +908,7 @@ Item {
                     HoverHandler { id: createHover }
                     TapHandler {
                         cursorShape: Qt.PointingHandCursor
-                        enabled: !playlistCollection.isWorking
+                        enabled: !(playlistCollection && playlistCollection.isWorking)
                         onTapped: {
                             var name = newNameInput.text.trim()
                             if (name === "") {
@@ -966,7 +979,7 @@ Item {
                         HoverHandler { id: collectItemHover }
                         TapHandler {
                             cursorShape: Qt.PointingHandCursor
-                            enabled: !playlistCollection.isWorking
+                            enabled: !(playlistCollection && playlistCollection.isWorking)
                             onTapped: {
                                 if (!root.pendingCollectSong) return
                                 // 单曲收藏：songname/songhash 必填，album_id/mixsongid 留空由服务端兜底

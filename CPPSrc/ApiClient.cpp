@@ -23,18 +23,25 @@ ApiClient::ApiClient(QObject *parent) : QObject(parent), m_nam(new QNetworkAcces
 
 ApiClient::~ApiClient()
 {
-    // 中止所有活跃 reply 并清理超时 timer
+    // 中止所有活跃 reply 并清理超时 timer。
+    // 必须先断掉以 this 为 context 的连接再 abort：abort()/QNAM 析构会同步派发
+    // finished/errorOccurred，若不先断开，回调 lambda 会访问早已析构的
+    // HttpGetRequester 等调用方对象 → SIGSEGV（退出时崩溃）
     const auto replies = m_timeoutTimers.keys();
     for (QNetworkReply *reply : replies)
     {
         if (reply)
         {
+            QObject::disconnect(reply, nullptr, this, nullptr);
             reply->abort();
             reply->deleteLater();
         }
         QTimer *t = m_timeoutTimers.value(reply);
         if (t)
+        {
+            QObject::disconnect(t, nullptr, this, nullptr);
             t->deleteLater();
+        }
     }
     m_timeoutTimers.clear();
 }

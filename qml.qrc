@@ -25,6 +25,8 @@
         <file>Src/ComponentPage/SearchresultPage.qml</file>
         <file>Src/ComponentPage/AlbumPage.qml</file>
         <file>Src/ComponentPage/HistoryPage.qml</file>
+        <file>Src/ComponentPage/DiscoverPage.qml</file>
+        <file>Src/ComponentPage/MvWindow.qml</file>
         <file>Src/ComponentPage/ArtistPage.qml</file>
         <file>Src/ComponentPage/musictogether.qml</file>
         <file>Src/ComponentPage/RecentlyPlayed.qml</file>

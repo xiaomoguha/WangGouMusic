@@ -94,8 +94,10 @@ private:
     bool m_loadingMore = false;    // 下拉加载中标志（当前为内存切批，保留语义）
     int m_loadedTotalPages() const;  // 全量数据可分多少批
     bool m_pcReady = false;        // mxid→pc 基线缓存是否已构建（上传前必须就绪，否则 pc 覆盖会毁数据）
-    QHash<qint64, int> m_pcCache;  // mxid→云端 pc 基线
-    QHash<QString, int> m_sessionCount;  // hash→本次会话播放次数（单曲循环累加）
+    QHash<qint64, int> m_pcCache;  // mxid→云端 pc 基线（仅上传成功确认后推进）
+    QHash<QString, int> m_sessionCount;   // hash→本次会话播放总次数（单曲循环累加，只增）
+    QHash<QString, int> m_reportedCount;  // hash→已成功上报的会话内次数；上传增量 = sessionCount - reportedCount
+    QVariantList m_pendingCommit;  // 本次上传待确认项 {mxid, hash, pc}：成功后才提交缓存
 };
 
 #endif // HISTORYMANAGER_H

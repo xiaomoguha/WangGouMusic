@@ -655,7 +655,7 @@ Rectangle {
         // ========== 右侧：功能按钮 ==========
         Row {
             id: rightSection
-            width: 108
+            width: 144
             height: parent.height
             spacing: 4
             layoutDirection: Qt.RightToLeft
@@ -994,6 +994,116 @@ Rectangle {
                 Behavior on color {
                     ColorAnimation {
                         duration: AppTheme.animFast
+                    }
+                }
+            }
+
+            // 音质（自动/标准/高品/无损）：点击弹菜单选择，选择持久化
+            Rectangle {
+                id: qualityBtn
+                width: 32
+                height: 32
+                radius: 16
+                color: qualityBtnHandler.hovered ? AppTheme.iconButtonHover : "transparent"
+                anchors.verticalCenter: parent.verticalCenter
+
+                Image {
+                    id: qualityIcon
+                    anchors.centerIn: parent
+                    source: AppIcon.musicNotes
+                    sourceSize: Qt.size(128, 128)
+                    mipmap: true
+                    width: 16
+                    height: 16
+                    fillMode: Image.PreserveAspectFit
+                    layer.enabled: true
+                    layer.effect: ColorOverlay {
+                        source: qualityIcon
+                        color: (playlistmanager && playlistmanager.quality !== 0)
+                               ? AppTheme.accent
+                               : (qualityBtnHandler.hovered ? AppTheme.iconHover : AppTheme.textMuted)
+                    }
+                }
+
+                HoverHandler { id: qualityBtnHandler }
+                MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: qualityPopup.open()
+                }
+
+                Popup {
+                    id: qualityPopup
+                    x: -(160 - qualityBtn.width)
+                    y: -210
+                    width: 160
+                    height: 4 * 44 + 10
+                    padding: 0
+                    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+                    background: Rectangle {
+                        radius: 12
+                        color: AppTheme.bgCard
+                        border.width: 1
+                        border.color: AppTheme.borderDefault
+                    }
+
+                    enter: Transition {
+                        NumberAnimation { property: "opacity"; from: 0; to: 1; duration: AppTheme.animFast }
+                        NumberAnimation { property: "scale"; from: 0.9; to: 1.0; duration: AppTheme.animFast; easing.type: Easing.OutCubic }
+                    }
+                    exit: Transition {
+                        NumberAnimation { property: "opacity"; from: 1; to: 0; duration: 100 }
+                        NumberAnimation { property: "scale"; from: 1.0; to: 0.9; duration: 100 }
+                    }
+
+                    Column {
+                        anchors.fill: parent
+                        Repeater {
+                            model: ["自动音质", "标准音质", "高品音质", "无损音质"]
+                            Rectangle {
+                                width: parent.width
+                                height: 44
+                                radius: 8
+                                color: qOptHover.hovered ? AppTheme.iconButtonHover : "transparent"
+
+                                Text {
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 14
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: modelData
+                                    font.family: AppTheme.fontFamily
+                                    font.pixelSize: AppTheme.fontSizeBody
+                                    color: index === (playlistmanager ? playlistmanager.quality : 0) ? AppTheme.accent : AppTheme.textPrimary
+                                    font.bold: index === (playlistmanager ? playlistmanager.quality : 0)
+                                }
+                                Image {
+                                    id: checkIco
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: 12
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    source: AppIcon.check
+                                    sourceSize: Qt.size(64, 64)
+                                    width: 14
+                                    height: 14
+                                    visible: index === (playlistmanager ? playlistmanager.quality : 0)
+                                    layer.enabled: true
+                                    layer.effect: ColorOverlay {
+                                        source: checkIco
+                                        color: AppTheme.accent
+                                    }
+                                }
+                                HoverHandler { id: qOptHover; cursorShape: Qt.PointingHandCursor }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    onClicked: {
+                                        if (playlistmanager) playlistmanager.setQuality(index)
+                                        qualityPopup.close()
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

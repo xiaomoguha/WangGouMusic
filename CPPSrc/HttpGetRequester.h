@@ -21,6 +21,7 @@ class HttpGetRequester : public QObject
     Q_OBJECT
 public:
     explicit HttpGetRequester(int timeoutMs = 10000, QObject *parent = nullptr);
+    ~HttpGetRequester() override;
 
     /// 发起异步 GET 请求
     Q_INVOKABLE void fetchData(const QString &url);

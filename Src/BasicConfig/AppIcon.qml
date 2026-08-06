@@ -55,6 +55,10 @@ QtObject {
     readonly property string caretUp: "qrc:/icons/caret-up.svg"
     readonly property string caretRight: "qrc:/icons/caret-right.svg"
     readonly property string sparkle: "qrc:/icons/sparkle.svg"
+    readonly property string compass: "qrc:/icons/compass.svg"
+    readonly property string musicNotes: "qrc:/icons/music-notes.svg"
+    readonly property string video: "qrc:/icons/video-camera.svg"
+    readonly property string qrCode: "qrc:/icons/qr-code.svg"
     // 播放模式：顺序 / 单曲循环 / 随机
     readonly property string playModeOrder: "qrc:/icons/order.svg"
     readonly property string playModeRepeatOne: "qrc:/icons/repeat-one.svg"

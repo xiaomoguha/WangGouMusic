@@ -35,7 +35,7 @@ LyricsConfigManager::~LyricsConfigManager()
 
 QString LyricsConfigManager::getConfigFilePath()
 {
-    return PlaylistCacheStore::cacheDir() + "/lyrics_config.json";
+    return PlaylistCacheStore::configPath("lyrics_config.json");
 }
 
 void LyricsConfigManager::ensureConfigDirExists()

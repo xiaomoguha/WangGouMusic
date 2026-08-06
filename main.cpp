@@ -21,6 +21,7 @@
 #endif
 #include "./CPPSrc/CrashHandler.h"
 #include "./CPPSrc/ClickThroughHelper.h"
+#include "./CPPSrc/PlaylistCacheStore.h"
 #include "./CPPSrc/dailyrecommend.h"
 #include "./CPPSrc/DominantColorExtractor.h"
 #include "./CPPSrc/HttpGetRequester.h"
@@ -33,6 +34,8 @@
 #include "./CPPSrc/ranklist.h"
 #include "./CPPSrc/albummanager.h"
 #include "./CPPSrc/historymanager.h"
+#include "./CPPSrc/discovermanager.h"
+#include "./CPPSrc/mvmanager.h"
 #include "./CPPSrc/airecommendmanager.h"
 #include "./CPPSrc/artistmanager.h"
 #include "./CPPSrc/songcomments.h"
@@ -85,6 +88,10 @@ int main(int argc, char *argv[])
     qputenv("QT_FFMPEG_PLAYER_BUFFER", "15000");        // 提高缓冲
 
     QApplication app(argc, argv);
+
+    // 缓存目录升级：旧版平铺结构（根目录 .mp3/*.json）迁移到分类目录（songs/128|320|flac、config、lyrics）。
+    // 在一切缓存读写之前执行（.cache_v2 标记保证只跑一次）
+    PlaylistCacheStore::migrateLegacyCache();
 
     // 注册内嵌中文字体 Sarasa Gothic SC（随包打包，跨平台显示一致）
     QFontDatabase::addApplicationFont(":/fonts/SarasaGothicSC-Regular.ttf");
@@ -144,6 +151,8 @@ int main(int argc, char *argv[])
     RankList rankList;
     AlbumManager albumManager;
     HistoryManager historyManager;
+    DiscoverManager discoverManager;
+    MvManager mvManager;
     AiRecommendManager aiRecommendManager;
     ArtistManager artistManager;
     SongComments songComments;
@@ -175,28 +184,43 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("rankList", &rankList);
     engine.rootContext()->setContextProperty("albumManager", &albumManager);
     engine.rootContext()->setContextProperty("historyManager", &historyManager);
+    engine.rootContext()->setContextProperty("discoverManager", &discoverManager);
+    engine.rootContext()->setContextProperty("mvManager", &mvManager);
     engine.rootContext()->setContextProperty("aiRecommendManager", &aiRecommendManager);
 
-    // 播放上报听歌历史：播放满 30 秒上报一次；单曲循环重播（位置回退）可再次上报，次数累加
+    // 播放上报听歌历史：本次新播放累计满 30 秒上报一次；单曲循环重播（位置回退）可再次上报，次数累加
     // 未登录不上报；pc = 云端基线 + 本次会话次数（见 HistoryManager::doUpload）
+    // 基线 = 本首歌第一个进度 tick 的位置：启动恢复播放（位置可能已在 30 秒后）不会启动即上报，
+    // 必须从恢复点继续新播 30 秒才算一次
     QString reportSongHash;
     bool reportSongDone = false;
+    bool reportBaseSet  = false;
+    qint64 reportBasePos = 0;
     qint64 reportLastPos = 0;
     QObject::connect(&playlistmanager, &PlaylistManager::currentSongChanged, &historyManager, [&]() {
         if (!userManager.isLoggedIn())
             return;
         reportSongHash = playlistmanager.currentSongHash();
         reportSongDone = false;
-        reportLastPos = 0;
+        reportBaseSet  = false;
+        reportLastPos  = 0;
     });
     QObject::connect(&playlistmanager, &PlaylistManager::playbackPositionChanged, &historyManager, [&](qint64 pos) {
         if (!userManager.isLoggedIn() || reportSongHash.isEmpty())
             return;
-        // 位置回退超过 30 秒（单曲循环重播/重头开始）：视为新一轮播放，可再次上报
+        if (!reportBaseSet)
+        {
+            reportBasePos = pos;
+            reportBaseSet = true;
+        }
+        // 位置回退超过 30 秒（单曲循环重播/重头开始）：视为新一轮播放，基线重置，可再次上报
         if (pos < reportLastPos - 30000)
+        {
             reportSongDone = false;
+            reportBasePos  = pos;
+        }
         reportLastPos = pos;
-        if (!reportSongDone && pos >= 30000)
+        if (!reportSongDone && pos - reportBasePos >= 30000)
         {
             reportSongDone = true;
             historyManager.reportPlayed(playlistmanager.currentTitle(), playlistmanager.currentSongHash());

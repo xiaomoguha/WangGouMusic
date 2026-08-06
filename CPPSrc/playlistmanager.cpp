@@ -18,6 +18,9 @@ PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent
     m_togetherplaylistModel = new SongListModel(this);
     m_recentPlaylistModel   = new SongListModel(this);
 
+    // 音质档位持久化（0自动/1标准128/2高品320/3无损flac）
+    m_quality = m_settings.value("quality", 0).toInt();
+
     // 主色调提取模块：extract 异步返回结果，转发到 QML 绑定的 dominantColor 属性
     m_colorExtractor = new DominantColorExtractor(this);
     connect(
@@ -101,6 +104,16 @@ PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent
     );
     // 连接播放进度变化信号
     connect(m_player, &QMediaPlayer::positionChanged, this, &PlaylistManager::updatePlaybackProgress);
+    // 逐字进度 16ms 高频刷新（60Hz）：positionChanged 实测仅 ~11-20Hz（无损缓存更低），
+    // 定时器按真实播放位置重算补足——跳跃歌词动画（星星/字压扁）因此 60fps 平滑。
+    // 渲染已优化（三文本每帧 2 节点），60Hz 通知无重绘压力
+    m_lyricAnimTimer.setInterval(16);
+    m_lyricAnimTimer.setTimerType(Qt::PreciseTimer);
+    connect(&m_lyricAnimTimer, &QTimer::timeout, this, [this]() {
+        if (m_player->playbackState() == QMediaPlayer::PlayingState)
+            updateLyricProgress(m_player->position());
+    });
+    m_lyricAnimTimer.start();
     connect(m_player, &QMediaPlayer::errorOccurred, this, &PlaylistManager::handlePlayerError);
     connect(&m_lyricParser, &LyricParser::parselyricsuc, this, &PlaylistManager::parlyricsuc);
 }
@@ -261,10 +274,8 @@ void PlaylistManager::loadRecentFromCache()
 int PlaylistManager::is_have_cache(const SongInfo &song, const int index)
 {
     PlaylistCacheStore::ensureCacheDir();
-    QString cacheDir = getCacheDir();
-    // 先判断本地是否有歌曲缓存
-    QString cacheFileName = song.title + "-" + song.singername + ".mp3";
-    QString cacheFilePath = cacheDir + "/" + cacheFileName;
+    // 按音质分目录缓存（songs/128|320|flac），每种音质独立文件
+    QString cacheFilePath = PlaylistCacheStore::songCachePath(song.title, song.singername, m_quality);
 
     QFile cacheFile(cacheFilePath);
 
@@ -351,7 +362,7 @@ void PlaylistManager::loadSongPaused(int index)
     m_player->setSource(QUrl());
 
     PlaylistCacheStore::ensureCacheDir();
-    QString cacheFilePath = getCacheDir() + "/" + song.title + "-" + song.singername + ".mp3";
+    QString cacheFilePath = PlaylistCacheStore::songCachePath(song.title, song.singername, m_quality);
 
     if (QFile::exists(cacheFilePath))
     {
@@ -690,6 +701,30 @@ int PlaylistManager::playMode() const
     return m_playMode;
 }
 
+int PlaylistManager::quality() const
+{
+    return m_quality;
+}
+
+void PlaylistManager::setQuality(int q)
+{
+    if (q == m_quality)
+        return;
+    m_quality = q;
+    m_settings.setValue("quality", q);
+    emit qualityChanged();
+    // 队列里已取过的 URL 全部作废（旧音质）：下次播放自动按新音质重取
+    for (SongInfo &s : m_playlist)
+        s.url.clear();
+    for (SongInfo &s : m_togetherplaylist)
+        s.url.clear();
+    // 当前歌即时换源：走标准播放管线（缓存优先 + 边下边播，与切歌完全同路径）。
+    // 不能直接 setSource 网络流——无损网络流播放走 ffmpeg 后端直连，
+    // 与标准音质的缓存播放路径不一致（实测无损网络流卡顿）
+    if (m_currentIndex >= 0 && m_currentIndex < (*m_curplaylist).size())
+        playSongbyindex(m_currentIndex);
+}
+
 void PlaylistManager::playPrevious()
 {
     if (m_currentIndex > 0)
@@ -710,6 +745,7 @@ void PlaylistManager::playstop()
     {
         // 一起听：本地暂停只影响自己，不告知服务器（房间其他人继续播）
         m_localPaused = true;
+        m_pendingPlayWhenReady = false;
         // 暂停前 1.5s 渐弱，再真正暂停（图标立即切换为暂停）
         m_isPaused = true;
         emit isPausedChanged();
@@ -736,7 +772,10 @@ void PlaylistManager::playstop()
         }
         else
         {
-            qDebug() << "没设置URL，无法播放!";
+            // 恢复播放时 URL 还在拉取中（source 未就绪）：标记待播，
+            // source 就绪（LoadedMedia）后自动续播，避免"点了没反应"
+            m_pendingPlayWhenReady = true;
+            qDebug() << "播放源未就绪，已排队等待自动播放";
         }
     }
 }
@@ -1027,8 +1066,15 @@ void PlaylistManager::downloadAndStream(
     std::function<void()> onStreamStart
 )
 {
-    const qint64 startThreshold = 500 * 1024; // 500KB 后开始播放
+    // flac 边下边播：500KB 阈值会在播放中遇到写盘中的截断帧（invalid sync code），
+    // 提高阈值到 2MB（flac 帧约 16KB，2MB ≈ 120+ 完整帧），与 mp3 同一播放路径
+    // （"下载完整再播"曾导致本地文件播放卡顿，已弃用）
+    const qint64 startThreshold = cacheFilePath.endsWith(QLatin1String(".flac"))
+                                      ? 2 * 1024 * 1024
+                                      : 500 * 1024; // mp3/320: 500KB 后开始播放
 
+    // 音质子目录（songs/128|320|flac）可能尚未创建
+    QDir().mkpath(QFileInfo(cacheFilePath).absolutePath());
     QFile *tempFile = new QFile(cacheFilePath, this);
     if (!tempFile->open(QIODevice::WriteOnly))
     {
@@ -1187,10 +1233,15 @@ void PlaylistManager::startPlayback(const SongInfo &song)
     // 这样切歌瞬间媒体栏就能反映新歌信息，不必等边下边播达到阈值。
     emit currentSongChanged();
 
-    PlaylistCacheStore::ensureCacheDir();
-    QString cacheFilePath = getCacheDir() + "/" + song.title + "-" + song.singername + ".mp3";
+    // 下载/缓冲期间即显示"播放中"（边下边播）：否则播放按钮停留在"播放"图标，
+    // 用户点击时 source 无效被忽略（"没设置URL"），看起来点了没反应
+    m_isPaused = false;
+    emit isPausedChanged();
 
-    // 本地缓存命中：直接播放
+    PlaylistCacheStore::ensureCacheDir();
+    QString cacheFilePath = PlaylistCacheStore::songCachePath(song.title, song.singername, m_quality);
+
+    // 本地缓存命中：直接播放（各音质独立目录，互不影响）
     if (QFile::exists(cacheFilePath))
     {
         qDebug() << "缓存文件已存在，直接播放:" << cacheFilePath;
@@ -1309,9 +1360,20 @@ void PlaylistManager::restoreLastPlayback()
             {
                 if (seekPercent > 0 && seekPercent < 1.0)
                     seekToPercent(seekPercent);
-                m_player->pause();
-                m_isPaused = true;
-                emit isPausedChanged();
+                // 用户曾点过播放（source 未就绪时排队）：就绪后自动续播
+                if (m_pendingPlayWhenReady)
+                {
+                    m_pendingPlayWhenReady = false;
+                    m_player->play();
+                    m_isPaused = false;
+                    emit isPausedChanged();
+                }
+                else
+                {
+                    m_player->pause();
+                    m_isPaused = true;
+                    emit isPausedChanged();
+                }
                 QObject::disconnect(*conn);
             }
         }
@@ -1319,7 +1381,7 @@ void PlaylistManager::restoreLastPlayback()
 
     // 优先使用本地缓存文件，避免过期 URL 导致 403
     PlaylistCacheStore::ensureCacheDir();
-    QString cacheFilePath = getCacheDir() + "/" + song.title + "-" + song.singername + ".mp3";
+    QString cacheFilePath = PlaylistCacheStore::songCachePath(song.title, song.singername, m_quality);
     if (QFile::exists(cacheFilePath))
     {
         m_player->setSource(QUrl::fromLocalFile(cacheFilePath));
@@ -1351,8 +1413,11 @@ QString PlaylistManager::loadLyricFromCache(const QString &songhash)
 
 void PlaylistManager::fetchSongUrl(const QString &hash, std::function<void(QString)> callback)
 {
+    // 音质：0自动(默认128) / 1标准128 / 2高品320 / 3无损flac（服务器共享 VIP token）
+    static const char *const kQualityParam[] = {"", "128", "320", "flac"};
+    const QString qs = m_quality > 0 && m_quality <= 3 ? QStringLiteral("&quality=%1").arg(kQualityParam[m_quality]) : QString();
     ApiClient::instance().get(
-        QString("https://xjt-togethertracks.top/api/song/url?hash=%1").arg(hash),
+        QString("https://xjt-togethertracks.top/api/song/url?hash=%1%2").arg(hash).arg(qs),
         [callback](QByteArray body)
         {
             const QJsonDocument doc = QJsonDocument::fromJson(body);
@@ -1451,7 +1516,14 @@ void PlaylistManager::updatePlaybackProgress(qint64 position)
     {
         m_percent    = static_cast<float>(position) / m_player->duration();
         m_percentstr = formatTime(position);
-        emit percentChanged();
+        // 限频 33ms：本地文件播放 positionChanged 可达 80Hz+，进度条 30fps 视觉无差，
+        // 避免主窗口（进度条/时长文本/渐变）每帧全量更新与桌面歌词 60Hz 动画抢帧
+        const qint64 percentNow = QDateTime::currentMSecsSinceEpoch();
+        if (percentNow - m_lastPercentNotifyMs >= 33)
+        {
+            m_lastPercentNotifyMs = percentNow;
+            emit percentChanged();
+        }
 
         // 末尾 1.5s 渐弱（自然结束前的淡出）；seek 离开末尾则恢复音量
         const qint64 totalDur = m_player->duration();
@@ -1487,30 +1559,8 @@ void PlaylistManager::updatePlaybackProgress(qint64 position)
             emit isBufferingChanged();
             qDebug() << "缓冲完成，恢复播放";
         }
-        // 更新歌词
-        QString newlyric      = m_lyricParser.getLyricAtTime(position);
-        int newCharIndex      = m_lyricParser.getCharIndexAtTime(position);
-        float newCharProgress = m_lyricParser.getCharProgressAtTime(position);
-        QVariantList newChars = m_lyricParser.getCurrentChars(position);
-
-        // 始终更新进度（用于平滑动画）
-        bool progressChanged = qAbs(newCharProgress - m_lyricCharProgress) > 0.001f;
-        m_lyricCharProgress  = newCharProgress;
-
-        if (newlyric != currlyric || newCharIndex != m_lyricCharIndex)
-        {
-            currlyric        = newlyric;
-            m_lyricCharIndex = newCharIndex;
-            m_lyricChars     = newChars;
-            // 更新字符数（用于英文歌词高亮计算）
-            m_lyricCharCount = newChars.size();
-            emit currlyricChanged();
-        }
-        else if (progressChanged)
-        {
-            // 即使索引没变，进度变化也需要通知
-            emit currlyricChanged();
-        }
+        // 更新歌词（逐字进度高频刷新见 updateLyricProgress 的 16ms 定时器）
+        updateLyricProgress(position);
     }
 }
 
@@ -1542,6 +1592,51 @@ void PlaylistManager::fadeOutVolume(int ms, std::function<void()> onFinished)
     m_volAnim->setDuration(ms);
     m_volAnim->setEasingCurve(QEasingCurve::InOutQuad);
     m_volAnim->start();
+}
+
+// 逐字进度刷新。跳跃歌词动画（星星上抛/字压扁）按 charProgress 计算，
+// 16ms 定时器高频调用保证 60Hz；每次进度变化都 emit currlyricChanged——
+// 桌面歌词渲染已改 ShaderEffect（每帧仅 uniform 更新），无重绘压力；
+// 隐藏歌词页的 Connections 关闭（可见性隔离），重算只发生在可见页
+void PlaylistManager::updateLyricProgress(qint64 position)
+{
+    // position 值外推：flac 音频帧 4096 采样（≈92ms）导致 position 值 92ms 才前进一次，
+    // 阶梯间隙按真实时间外推——跳跃歌词动画（星星/字压扁）因此 60Hz 平滑
+    const qint64 tickNow = QDateTime::currentMSecsSinceEpoch();
+    if (position == m_lastRawPosMs)
+    {
+        // 值未刷新（阶梯间隙）：按真实时间推进
+        position = m_lastRawPosMs + (tickNow - m_lastRawTickMs);
+    }
+    else
+    {
+        m_lastRawPosMs  = position;
+        m_lastRawTickMs = tickNow;
+    }
+    QString newlyric      = m_lyricParser.getLyricAtTime(position);
+    int newCharIndex      = m_lyricParser.getCharIndexAtTime(position);
+    float newCharProgress = m_lyricParser.getCharProgressAtTime(position);
+
+    // 始终更新进度（用于平滑动画）
+    bool progressChanged = qAbs(newCharProgress - m_lyricCharProgress) > 0.001f;
+    m_lyricCharProgress  = newCharProgress;
+
+    if (newlyric != currlyric || newCharIndex != m_lyricCharIndex)
+    {
+        // 只在切行/切字时构建字符列表（高频调用时避免 QVariantList 分配）
+        QVariantList newChars = m_lyricParser.getCurrentChars(position);
+        currlyric        = newlyric;
+        m_lyricCharIndex = newCharIndex;
+        m_lyricChars     = newChars;
+        // 更新字符数（用于英文歌词高亮计算）
+        m_lyricCharCount = newChars.size();
+        emit currlyricChanged();
+    }
+    else if (progressChanged)
+    {
+        // 进度变化 16ms 定时器高频通知（60Hz 动画）
+        emit currlyricChanged();
+    }
 }
 
 void PlaylistManager::handlePlayerError(QMediaPlayer::Error error, const QString &errorString)
@@ -1795,9 +1890,7 @@ void PlaylistManager::playTogetherSongFromServer(
     emit isBufferingChanged();
 
     PlaylistCacheStore::ensureCacheDir();
-    QString cacheDir      = getCacheDir();
-    QString cacheFileName = songName + "-" + singerName + ".mp3";
-    QString cacheFilePath = cacheDir + "/" + cacheFileName;
+    QString cacheFilePath = PlaylistCacheStore::songCachePath(songName, singerName, 1);  // 一起听无音质概念，走标准 128
     bool useCache         = false;
     if (QFile::exists(cacheFilePath))
     {

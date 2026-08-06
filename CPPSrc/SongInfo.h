@@ -25,6 +25,8 @@ struct SongInfo
     Q_PROPERTY(QString added_by_avatar MEMBER added_by_avatar)
     // 歌单内歌曲标识（删歌用）：仅歌单 track/all 数据源填充，其他场景为空
     Q_PROPERTY(QString fileid MEMBER fileid)
+    // MV 播放 hash（mvhash）：仅含 MV 的歌曲有值，歌单/搜索数据源填充
+    Q_PROPERTY(QString mvhash MEMBER mvhash)
 
 public:
     QString title;
@@ -38,6 +40,7 @@ public:
     QString added_by_nickname;
     QString added_by_avatar;
     QString fileid;
+    QString mvhash;
 };
 
 #endif // SONG_INFO_H

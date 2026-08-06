@@ -16,6 +16,31 @@ Rectangle {
     property string singerName: playlistmanager ? (playlistmanager.currentsingername === "" ? "默认歌手" : playlistmanager.currentsingername) : "....."
     property string dominantColor: playlistmanager ? playlistmanager.dominantColor : "#FF6B6B"
 
+    // ── 逐字歌词进度（可见性隔离）──
+    // 页面由 Rightpage Loader 池管理：切走时 Loader opacity=0（visible 不变），
+    // 用 parent.opacity 判断真实可见性。隐藏时 Connections 关闭 → proxy 不变 →
+    // 逐字绑定零重算（主线程 60Hz 动画不卡的关键）
+    property bool _lyricsVisible: parent ? parent.opacity > 0 : false
+    property int lyricCharIdxProxy: -1
+    property real lyricCharProgressProxy: 0.0
+    property int lyricCharCountProxy: 0
+
+    Connections {
+        target: playlistmanager
+        enabled: lyricspage._lyricsVisible
+        function onCurrlyricChanged() { syncLyricValues() }
+    }
+    function syncLyricValues() {
+        if (!playlistmanager) return
+        lyricCharIdxProxy       = playlistmanager.lyricCharIndex
+        lyricCharProgressProxy  = playlistmanager.lyricCharProgress
+        lyricCharCountProxy     = playlistmanager.lyricCharCount
+    }
+    on_LyricsVisibleChanged: {
+        if (_lyricsVisible)
+            syncLyricValues()  // 切回播放页时立即同步（隐藏期间值已陈旧）
+    }
+
     // 安全地把 "#RRGGBB" 转为 rgba：避免 dominantColor 为空 / 非 #RRGGBB 格式时
     // substring + parseInt 产生 NaN，进而让 Qt.rgba 渲染出异常颜色甚至崩溃
     function rgbFromHex(hex, alpha) {
@@ -431,8 +456,9 @@ Rectangle {
 
             property bool isCurrentLine: ListView.isCurrentItem
             property bool isPastLine: index < lyricList.currentIndex && lyricList.currentIndex >= 0
-            property int charIdx: playlistmanager ? playlistmanager.lyricCharIndex : -1
-            property real charProgress: playlistmanager ? playlistmanager.lyricCharProgress : 0.0
+            // 由页面根 proxy 驱动（可见性隔离：页面隐藏时零重算）
+            property int charIdx: lyricspage.lyricCharIdxProxy
+            property real charProgress: lyricspage.lyricCharProgressProxy
 
             // 歌词文本容器
             Item {
@@ -466,7 +492,7 @@ Rectangle {
                     width: currentLineRow.width
                     height: currentLineRow.height
                     // 单元数（中文=字数、英文=词数），与 charIdx 一致
-                    property int totalChars: playlistmanager ? playlistmanager.lyricCharCount : 0
+                    property int totalChars: lyricspage.lyricCharCountProxy
                     // 星星实际像素位置（相对本行左端）：由当前字 delegate 的 Binding 写入，
                     // = 当前字在 Row 里的 x + 字内进度×字宽。按真实字符宽度跟随，
                     // 空格/标点等窄字符处不会按字符数比例"闪过"。

@@ -35,6 +35,7 @@ public:
         AddedByNicknameRole,
         AddedByAvatarRole,
         FileIdRole,
+        MvHashRole,
     };
     Q_ENUM(Roles)
 

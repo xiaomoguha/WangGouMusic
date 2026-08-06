@@ -177,6 +177,65 @@ void UserManager::loginByPhone(const QString &mobile, const QString &code)
     );
 }
 
+void UserManager::fetchQrKey()
+{
+    ApiClient::instance().getJson(
+        API_BASE + "/login/qr/key",
+        [this](QJsonObject root)
+        {
+            const QJsonObject data = root["data"].toObject();
+            const QString key      = data["qrcode"].toString();
+            if (key.isEmpty())
+            {
+                emit qrKeyFailed("二维码生成失败");
+                return;
+            }
+            // qrcode_img 是 data:image/png;base64,xxx，QML Image 可直接作为 source
+            emit qrKeyReady(key, data["qrcode_img"].toString());
+        },
+        [this](QString err, int)
+        {
+            emit qrKeyFailed(QString("网络错误: %1").arg(err));
+        },
+        10000
+    );
+}
+
+void UserManager::checkQrStatus(const QString &key)
+{
+    if (key.isEmpty())
+        return;
+    ApiClient::instance().getJson(
+        API_BASE + "/login/qr/check?key=" + key,
+        [this](QJsonObject root)
+        {
+            const int status = root["data"].toObject()["status"].toInt();
+            if (status != 4)
+            {
+                emit qrStatusReady(status);
+                return;
+            }
+            // 授权成功：解析登录态（check 响应含 token+userid；昵称/头像可能为空，成功后补拉用户信息）
+            const QJsonObject data = root["data"].toObject();
+            m_token                = data["token"].toString();
+            m_userid               = QString::number(data["userid"].toInt());
+            m_nickname             = data["nickname"].toString();
+            m_avatarUrl            = data["pic"].toString();
+            m_isVip                = data["is_vip"].toInt() == 1;
+            saveToSettings();
+            syncTokenToApiClient();
+            emit qrStatusReady(4);
+            emit loginStatusChanged();
+            emit userInfoUpdated();
+            emit loginSuccess();
+            if (m_nickname.isEmpty())
+                fetchUserDetail();  // 回填昵称/头像
+        },
+        [this](QString err, int) { emit qrStatusReady(-1); Q_UNUSED(err); },
+        8000
+    );
+}
+
 void UserManager::refreshToken()
 {
     if (m_token.isEmpty() || m_userid.isEmpty())
@@ -305,7 +364,7 @@ void UserManager::ensureCacheDir() const
 void UserManager::writeCacheFile(const QString &fileName, const QJsonDocument &doc) const
 {
     ensureCacheDir();
-    QString path = getCacheDir() + "/" + fileName;
+    QString path = PlaylistCacheStore::configPath(fileName);
     QFile file(path);
     if (file.open(QIODevice::WriteOnly))
     {
@@ -316,7 +375,7 @@ void UserManager::writeCacheFile(const QString &fileName, const QJsonDocument &d
 
 QJsonDocument UserManager::readCacheFile(const QString &fileName) const
 {
-    QString path = getCacheDir() + "/" + fileName;
+    QString path = PlaylistCacheStore::configPath(fileName);
     QFile file(path);
     if (!file.exists() || !file.open(QIODevice::ReadOnly))
         return QJsonDocument();

@@ -97,7 +97,7 @@ Rectangle {
         // 切到非渐变页时关闭渐变（回落到播放歌曲色），渐变页（歌单/专辑/歌手/搜索/每日推荐）自行控制
         var fileName = url.split('/').pop().split('.')[0];
         if (fileName === "HomePage" || fileName === "RankPage" ||
-            fileName === "musictogether" || fileName === "HistoryPage") {
+            fileName === "musictogether" || fileName === "HistoryPage" || fileName === "DiscoverPage") {
             BasicConfig.playlistPageActive = false;
         }
     }

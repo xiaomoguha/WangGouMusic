@@ -307,6 +307,8 @@ void Recommendation::onPlaylistTracksData(const QByteArray &data)
         song.duration    = secondsToMinutesSeconds(durationSec);
         // 歌单内歌曲标识（从歌单移除歌曲用；播放队列等其他数据源无此字段）
         song.fileid = QString::number(s["fileid"].toInt(0));
+        // MV 播放 hash（有 MV 的歌曲才有值）
+        song.mvhash = s["mvhash"].toString();
         m_playlistTracksModel->append(song);
     }
     // 更新分页状态：分页模式下，已加载数 < total 则还有更多

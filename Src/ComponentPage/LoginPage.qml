@@ -10,6 +10,10 @@ ThemedPopup {
 
     property string errorMsg: ""
     property int cooldown: 0
+    property bool qrTabActive: false      // false=验证码登录，true=扫码登录
+    property string qrKey: ""
+    property string qrImg: ""             // data:image/png;base64,xxx（Image source 可直接用）
+    property int qrStatus: 1              // 0过期/1等待/2待确认/4成功
 
     // 关闭按钮
     Rectangle {
@@ -52,17 +56,134 @@ ThemedPopup {
             anchors.horizontalCenter: parent.horizontalCenter
         }
 
-        Text {
-            text: "验证码登录，无需密码"
-            color: AppTheme.textMuted
-            font.pixelSize: AppTheme.fontSizeSmall
-            font.family: AppTheme.fontFamily
+        // 登录方式切换：验证码登录 | 扫码登录
+        Row {
+            width: parent.width
+            spacing: 28
             anchors.horizontalCenter: parent.horizontalCenter
+
+            Text {
+                text: "验证码登录"
+                font.pixelSize: AppTheme.fontSizeBodyLg
+                font.weight: Font.DemiBold
+                font.family: AppTheme.fontFamily
+                color: !loginPopup.qrTabActive ? AppTheme.accent : AppTheme.textMuted
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: parent.width / 2 - 14
+
+                HoverHandler { cursorShape: Qt.PointingHandCursor }
+                TapHandler {
+                    onTapped: {
+                        loginPopup.qrTabActive = false
+                        loginPopup.errorMsg = ""
+                    }
+                }
+            }
+
+            Text {
+                text: "扫码登录"
+                font.pixelSize: AppTheme.fontSizeBodyLg
+                font.weight: Font.DemiBold
+                font.family: AppTheme.fontFamily
+                color: loginPopup.qrTabActive ? AppTheme.accent : AppTheme.textMuted
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: parent.width / 2 - 14
+
+                HoverHandler { cursorShape: Qt.PointingHandCursor }
+                TapHandler {
+                    onTapped: {
+                        loginPopup.qrTabActive = true
+                        loginPopup.errorMsg = ""
+                        if (loginPopup.qrKey === "" && userManager)
+                            userManager.fetchQrKey()
+                    }
+                }
+            }
+        }
+
+        // 扫码面板
+        Column {
+            width: parent.width
+            visible: loginPopup.qrTabActive
+            spacing: 12
+
+            Item {
+                width: parent.width
+                height: 210
+
+                // 二维码（data URL 直接显示）
+                Image {
+                    id: qrImgView
+                    anchors.centerIn: parent
+                    width: 170
+                    height: 170
+                    source: loginPopup.qrImg
+                    asynchronous: false
+                    visible: source !== ""
+                    fillMode: Image.PreserveAspectFit
+                }
+
+                // 加载中/过期遮罩
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: 170
+                    height: 170
+                    radius: 8
+                    color: AppTheme.bgCard
+                    visible: loginPopup.qrImg === "" || loginPopup.qrStatus === 0
+                    Column {
+                        anchors.centerIn: parent
+                        spacing: 10
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: loginPopup.qrStatus === 0 ? "二维码已过期" : "正在生成二维码..."
+                            color: AppTheme.textMuted
+                            font.pixelSize: AppTheme.fontSizeBody
+                            font.family: AppTheme.fontFamily
+                        }
+                        // 过期时显示刷新按钮
+                        Rectangle {
+                            visible: loginPopup.qrStatus === 0
+                            width: 80
+                            height: 32
+                            radius: 16
+                            color: AppTheme.accent
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            Text {
+                                anchors.centerIn: parent
+                                text: "刷新"
+                                color: "white"
+                                font.pixelSize: AppTheme.fontSizeBody
+                                font.family: AppTheme.fontFamily
+                            }
+                            HoverHandler { cursorShape: Qt.PointingHandCursor }
+                            TapHandler {
+                                onTapped: if (userManager) userManager.fetchQrKey()
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 扫码状态提示
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: {
+                    if (loginPopup.qrStatus === 4) return "登录成功"
+                    if (loginPopup.qrStatus === 2) return "已扫码，请在手机上确认"
+                    if (loginPopup.qrStatus === 0) return "二维码已过期，请刷新"
+                    return "打开酷狗 APP 扫描二维码登录"
+                }
+                color: loginPopup.qrStatus === 2 ? AppTheme.accent : AppTheme.textMuted
+                font.pixelSize: AppTheme.fontSizeSmall
+                font.family: AppTheme.fontFamily
+            }
         }
 
         // 手机号
         TextField {
             id: phoneInput
+            visible: !loginPopup.qrTabActive
             width: parent.width
             height: 42
             placeholderText: "请输入手机号"
@@ -86,6 +207,7 @@ ThemedPopup {
 
         // 验证码 + 发送按钮
         Row {
+            visible: !loginPopup.qrTabActive
             width: parent.width
             spacing: 10
 
@@ -143,7 +265,7 @@ ThemedPopup {
         // 错误提示
         Text {
             width: parent.width
-            visible: loginPopup.errorMsg !== ""
+            visible: loginPopup.errorMsg !== "" && !loginPopup.qrTabActive
             text: loginPopup.errorMsg
             color: AppTheme.errorColor
             font.pixelSize: AppTheme.fontSizeSmall
@@ -154,6 +276,7 @@ ThemedPopup {
 
         // 登录按钮
         Rectangle {
+            visible: !loginPopup.qrTabActive
             width: parent.width
             height: 42
             radius: AppTheme.radiusMedium
@@ -182,11 +305,23 @@ ThemedPopup {
 
         // 底部提示
         Text {
+            visible: !loginPopup.qrTabActive
             text: "使用酷狗音乐账号登录"
             color: AppTheme.textDim
             font.pixelSize: AppTheme.fontSizeCaption
             font.family: AppTheme.fontFamily
             anchors.horizontalCenter: parent.horizontalCenter
+        }
+    }
+
+    // 扫码轮询：2.5s 一次，仅扫码 tab 激活且弹窗打开时运行
+    Timer {
+        id: qrPollTimer
+        interval: 2500
+        repeat: true
+        running: loginPopup.qrTabActive && loginPopup.opened && loginPopup.qrKey !== "" && loginPopup.qrStatus !== 4
+        onTriggered: {
+            if (userManager) userManager.checkQrStatus(loginPopup.qrKey)
         }
     }
 
@@ -236,6 +371,7 @@ ThemedPopup {
             loginPopup.errorMsg = ""
             phoneInput.text = ""
             codeInput.text = ""
+            qrPollTimer.stop()
             loginPopup.close()
         }
         function onLoginFailed(error) {
@@ -249,13 +385,35 @@ ThemedPopup {
                 loginPopup.errorMsg = msg
             }
         }
+        function onQrKeyReady(key, imgBase64) {
+            loginPopup.qrKey = key
+            loginPopup.qrImg = imgBase64
+            loginPopup.qrStatus = 1
+            loginPopup.errorMsg = ""
+        }
+        function onQrKeyFailed(error) {
+            loginPopup.errorMsg = error
+        }
+        function onQrStatusReady(status) {
+            loginPopup.qrStatus = status
+            if (status === 0) {
+                // 过期：停止轮询，展示刷新按钮（用户点击后重新生成）
+                qrPollTimer.stop()
+            }
+        }
     }
 
     onOpened: {
-        phoneInput.forceActiveFocus()
+        if (qrTabActive) {
+            if (qrKey === "" && userManager)
+                userManager.fetchQrKey()
+        } else {
+            phoneInput.forceActiveFocus()
+        }
     }
 
     onClosed: {
         errorMsg = ""
+        qrPollTimer.stop()
     }
 }

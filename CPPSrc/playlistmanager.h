@@ -19,12 +19,14 @@
 #include <QDebug>
 #include <QAudioOutput>
 #include <QTime>
+#include <QTimer>
 #include <QFileInfo>
 #include <QStandardPaths>
 #include <QDir>
 #include <QImage>
 #include <QColor>
 #include <QNetworkRequest>
+#include <QSettings>
 
 class DominantColorExtractor;
 class QPropertyAnimation;
@@ -72,6 +74,7 @@ class PlaylistManager : public QObject
     Q_PROPERTY(qreal downloadProgress READ downloadProgress NOTIFY downloadProgressChanged)
     Q_PROPERTY(bool isBuffering READ isBuffering NOTIFY isBufferingChanged)
     Q_PROPERTY(int playMode READ playMode NOTIFY playModeChanged)
+    Q_PROPERTY(int quality READ quality NOTIFY qualityChanged)  // 0自动/1标准128/2高品320/3无损flac
 public:
     explicit PlaylistManager(Recommendation *recommendation, QObject *parent = nullptr);
     Q_INVOKABLE void addSong(const SongInfo &song);
@@ -86,6 +89,8 @@ public:
     Q_INVOKABLE void playstop();
     Q_INVOKABLE void cyclePlayMode(); // 顺序 → 单曲循环 → 随机 → 顺序
     int playMode() const;
+    int quality() const;
+    Q_INVOKABLE void setQuality(int q);  // 切换音质：清空已取 URL 强制重取，当前歌即时换源
     Q_INVOKABLE void playNextAndPlay(const SongInfo &song);
     Q_INVOKABLE void playNextAndPlay(const QVariantMap &songMap);
     Q_INVOKABLE void addSongNext(const SongInfo &song);
@@ -170,6 +175,7 @@ signals:
     void isBufferingChanged();
     void playModeChanged();
     void playbackPositionChanged(qint64 position);  // 播放进度（毫秒）：外部用于 30 秒听歌上报等
+    void qualityChanged();
 
 private:
     enum PlaylistType type = LOCAL;
@@ -204,6 +210,11 @@ private:
     void fadeOutVolume(int ms, std::function<void()> onFinished);
     QString m_duration = "00:00";
     void updatePlaybackProgress(qint64 position);
+    // 逐字进度刷新：本地文件播放 positionChanged 实测仅 ~11Hz（无损缓存）、网络流 ~20Hz，
+    // 不足以驱动 60fps 动画——16ms 定时器按真实播放位置重算补足。渲染已优化
+    // （三文本方案每帧仅 2 个几何节点），60Hz 通知无压力；隐藏歌词页 Connections 关闭
+    void updateLyricProgress(qint64 position);
+    QTimer m_lyricAnimTimer;
     void handlePlayerError(QMediaPlayer::Error error, const QString &errorString);
     QString formatTime(qint64 milliseconds);
     Recommendation *m_recommendation = nullptr;
@@ -217,6 +228,14 @@ private:
     int m_localIndex              = -1;   // 一起听模式前保存的本地播放索引
     float m_localPercent          = 0.0f; // 一起听模式前保存的本地播放进度
     const int MAX_REPAIR_ATTEMPTS = 5;
+    // 播放源未就绪时用户点了播放：等 source 就绪（LoadedMedia）后自动续播
+    bool m_pendingPlayWhenReady = false;
+    // percentChanged 限频（本地文件 positionChanged 可达 80Hz+，进度条 30fps 足够）
+    qint64 m_lastPercentNotifyMs = 0;
+    // position 值外推：flac 音频帧 4096 采样（≈92ms）导致 position 值阶梯步进，
+    // 阶梯间隙按真实时间外推——跳跃歌词动画因此平滑（mp3 帧 26ms 无此问题）
+    qint64 m_lastRawPosMs  = 0;
+    qint64 m_lastRawTickMs = 0;
     // 懒加载队列源
     QString m_lazySourceId; // 源歌单 id（空 = 非懒加载模式）
     int m_lazyTotal             = 0;
@@ -246,6 +265,8 @@ private:
     qreal m_downloadProgress     = 1.0; // 下载进度 0~1，默认1表示已就绪
     int m_playMode               = MODE_ORDER;
     bool m_isBuffering           = false;
+    int m_quality                = 0;  // 音质档位（0自动/1标准128/2高品320/3无损flac），QSettings 持久化
+    QSettings m_settings{"WangGouMusic", "UserConfig"};
     qint64 m_downloadedBytes     = 0;
     qint64 m_totalDownloadBytes  = 0;
     // 缓存目录访问（转发到 PlaylistCacheStore，保留供内部使用）
