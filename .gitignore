@@ -31,3 +31,9 @@ Thumbs.db
 # IDE
 .idea/
 .vs/
+
+# 本地缓存与工具配置
+.cache/
+.qmlls.ini
+*.icns.bak
+ScreenShot_*.png

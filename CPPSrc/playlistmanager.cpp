@@ -1445,6 +1445,7 @@ void PlaylistManager::updatePlaybackProgress(qint64 position)
     // 歌曲播完后 position 会重置到 0，跳过以避免歌词闪回第一句
     if (m_player->mediaStatus() == QMediaPlayer::EndOfMedia)
         return;
+    emit playbackPositionChanged(position);
 
     if (m_player->duration() > 0)
     {

@@ -321,7 +321,7 @@ Rectangle {
         ListView {
             id: playlistList
             width: parent.width
-            height: parent.height - 44 - 44 - 8   // 减去 表头 44 + 最近播放 44 + 间距
+            height: parent.height - 44 - 44 - 8   // 减去 表头 44 + 听歌历史 44 + 间距
             clip: true
             spacing: 2
             visible: leftpageRectangle.playlistsExpanded
@@ -427,63 +427,6 @@ Rectangle {
                 Behavior on scale {
                     NumberAnimation { duration: AppTheme.animFast; easing.type: Easing.OutCubic }
                 }
-            }
-        }
-
-        // 最近播放（保持普通导航项）
-        Rectangle {
-            id: recentItem
-            width: parent.width - 24
-            height: 44
-            radius: 12
-            anchors.horizontalCenter: parent.horizontalCenter
-            property bool isSelected: leftpageRectangle.currentIndex === 4
-            // hover 改为文字/图标变亮（背景保持透明，渐变下无块状覆盖层）
-            color: recentItem.isSelected ? AppTheme.accent : "transparent"
-
-            Row {
-                spacing: 12
-                anchors.left: parent.left
-                anchors.leftMargin: 16
-                anchors.verticalCenter: parent.verticalCenter
-
-                NavIcon {
-                    iconType: "recent"
-                    selected: recentItem.isSelected
-                    iconColor: recentItem.isSelected ? AppTheme.iconActive : (recentMA.containsMouse ? AppTheme.textPrimary : AppTheme.iconNav)
-                    width: 20
-                    height: 20
-                    anchors.verticalCenter: parent.verticalCenter
-                }
-
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: qsTr("最近播放")
-                    font.pixelSize: AppTheme.fontSizeBodyLg
-                    font.family: AppTheme.fontFamily
-                    font.bold: true
-                    color: recentItem.isSelected ? AppTheme.textPrimary : (recentMA.containsMouse ? AppTheme.textPrimary : AppTheme.textSecondary)
-                }
-            }
-
-            MouseArea {
-                id: recentMA
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    leftpageRectangle.activePlaylistGid = "";
-                    if (leftpageRectangle.currentIndex !== 4) {
-                        leftpageRectangle.currentIndex = 4;
-                        BasicConfig.pushPage("qrc:/Src/ComponentPage/RecentlyPlayed.qml");
-                    }
-                }
-            }
-
-
-            scale: recentMA.containsMouse && !recentItem.isSelected ? 1.03 : 1.0
-            Behavior on scale {
-                NumberAnimation { duration: AppTheme.animFast; easing.type: Easing.OutCubic }
             }
         }
 
