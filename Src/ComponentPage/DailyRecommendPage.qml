@@ -72,8 +72,8 @@ Item {
             requestCoverColor()
     }
 
-    // 播放全部（直接播每日推荐列表）
-    function playAll() {
+    // 播放全部 / 从指定下标播放：把整个每日推荐列表载入播放列表（双击切歌用）
+    function playListFromIndex(startIndex) {
         var songs = dailyRecommend ? dailyRecommend.songs : []
         if (songs.length === 0) return
         playlistmanager.clearPlaylist()
@@ -88,8 +88,11 @@ Item {
                 "duration": s.duration
             })
         }
-        playlistmanager.playSongbyindex(0)
-        BasicConfig.emitSongAdded("正在播放: 每日推荐")
+        playlistmanager.playSongbyindex(Math.max(0, Math.min(startIndex, songs.length - 1)))
+        BasicConfig.emitSongAdded("已切换播放列表: 每日推荐")
+    }
+    function playAll() {
+        playListFromIndex(0)
     }
 
     Flickable {
@@ -398,6 +401,16 @@ Item {
                                 BasicConfig.emitSongAdded("正在播放: " + songData.songname)
                             }
                         }
+                    }
+
+                    // 双击 = 切换到每日推荐播放列表，从该曲开始（同歌单详情页）
+                    // TapHandler 之间不互相吞噬：双击时单击的 playNextAndPlay 会被
+                    // 这里的 clearPlaylist+重载覆盖，最终结果即整个列表载入
+                    TapHandler {
+                        acceptedButtons: Qt.LeftButton
+                        enabled: !isTogetherMode
+                        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                        onDoubleTapped: root.playListFromIndex(index)
                     }
                 }
             }

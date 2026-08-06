@@ -169,6 +169,7 @@ signals:
     void downloadProgressChanged();
     void isBufferingChanged();
     void playModeChanged();
+    void playbackPositionChanged(qint64 position);  // 播放进度（毫秒）：外部用于 30 秒听歌上报等
 
 private:
     enum PlaylistType type = LOCAL;

@@ -150,6 +150,7 @@ int main(int argc, char *argv[])
     dailyRecommend.setUserManager(&userManager);
     personalFM.setUserManager(&userManager);
     playlistCollection.setUserManager(&userManager);
+    historyManager.setUserManager(&userManager);
     WebSocketClient websocket(&playlistmanager, &userManager);
     NowPlayingMediaController mediaController(&playlistmanager);
     LyricsConfigManager lyricsConfig;
@@ -176,11 +177,30 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("historyManager", &historyManager);
     engine.rootContext()->setContextProperty("aiRecommendManager", &aiRecommendManager);
 
-    // 播放切歌 → 上报听歌历史（批量解析 mxid 后上传；未登录不上报）
+    // 播放上报听歌历史：播放满 30 秒上报一次；单曲循环重播（位置回退）可再次上报，次数累加
+    // 未登录不上报；pc = 云端基线 + 本次会话次数（见 HistoryManager::doUpload）
+    QString reportSongHash;
+    bool reportSongDone = false;
+    qint64 reportLastPos = 0;
     QObject::connect(&playlistmanager, &PlaylistManager::currentSongChanged, &historyManager, [&]() {
         if (!userManager.isLoggedIn())
             return;
-        historyManager.reportPlayed(playlistmanager.currentTitle(), playlistmanager.currentSongHash());
+        reportSongHash = playlistmanager.currentSongHash();
+        reportSongDone = false;
+        reportLastPos = 0;
+    });
+    QObject::connect(&playlistmanager, &PlaylistManager::playbackPositionChanged, &historyManager, [&](qint64 pos) {
+        if (!userManager.isLoggedIn() || reportSongHash.isEmpty())
+            return;
+        // 位置回退超过 30 秒（单曲循环重播/重头开始）：视为新一轮播放，可再次上报
+        if (pos < reportLastPos - 30000)
+            reportSongDone = false;
+        reportLastPos = pos;
+        if (!reportSongDone && pos >= 30000)
+        {
+            reportSongDone = true;
+            historyManager.reportPlayed(playlistmanager.currentTitle(), playlistmanager.currentSongHash());
+        }
     });
     engine.rootContext()->setContextProperty("artistManager", &artistManager);
     engine.rootContext()->setContextProperty("songComments", &songComments);
