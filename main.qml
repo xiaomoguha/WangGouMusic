@@ -450,21 +450,6 @@ ApplicationWindow {
         }
     }
 
-    // 桌面歌词设置窗口（独立 OS 模态窗口，transientParent 为主窗口，系统级防穿透）
-    ComponentPage.DesktopLyricsSettings {
-        id: desktopLyricsSettings
-        transientParent: root
-    }
-
-    Connections {
-        target: BasicConfig
-        function onRequestDesktopLyricsSettings() {
-            desktopLyricsSettings.x = root.x + (root.width - desktopLyricsSettings.width) / 2
-            desktopLyricsSettings.y = root.y + (root.height - desktopLyricsSettings.height) / 2
-            desktopLyricsSettings.show()
-        }
-    }
-
     // MV 播放窗口：打开时暂停主播放器，关闭后按原状态恢复（playstop 是 toggle）
     ComponentPage.MvWindow {
         id: mvWindow

@@ -67,6 +67,25 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         spacing: 15
 
+        // 网络代理设置（检查更新左侧，齿轮图标）
+        IconButton {
+            id: networkSettingsBtn
+            anchors.verticalCenter: parent.verticalCenter
+            iconSource: AppIcon.settings
+            size: 32
+            iconSize: 17
+            iconColor: BasicConfig.playlistCoverColor !== ""
+                ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
+                : (netSetHover.hovered ? AppTheme.textPrimary : AppTheme.textMuted)
+            HoverHandler { id: netSetHover }
+            ToolTip {
+                visible: netSetHover.hovered
+                delay: 400
+                text: "网络设置（代理）"
+            }
+            onClicked: BasicConfig.pushPage("qrc:/Src/ComponentPage/SettingsPage.qml")
+        }
+
         // 检查更新（头像左侧，向上箭头；hover 显示版本号）
         IconButton {
             id: updateIconBtn
