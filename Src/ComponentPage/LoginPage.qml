@@ -14,6 +14,7 @@ ThemedPopup {
     property string qrKey: ""
     property string qrImg: ""             // data:image/png;base64,xxx（Image source 可直接用）
     property int qrStatus: 1              // 0过期/1等待/2待确认/4成功
+    property bool succeed: false          // 登录成功：盖成功提示层，延时关闭
 
     // 关闭按钮
     Rectangle {
@@ -57,10 +58,10 @@ ThemedPopup {
         }
 
         // 登录方式切换：验证码登录 | 扫码登录
+        // 两 tab 各占半宽、文字水平居中，关于弹窗中线对称（Row 已占满宽，无需再居中）
         Row {
             width: parent.width
             spacing: 28
-            anchors.horizontalCenter: parent.horizontalCenter
 
             Text {
                 text: "验证码登录"
@@ -69,6 +70,7 @@ ThemedPopup {
                 font.family: AppTheme.fontFamily
                 color: !loginPopup.qrTabActive ? AppTheme.accent : AppTheme.textMuted
                 width: parent.width / 2 - 14
+                horizontalAlignment: Text.AlignHCenter
 
                 HoverHandler { cursorShape: Qt.PointingHandCursor }
                 TapHandler {
@@ -86,6 +88,7 @@ ThemedPopup {
                 font.family: AppTheme.fontFamily
                 color: loginPopup.qrTabActive ? AppTheme.accent : AppTheme.textMuted
                 width: parent.width / 2 - 14
+                horizontalAlignment: Text.AlignHCenter
 
                 HoverHandler { cursorShape: Qt.PointingHandCursor }
                 TapHandler {
@@ -314,6 +317,59 @@ ThemedPopup {
         }
     }
 
+    // 登录成功覆盖层：盖整弹窗，绿色 ✓ + 文案，停 1s 后自动关弹窗
+    Rectangle {
+        id: succeedOverlay
+        anchors.fill: parent
+        radius: loginPopup.dialogRadius
+        color: AppTheme.bgOverlay
+        visible: loginPopup.succeed
+        opacity: loginPopup.succeed ? 1 : 0
+        z: 10
+        Behavior on opacity { NumberAnimation { duration: AppTheme.animFast } }
+
+        Column {
+            anchors.centerIn: parent
+            spacing: 14
+
+            Rectangle {
+                width: 60; height: 60; radius: 30
+                color: AppTheme.successColor
+                anchors.horizontalCenter: parent.horizontalCenter
+                scale: loginPopup.succeed ? 1 : 0.4
+                Behavior on scale { NumberAnimation { duration: AppTheme.animNormal; easing.type: Easing.OutBack } }
+                Text {
+                    anchors.centerIn: parent
+                    text: "✓"
+                    color: "white"
+                    font.pixelSize: 34
+                    font.weight: Font.Bold
+                }
+            }
+            Text {
+                text: "登录成功"
+                color: AppTheme.textPrimary
+                font.pixelSize: AppTheme.fontSizeTitleLg
+                font.weight: Font.Bold
+                font.family: AppTheme.fontFamily
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+        }
+
+        // 拦截点击，避免穿透到下层表单
+        MouseArea { anchors.fill: parent; onClicked: {} }
+    }
+
+    // 成功展示 1s 后关弹窗
+    Timer {
+        id: succeedTimer
+        interval: 1000
+        onTriggered: {
+            loginPopup.succeed = false
+            loginPopup.close()
+        }
+    }
+
     // 扫码轮询：2.5s 一次，仅扫码 tab 激活且弹窗打开时运行
     Timer {
         id: qrPollTimer
@@ -373,7 +429,8 @@ ThemedPopup {
             phoneInput.text = ""
             codeInput.text = ""
             qrPollTimer.stop()
-            loginPopup.close()
+            loginPopup.succeed = true
+            succeedTimer.start()
         }
         function onLoginFailed(error) {
             loginPopup.errorMsg = error
@@ -418,6 +475,7 @@ ThemedPopup {
 
     onClosed: {
         errorMsg = ""
+        succeed = false
         qrPollTimer.stop()
     }
 }
