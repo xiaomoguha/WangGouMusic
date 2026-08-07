@@ -52,8 +52,8 @@ bool LyricParser::parseKRCLyrics(const QString &krcText)
         qint64 lineDuration = lineMatch.captured(2).toLongLong();
         QString charPart    = lineMatch.captured(3);
 
-        // 解析逐字
-        QVariantList chars;
+        // 解析逐字（先收集到临时列表，便于死区吸收后处理）
+        QVector<LyricChar> rawChars;
         QString fullText;
         QRegularExpressionMatchIterator charMatchIt = charRegex.globalMatch(charPart);
 
@@ -72,10 +72,27 @@ bool LyricParser::parseKRCLyrics(const QString &krcText)
                 continue;
             }
 
-            LyricChar lc(charStart, charDuration, charText);
-            chars.append(QVariant::fromValue(lc));
+            rawChars.append(LyricChar(charStart, charDuration, charText));
             fullText.append(charText);
         }
+
+        // 死区吸收：KRC 常把拖长音/停顿标成「字 duration 短 + 后续大段空白」，
+        // 导致逐字高亮在字唱完后冲到 1.0 卡住不动，直到下一字才跳。
+        // 把每个有声字（duration>0）到下一字之间的空白并入它自己的 duration，
+        // 让高亮连续流过整段拖音（"慢慢走"而非"卡住等"）。一处改，全歌词受益。
+        for (int i = 0; i < rawChars.size(); ++i)
+        {
+            if (rawChars[i].duration <= 0)
+                continue;
+            const qint64 thisEnd   = rawChars[i].startTime + rawChars[i].duration;
+            const qint64 nextStart = (i + 1 < rawChars.size()) ? rawChars[i + 1].startTime : lineDuration;
+            if (nextStart > thisEnd)
+                rawChars[i].duration += nextStart - thisEnd;
+        }
+
+        QVariantList chars;
+        for (const LyricChar &lc : std::as_const(rawChars))
+            chars.append(QVariant::fromValue(lc));
 
         if (!fullText.isEmpty())
         {
