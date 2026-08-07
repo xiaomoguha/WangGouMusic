@@ -55,6 +55,7 @@ QtObject {
     readonly property string caretUp: "qrc:/icons/caret-up.svg"
     readonly property string caretRight: "qrc:/icons/caret-right.svg"
     readonly property string sparkle: "qrc:/icons/sparkle.svg"
+    readonly property string settings: "qrc:/icons/gear.svg"
     readonly property string compass: "qrc:/icons/compass.svg"
     readonly property string musicNotes: "qrc:/icons/music-notes.svg"
     readonly property string video: "qrc:/icons/video-camera.svg"

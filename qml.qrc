@@ -31,7 +31,6 @@
         <file>Src/ComponentPage/musictogether.qml</file>
         <file>Src/ComponentPage/RecentlyPlayed.qml</file>
         <file>Src/ComponentPage/DesktopLyrics.qml</file>
-        <file>Src/ComponentPage/DesktopLyricsSettings.qml</file>
         <file>Src/ComponentPage/ColorField.qml</file>
         <file>Src/ComponentPage/Add_room_window.qml</file>
         <file>Src/ComponentPage/Togethermusicmain.qml</file>
@@ -44,6 +43,7 @@
         <file>Src/ToolWindow/AiRecommendExpand.qml</file>
         <file>Src/ToolWindow/ClimaxDot.qml</file>
         <file>Src/ComponentPage/HomePage.qml</file>
+        <file>Src/ComponentPage/SettingsPage.qml</file>
         <file>Src/ComponentPage/UpdateDialog.qml</file>
         <file>Src/ComponentPage/LoginPage.qml</file>
         <file>Src/ComponentPage/UserPlaylistPage.qml</file>

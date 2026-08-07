@@ -10,7 +10,6 @@ QtObject {
     signal noticeError(string errormessages)
     signal noticeSuccess(string messages)
     signal songAdded(string songname)
-    signal requestDesktopLyricsSettings()
     signal requestMvPlay(string songhash, string title)
 
     property string searchKeyword: ""

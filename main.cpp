@@ -35,6 +35,7 @@
 #include "./CPPSrc/albummanager.h"
 #include "./CPPSrc/historymanager.h"
 #include "./CPPSrc/discovermanager.h"
+#include "./CPPSrc/proxymanager.h"
 #include "./CPPSrc/mvmanager.h"
 #include "./CPPSrc/airecommendmanager.h"
 #include "./CPPSrc/artistmanager.h"
@@ -164,6 +165,7 @@ int main(int argc, char *argv[])
     NowPlayingMediaController mediaController(&playlistmanager);
     LyricsConfigManager lyricsConfig;
     AppUpdater appUpdater;
+    ProxyManager proxyManager;   // 进程级代理（构造即 apply，须早于 engine.load 与任何网络请求）
 
     // QML 全局注册
     qRegisterMetaType<SongInfo>("SongInfo");
@@ -186,6 +188,7 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("historyManager", &historyManager);
     engine.rootContext()->setContextProperty("discoverManager", &discoverManager);
     engine.rootContext()->setContextProperty("mvManager", &mvManager);
+    engine.rootContext()->setContextProperty("proxyManager", &proxyManager);
     engine.rootContext()->setContextProperty("aiRecommendManager", &aiRecommendManager);
 
     // 播放上报听歌历史：歌曲自然播完（EndOfMedia）才上报一次；中途切歌/退出不算
