@@ -1138,12 +1138,190 @@ Rectangle {
                 }
                 TapHandler {
                     cursorShape: Qt.PointingHandCursor
-                    onTapped: BasicConfig.requestDesktopLyricsSettings()
+                    onTapped: lyricsPopup.open()
                 }
 
                 Behavior on color {
                     ColorAnimation {
                         duration: AppTheme.animFast
+                    }
+                }
+
+                // 桌面歌词快捷浮窗：开关 + 歌词偏移 + 更多设置入口（更多设置才弹颜色窗口）
+                Popup {
+                    id: lyricsPopup
+                    x: -(248 - lyricsBtn.width)
+                    y: -232
+                    width: 248
+                    height: lyricsPopupCol.implicitHeight + 28
+                    padding: 0
+                    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+                    background: Rectangle {
+                        radius: 12
+                        color: AppTheme.bgCard
+                        border.width: 1
+                        border.color: AppTheme.borderDefault
+                    }
+
+                    enter: Transition {
+                        NumberAnimation { property: "opacity"; from: 0; to: 1; duration: AppTheme.animFast }
+                        NumberAnimation { property: "scale"; from: 0.9; to: 1.0; duration: AppTheme.animFast; easing.type: Easing.OutCubic }
+                    }
+                    exit: Transition {
+                        NumberAnimation { property: "opacity"; from: 1; to: 0; duration: 100 }
+                        NumberAnimation { property: "scale"; from: 1.0; to: 0.9; duration: 100 }
+                    }
+
+                    Column {
+                        id: lyricsPopupCol
+                        anchors.fill: parent
+                        anchors.margins: 14
+                        spacing: 12
+
+                        // 桌面歌词开关
+                        Item {
+                            width: parent.width
+                            height: 28
+
+                            Text {
+                                text: "桌面歌词"
+                                color: AppTheme.textPrimary
+                                font.family: AppTheme.fontFamily
+                                font.pixelSize: AppTheme.fontSizeBodyLg
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+
+                            Rectangle {
+                                width: 46; height: 26; radius: 13
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                color: (lyricsConfig && lyricsConfig.enabled) ? AppTheme.accent : AppTheme.scrollbarColor
+                                Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+
+                                Rectangle {
+                                    x: (lyricsConfig && lyricsConfig.enabled) ? parent.width - width - 3 : 3
+                                    y: 3; width: 20; height: 20; radius: 10; color: "white"
+                                    Behavior on x { NumberAnimation { duration: AppTheme.animFast; easing.type: Easing.OutCubic } }
+                                }
+                                TapHandler {
+                                    cursorShape: Qt.PointingHandCursor
+                                    onTapped: {
+                                        if (!lyricsConfig) return
+                                        lyricsConfig.enabled = !lyricsConfig.enabled
+                                        lyricsConfig.saveConfig()
+                                    }
+                                }
+                            }
+                        }
+
+                        // 歌词偏移
+                        Column {
+                            width: parent.width
+                            spacing: 8
+
+                            Item {
+                                width: parent.width; height: 18
+                                Text {
+                                    text: "歌词偏移"
+                                    color: AppTheme.textSecondary
+                                    font.family: AppTheme.fontFamily
+                                    font.pixelSize: AppTheme.fontSizeBody
+                                    anchors.left: parent.left
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                                Text {
+                                    text: {
+                                        if (!playlistmanager || playlistmanager.lyricOffsetMs === 0) return "0.00s"
+                                        var sign = playlistmanager.lyricOffsetMs > 0 ? "+" : ""
+                                        return sign + (playlistmanager.lyricOffsetMs / 1000).toFixed(2) + "s"
+                                    }
+                                    font.family: AppTheme.fontFamily
+                                    font.pixelSize: AppTheme.fontSizeBody
+                                    font.bold: true
+                                    color: (playlistmanager && playlistmanager.lyricOffsetMs !== 0) ? AppTheme.accent : AppTheme.textMuted
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                            }
+
+                            Row {
+                                width: parent.width
+                                spacing: 6
+                                Repeater {
+                                    model: [{ "t": "提前", "d": 250 }, { "t": "复原", "d": 0 }, { "t": "延后", "d": -250 }]
+                                    Rectangle {
+                                        required property var modelData
+                                        width: (parent.width - 12) / 3; height: 28; radius: 14
+                                        color: offBtnHover.hovered ? AppTheme.iconButtonHover : AppTheme.bgInput
+                                        border.width: 1
+                                        border.color: AppTheme.borderDefault
+                                        Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: modelData.t
+                                            font.family: AppTheme.fontFamily
+                                            font.pixelSize: AppTheme.fontSizeSmall
+                                            color: AppTheme.textSecondary
+                                        }
+                                        HoverHandler { id: offBtnHover }
+                                        TapHandler {
+                                            cursorShape: Qt.PointingHandCursor
+                                            onTapped: {
+                                                if (!playlistmanager) return
+                                                if (modelData.d === 0) playlistmanager.resetLyricOffset()
+                                                else playlistmanager.adjustLyricOffset(modelData.d)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // 分隔线
+                        Rectangle { width: parent.width; height: 1; color: AppTheme.borderSubtle }
+
+                        // 更多设置：弹出颜色/大小等高级设置窗口
+                        Rectangle {
+                            width: parent.width; height: 38; radius: 10
+                            color: moreHover.hovered ? AppTheme.iconButtonHover : "transparent"
+                            Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+
+                            Row {
+                                anchors.left: parent.left; anchors.leftMargin: 10
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 8
+                                Text {
+                                    text: "⚙"
+                                    color: AppTheme.textSecondary
+                                    font.pixelSize: AppTheme.fontSizeBodyLg
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                                Text {
+                                    text: "更多设置"
+                                    color: AppTheme.textPrimary
+                                    font.family: AppTheme.fontFamily
+                                    font.pixelSize: AppTheme.fontSizeBody
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                            }
+                            Text {
+                                text: "›"
+                                color: AppTheme.textMuted
+                                font.pixelSize: AppTheme.fontSizeTitleLg
+                                anchors.right: parent.right; anchors.rightMargin: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                            HoverHandler { id: moreHover }
+                            TapHandler {
+                                cursorShape: Qt.PointingHandCursor
+                                onTapped: {
+                                    lyricsPopup.close()
+                                    BasicConfig.requestDesktopLyricsSettings()
+                                }
+                            }
+                        }
                     }
                 }
             }
