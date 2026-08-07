@@ -311,6 +311,9 @@ void Recommendation::onPlaylistTracksData(const QByteArray &data)
         song.mvhash = s["mvhash"].toString();
         m_playlistTracksModel->append(song);
     }
+    // 本页加载成功，页码递增（fetchMorePlaylistTracks 据此算下一页；
+    // 缺这行会永远 page=0+1=1，反复请求并 append 第一页）
+    m_playlistPage++;
     // 更新分页状态：分页模式下，已加载数 < total 则还有更多
     if (m_playlistHasMore && m_playlistTotal > 0)
     {
