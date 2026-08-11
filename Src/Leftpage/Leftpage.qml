@@ -326,7 +326,11 @@ Rectangle {
         ListView {
             id: playlistList
             width: parent.width
-            height: parent.height - 44 - 44 - 8   // 减去 表头 44 + 听歌历史 44 + 间距
+            // 歌单少时高度跟随内容（听歌历史紧跟其下）；歌单多时封顶在此高度内滚动，
+            // 听歌历史停在最低位置；收起时高度归零让听歌历史紧跟表头
+            height: leftpageRectangle.playlistsExpanded
+                    ? Math.min(Math.max(contentHeight, 0), parent.height - 44 - 44 - 8)
+                    : 0
             clip: true
             spacing: 2
             visible: leftpageRectangle.playlistsExpanded
