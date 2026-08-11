@@ -30,7 +30,7 @@ Item {
             return
         }
         expanded = true
-        seedHash = hash
+        seedHash = hash.toUpperCase()
         if (aiSongs.length === 0) {
             aiError = ""
             seedName = name
