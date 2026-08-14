@@ -59,7 +59,7 @@ Window {
 
     // 窗口大小 - 保证最小能显示所有控制按钮，歌词居中
     width: desktopLyrics.isVertical ? Math.max(background.width + 70, 44 * desktopLyrics.scale + 16) : Math.max(background.width + 20, controlPanelHorizontal.implicitWidth + 20)
-    height: desktopLyrics.isVertical ? Math.max(background.height + 20, controlPanelVertical.implicitHeight + 20) : Math.max(background.height + 70, 28 * desktopLyrics.scale + 16 + 8 * desktopLyrics.scale)
+    height: desktopLyrics.isVertical ? Math.max(background.height + 20, controlPanelVertical.implicitHeight + 20) : Math.max(background.height + 72 * desktopLyrics.scale + 12, 28 * desktopLyrics.scale + 16 + 8 * desktopLyrics.scale)  // 横排:上下留白随 scale 放大(容下 28*scale 按钮 + 8*scale margin),否则 scale>100% 时按钮顶部被窗口裁掉一截
 
     // 歌词内容变化时保持中心位置不变（横向）/ 顶部位置不变（竖向）
     // 使用绝对中心点重新计算 x，避免增量补偿的整数截断累积误差（导致窗口逐渐左漂）
