@@ -52,6 +52,7 @@ public:
     Q_INVOKABLE QVariantMap loadCachedPlaylistDetail(const QString &globalCollectionId);
     Q_INVOKABLE void cacheUserDetail(const QVariantMap &data);
     Q_INVOKABLE QVariantMap loadCachedUserDetail();
+    Q_INVOKABLE void fetchGradeInfo();  // 听歌等级/累计时长查询（标准版协议下上报不记账，仅查询展示）
 
 signals:
     void loginStatusChanged();
@@ -65,6 +66,7 @@ signals:
     void qrKeyFailed(const QString &error);
     void tokenRefreshResult(bool success);
     void userDetailReceived(const QVariantMap &data);
+    void gradeInfoReceived(const QVariantMap &data);
     void userPlaylistReceived(const QVariantMap &data);
     void playlistDetailReceived(const QVariantMap &data);
 
