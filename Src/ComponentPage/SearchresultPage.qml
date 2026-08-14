@@ -111,7 +111,7 @@ Item {
     // ===== 歌手卡片（命中歌手时显示） =====
     Rectangle {
         id: singerCard
-        visible: singerData && singerData.name
+        visible: !!(singerData && singerData.name)
         anchors.top: headerRow.bottom
         anchors.topMargin: 10
         anchors.left: parent.left
@@ -141,7 +141,7 @@ Item {
                 Image {
                     id: singerAvatarImg
                     anchors.fill: parent
-                    source: singerData.avatar
+                    source: singerData.avatar || ""
                     asynchronous: true
                     cache: true
                     fillMode: Image.PreserveAspectCrop
@@ -166,7 +166,7 @@ Item {
                 spacing: 4
 
                 Text {
-                    text: singerData.name
+                    text: singerData.name || ""
                     font.pixelSize: AppTheme.fontSizeBodyLg
                     font.bold: true
                     color: singerHover.hovered ? AppTheme.accentPlaying : AppTheme.textPrimary
