@@ -2,72 +2,74 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import "../BasicConfig"
 
-// 设置页：左侧分类导航 + 右侧分区滚动。点左导航滚到对应区，滚动也反向高亮导航项。
-// 网络代理（proxyManager 全局 QNetworkProxy）+ 桌面歌词（方向/跳跃/颜色/大小/偏移）。
+// 设置页：顶部横向标签页（网易云风格）+ 下方分区滚动。
+// 点标签滚到对应区，滚动也反向高亮标签。网络代理（proxyManager）+ 桌面歌词。
 Rectangle {
     id: settingsPage
     color: "transparent"
     width: parent ? parent.width : 0
     height: parent ? parent.height : 0
 
-    // 左侧导航栏
-    Rectangle {
-        id: navBar
+    // 顶部标题 + 横向标签
+    Item {
+        id: tabBar
         anchors.left: parent.left
+        anchors.right: parent.right
         anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        width: 200
-        color: "transparent"
+        height: 96
 
-        // 右分隔线
-        Rectangle {
-            anchors.right: parent.right
+        Text {
+            text: "设置"
+            color: AppTheme.textPrimary
+            font.pixelSize: AppTheme.fontSizeTitleLg
+            font.weight: Font.Bold
+            font.family: AppTheme.fontFamily
+            anchors.left: parent.left
+            anchors.leftMargin: 36
             anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            width: 1
-            color: AppTheme.borderSubtle
+            anchors.topMargin: 24
         }
 
-        Column {
-            id: navColumn
-            anchors.fill: parent
-            anchors.topMargin: 28
-            anchors.leftMargin: 12
-            anchors.rightMargin: 12
-            spacing: 6
-
-            Text {
-                text: "设置"
-                color: AppTheme.textPrimary
-                font.pixelSize: AppTheme.fontSizeTitleLg
-                font.weight: Font.Bold
-                font.family: AppTheme.fontFamily
-                leftPadding: 12
-                bottomPadding: 16
-            }
+        Row {
+            id: tabRow
+            anchors.left: parent.left
+            anchors.leftMargin: 36
+            anchors.bottom: parent.bottom
+            spacing: 32
 
             Repeater {
                 model: [
                     { key: "network", title: "网络代理" },
                     { key: "lyrics", title: "桌面歌词" }
                 ]
-                delegate: Rectangle {
+                delegate: Item {
                     required property var modelData
-                    width: navColumn.width
-                    height: 40
-                    radius: AppTheme.radiusSmall
-                    color: settingsPage.currentSection === modelData.key ? AppTheme.bgNavHover : "transparent"
-                    Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+                    width: tabText.implicitWidth
+                    height: 42
 
                     Text {
+                        id: tabText
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.top: parent.top
+                        anchors.topMargin: 8
                         text: modelData.title
-                        color: settingsPage.currentSection === modelData.key ? AppTheme.accent : AppTheme.textSecondary
-                        font.pixelSize: AppTheme.fontSizeBody
+                        color: settingsPage.currentSection === modelData.key ? AppTheme.textPrimary : AppTheme.textSecondary
+                        font.pixelSize: AppTheme.fontSizeBodyLg
                         font.weight: settingsPage.currentSection === modelData.key ? Font.DemiBold : Font.Normal
                         font.family: AppTheme.fontFamily
-                        anchors.left: parent.left
-                        anchors.leftMargin: 12
-                        anchors.verticalCenter: parent.verticalCenter
+                        Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+                    }
+
+                    // 选中下划线（缩放进出）
+                    Rectangle {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.bottom: parent.bottom
+                        width: tabText.implicitWidth + 8
+                        height: 3
+                        radius: 1.5
+                        color: AppTheme.accent
+                        scale: settingsPage.currentSection === modelData.key ? 1 : 0
+                        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
                     }
 
                     TapHandler {
@@ -77,14 +79,23 @@ Rectangle {
                 }
             }
         }
+
+        // 底部分隔线
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: 1
+            color: AppTheme.borderSubtle
+        }
     }
 
-    // 右侧滚动区
+    // 下方滚动区（单列居中，点标签/滚动双向联动）
     Flickable {
         id: settingsFlick
-        anchors.left: navBar.right
-        anchors.top: parent.top
+        anchors.left: parent.left
         anchors.right: parent.right
+        anchors.top: tabBar.bottom
         anchors.bottom: parent.bottom
         clip: true
         contentWidth: width
@@ -114,7 +125,7 @@ Rectangle {
             width: settingsFlick.width - 80
             anchors.horizontalCenter: parent.horizontalCenter
             spacing: 20
-            topPadding: 28
+            topPadding: 24
 
             // ===== 网络代理 section =====
             Rectangle {
