@@ -23,12 +23,12 @@ void MvManager::fetchVideoUrl(const QString &hash)
 {
     if (hash.isEmpty())
         return;
+    qDebug() << "[MvManager] fetchVideoUrl 发起请求 hash:" << hash;
     m_lastHash = hash;
     m_requester.fetchData(QStringLiteral("%1/video/url?hash=%2").arg(kApiRoot).arg(hash));
 }
 
-// 响应：data.{hash: {downurl, backupdownurl[], filesize}}（url 带有效期，不可缓存）
-// 注意：搜索/歌单数据源的 mvhash 对部分歌曲无效（MV 不存在），上游返回 40002 Not found
+// 响应：data.{hash: {downurl, backupdownurl[], filesize}}（url 带有效期，不可缓存）// 注意：搜索/歌单数据源的 mvhash 对部分歌曲无效（MV 不存在），上游返回 40002 Not found
 void MvManager::onVideoUrlData(const QByteArray &data)
 {
     QJsonParseError perr;
@@ -46,7 +46,10 @@ void MvManager::onVideoUrlData(const QByteArray &data)
         const QString url  = it.value().toObject()["downurl"].toString();
         if (!url.isEmpty())
         {
-            emit videoUrlReceived(hash, url);
+            qDebug() << "[MvManager] 拿到 downurl hash:" << hash << "长度:" << url.size();
+            // 回传请求时的原样 hash：歌单数据源 mvhash 是大写、酷狗响应是小写，
+            // 消费方按原样比较才不会因大小写失配丢掉 URL
+            emit videoUrlReceived(m_lastHash, url);
             return;
         }
     }

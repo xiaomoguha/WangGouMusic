@@ -459,12 +459,15 @@ ApplicationWindow {
     property bool mvPausedOnOpen: false
     Connections {
         target: BasicConfig
-        function onRequestMvPlay(songhash, title) {
+        function onRequestMvPlay(song) {
             mvPausedOnOpen = playlistmanager && !playlistmanager.isPaused
             if (mvPausedOnOpen)
                 playlistmanager.playstop()
-            mvWindow.mvHash = songhash
-            mvWindow.mvTitle = title
+            mvWindow.mvHash = song.mvhash || ""
+            mvWindow.mvTitle = song.title || "MV"
+            mvWindow.mvSinger = song.singername || ""
+            mvWindow.mvCover = song.cover || ""
+            mvWindow.songHash = song.songhash || ""
             mvWindow.show()
         }
     }
