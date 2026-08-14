@@ -103,9 +103,19 @@ void ApiClient::setupReply(
             {
                 const QString err = reply->errorString();
                 const int status  = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+                // 请求被取消（abort：如重新搜索/切页面丢弃旧请求，或超时 abort）：
+                // device 已关闭，readAll 会报 "QIODevice::read: device not open"，且本就无 body，
+                // 直接走 onError，不解析。
+                if (reply->error() == QNetworkReply::OperationCanceledError)
+                {
+                    reply->deleteLater();
+                    if (onError)
+                        onError(err, status);
+                    return;
+                }
                 // 服务器业务错误以非 2xx（如 502）+ 可解析 JSON（status/error_code）返回，
                 // body 仍含有效业务信息，按正常响应解析（如 token 过期让 refreshToken 能清登录态）。
-                // 真网络错误（超时/断连/网关 502 的 HTML 页）body 为空或非 JSON，仍走 onError。
+                // 真网络错误（断连/网关 502 的 HTML 页）body 为空或非 JSON，仍走 onError。
                 const QByteArray body = reply->readAll();
                 reply->deleteLater();
                 if (onSuccess && !body.isEmpty())
