@@ -20,6 +20,7 @@ class UserManager : public QObject
     Q_PROPERTY(QString nickname READ nickname NOTIFY userInfoUpdated)
     Q_PROPERTY(QString avatarUrl READ avatarUrl NOTIFY userInfoUpdated)
     Q_PROPERTY(QString userid READ userid NOTIFY userInfoUpdated)
+    Q_PROPERTY(QString token READ token NOTIFY userInfoUpdated)  // 设置页「同步到服务器」推送给 serverAdmin 用
     Q_PROPERTY(bool isVip READ isVip NOTIFY userInfoUpdated)
     Q_PROPERTY(bool isLoading READ isLoading NOTIFY isLoadingChanged)
 
