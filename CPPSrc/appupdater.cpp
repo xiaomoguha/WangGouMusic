@@ -20,7 +20,7 @@
 #endif
 
 // 版本检测 API 地址
-static const QString CHECK_UPDATE_URL = QStringLiteral("https://xjt-togethertracks.top/api/app/checkupdate");
+static const QString CHECK_UPDATE_URL = QStringLiteral("https://api.special520.com/app/checkupdate");
 
 AppUpdater::AppUpdater(QObject *parent)
     : QObject(parent), m_downloadManager(new QNetworkAccessManager(this)),

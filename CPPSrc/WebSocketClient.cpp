@@ -2,12 +2,14 @@
 #include <QDebug>
 #include <QUrlQuery>
 
-#define WEB_SOCKET_SERVICE_HOST "music.xjt-togethertracks.top"
+// 一起听双域名：ws.* 走 WebSocket 升级，music.* 走房间列表等普通 HTTP（nginx 已分别反代 3001）
+#define WEB_SOCKET_WS_HOST "ws.special520.com"
+#define WEB_SOCKET_HTTP_HOST "music.special520.com"
 #define WEB_SOCKET_SERVICE_PATH "/ws"
 
 WebSocketClient::WebSocketClient(PlaylistManager *playManager, UserManager *userManager, QObject *parent)
     : QObject{parent}, playmanager(playManager), usermanager(userManager), m_webSocket(nullptr),
-      m_serverUrl("wss://music.xjt-togethertracks.top/ws"), m_connectionState(Disconnected), m_heartbeatTimer(nullptr),
+      m_serverUrl("wss://" WEB_SOCKET_WS_HOST WEB_SOCKET_SERVICE_PATH), m_connectionState(Disconnected), m_heartbeatTimer(nullptr),
       m_heartbeatTimeoutTimer(nullptr), m_heartbeatInterval(30)
 {
     initializeWebSocket();
@@ -178,7 +180,7 @@ void WebSocketClient::setUrl(const QString &roomid, const QString &userid)
 
     QUrl url;
     url.setScheme("wss");
-    url.setHost(WEB_SOCKET_SERVICE_HOST);
+    url.setHost(WEB_SOCKET_WS_HOST);
     url.setPath(WEB_SOCKET_SERVICE_PATH);
 
     QUrlQuery query;
@@ -979,7 +981,7 @@ QJsonObject WebSocketClient::parseJson(const QString &jsonString)
 
 void WebSocketClient::fetchRoomList()
 {
-    QUrl httpUrl(QString("https://%1/rooms").arg(WEB_SOCKET_SERVICE_HOST));
+    QUrl httpUrl(QString("https://%1/rooms").arg(WEB_SOCKET_HTTP_HOST));
     QNetworkRequest request(httpUrl);
     request.setTransferTimeout(5000);
     QNetworkReply *reply = m_httpManager.get(request);

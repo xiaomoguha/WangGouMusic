@@ -65,7 +65,7 @@ void SearchComplex::fetchComplexData(const QString &keyword)
     emit countChanged();
 
     const QString url =
-        QString("https://xjt-togethertracks.top/api/search?keywords=%1&page=1&pagesize=%2").arg(keyword).arg(PAGE_SIZE);
+        QString("https://api.special520.com/search?keywords=%1&page=1&pagesize=%2").arg(keyword).arg(PAGE_SIZE);
 
     m_isLoading = true;
     emit isLoadingChanged();
@@ -95,7 +95,7 @@ void SearchComplex::fetchMore()
     emit isLoadingChanged();
     emit pageChanged();
 
-    const QString url = QString("https://xjt-togethertracks.top/api/search?keywords=%1&page=%2&pagesize=%3")
+    const QString url = QString("https://api.special520.com/search?keywords=%1&page=%2&pagesize=%3")
                             .arg(m_currentKeyword)
                             .arg(m_page)
                             .arg(PAGE_SIZE);

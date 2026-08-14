@@ -84,7 +84,7 @@ ApplicationWindow {
         onTriggered: {
             //获取热搜数据
             if (hostSearch)
-                hostSearch.fetchhostserachData("https://xjt-togethertracks.top/api/search/hot")
+                hostSearch.fetchhostserachData("https://api.special520.com/search/hot")
             //启动时加载推荐数据（仅首次，后续由 C++ 缓存）
             if (recommendation) {
                 if (recommendation.topSongsQml.length === 0)

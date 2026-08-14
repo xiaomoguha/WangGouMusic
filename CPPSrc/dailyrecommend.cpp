@@ -45,7 +45,7 @@ void DailyRecommend::fetch()
         if (!m_userManager->token().isEmpty())
             query.addQueryItem("token", m_userManager->token());
     }
-    const QString url = "https://xjt-togethertracks.top/api/everyday/recommend"
+    const QString url = "https://api.special520.com/everyday/recommend"
                         + (query.isEmpty() ? "" : "?" + query.toString());
     m_requester.fetchData(url);
 }

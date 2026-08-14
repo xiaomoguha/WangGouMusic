@@ -11,7 +11,7 @@
 #include <QUrlQuery>
 #include <QDebug>
 
-static const QString API_BASE = "https://xjt-togethertracks.top/api";
+static const QString API_BASE = "https://api.special520.com";
 
 UserManager::UserManager(QObject *parent) : QObject(parent)
 {

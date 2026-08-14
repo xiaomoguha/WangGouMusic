@@ -1547,7 +1547,7 @@ void PlaylistManager::fetchClimax(const QString &hash)
     setClimaxPercent(0);  // 切歌先清旧高潮点
 
     ApiClient::instance().get(
-        QString("https://xjt-togethertracks.top/api/song/climax?hash=%1").arg(hash),
+        QString("https://api.special520.com/song/climax?hash=%1").arg(hash),
         [this, hash](QByteArray body) {
             if (m_climaxHash != hash)  // 迟到核对：期间已切歌则丢弃
                 return;
@@ -1606,7 +1606,7 @@ void PlaylistManager::fetchSongUrl(const QString &hash, std::function<void(QStri
     static const char *const kQualityParam[] = {"", "128", "320", "flac"};
     const QString qs = m_quality > 0 && m_quality <= 3 ? QStringLiteral("&quality=%1").arg(kQualityParam[m_quality]) : QString();
     ApiClient::instance().get(
-        QString("https://xjt-togethertracks.top/api/song/url?hash=%1%2").arg(hash).arg(qs),
+        QString("https://api.special520.com/song/url?hash=%1%2").arg(hash).arg(qs),
         [this, hash, callback](QByteArray body)
         {
             const QJsonDocument doc = QJsonDocument::fromJson(body);
@@ -1725,7 +1725,7 @@ void PlaylistManager::fetchLyricData(const QString &hash, std::function<void(QSt
 
     // 第一步：根据 hash 获取歌词信息
     ApiClient::instance().getJson(
-        QString("https://xjt-togethertracks.top/api/search/lyric?hash=%1").arg(hash),
+        QString("https://api.special520.com/search/lyric?hash=%1").arg(hash),
         [this, hash, finish](QJsonObject root)
         {
             const QJsonArray candidates = root["candidates"].toArray();
@@ -1759,7 +1759,7 @@ void PlaylistManager::fetchLyricContent(
     const QString &id, const QString &accesskey, std::function<void(QString)> callback
 )
 {
-    const QString urlStr = QString("https://xjt-togethertracks.top/api/lyric?id=%1&accesskey=%2&fmt=krc&decode=true")
+    const QString urlStr = QString("https://api.special520.com/lyric?id=%1&accesskey=%2&fmt=krc&decode=true")
                                .arg(id)
                                .arg(accesskey);
 
