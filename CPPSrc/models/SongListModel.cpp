@@ -94,6 +94,26 @@ QVariant SongListModel::get(int index) const
 
 void SongListModel::syncFromList(const QList<SongInfo> &songs)
 {
+    // 增量对齐：以 songhash 为主键尽量复用已有行，避免全量 reset 让 ListView
+    // 销毁重建所有 delegate（一起听列表 delegate 含 ColorOverlay 等重效果，
+    // 全量重建会卡住主线程、阻塞音频渲染 —— 别人加歌时接收方放歌卡一下的根因）。
+    int common = 0;
+    while (common < m_songs.size() && common < songs.size()
+           && m_songs[common].songhash == songs[common].songhash)
+        ++common;
+    // 旧列表是新列表的前缀：末尾追加了若干首（=别人加歌），或完全相同（切歌/进度广播）
+    if (common == m_songs.size() && songs.size() >= m_songs.size())
+    {
+        if (songs.size() > m_songs.size())
+        {
+            QList<SongInfo> tail;
+            for (int i = m_songs.size(); i < songs.size(); ++i)
+                tail.append(songs[i]);
+            appendList(tail);   // 增量插入：ListView 只新建尾部 delegate，其余复用
+        }
+        return;                 // 含"完全相同" → no-op，不触发任何重建
+    }
+    // 其他（删歌/重排，偶发）→ 兜底全量 reset
     beginResetModel();
     m_songs = songs;
     endResetModel();
