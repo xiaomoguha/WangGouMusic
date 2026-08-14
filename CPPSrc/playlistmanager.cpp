@@ -40,7 +40,10 @@ PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent
     );
 
     m_player->setAudioOutput(m_audioOutput);
-    m_audioOutput->setVolume(1.0);
+    // 音量持久化：启动恢复上次音量（m_targetVolume 同步，fade 动画以它为目标）
+    const qreal initialVolume = m_settings.value(QStringLiteral("volume"), 1.0).toReal();
+    m_audioOutput->setVolume(initialVolume);
+    m_targetVolume = initialVolume;
 
     // 跟随系统默认音频输出设备：运行中新接入蓝牙耳机或切换默认播放设备时，自动把音频路由到新设备。
     // 否则 QAudioOutput 会一直绑定启动时捕获的旧设备，必须重启应用才切换。
@@ -443,6 +446,17 @@ void PlaylistManager::playSongbyindex(int index)
             }
             else
             {
+                // 立即切歌 + 进入 loading/暂停态：取 URL 期间不显示"播放中"（URL 还没拿到），
+                // 成功后 startPlayback 转 playing；失败由 handleSongUrlFailed 提示并自动跳下一首。
+                // 必须先设 m_currentIndex：否则失败时 handleSongUrlFailed 的 hash 校验对不上旧歌
+                m_currentIndex = index;
+                emit currentIndexChanged(index);
+                emit currentSongChanged();
+                m_player->stop();  // 立即停旧歌：UI 已切新歌，避免"看着新歌、耳朵还在放旧歌"
+                m_isBuffering = true;
+                emit isBufferingChanged();
+                m_isPaused = true;
+                emit isPausedChanged();
                 fetchSongUrl(
                     (*m_curplaylist)[index].songhash,
                     [this, index](const QString &url)
@@ -450,14 +464,9 @@ void PlaylistManager::playSongbyindex(int index)
                         if (!url.isEmpty())
                         {
                             (*m_curplaylist)[index].url = url;
-                            m_currentIndex              = index;
-                            emit currentIndexChanged(index);
                             startPlayback((*m_curplaylist)[index]);
                         }
-                        else
-                        {
-                            qWarning() << "获取播放 URL 失败";
-                        }
+                        // 失败由 fetchSongUrl 内部 handleSongUrlFailed 统一处理（m_currentIndex 已是本歌→暂停+提示）
                     }
                 );
             }
@@ -617,6 +626,15 @@ void PlaylistManager::playSongbyhasg(const QString &songhash)
                 }
                 else
                 {
+                    // 立即切歌 + loading/暂停态(同 playSongbyindex)：取 URL 期间不显示"播放中"
+                    m_currentIndex = index;
+                    emit currentIndexChanged(index);
+                    emit currentSongChanged();
+                    m_player->stop();  // 立即停旧歌，避免"看着新歌、耳朵还在放旧歌"
+                    m_isBuffering = true;
+                    emit isBufferingChanged();
+                    m_isPaused = true;
+                    emit isPausedChanged();
                     fetchSongUrl(
                         songhash,
                         [this, index](const QString &url)
@@ -624,14 +642,9 @@ void PlaylistManager::playSongbyhasg(const QString &songhash)
                             if (!url.isEmpty())
                             {
                                 (*m_curplaylist)[index].url = url;
-                                m_currentIndex              = index;
-                                emit currentIndexChanged(index);
                                 startPlayback((*m_curplaylist)[index]);
                             }
-                            else
-                            {
-                                qWarning() << "获取播放 URL 失败";
-                            }
+                            // 失败由 fetchSongUrl 内部 handleSongUrlFailed 统一处理
                         }
                     );
                 }
@@ -1520,6 +1533,73 @@ QString PlaylistManager::loadLyricFromCache(const QString &songhash)
     return PlaylistCacheStore::loadLyric(songhash);
 }
 
+void PlaylistManager::fetchClimax(const QString &hash)
+{
+    if (hash.isEmpty())
+    {
+        setClimaxPercent(0);
+        return;
+    }
+    // 去重：同 hash 正在请求中跳过（底栏 + 播放页两个 ClimaxDot 切歌时各触发一次，合并为一次请求）
+    if (m_climaxHash == hash)
+        return;
+    m_climaxHash = hash;
+    setClimaxPercent(0);  // 切歌先清旧高潮点
+
+    ApiClient::instance().get(
+        QString("https://xjt-togethertracks.top/api/song/climax?hash=%1").arg(hash),
+        [this, hash](QByteArray body) {
+            if (m_climaxHash != hash)  // 迟到核对：期间已切歌则丢弃
+                return;
+            qreal pct = 0;
+            QJsonParseError pe;
+            const QJsonDocument doc = QJsonDocument::fromJson(body, &pe);
+            if (pe.error == QJsonParseError::NoError && doc.isObject())
+            {
+                const QJsonObject o = doc.object();
+                if (o.value("status").toInt() == 1)
+                {
+                    const QJsonArray arr = o.value("data").toArray();
+                    if (!arr.isEmpty() && arr[0].isObject())
+                    {
+                        const qint64 startMs = arr[0].toObject().value("start_time").toVariant().toLongLong();
+                        const qint64 totalMs = parseDurationMs(m_duration);
+                        if (totalMs > 0)
+                            pct = qMin(qreal(startMs) / totalMs, 1.0);
+                    }
+                }
+            }
+            setClimaxPercent(pct);
+        },
+        [this, hash](QString, int) {
+            if (m_climaxHash == hash)
+                setClimaxPercent(0);
+        },
+        10000
+    );
+}
+
+void PlaylistManager::setClimaxPercent(qreal p)
+{
+    if (qFuzzyCompare(m_climaxPercent, p))
+        return;
+    m_climaxPercent = p;
+    emit climaxPercentChanged();
+}
+
+qint64 PlaylistManager::parseDurationMs(const QString &str)
+{
+    if (str.isEmpty())
+        return 0;
+    if (str.contains(':'))
+    {
+        const auto parts = str.split(':');
+        if (parts.size() == 2)
+            return (parts[0].toInt() * 60 + parts[1].toInt()) * 1000;
+    }
+    return static_cast<qint64>(str.toDouble() * 1000);
+}
+
 void PlaylistManager::fetchSongUrl(const QString &hash, std::function<void(QString)> callback)
 {
     // 音质：0自动(默认128) / 1标准128 / 2高品320 / 3无损flac（服务器共享 VIP token）
@@ -1527,39 +1607,131 @@ void PlaylistManager::fetchSongUrl(const QString &hash, std::function<void(QStri
     const QString qs = m_quality > 0 && m_quality <= 3 ? QStringLiteral("&quality=%1").arg(kQualityParam[m_quality]) : QString();
     ApiClient::instance().get(
         QString("https://xjt-togethertracks.top/api/song/url?hash=%1%2").arg(hash).arg(qs),
-        [callback](QByteArray body)
+        [this, hash, callback](QByteArray body)
         {
             const QJsonDocument doc = QJsonDocument::fromJson(body);
+            QString songUrl;
             if (doc.isObject())
             {
                 const QJsonArray urlarray = doc.object()["url"].toArray();
-                callback(urlarray.isEmpty() ? QString() : urlarray[0].toString());
+                if (!urlarray.isEmpty())
+                    songUrl = urlarray[0].toString();
+            }
+            if (songUrl.isEmpty())
+            {
+                handleSongUrlFailed(hash, QStringLiteral("无可用播放地址"));
+                callback(QString());
             }
             else
             {
-                callback(QString());
+                m_urlFailStreak = 0;  // 成功取到 URL，清连续失败计数
+                callback(songUrl);
             }
         },
-        [callback](QString err, int)
+        [this, hash, callback](QString err, int)
         {
-            Q_UNUSED(err);
+            handleSongUrlFailed(hash, err);
             callback(QString());
         },
         10000
     );
 }
 
+void PlaylistManager::handleSongUrlFailed(const QString &hash, const QString &reason)
+{
+    qWarning() << "[PlaylistManager] 获取播放地址失败 hash=" << hash << "reason=" << reason;
+    // 停 loading 态（否则进度条一直转、界面卡住无反应）
+    if (m_isBuffering)
+    {
+        m_isBuffering = false;
+        emit isBufferingChanged();
+    }
+    // 过时请求（切歌后旧请求迟到失败）不打扰当前播放
+    if (m_currentIndex < 0 || m_currentIndex >= m_curplaylist->size())
+        return;
+    if ((*m_curplaylist)[m_currentIndex].songhash.compare(hash, Qt::CaseInsensitive) != 0)
+        return;
+
+    // 一起听：队列由服务器控制，客户端不自动切歌——只暂停 + 提示
+    if (type != LOCAL)
+    {
+        m_isPaused = true;
+        emit isPausedChanged();
+        emit songUrlFailed(QStringLiteral("获取播放地址失败（一起听由房间控制，已暂停）"));
+        return;
+    }
+
+    // 本地模式：提示 + 自动播放下一首。连续失败达到队列长度（封顶 10）说明整队都拿不到 URL，停下
+    ++m_urlFailStreak;
+    const int failLimit = qMin((*m_curplaylist).size(), 10);
+    if (m_urlFailStreak >= failLimit)
+    {
+        m_urlFailStreak = 0;
+        m_isPaused      = true;
+        emit isPausedChanged();
+        emit songUrlFailed(QStringLiteral("连续获取播放地址失败，已停止播放"));
+        return;
+    }
+    emit songUrlFailed(QStringLiteral("获取播放地址失败，3 秒后自动播放下一首"));
+    // 错误回调里同步切歌可能被播放器状态机吞掉：延迟到事件循环再切（同 handlePlayerError）。
+    // 延迟 3 秒与 toast 显示时长一致——让提示先看清，再自动切歌
+    QTimer::singleShot(3000, this, [this, hash]()
+    {
+        // 3 秒内用户手动切了歌/换了队列：这次自动跳歌作废
+        if (m_currentIndex < 0 || m_currentIndex >= m_curplaylist->size())
+            return;
+        if ((*m_curplaylist)[m_currentIndex].songhash.compare(hash, Qt::CaseInsensitive) != 0)
+            return;
+        const int size = (*m_curplaylist).size();
+        if (size <= 0)
+            return;
+        int next;
+        if (m_playMode == MODE_RANDOM && size > 1)
+        {
+            // 随机模式保持随机（避免重复当前首）
+            do
+            {
+                next = QRandomGenerator::global()->bounded(size);
+            } while (next == m_currentIndex);
+        }
+        else
+        {
+            // 顺序推进（末尾回开头，streak 上限兜底）；单曲循环也强制推进——否则失败的歌会死循环
+            next = (m_currentIndex + 1) % size;
+        }
+        playSongbyindex(next);
+    });
+}
+
 void PlaylistManager::fetchLyricData(const QString &hash, std::function<void(QString)> callback)
 {
+    // 去重：同 hash 正在请求中，挂起 callback，等首个请求完成后统一回调
+    // （切歌时多个调用点/组件触发同一首歌歌词，避免重复打 /search/lyric + /lyric）
+    if (m_lyricPendingHashes.contains(hash))
+    {
+        m_lyricPendingCallbacks[hash].append(callback);
+        return;
+    }
+    m_lyricPendingHashes.insert(hash);
+    m_lyricPendingCallbacks[hash].append(callback);
+
+    // 首个请求完成时，统一回调所有挂起的 callback
+    auto finish = [this, hash](const QString &lyric) {
+        const auto cbs = m_lyricPendingCallbacks.take(hash);
+        m_lyricPendingHashes.remove(hash);
+        for (const auto &cb : cbs)
+            if (cb) cb(lyric);
+    };
+
     // 第一步：根据 hash 获取歌词信息
     ApiClient::instance().getJson(
         QString("https://xjt-togethertracks.top/api/search/lyric?hash=%1").arg(hash),
-        [this, hash, callback](QJsonObject root)
+        [this, hash, finish](QJsonObject root)
         {
             const QJsonArray candidates = root["candidates"].toArray();
             if (candidates.isEmpty() || !candidates[0].isObject())
             {
-                callback(QString());
+                finish(QString());
                 return;
             }
             const QJsonObject lyricInfo = candidates[0].toObject();
@@ -1568,16 +1740,16 @@ void PlaylistManager::fetchLyricData(const QString &hash, std::function<void(QSt
             if (!id.isEmpty() && !accesskey.isEmpty())
             {
                 // 第二步：使用 id 和 accesskey 获取具体歌词内容
-                fetchLyricContent(id, accesskey, callback);
+                fetchLyricContent(id, accesskey, finish);
                 return;
             }
             qWarning() << "未找到有效的id或accesskey";
-            callback(QString());
+            finish(QString());
         },
-        [callback](QString err, int)
+        [finish](QString err, int)
         {
             Q_UNUSED(err);
-            callback(QString());
+            finish(QString());
         },
         10000
     );
@@ -1671,6 +1843,17 @@ void PlaylistManager::updatePlaybackProgress(qint64 position)
         // 更新歌词（逐字进度高频刷新见 updateLyricProgress 的 16ms 定时器）
         updateLyricProgress(position);
     }
+}
+
+void PlaylistManager::setVolume(qreal v)
+{
+    v = qBound(0.0, v, 1.0);
+    if (m_volAnim)
+        m_volAnim->stop();
+    m_audioOutput->setVolume(v);
+    m_targetVolume = v;
+    m_settings.setValue(QStringLiteral("volume"), v);
+    emit volumeChanged();
 }
 
 void PlaylistManager::fadeInVolume()
@@ -1793,6 +1976,21 @@ void PlaylistManager::handlePlayerError(QMediaPlayer::Error error, const QString
     }
 
     qWarning() << "播放出错:" << errorString << "错误代码:" << error;
+
+    // 资源/网络错误：URL 失效或无法访问（一起听服务器链接过期、直链 403/404、旧 url 失效等）。
+    // 报错 + 暂停，不进修复重试（同一个失效链接重试无意义）。
+    if (error == QMediaPlayer::ResourceError || error == QMediaPlayer::NetworkError)
+    {
+        if (m_isBuffering)
+        {
+            m_isBuffering = false;
+            emit isBufferingChanged();
+        }
+        m_isPaused = true;
+        emit isPausedChanged();
+        emit songUrlFailed(QStringLiteral("播放失败，歌曲链接已失效或无法访问"));
+        return;
+    }
 
     // Qt ffmpeg 后端解码酷狗 flac 尾部不兼容（最小复现：播到 ~99.1% 报 FormatError，文件本身完好，
     // md5 与服务器一致）。接近末尾的错误按自然播完处理：不删缓存、直接下一首

@@ -44,6 +44,8 @@
     <file>icons/play.svg</file>
     <file>icons/plus.svg</file>
     <file>icons/queue.svg</file>
+    <file>icons/volume.svg</file>
+    <file>icons/volume-mute.svg</file>
     <file>icons/qr-code.svg</file>
     <file>icons/quotes.svg</file>
     <file>icons/read-cv-logo.svg</file>

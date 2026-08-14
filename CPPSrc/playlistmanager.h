@@ -76,6 +76,8 @@ class PlaylistManager : public QObject
     Q_PROPERTY(bool isBuffering READ isBuffering NOTIFY isBufferingChanged)
     Q_PROPERTY(int playMode READ playMode NOTIFY playModeChanged)
     Q_PROPERTY(int quality READ quality NOTIFY qualityChanged)  // 0自动/1标准128/2高品320/3无损flac
+    Q_PROPERTY(qreal climaxPercent READ climaxPercent NOTIFY climaxPercentChanged)  // 高潮段位置（0~1）
+    Q_PROPERTY(qreal volume READ volume NOTIFY volumeChanged)  // 音量 0~1（持久化）
 public:
     explicit PlaylistManager(Recommendation *recommendation, QObject *parent = nullptr);
     ~PlaylistManager(); // 清理退出中断留下的半截下载文件
@@ -102,6 +104,8 @@ public:
     );
     Q_INVOKABLE void requestMoreSourceTracks(); // 弹窗滚动按需加载下一批（不受播放邻近守卫限制）
     Q_INVOKABLE void setposistion(float positionvalue);
+    Q_INVOKABLE void fetchClimax(const QString &hash);  // 高潮段：按 hash 去重请求，结果存 climaxPercent
+    Q_INVOKABLE void setVolume(qreal v);  // 音量 0~1（持久化；停 fade 动画后立即生效）
 
     int currentIndex() const;
     QString currentTitle() const;
@@ -113,6 +117,8 @@ public:
     float getpercent() const;
     QString getpercentstr() const;
     QString durationstr();
+    qreal climaxPercent() const { return m_climaxPercent; }
+    qreal volume() const { return m_audioOutput ? m_audioOutput->volume() : 0.0; }
     qint64 playerDuration() const;
     SongListModel *playlistModel();
     QList<SongInfo> playlist();
@@ -179,6 +185,9 @@ signals:
     void dominantColorChanged();
     void downloadProgressChanged();
     void isBufferingChanged();
+    void climaxPercentChanged();
+    void volumeChanged();
+    void songUrlFailed(const QString &reason);  // 拿不到播放地址(共享号失效/网络异常)
     void playModeChanged();
     void playbackPositionChanged(qint64 position);  // 播放进度（毫秒）：外部用于 30 秒听歌上报等
     void qualityChanged();
@@ -204,6 +213,7 @@ private:
     QAudioOutput *m_audioOutput = new QAudioOutput(this);
     void startPlayback(const SongInfo &song);
     void fetchSongUrl(const QString &hash, std::function<void(QString)> callback);
+    void handleSongUrlFailed(const QString &hash, const QString &reason);  // 拿不到 url:停 loading+提示;本地模式自动跳下一首(连败达上限则停),一起听只暂停
     void showplaylist();
     float m_percent      = 0.0;
     QString m_percentstr = "00:00";
@@ -233,6 +243,7 @@ private:
     bool m_isRepairing            = false;
     float m_restorePercent        = -1.0f;
     int m_repairCount             = 0;
+    int m_urlFailStreak           = 0;  // 连续取 URL 失败计数：自动跳下一首的全队死循环保护
     int m_localIndex              = -1;   // 一起听模式前保存的本地播放索引
     float m_localPercent          = 0.0f; // 一起听模式前保存的本地播放进度
     const int MAX_REPAIR_ATTEMPTS = 5;
@@ -288,6 +299,16 @@ private:
 
     // 主色调提取（独立模块）：异步后台线程 + 内存 LRU 缓存
     DominantColorExtractor *m_colorExtractor;
+
+    // 高潮段：切歌按 hash 去重请求，避免多组件（底栏/播放页 ClimaxDot）重复打 /song/climax
+    qreal m_climaxPercent = 0;
+    QString m_climaxHash;       // 正在请求的 hash（去重 + 迟到响应核对）
+    void setClimaxPercent(qreal p);
+    static qint64 parseDurationMs(const QString &str);  // "mm:ss"/秒 → 毫秒
+
+    // 歌词去重：同 hash 并发请求合并为一次（多调用点/组件触发同一首歌）
+    QSet<QString> m_lyricPendingHashes;
+    QHash<QString, QVector<std::function<void(QString)>>> m_lyricPendingCallbacks;
 };
 
 #endif // PLAYLISTMANAGER_H
