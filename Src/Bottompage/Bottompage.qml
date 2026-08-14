@@ -81,6 +81,49 @@ Rectangle {
         }
     }
 
+    // 拿不到播放地址时提示（共享号被踢 / 网络异常）——Popup 挂在窗口 Overlay 层，
+    // 不会被主内容区盖住；显示在底栏上方，3 秒自动关闭
+    Popup {
+        id: urlErrorToast
+        x: (parent.width - width) / 2
+        y: -height - 10
+        width: Math.max(260, Math.min(440, urlErrorText.implicitWidth + 48))
+        height: 38
+        modal: false
+        dim: false
+        closePolicy: Popup.NoAutoClose
+        padding: 0
+
+        background: Rectangle {
+            radius: 10
+            color: AppTheme.bgOverlay
+            border.color: AppTheme.errorColor
+            border.width: 1
+        }
+        contentItem: Text {
+            id: urlErrorText
+            leftPadding: 20
+            rightPadding: 20
+            text: "获取播放地址失败"
+            color: AppTheme.errorColor
+            font.pixelSize: AppTheme.fontSizeBody
+            font.weight: Font.DemiBold
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+        }
+
+        Timer { id: urlErrorTimer; interval: 3000; onTriggered: urlErrorToast.close() }
+        function show(msg) {
+            if (msg) urlErrorText.text = msg
+            urlErrorTimer.restart()
+            open()
+        }
+        Connections {
+            target: playlistmanager
+            function onSongUrlFailed(reason) { urlErrorToast.show(reason) }
+        }
+    }
+
     // 主内容区域 - 横向布局
     Row {
         anchors.fill: parent
@@ -522,7 +565,7 @@ Rectangle {
                 id: progressContainer
                 height: parent.height
                 // 弹性填充剩余宽度：随 leftSection(贴合歌名)/歌词容器宽度动态变化，保证右端按钮始终贴右
-                width: controlBar.width - leftSection.width - lyricsControlContainer.width - rightSection.width - currentTimeText.implicitWidth - totalTimeText.implicitWidth - 56
+                width: controlBar.width - leftSection.width - lyricsControlContainer.width - rightSection.width - volumeSection.width - currentTimeText.implicitWidth - totalTimeText.implicitWidth - 56
 
                 // 底层轨道
                 Rectangle {
@@ -649,6 +692,81 @@ Rectangle {
                 font.pixelSize: AppTheme.fontSizeCaption
                 color: AppTheme.isDark ? "#99FFFFFF" : AppTheme.textMuted
                 anchors.verticalCenter: parent.verticalCenter
+            }
+        }
+
+        // ========== 音量（图标 + 滑块；进度条弹性让位）==========
+        Row {
+            id: volumeSection
+            width: 28 + 6 + 80  // 喇叭图标 + spacing + 滑块
+            height: parent.height
+            spacing: 6
+            anchors.verticalCenter: parent.verticalCenter
+
+            property real lastVolume: 0.7  // mute 前的音量，点图标恢复用
+
+            Rectangle {
+                width: 28; height: 28; radius: 14
+                color: volumeBtnHandler.hovered ? AppTheme.iconButtonHover : "transparent"
+                anchors.verticalCenter: parent.verticalCenter
+                Image {
+                    id: volumeIcon
+                    anchors.centerIn: parent
+                    source: (playlistmanager && playlistmanager.volume > 0) ? AppIcon.volume : AppIcon.volumeMute
+                    sourceSize: Qt.size(128, 128)
+                    mipmap: true
+                    width: 18; height: 18
+                    fillMode: Image.PreserveAspectFit
+                    layer.enabled: true
+                    layer.effect: ColorOverlay {
+                        source: volumeIcon
+                        color: volumeBtnHandler.hovered ? AppTheme.iconHover : AppTheme.textMuted
+                    }
+                }
+                HoverHandler { id: volumeBtnHandler }
+                TapHandler {
+                    cursorShape: Qt.PointingHandCursor
+                    onTapped: {
+                        if (!playlistmanager) return
+                        var v = playlistmanager.volume
+                        if (v > 0) {
+                            volumeSection.lastVolume = v
+                            playlistmanager.setVolume(0)
+                        } else {
+                            playlistmanager.setVolume(volumeSection.lastVolume > 0 ? volumeSection.lastVolume : 0.7)
+                        }
+                    }
+                }
+            }
+
+            Slider {
+                id: volumeSlider
+                width: 80
+                height: parent.height
+                anchors.verticalCenter: parent.verticalCenter
+                from: 0; to: 1
+                value: playlistmanager ? playlistmanager.volume : 1
+                onMoved: if (playlistmanager) playlistmanager.setVolume(value)
+
+                background: Rectangle {
+                    x: volumeSlider.leftPadding
+                    y: volumeSlider.topPadding + volumeSlider.availableHeight / 2 - 2
+                    width: volumeSlider.availableWidth
+                    height: 4; radius: 2
+                    color: AppTheme.isDark ? "#1AFFFFFF" : "#1A000000"
+                    Rectangle {
+                        width: parent.width * volumeSlider.position
+                        height: parent.height; radius: parent.radius
+                        color: AppTheme.isDark ? "#CCFFFFFF" : AppTheme.accent
+                    }
+                }
+                handle: Rectangle {
+                    x: volumeSlider.leftPadding + volumeSlider.position * (volumeSlider.availableWidth - width)
+                    y: volumeSlider.topPadding + volumeSlider.availableHeight / 2 - height / 2
+                    width: 12; height: 12; radius: 6
+                    color: AppTheme.accent
+                    visible: volumeBtnHandler.hovered || volumeSlider.pressed || volumeSlider.hovered
+                }
             }
         }
 

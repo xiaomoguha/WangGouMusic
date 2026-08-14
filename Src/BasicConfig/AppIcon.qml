@@ -21,6 +21,8 @@ QtObject {
 
     // 导航/通用
     readonly property string queue: "qrc:/icons/queue.svg"
+    readonly property string volume: "qrc:/icons/volume.svg"  // 音量(有声)
+    readonly property string volumeMute: "qrc:/icons/volume-mute.svg"  // 静音
     readonly property string list: "qrc:/icons/list.svg"
     readonly property string listFill: "qrc:/icons/list-fill.svg"
 
