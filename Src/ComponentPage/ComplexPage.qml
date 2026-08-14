@@ -265,7 +265,9 @@ Page {
                     size: 30
                     iconSize: 16
                     onClicked: {
-                        BasicConfig.requestMvPlay(model.mvhash, model.songname)
+                        BasicConfig.requestMvPlay({ mvhash: model.mvhash, title: model.songname,
+                                                    singername: model.singername, songhash: model.songhash,
+                                                    cover: model.union_cover })
                     }
                 }
 

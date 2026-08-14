@@ -10,7 +10,7 @@ QtObject {
     signal noticeError(string errormessages)
     signal noticeSuccess(string messages)
     signal songAdded(string songname)
-    signal requestMvPlay(string songhash, string title)
+    signal requestMvPlay(var song)  // {mvhash,title,singername,songhash,cover}：MV 窗口展示信息+拉评论用
 
     property string searchKeyword: ""
 
