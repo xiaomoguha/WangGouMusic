@@ -10,6 +10,7 @@
 
 class QNetworkAccessManager;
 class QNetworkReply;
+class QNetworkRequest;
 class QTimer;
 
 /**
@@ -45,17 +46,19 @@ public:
     void setAuthToken(const QString &token);
 
     // ── 原始 HTTP ────────────────────────────────────────
-    /// GET 请求。timeoutMs <= 0 表示用 defaultTimeout
-    QNetworkReply *
-    get(const QString &url, SuccessCallback onSuccess, ErrorCallback onError = nullptr, int timeoutMs = -1);
+    /// GET 请求。timeoutMs <= 0 表示用 defaultTimeout；extraHeaders 为附加请求头（如管理密钥）
+    QNetworkReply *get(
+        const QString &url, SuccessCallback onSuccess, ErrorCallback onError = nullptr, int timeoutMs = -1,
+        const QMap<QString, QString> &extraHeaders = {}
+    );
     // ── JSON 便捷（自动 Content-Type: application/json，自动 parse 响应） ──
     /// GET 并解析为 JSON 对象
     QNetworkReply *
-    getJson(const QString &url, JsonSuccessCb onSuccess, JsonErrorCb onError = nullptr, int timeoutMs = -1);
+    getJson(const QString &url, JsonSuccessCb onSuccess, JsonErrorCb onError = nullptr, int timeoutMs = -1, const QMap<QString, QString> &extraHeaders = {});
     /// POST JSON 对象
     QNetworkReply *postJson(
         const QString &url, const QJsonObject &body, JsonSuccessCb onSuccess, JsonErrorCb onError = nullptr,
-        int timeoutMs = -1
+        int timeoutMs = -1, const QMap<QString, QString> &extraHeaders = {}
     );
 
 private:
@@ -72,8 +75,11 @@ private:
     /// POST 表单/任意 body（仅内部使用，由 postJson 调用）
     QNetworkReply *post(
         const QString &url, const QByteArray &body, SuccessCallback onSuccess, ErrorCallback onError = nullptr,
-        int timeoutMs = -1
+        int timeoutMs = -1, const QMap<QString, QString> &extraHeaders = {}
     );
+
+    /// 给请求附加额外请求头（覆盖同名默认头）
+    static void applyExtraHeaders(QNetworkRequest &req, const QMap<QString, QString> &headers);
 
     QNetworkAccessManager *m_nam;
     QString m_userAgent = QStringLiteral("WangGouMusic/0.5.7");

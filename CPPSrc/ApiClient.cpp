@@ -141,22 +141,17 @@ void ApiClient::setupReply(
     );
 }
 
-QNetworkReply *ApiClient::get(const QString &url, SuccessCallback onSuccess, ErrorCallback onError, int timeoutMs)
+void ApiClient::applyExtraHeaders(QNetworkRequest &req, const QMap<QString, QString> &headers)
 {
-    QNetworkRequest req{QUrl(url)};
-    req.setHeader(QNetworkRequest::UserAgentHeader, m_userAgent);
-    if (!m_authToken.isEmpty())
+    for (auto it = headers.cbegin(); it != headers.cend(); ++it)
     {
-        req.setRawHeader("Authorization", "Bearer " + m_authToken.toUtf8());
+        req.setRawHeader(it.key().toUtf8(), it.value().toUtf8());
     }
-
-    QNetworkReply *reply = m_nam->get(req);
-    setupReply(reply, timeoutMs, url, std::move(onSuccess), std::move(onError));
-    return reply;
 }
 
-QNetworkReply *ApiClient::post(
-    const QString &url, const QByteArray &body, SuccessCallback onSuccess, ErrorCallback onError, int timeoutMs
+QNetworkReply *ApiClient::get(
+    const QString &url, SuccessCallback onSuccess, ErrorCallback onError, int timeoutMs,
+    const QMap<QString, QString> &extraHeaders
 )
 {
     QNetworkRequest req{QUrl(url)};
@@ -165,13 +160,35 @@ QNetworkReply *ApiClient::post(
     {
         req.setRawHeader("Authorization", "Bearer " + m_authToken.toUtf8());
     }
+    applyExtraHeaders(req, extraHeaders);
+
+    QNetworkReply *reply = m_nam->get(req);
+    setupReply(reply, timeoutMs, url, std::move(onSuccess), std::move(onError));
+    return reply;
+}
+
+QNetworkReply *ApiClient::post(
+    const QString &url, const QByteArray &body, SuccessCallback onSuccess, ErrorCallback onError, int timeoutMs,
+    const QMap<QString, QString> &extraHeaders
+)
+{
+    QNetworkRequest req{QUrl(url)};
+    req.setHeader(QNetworkRequest::UserAgentHeader, m_userAgent);
+    if (!m_authToken.isEmpty())
+    {
+        req.setRawHeader("Authorization", "Bearer " + m_authToken.toUtf8());
+    }
+    applyExtraHeaders(req, extraHeaders);
 
     QNetworkReply *reply = m_nam->post(req, body);
     setupReply(reply, timeoutMs, url, std::move(onSuccess), std::move(onError));
     return reply;
 }
 
-QNetworkReply *ApiClient::getJson(const QString &url, JsonSuccessCb onSuccess, JsonErrorCb onError, int timeoutMs)
+QNetworkReply *ApiClient::getJson(
+    const QString &url, JsonSuccessCb onSuccess, JsonErrorCb onError, int timeoutMs,
+    const QMap<QString, QString> &extraHeaders
+)
 {
     auto wrapped = [onSuccess, onError](QByteArray body)
     {
@@ -199,12 +216,13 @@ QNetworkReply *ApiClient::getJson(const QString &url, JsonSuccessCb onSuccess, J
             if (onError)
                 onError(err, code);
         },
-        timeoutMs
+        timeoutMs, extraHeaders
     );
 }
 
 QNetworkReply *ApiClient::postJson(
-    const QString &url, const QJsonObject &body, JsonSuccessCb onSuccess, JsonErrorCb onError, int timeoutMs
+    const QString &url, const QJsonObject &body, JsonSuccessCb onSuccess, JsonErrorCb onError, int timeoutMs,
+    const QMap<QString, QString> &extraHeaders
 )
 {
     const QByteArray payload = QJsonDocument(body).toJson(QJsonDocument::Compact);
@@ -234,6 +252,6 @@ QNetworkReply *ApiClient::postJson(
             if (onError)
                 onError(err, code);
         },
-        timeoutMs
+        timeoutMs, extraHeaders
     );
 }

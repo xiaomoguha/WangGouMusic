@@ -40,7 +40,8 @@ Rectangle {
             Repeater {
                 model: [
                     { key: "network", title: "网络代理" },
-                    { key: "lyrics", title: "桌面歌词" }
+                    { key: "lyrics", title: "桌面歌词" },
+                    { key: "server", title: "服务器" }
                 ]
                 delegate: Item {
                     required property var modelData
@@ -113,7 +114,9 @@ Rectangle {
         // 滚动时反向高亮当前 section 对应的导航项
         onContentYChanged: {
             Qt.callLater(function() {
-                if (lyricsSection && lyricsSection.y - settingsFlick.contentY < 120)
+                if (serverSection && serverSection.y - settingsFlick.contentY < 120)
+                    settingsPage.currentSection = "server"
+                else if (lyricsSection && lyricsSection.y - settingsFlick.contentY < 120)
                     settingsPage.currentSection = "lyrics"
                 else
                     settingsPage.currentSection = "network"
@@ -591,6 +594,243 @@ Rectangle {
                     }
                 }
             }
+
+            // ===== 服务器 section =====
+            Rectangle {
+                id: serverSection
+                width: parent.width
+                height: serverCol.implicitHeight + 48
+                radius: AppTheme.radiusLarge
+                color: AppTheme.bgCard
+                border.width: 1
+                border.color: AppTheme.borderSubtle
+
+                Column {
+                    id: serverCol
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.margins: 24
+                    spacing: 16
+
+                    Text {
+                        text: "服务器共享 Token"
+                        color: AppTheme.textPrimary
+                        font.pixelSize: AppTheme.fontSizeTitle
+                        font.weight: Font.Bold
+                        font.family: AppTheme.fontFamily
+                    }
+                    Text {
+                        width: parent.width
+                        text: "服务器取歌 token 被踢失效时：在本客户端重新扫码登录共享账号，回来点「同步」即可，服务器热更新免重启，重启后也会保留最新值。"
+                        color: AppTheme.textMuted
+                        font.pixelSize: AppTheme.fontSizeCaption
+                        font.family: AppTheme.fontFamily
+                        wrapMode: Text.Wrap
+                    }
+
+                    // 管理密钥
+                    Column {
+                        width: parent.width
+                        spacing: 8
+                        Text {
+                            text: "管理密钥"
+                            color: AppTheme.textSecondary
+                            font.pixelSize: AppTheme.fontSizeBody
+                            font.family: AppTheme.fontFamily
+                        }
+                        TextField {
+                            id: adminKeyInput
+                            width: parent.width; height: 42
+                            placeholderText: "粘贴服务器 ~/KuGouMusicApi/.env 里的 ADMIN_KEY"
+                            echoMode: TextInput.Password
+                            color: AppTheme.textPrimary
+                            font.pixelSize: AppTheme.fontSizeBody
+                            font.family: AppTheme.fontFamily
+                            leftPadding: 14; rightPadding: 14
+                            verticalAlignment: Text.AlignVCenter
+                            background: Rectangle {
+                                radius: AppTheme.radiusMedium
+                                color: AppTheme.bgInput
+                                border.color: adminKeyInput.activeFocus ? AppTheme.borderFocus : AppTheme.borderSubtle
+                                border.width: 1
+                                Behavior on border.color { ColorAnimation { duration: AppTheme.animFast } }
+                            }
+                            onEditingFinished: {
+                                serverAdmin.setAdminKey(text)
+                                serverMsgOk("管理密钥已保存")
+                            }
+                        }
+                    }
+
+                    Rectangle { width: parent.width; height: 1; color: AppTheme.borderSubtle }
+
+                    // 服务器当前状态
+                    Column {
+                        width: parent.width
+                        spacing: 10
+
+                        Item {
+                            width: parent.width; height: 24
+                            Text {
+                                text: "当前共享状态"
+                                color: AppTheme.textSecondary
+                                font.pixelSize: AppTheme.fontSizeBody
+                                font.family: AppTheme.fontFamily
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                            Text {
+                                text: serverAdmin && serverAdmin.busy ? "查询中..." : "刷新"
+                                color: refreshStatusHover.hovered ? AppTheme.textPrimary : AppTheme.accent
+                                font.pixelSize: AppTheme.fontSizeSmall
+                                font.family: AppTheme.fontFamily
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                HoverHandler { id: refreshStatusHover }
+                                TapHandler {
+                                    cursorShape: Qt.PointingHandCursor
+                                    onTapped: if (serverAdmin) serverAdmin.fetchStatus()
+                                }
+                            }
+                        }
+
+                        // 数据行（label + value 复用样式）
+                        Repeater {
+                            model: {
+                                if (!serverStatus) return []
+                                var dt = ""
+                                if (serverStatus.updated_at) {
+                                    var d = new Date(serverStatus.updated_at)
+                                    if (!isNaN(d.getTime())) dt = Qt.formatDateTime(d, "MM-dd hh:mm")
+                                }
+                                return [
+                                    { label: "账号", value: serverStatus.userid || "-" },
+                                    { label: "会员", value: serverStatus.vip_type > 0 ? "VIP（类型 " + serverStatus.vip_type + "）" : "非 VIP" },
+                                    { label: "Token", value: serverStatus.token_masked || "-" },
+                                    { label: "更新时间", value: dt || "-" }
+                                ]
+                            }
+                            delegate: Item {
+                                required property var modelData
+                                width: parent.width; height: 22
+                                Text {
+                                    text: modelData.label
+                                    color: AppTheme.textMuted
+                                    font.pixelSize: AppTheme.fontSizeCaption
+                                    font.family: AppTheme.fontFamily
+                                    anchors.left: parent.left
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                                Text {
+                                    text: modelData.value
+                                    color: AppTheme.textPrimary
+                                    font.pixelSize: AppTheme.fontSizeCaption
+                                    font.family: AppTheme.fontFamily
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                            }
+                        }
+
+                        Text {
+                            visible: !serverStatus
+                            text: "尚未获取——填好管理密钥后点「刷新」"
+                            color: AppTheme.textDim
+                            font.pixelSize: AppTheme.fontSizeCaption
+                            font.family: AppTheme.fontFamily
+                        }
+                    }
+
+                    Rectangle { width: parent.width; height: 1; color: AppTheme.borderSubtle }
+
+                    // 操作按钮
+                    Row {
+                        width: parent.width
+                        spacing: 12
+
+                        // 同步当前登录 token 到服务器
+                        Rectangle {
+                            width: (parent.width - 12) / 2; height: 42
+                            radius: AppTheme.radiusMedium
+                            opacity: userManager && userManager.isLoggedIn ? 1 : 0.4
+                            color: syncHover.hovered ? AppTheme.accentHover : AppTheme.accent
+                            Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: serverAdmin && serverAdmin.busy ? "处理中..." : "同步当前登录 Token"
+                                color: "white"
+                                font.pixelSize: AppTheme.fontSizeBody
+                                font.weight: Font.DemiBold
+                                font.family: AppTheme.fontFamily
+                            }
+                            HoverHandler { id: syncHover }
+                            TapHandler {
+                                cursorShape: Qt.PointingHandCursor
+                                onTapped: {
+                                    if (!serverAdmin) return
+                                    if (!userManager || !userManager.isLoggedIn) {
+                                        serverMsgErr("请先在客户端登录共享账号，再同步到服务器")
+                                        return
+                                    }
+                                    serverMsgOk("正在同步（服务器会先向酷狗校验 token）...")
+                                    serverAdmin.syncToken(userManager.token, userManager.userid)
+                                }
+                            }
+                        }
+
+                        // 检测服务器 token 有效性
+                        Rectangle {
+                            width: (parent.width - 12) / 2; height: 42
+                            radius: AppTheme.radiusMedium
+                            color: checkHover.hovered ? AppTheme.iconButtonHover : AppTheme.bgInput
+                            border.width: 1
+                            border.color: AppTheme.borderDefault
+                            Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: serverAdmin && serverAdmin.busy ? "检测中..." : "检测 Token 有效性"
+                                color: AppTheme.textPrimary
+                                font.pixelSize: AppTheme.fontSizeBody
+                                font.weight: Font.DemiBold
+                                font.family: AppTheme.fontFamily
+                            }
+                            HoverHandler { id: checkHover }
+                            TapHandler {
+                                cursorShape: Qt.PointingHandCursor
+                                onTapped: {
+                                    if (!serverAdmin) return
+                                    serverMsgOk("正在检测...")
+                                    serverAdmin.checkToken()
+                                }
+                            }
+                        }
+                    }
+
+                    Text {
+                        visible: userManager && !userManager.isLoggedIn
+                        width: parent.width
+                        text: "当前客户端未登录：同步需要先用共享账号扫码登录"
+                        color: AppTheme.textMuted
+                        font.pixelSize: AppTheme.fontSizeCaption
+                        font.family: AppTheme.fontFamily
+                        wrapMode: Text.Wrap
+                    }
+
+                    // 结果提示
+                    Text {
+                        width: parent.width
+                        visible: serverMsg !== ""
+                        text: serverMsg
+                        color: serverMsgIsError ? AppTheme.errorColor : AppTheme.accent
+                        font.pixelSize: AppTheme.fontSizeSmall
+                        font.family: AppTheme.fontFamily
+                        wrapMode: Text.Wrap
+                    }
+                }
+            }
         }
     }
 
@@ -602,10 +842,41 @@ Rectangle {
     property int editType: 0
     property string errMsg: ""
 
+    // 服务器分区状态
+    property var serverStatus: null       // {userid, vip_type, token_masked, updated_at}
+    property string serverMsg: ""
+    property bool serverMsgIsError: false
+
+    function serverMsgOk(msg) { serverMsg = msg; serverMsgIsError = false }
+    function serverMsgErr(msg) { serverMsg = msg; serverMsgIsError = true }
+
+    Connections {
+        target: serverAdmin
+        function onStatusReceived(data) { serverStatus = data }
+        function onSyncResult(data) {
+            serverStatus = data
+            serverMsgOk("已同步并生效 ✓（账号 " + data.userid + "，VIP 类型 " + data.vip_type + "）")
+        }
+        function onCheckResult(data) {
+            if (data.valid)
+                serverMsgOk("服务器 token 当前有效 ✓（账号 " + data.userid + "，VIP 类型 " + data.vip_type + "）")
+            else
+                serverMsgErr(data.msg || "token 已失效，请重新扫码登录后同步")
+        }
+        function onRequestFailed(operation, error) {
+            serverMsgErr(error)
+        }
+    }
+
     function selectSection(key) {
         currentSection = key
         if (key === "network" && networkSection) settingsFlick.scrollTo(networkSection.y - 12)
         else if (key === "lyrics" && lyricsSection) settingsFlick.scrollTo(lyricsSection.y - 12)
+        else if (key === "server" && serverSection) {
+            settingsFlick.scrollTo(serverSection.y - 12)
+            if (serverAdmin && serverAdmin.adminKey !== "" && !serverStatus && !serverAdmin.busy)
+                serverAdmin.fetchStatus()
+        }
     }
 
     function applyConfig() {
@@ -650,5 +921,11 @@ Rectangle {
         }
         hostInput.text = editHost
         portInput.text = editPort
+        // 服务器分区：回显已存密钥，密钥就绪则顺带拉一次状态
+        if (serverAdmin) {
+            adminKeyInput.text = serverAdmin.adminKey
+            if (serverAdmin.adminKey !== "")
+                serverAdmin.fetchStatus()
+        }
     }
 }

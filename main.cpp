@@ -40,6 +40,7 @@
 #include "./CPPSrc/airecommendmanager.h"
 #include "./CPPSrc/artistmanager.h"
 #include "./CPPSrc/songcomments.h"
+#include "./CPPSrc/serveradminmanager.h"
 #include "./CPPSrc/playlistcollection.h"
 #include "./CPPSrc/playlistmanager.h"
 #include "./CPPSrc/recommendation.h"
@@ -157,6 +158,7 @@ int main(int argc, char *argv[])
     AiRecommendManager aiRecommendManager;
     ArtistManager artistManager;
     SongComments songComments;
+    ServerAdminManager serverAdmin;
     dailyRecommend.setUserManager(&userManager);
     personalFM.setUserManager(&userManager);
     playlistCollection.setUserManager(&userManager);
@@ -201,6 +203,7 @@ int main(int argc, char *argv[])
     });
     engine.rootContext()->setContextProperty("artistManager", &artistManager);
     engine.rootContext()->setContextProperty("songComments", &songComments);
+    engine.rootContext()->setContextProperty("serverAdmin", &serverAdmin);
 
     // 桌面歌词鼠标穿透控制器（锁定时窗口穿透，仅解锁按钮可点击）
     ClickThroughHelper clickThroughHelper;
