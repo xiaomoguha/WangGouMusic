@@ -8,6 +8,17 @@ Row {
     spacing: 10
 
     property var userDetailData: null
+    property var gradeData: null
+
+    // 积分进度：当前积分相对本级基点的比例（满级/异常数据返回 1 或 0）
+    function gradeProgress() {
+        if (!gradeData) return 0
+        var cur = Number(gradeData.p_current_point || 0)
+        var base = Number(gradeData.p_grade_point || 0)
+        var next = Number(gradeData.p_next_grade_point || 0)
+        if (next <= base) return 1  // 已满级
+        return Math.max(0, Math.min(1, (cur - base) / (next - base)))
+    }
 
     // 头像 + 用户名
     Rectangle {
@@ -105,6 +116,9 @@ Row {
             var d = data["data"] || data
             userDetailData = d
         }
+        function onGradeInfoReceived(data) {
+            gradeData = data
+        }
     }
 
     // 用户菜单（已登录时）
@@ -125,6 +139,7 @@ Row {
                 if (d && Object.keys(d).length > 0) userDetailData = d
                 // 后台刷新
                 userManager.fetchUserDetail()
+                userManager.fetchGradeInfo()
             }
         }
 
@@ -280,6 +295,71 @@ Row {
                             }
                         }
                     }
+                }
+            }
+
+            // ── 听歌等级 ──
+            Column {
+                width: parent.width
+                spacing: 5
+                visible: gradeData !== null
+
+                Row {
+                    spacing: 8
+
+                    Rectangle {
+                        width: gradeText.implicitWidth + 12
+                        height: 18
+                        radius: 9
+                        color: AppTheme.accentSubtle
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        Text {
+                            id: gradeText
+                            anchors.centerIn: parent
+                            text: gradeData ? ("Lv." + gradeData.p_grade) : ""
+                            color: AppTheme.accent
+                            font.pixelSize: AppTheme.fontSizeXs
+                            font.bold: true
+                            font.family: AppTheme.fontFamily
+                        }
+                    }
+
+                    Text {
+                        text: gradeData ? ("累计听歌 " + (Number(gradeData.d_sec || 0) / 3600).toFixed(1) + " 小时") : ""
+                        color: AppTheme.textMuted
+                        font.pixelSize: AppTheme.fontSizeCaption
+                        font.family: AppTheme.fontFamily
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                }
+
+                // 升级积分进度条
+                Rectangle {
+                    width: parent.width
+                    height: 4
+                    radius: 2
+                    color: AppTheme.bgInput
+
+                    Rectangle {
+                        width: parent.width * gradeProgress()
+                        height: parent.height
+                        radius: 2
+                        color: AppTheme.accent
+                    }
+                }
+
+                Text {
+                    text: {
+                        if (!gradeData) return ""
+                        var next = Number(gradeData.p_next_grade_point || 0)
+                        return next > 0
+                            ? (Number(gradeData.p_current_point || 0) + " / " + next + " 积分 · 距 Lv." + gradeData.p_next_grade)
+                            : "积分 " + Number(gradeData.p_current_point || 0) + " · 已满级"
+                    }
+                    color: AppTheme.textMuted
+                    font.pixelSize: AppTheme.fontSizeCaption
+                    font.family: AppTheme.fontFamily
                 }
             }
 

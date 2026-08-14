@@ -304,6 +304,16 @@ void UserManager::fetchUserDetail()
         [this](QJsonObject root)
         {
             writeCacheFile("user_detail_cache.json", QJsonDocument(root));
+            // VIP 状态实时刷新：isVip 只在登录时写一次，登录后权益变化（过期/共享 VIP 掉）
+            // 徽标不会跟着变——详情接口返回的实时状态才是准的
+            const QJsonObject data = root.value("data").toObject();
+            const bool vip = data.value("is_vip").toInt() == 1 || data.value("vip_type").toInt() > 0;
+            if (vip != m_isVip)
+            {
+                m_isVip = vip;
+                saveToSettings();
+                emit userInfoUpdated();
+            }
             emit userDetailReceived(root.toVariantMap());
         },
         [](QString, int) {}
@@ -345,6 +355,25 @@ void UserManager::fetchPlaylistDetail(const QString &globalCollectionId, int pag
         {
             writeCacheFile("playlist_" + globalCollectionId + ".json", QJsonDocument(root));
             emit playlistDetailReceived(root.toVariantMap());
+        },
+        [](QString, int) {}
+    );
+}
+
+// 听歌等级/累计听歌时长：查询模式（不带 d_sec/diff_sec）。
+// 标准版协议（v4）下服务端按真实播放统计维护时长，增量上报不记账，所以只做查询展示
+void UserManager::fetchGradeInfo()
+{
+    if (!isLoggedIn())
+        return;
+    postForm(
+        "/user/grade/info", {{"token", m_token}, {"userid", m_userid}},
+        [this](QJsonObject root)
+        {
+            const QJsonObject data = root.value("data").toObject();
+            if (root.value("status").toInt() != 1 || data.isEmpty())
+                return;
+            emit gradeInfoReceived(data.toVariantMap());
         },
         [](QString, int) {}
     );
