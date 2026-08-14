@@ -10,7 +10,7 @@
 
 namespace
 {
-const char *const kApiRoot = "https://xjt-togethertracks.top/api";
+const char *const kApiRoot = "https://api.special520.com";
 
 // 秒 → "m:ss"
 QString secondsToMinutesSeconds(int seconds)

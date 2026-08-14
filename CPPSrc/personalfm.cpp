@@ -69,7 +69,7 @@ void PersonalFM::request(const QString &hash)
     if (!hash.isEmpty())
         query.addQueryItem("hash", hash);
 
-    const QString url = "https://xjt-togethertracks.top/api/personal/fm" + (query.isEmpty() ? "" : "?" + query.toString());
+    const QString url = "https://api.special520.com/personal/fm" + (query.isEmpty() ? "" : "?" + query.toString());
     m_requester.fetchData(url);
 }
 
@@ -198,7 +198,7 @@ void PersonalFM::requestNextCover()
         return;
     }
     const QVariantMap task = m_coverQueue[m_coverCursor].toMap();
-    const QString url = QString("https://xjt-togethertracks.top/api/album/songs?id=%1").arg(task["albumId"].toString());
+    const QString url = QString("https://api.special520.com/album/songs?id=%1").arg(task["albumId"].toString());
     m_coverRequester.fetchData(url);
 }
 

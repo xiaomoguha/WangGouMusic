@@ -11,7 +11,7 @@
 
 namespace
 {
-const char *const kApiRoot = "https://xjt-togethertracks.top/api";
+const char *const kApiRoot = "https://api.special520.com";
 }
 
 SongComments::SongComments(QObject *parent) : QObject(parent)

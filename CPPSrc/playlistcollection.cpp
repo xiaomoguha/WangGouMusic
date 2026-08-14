@@ -10,7 +10,7 @@
 #include <QJsonParseError>
 #include <QUrlQuery>
 
-static const QString API_BASE = "https://xjt-togethertracks.top/api";
+static const QString API_BASE = "https://api.special520.com";
 
 PlaylistCollection::PlaylistCollection(QObject *parent) : QObject(parent)
 {
@@ -276,7 +276,7 @@ void PlaylistCollection::refreshFavoriteHashes()
 void PlaylistCollection::requestFavPage(int page)
 {
     m_favPage = page;
-    m_favRequester.fetchData(QString("https://xjt-togethertracks.top/api/playlist/track/all?id=%1&page=%2&pagesize=300").arg(m_favGid).arg(page));
+    m_favRequester.fetchData(QString("https://api.special520.com/playlist/track/all?id=%1&page=%2&pagesize=300").arg(m_favGid).arg(page));
 }
 
 void PlaylistCollection::onFavoriteHashesData(const QByteArray &data)

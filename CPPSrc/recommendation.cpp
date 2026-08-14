@@ -69,7 +69,7 @@ void Recommendation::setPlaylistsLoading(bool loading)
 
 void Recommendation::fetchTopSongs()
 {
-    m_topSongsRequester.fetchData("https://xjt-togethertracks.top/api/top/song");
+    m_topSongsRequester.fetchData("https://api.special520.com/top/song");
 }
 
 void Recommendation::showRankSongs(const QVariantList &songs)
@@ -82,7 +82,7 @@ void Recommendation::showRankSongs(const QVariantList &songs)
 void Recommendation::fetchTopPlaylists()
 {
     setPlaylistsLoading(true);
-    m_topPlaylistsRequester.fetchData("https://xjt-togethertracks.top/api/top/playlist?pagesize=6");
+    m_topPlaylistsRequester.fetchData("https://api.special520.com/top/playlist?pagesize=6");
 }
 
 void Recommendation::refreshTopPlaylists()
@@ -90,7 +90,7 @@ void Recommendation::refreshTopPlaylists()
     // 只轮换实测有内容的分类（583/577/35 返回空列表，会让刷新看起来“没反应”）
     QStringList categories = {"0", "587", "20", "12"};
     QString categoryId     = categories[QRandomGenerator::global()->bounded(categories.size())];
-    QString url = QString("https://xjt-togethertracks.top/api/top/playlist?pagesize=6&category_id=%1").arg(categoryId);
+    QString url = QString("https://api.special520.com/top/playlist?pagesize=6&category_id=%1").arg(categoryId);
     setPlaylistsLoading(true);
     m_topPlaylistsRequester.fetchData(url);
     qDebug() << "刷新歌单，分类 ID:" << categoryId;
@@ -228,7 +228,7 @@ void Recommendation::fetchMorePlaylistTracks()
     m_playlistIsLoading = true;
     emit playlistIsLoadingChanged();
     int nextPage = m_playlistPage + 1;
-    QString url  = QString("https://xjt-togethertracks.top/api/playlist/track/all?id=%1&page=%2&pagesize=%3")
+    QString url  = QString("https://api.special520.com/playlist/track/all?id=%1&page=%2&pagesize=%3")
                       .arg(m_currentPlaylistId)
                       .arg(nextPage)
                       .arg(m_playlistPageSize);
@@ -245,7 +245,7 @@ void Recommendation::loadAllPlaylistTracks()
     m_playlistTotal   = 0;
     m_playlistIsLoading = true;
     emit playlistIsLoadingChanged();
-    QString url = QString("https://xjt-togethertracks.top/api/playlist/track/all?id=%1&page=1&pagesize=1000")
+    QString url = QString("https://api.special520.com/playlist/track/all?id=%1&page=1&pagesize=1000")
                       .arg(m_currentPlaylistId);
     m_playlistTracksRequester.fetchData(url);
 }
@@ -331,7 +331,7 @@ void Recommendation::fetchPlaylistTracksPage(
 )
 {
     m_pendingLazyCallback = callback;
-    QString url           = QString("https://xjt-togethertracks.top/api/playlist/track/all?id=%1&page=%2&pagesize=%3")
+    QString url           = QString("https://api.special520.com/playlist/track/all?id=%1&page=%2&pagesize=%3")
                       .arg(id)
                       .arg(page)
                       .arg(pagesize);

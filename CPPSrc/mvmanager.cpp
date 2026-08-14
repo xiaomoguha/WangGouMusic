@@ -7,7 +7,7 @@
 
 namespace
 {
-const char *const kApiRoot = "https://xjt-togethertracks.top/api";
+const char *const kApiRoot = "https://api.special520.com";
 } // namespace
 
 MvManager::MvManager(QObject *parent) : QObject(parent)

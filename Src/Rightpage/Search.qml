@@ -37,7 +37,7 @@ Row {
         onTriggered: {
             var keyword = searchTextField.text.trim();
             if (keyword.length > 0) {
-                suggestRequester.fetchData("https://xjt-togethertracks.top/api/search/suggest?keywords=" + encodeURIComponent(keyword));
+                suggestRequester.fetchData("https://api.special520.com/search/suggest?keywords=" + encodeURIComponent(keyword));
             } else {
                 suggestModel.clear();
                 suggestMaxWidth = 0;
