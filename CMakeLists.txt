@@ -47,6 +47,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         CPPSrc/DominantColorExtractor.cpp CPPSrc/DominantColorExtractor.h
         CPPSrc/PlaylistCacheStore.cpp CPPSrc/PlaylistCacheStore.h
         CPPSrc/models/SongListModel.cpp CPPSrc/models/SongListModel.h
+        CPPSrc/models/MessageListModel.cpp CPPSrc/models/MessageListModel.h
         CPPSrc/SongInfo.cpp CPPSrc/SongInfo.h
         CPPSrc/CrashHandler.cpp CPPSrc/CrashHandler.h
         CPPSrc/ClickThroughHelper.cpp CPPSrc/ClickThroughHelper.h
