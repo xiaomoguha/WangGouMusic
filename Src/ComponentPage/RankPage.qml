@@ -32,6 +32,7 @@ Item {
         if (rankList.isLoading) return
         root.lastRankId = rankid
         contentFlick.contentY = 0
+        songsList.contentY = 0
         rankList.fetchRankSongs(rankid)
         root.showSongs = true
     }
@@ -277,14 +278,44 @@ Item {
                     }
                 }
 
-                // 榜单歌曲列表
+                // 榜单歌曲列表:固定可用高度、自身滚动,恢复虚拟化。
+                // 原先 height:contentHeight + interactive:false 嵌在外层
+                // Flickable 里,视口=全部内容,100 首歌的 delegate(约 7000 个
+                // QML 对象)在数据到达那一帧全部同步创建 —— 点进榜单详情整页
+                // 冻住的根因。y 是列表顶部在页面中的位置,高度填满剩余空间,
+                // 外层 Flickable 因此不再有可滚内容
                 ListView {
                     id: songsList
                     width: parent.width
-                    height: contentHeight
-                    interactive: false
+                    height: root.height - y - 40
+                    clip: true
+                    interactive: true
+                    reuseItems: true
+                    cacheBuffer: 320
                     model: rankList ? rankList.songs : []
                     spacing: 2
+
+                    // 滚动时短暂出现的滚动条(不可滚动时彻底隐藏)
+                    ScrollBar.vertical: ScrollBar {
+                        id: rankScrollBar
+                        policy: ScrollBar.AsNeeded
+                        visible: size < 1.0
+                        implicitWidth: 8
+                        opacity: 0
+                        contentItem: Rectangle {
+                            width: 6
+                            radius: 3
+                            color: AppTheme.scrollbarColor
+                        }
+                        background: null
+                        onActiveChanged: active ? opacity = 0.9 : hideBar.restart()
+                        Timer {
+                            id: hideBar
+                            interval: 800
+                            onTriggered: if (!rankScrollBar.active) rankScrollBar.opacity = 0
+                        }
+                        Behavior on opacity { NumberAnimation { duration: 250 } }
+                    }
 
                     delegate: Rectangle {
                         width: songsList.width
@@ -317,17 +348,24 @@ Item {
                                 anchors.verticalCenter: parent.verticalCenter
                             }
 
-                            Image {
+                            // 圆角矩形裁剪替代 layer+OpacityMask(省掉每行一个
+                            // shader/FBO);sourceSize 限制解码尺寸 —— 源图是
+                            // 400×400 变体,不设则 100 张全尺寸解码约 64MB 显存
+                            Rectangle {
                                 width: 40
                                 height: 40
+                                radius: 6
+                                clip: true
                                 anchors.verticalCenter: parent.verticalCenter
-                                source: songData.union_cover
-                                asynchronous: true
-                                cache: true
-                                fillMode: Image.PreserveAspectCrop
-                                layer.enabled: true
-                                layer.effect: OpacityMask {
-                                    maskSource: Rectangle { width: 40; height: 40; radius: 6 }
+
+                                Image {
+                                    anchors.fill: parent
+                                    source: songData.union_cover
+                                    asynchronous: true
+                                    cache: true
+                                    sourceSize.width: 80
+                                    sourceSize.height: 80
+                                    fillMode: Image.PreserveAspectCrop
                                 }
                             }
 
@@ -484,23 +522,26 @@ Item {
                     }
                 }
 
-                // 歌曲空状态
-                EmptyState {
-                    visible: root.showSongs && rankList && rankList.songs.length === 0
-                    width: parent.width
-                    height: 200
-                    iconText: "♪"
-                    title: rankList && rankList.isLoading ? "正在加载榜单歌曲..." : "榜单歌曲加载失败"
-                    subtitle: rankList && rankList.isLoading ? "" : "点击重试"
-                    buttonText: rankList && rankList.isLoading ? "" : "重新加载"
-                    onButtonClicked: {
-                        if (rankList && !rankList.isLoading)
-                            root.retryCurrentRank()
-                    }
-                }
             }
 
             Item { width: 1; height: 20 }
+        }
+    }
+
+    // 榜单歌曲空/加载失败状态:覆盖层,不占布局(原先在 Column 里占 200px,
+    // 会让外层 Flickable 出现一段可滚动的空白)
+    EmptyState {
+        anchors.centerIn: parent
+        width: parent.width * 0.6
+        height: 200
+        visible: root.showSongs && rankList && rankList.songs.length === 0
+        iconText: "♪"
+        title: rankList && rankList.isLoading ? "正在加载榜单歌曲..." : "榜单歌曲加载失败"
+        subtitle: rankList && rankList.isLoading ? "" : "点击重试"
+        buttonText: rankList && rankList.isLoading ? "" : "重新加载"
+        onButtonClicked: {
+            if (rankList && !rankList.isLoading)
+                root.retryCurrentRank()
         }
     }
 
