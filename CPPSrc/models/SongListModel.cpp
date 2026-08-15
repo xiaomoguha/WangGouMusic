@@ -1,4 +1,5 @@
 #include "SongListModel.h"
+#include <QSet>
 
 SongListModel::SongListModel(QObject *parent) : QAbstractListModel(parent) {}
 
@@ -113,10 +114,126 @@ void SongListModel::syncFromList(const QList<SongInfo> &songs)
         }
         return;                 // 含"完全相同" → no-op，不触发任何重建
     }
-    // 其他（删歌/重排，偶发）→ 兜底全量 reset
-    beginResetModel();
-    m_songs = songs;
-    endResetModel();
+    // 其他（置顶/删歌/顺序漂移/头部插入）→ 按 songhash 求 LCS 最长公共子序列，
+    // 把差异拆成逐段 removeRows/insertRows：存活行的 delegate 原样复用，
+    // 置顶只重建 1 行、删歌只销毁 1 行，彻底替代原先"兜底全量 reset
+    // 销毁重建全部 delegate"（置顶/删歌时依然卡一下的来源）。
+    const int n = m_songs.size();
+    const int m = songs.size();
+    if (n == 0)
+    {
+        appendList(songs);          // 旧空 → 一次性增量插入
+        return;
+    }
+    if (m == 0)
+    {
+        clear();                    // 新空 → 全量删除
+        return;
+    }
+
+    // 快路径:两表无任何共同 songhash(典型:懒加载全量填充后切换歌单)时,
+    // 不必为求 LCS 白付 O(n×m),直接全删 + 批量插入
+    {
+        QSet<QString> oldHashes;
+        for (const SongInfo &s : std::as_const(m_songs))
+            oldHashes.insert(s.songhash);
+        bool anyCommon = false;
+        for (const SongInfo &s : songs)
+        {
+            if (oldHashes.contains(s.songhash))
+            {
+                anyCommon = true;
+                break;
+            }
+        }
+        if (!anyCommon)
+        {
+            beginRemoveRows(QModelIndex(), 0, n - 1);
+            m_songs.clear();
+            endRemoveRows();
+            appendList(songs);
+            return;
+        }
+    }
+
+    // 规模护栏:dp 表为 O(n×m) 个 int,数千首大歌单做非前缀同步时(约 2000×2000
+    // 起)一次分配几十 MB、千万次比较,比全量 reset 更卡 —— 超限退回 reset 兜底
+    if (static_cast<qint64>(n + 1) * (m + 1) > 4000000)
+    {
+        beginResetModel();
+        m_songs = songs;
+        endResetModel();
+        emit countChanged();
+        return;
+    }
+
+    // dp[i*(m+1)+j] = m_songs[i..] 与 songs[j..] 的 LCS 长度（逆序递推）
+    QVector<int> dp((n + 1) * (m + 1), 0);
+    for (int i = n - 1; i >= 0; --i)
+        for (int j = m - 1; j >= 0; --j)
+            dp[i * (m + 1) + j] = (m_songs[i].songhash == songs[j].songhash)
+                                       ? dp[(i + 1) * (m + 1) + j + 1] + 1
+                                       : qMax(dp[(i + 1) * (m + 1) + j], dp[i * (m + 1) + j + 1]);
+
+    // 回溯得到两侧的存活标记（LCS 匹配对）
+    QVector<bool> keepOld(n, false), keepNew(m, false);
+    {
+        int i = 0, j = 0;
+        while (i < n && j < m)
+        {
+            if (m_songs[i].songhash == songs[j].songhash)
+            {
+                keepOld[i] = keepNew[j] = true;
+                ++i;
+                ++j;
+            }
+            else if (dp[(i + 1) * (m + 1) + j] >= dp[i * (m + 1) + j + 1])
+                ++i;               // 弃旧行
+            else
+                ++j;               // 新行待插入
+        }
+    }
+
+    // 1) 自尾向头删除未存活行（从尾删保证行号不漂移）
+    for (int i = n - 1; i >= 0; --i)
+    {
+        if (!keepOld[i])
+        {
+            beginRemoveRows(QModelIndex(), i, i);
+            m_songs.removeAt(i);
+            endRemoveRows();
+        }
+    }
+
+    // 2) 自头向尾插入新增行；存活行只刷新服务器下发的展示字段——
+    //    url/lyric/fileid/mvhash 是本地异步填充的运行时数据，不能被空值覆盖
+    for (int j = 0, pos = 0; j < m; ++j)
+    {
+        if (!keepNew[j])
+        {
+            beginInsertRows(QModelIndex(), pos, pos);
+            m_songs.insert(pos, songs[j]);
+            endInsertRows();
+            ++pos;
+            continue;
+        }
+        SongInfo &cur       = m_songs[pos];
+        const SongInfo &in = songs[j];
+        if (cur.title != in.title || cur.singername != in.singername || cur.album_name != in.album_name
+            || cur.duration != in.duration || cur.union_cover != in.union_cover
+            || cur.added_by_nickname != in.added_by_nickname || cur.added_by_avatar != in.added_by_avatar)
+        {
+            const QString url = cur.url, lyric = cur.lyric, fileid = cur.fileid, mvhash = cur.mvhash;
+            cur          = in;
+            cur.url      = url;
+            cur.lyric    = lyric;
+            cur.fileid   = fileid;
+            cur.mvhash   = mvhash;
+            const QModelIndex idx = createIndex(pos, 0);
+            emit dataChanged(idx, idx);   // 行级刷新,不销毁 delegate
+        }
+        ++pos;
+    }
     emit countChanged();
 }
 

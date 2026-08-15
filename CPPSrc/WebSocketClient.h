@@ -3,6 +3,7 @@
 
 #include "playlistmanager.h"
 #include "usermanager.h"
+#include "models/MessageListModel.h"
 #include <QObject>
 #include <QWebSocket>
 #include <QUrl>
@@ -50,7 +51,13 @@ class WebSocketClient : public QObject
     Q_PROPERTY(QString Roomid READ Getroomid NOTIFY roomidChanged)
     Q_PROPERTY(ConnectionState connectionState READ connectionState NOTIFY connectionStateChanged)
     Q_PROPERTY(QVariantList roomList READ roomList NOTIFY roomListUpdated)
-    Q_PROPERTY(QVariantList messages READ messages NOTIFY messagesUpdated)
+    // 消息列表改为 QAbstractListModel:行级 insert/dataChanged 增量更新,
+    // 替代原 QVariantList 每次全量替换导致 QML ListView 整表销毁重建的卡顿
+    // (别人加歌必产生动态广播)。CONSTANT:指针在构造后不变,QML 绑定只求值一次。
+    // 页面左右分栏:左栏聊天(chatMessages)、右栏系统动态(actionMessages),
+    // 从 C++ 侧按消息类型分流,两栏各自独立增量更新
+    Q_PROPERTY(MessageListModel *chatMessages READ chatMessages CONSTANT)
+    Q_PROPERTY(MessageListModel *actionMessages READ actionMessages CONSTANT)
 public:
     explicit WebSocketClient(PlaylistManager *playmanager, UserManager *usermanager, QObject *parent = nullptr);
     ~WebSocketClient() override;
@@ -89,7 +96,8 @@ public:
     Q_INVOKABLE void requestClientList();
     Q_INVOKABLE void fetchRoomList();
     QVariantList roomList() const;
-    QVariantList messages() const;
+    MessageListModel *chatMessages() const;
+    MessageListModel *actionMessages() const;
 
     // 聊天
     Q_INVOKABLE void sendChatMessage(const QString &message);
@@ -111,7 +119,6 @@ signals:
     void songInfoUpdated(const QJsonObject &data);
     void clientListUpdated(const QJsonObject &data);
     void roomListUpdated();
-    void messagesUpdated();
 
     // 聊天 & 操作日志
     void chatMessageReceived(
@@ -142,6 +149,8 @@ private:
 
     // 服务器消息分发
     void handleServerMessage(const QJsonObject &json);
+    // 动态/聊天历史合并进消息模型(去重 + 批量增量追加 + 截断到 200 条)
+    void mergeRoomActions(const QJsonArray &actions);
     void handleSongInfoBroadcast(const QJsonObject &data);
     void handleSongProgressBroadcast(const QJsonObject &data);
     void handleSongListBroadcast(const QJsonObject &json);
@@ -173,8 +182,9 @@ private:
     QNetworkAccessManager m_httpManager;
     QVariantList m_roomList;
 
-    // 消息存储（聊天 + 操作动态，切换页面不丢失）
-    QVariantList m_messages;
+    // 消息存储（切换页面不丢失）:行级增量 C++ 模型,聊天/系统动态各一份
+    MessageListModel *m_chatModel   = nullptr;
+    MessageListModel *m_actionModel = nullptr;
 
     // 待确认的添加歌曲操作
     bool m_pendingAddSong         = false;

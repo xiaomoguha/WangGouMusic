@@ -12,6 +12,8 @@ WebSocketClient::WebSocketClient(PlaylistManager *playManager, UserManager *user
       m_serverUrl("wss://" WEB_SOCKET_WS_HOST WEB_SOCKET_SERVICE_PATH), m_connectionState(Disconnected), m_heartbeatTimer(nullptr),
       m_heartbeatTimeoutTimer(nullptr), m_heartbeatInterval(30)
 {
+    m_chatModel   = new MessageListModel(this);
+    m_actionModel = new MessageListModel(this);
     initializeWebSocket();
     // 一起听：本地手动恢复播放（播放键/媒体键）→ 清掉本地暂停标记，
     // 从房间最新进度续上；暂停期间错过的切歌在此补播
@@ -136,8 +138,8 @@ void WebSocketClient::disconnectFromServer()
     emit connectionStatusChanged(false);
 
     // 清空消息
-    m_messages.clear();
-    emit messagesUpdated();
+    m_chatModel->clearAll();
+    m_actionModel->clearAll();
 
     // 退出一起听模式：暂停当前歌曲，恢复本地播放列表（暂停状态）
     if (playmanager)
@@ -326,8 +328,7 @@ void WebSocketClient::sendChatMessage(const QString &message)
     msg["_local"]    = true;
     msg["status"]    = "sending";
     msg["_msgId"]    = msgId;
-    m_messages.append(msg);
-    emit messagesUpdated();
+    m_chatModel->appendMessage(msg);   // 行级追加:ListView 只新建队尾一条 delegate
 
     // 超时计时器：10秒未确认则标记为失败
     QTimer *timer = new QTimer(this);
@@ -349,42 +350,29 @@ void WebSocketClient::sendChatMessage(const QString &message)
 
 void WebSocketClient::markMessageFailed(int msgId)
 {
-    for (int i = 0; i < m_messages.size(); ++i)
+    const int idx = m_chatModel->findByMsgId(msgId, QStringLiteral("sending"));
+    if (idx >= 0)
     {
-        QVariantMap m = m_messages[i].toMap();
-        if (m.value("_msgId").toInt() == msgId && m.value("status").toString() == "sending")
-        {
-            m["status"]   = "failed";
-            m_messages[i] = m;
-            emit messagesUpdated();
-            break;
-        }
+        QVariantMap m = m_chatModel->get(idx);
+        m["status"] = "failed";
+        m_chatModel->updateMessage(idx, m);   // 行级 dataChanged,不重建列表
     }
     m_pendingMsgTimers.remove(msgId);
 }
 
 void WebSocketClient::retryMessage(int msgId)
 {
-    QString messageText;
-    int idx = -1;
-    for (int i = 0; i < m_messages.size(); ++i)
-    {
-        QVariantMap m = m_messages[i].toMap();
-        if (m.value("_msgId").toInt() == msgId && m.value("status").toString() == "failed")
-        {
-            messageText = m.value("message").toString();
-            idx         = i;
-            break;
-        }
-    }
-    if (idx < 0 || messageText.isEmpty())
+    const int idx = m_chatModel->findByMsgId(msgId, QStringLiteral("failed"));
+    if (idx < 0)
+        return;
+    QVariantMap m = m_chatModel->get(idx);
+    const QString messageText = m.value("message").toString();
+    if (messageText.isEmpty())
         return;
 
     // 恢复为发送中状态
-    QVariantMap m   = m_messages[idx].toMap();
-    m["status"]     = "sending";
-    m_messages[idx] = m;
-    emit messagesUpdated();
+    m["status"] = "sending";
+    m_chatModel->updateMessage(idx, m);   // 行级 dataChanged,不重建列表
 
     // 重新启动超时计时器
     QTimer *timer = new QTimer(this);
@@ -457,8 +445,8 @@ void WebSocketClient::onDisconnected()
     }
 
     // 清空消息
-    m_messages.clear();
-    emit messagesUpdated();
+    m_chatModel->clearAll();
+    m_actionModel->clearAll();
 
     // 清理待确认消息的超时计时器
     for (auto it = m_pendingMsgTimers.begin(); it != m_pendingMsgTimers.end(); ++it)
@@ -615,39 +603,31 @@ void WebSocketClient::handleServerMessage(const QJsonObject &json)
             qint64 chatTime    = static_cast<qint64>(data["time"].toDouble());
 
             // 检查本地回显去重
-            bool isLocalEcho = false;
-            for (int i = m_messages.size() - 1; i >= qMax(0, m_messages.size() - 5); --i)
+            const int echoIdx = m_chatModel->findLocalEcho(chatUserid, chatMsg);
+            if (echoIdx >= 0)
             {
-                QVariantMap m = m_messages[i].toMap();
-                if (m.value("type") == "chat" && m.value("_local").toBool() &&
-                    m.value("userid").toString() == chatUserid && m.value("message").toString() == chatMsg)
+                QVariantMap updated = m_chatModel->get(echoIdx);
+                const int msgId     = updated.value("_msgId").toInt();
+                updated["_local"]   = false;
+                updated["status"]   = "sent";
+                updated["nickname"] = data["nickname"].toString();
+                updated["avatarUrl"] = data["avatar_url"].toString();
+                updated["time"]     = chatTime;
+                // 行级 dataChanged:只刷新这一条,既无整表重建的卡顿也无闪烁
+                m_chatModel->updateMessage(echoIdx, updated);
+
+                // 取消超时计时器
+                if (m_pendingMsgTimers.contains(msgId))
                 {
-                    int msgId = m.value("_msgId").toInt();
-                    // 更新状态但不触发模型刷新，避免闪烁
-                    QVariantMap updated  = m;
-                    updated["_local"]    = false;
-                    updated["status"]    = "sent";
-                    updated["nickname"]  = data["nickname"].toString();
-                    updated["avatarUrl"] = data["avatar_url"].toString();
-                    updated["time"]      = chatTime;
-                    m_messages[i]        = updated;
-
-                    // 取消超时计时器
-                    if (m_pendingMsgTimers.contains(msgId))
-                    {
-                        m_pendingMsgTimers.value(msgId)->stop();
-                        m_pendingMsgTimers.value(msgId)->deleteLater();
-                        m_pendingMsgTimers.remove(msgId);
-                    }
-
-                    // 通知 QML 隐藏 spinner（不刷新模型）
-                    emit messageConfirmed(msgId);
-
-                    isLocalEcho = true;
-                    break;
+                    m_pendingMsgTimers.value(msgId)->stop();
+                    m_pendingMsgTimers.value(msgId)->deleteLater();
+                    m_pendingMsgTimers.remove(msgId);
                 }
+
+                // 通知 QML 隐藏 spinner
+                emit messageConfirmed(msgId);
             }
-            if (!isLocalEcho)
+            else
             {
                 QVariantMap msg;
                 msg["type"]      = "chat";
@@ -656,12 +636,7 @@ void WebSocketClient::handleServerMessage(const QJsonObject &json)
                 msg["avatarUrl"] = data["avatar_url"].toString();
                 msg["message"]   = chatMsg;
                 msg["time"]      = chatTime;
-                m_messages.append(msg);
-            }
-            // 本地回显确认时不触发模型刷新，避免闪烁
-            if (!isLocalEcho)
-            {
-                emit messagesUpdated();
+                m_chatModel->appendMessage(msg);
             }
 
             emit chatMessageReceived(
@@ -673,48 +648,7 @@ void WebSocketClient::handleServerMessage(const QJsonObject &json)
     case BROADCAST_ROOM_ACTION:
         if (json.contains("actions") && json["actions"].isArray())
         {
-            QJsonArray actions = json["actions"].toArray();
-            // 服务端返回 newest-first，翻转后按时间正序追加
-            bool added = false;
-            for (int i = actions.size() - 1; i >= 0; --i)
-            {
-                QVariantMap act = actions[i].toObject().toVariantMap();
-                // 区分聊天历史和操作动态
-                if (act.value("msg_type").toString() == "chat")
-                {
-                    act["type"]      = "chat";
-                    act["avatarUrl"] = act["avatar_url"];
-                    act["status"]    = "sent";
-                }
-                else
-                {
-                    act["type"] = "action";
-                }
-                // 去重：检查最近 30 条
-                bool dup = false;
-                for (int j = m_messages.size() - 1; j >= qMax(0, m_messages.size() - 30); --j)
-                {
-                    QVariantMap m = m_messages[j].toMap();
-                    if (m["time"] == act["time"] && m["userid"] == act["userid"] && m["message"] == act["message"])
-                    {
-                        dup = true;
-                        break;
-                    }
-                }
-                if (!dup)
-                {
-                    m_messages.append(act);
-                    added = true;
-                }
-            }
-            if (added)
-            {
-                // 限制最多 200 条
-                if (m_messages.size() > 200)
-                    m_messages = m_messages.mid(m_messages.size() - 200);
-                emit messagesUpdated();
-            }
-            emit roomActionsReceived(actions);
+            mergeRoomActions(json["actions"].toArray());
         }
         break;
 
@@ -733,45 +667,45 @@ void WebSocketClient::handleServerMessage(const QJsonObject &json)
     // 合并消息：服务器可能将操作日志附加在歌曲信息/播放列表消息中一起发送
     if (json.contains("actions") && json["actions"].isArray() && action != BROADCAST_ROOM_ACTION)
     {
-        QJsonArray actions = json["actions"].toArray();
-        bool added         = false;
-        for (int i = actions.size() - 1; i >= 0; --i)
-        {
-            QVariantMap act = actions[i].toObject().toVariantMap();
-            if (act.value("msg_type").toString() == "chat")
-            {
-                act["type"]      = "chat";
-                act["avatarUrl"] = act["avatar_url"];
-                act["status"]    = "sent";
-            }
-            else
-            {
-                act["type"] = "action";
-            }
-            bool dup = false;
-            for (int j = m_messages.size() - 1; j >= qMax(0, m_messages.size() - 30); --j)
-            {
-                QVariantMap m = m_messages[j].toMap();
-                if (m["time"] == act["time"] && m["userid"] == act["userid"] && m["message"] == act["message"])
-                {
-                    dup = true;
-                    break;
-                }
-            }
-            if (!dup)
-            {
-                m_messages.append(act);
-                added = true;
-            }
-        }
-        if (added)
-        {
-            if (m_messages.size() > 200)
-                m_messages = m_messages.mid(m_messages.size() - 200);
-            emit messagesUpdated();
-        }
-        emit roomActionsReceived(actions);
+        mergeRoomActions(json["actions"].toArray());
     }
+}
+
+void WebSocketClient::mergeRoomActions(const QJsonArray &actions)
+{
+    // 服务端返回 newest-first,翻转后按时间正序追加。逐条 append + 队尾 30 条
+    // 窗口查重,与原 QVariantList 语义一致(含同批内重复条目的去重);actions
+    // 数组通常只有 1 条、入房历史最多百条,逐条行级插入的代价可忽略。
+    // 聊天历史进左栏模型、系统动态进右栏模型
+    bool added = false;
+    for (int i = actions.size() - 1; i >= 0; --i)
+    {
+        QVariantMap act = actions[i].toObject().toVariantMap();
+        MessageListModel *target = nullptr;
+        if (act.value("msg_type").toString() == "chat")
+        {
+            act["type"]      = "chat";
+            act["avatarUrl"] = act["avatar_url"];
+            act["status"]    = "sent";
+            target           = m_chatModel;
+        }
+        else
+        {
+            act["type"] = "action";
+            target      = m_actionModel;
+        }
+        if (target->containsAction(act.value("time"), act.value("userid"), act.value("message")))
+            continue;
+        target->appendMessage(act);
+        added = true;
+    }
+    if (added)
+    {
+        // 最多保留 200 条:头部行级删除,队尾 delegate 原样保留
+        m_chatModel->truncate(200);
+        m_actionModel->truncate(200);
+    }
+    emit roomActionsReceived(actions);
 }
 
 void WebSocketClient::handleSongInfoBroadcast(const QJsonObject &data)
@@ -1013,7 +947,12 @@ QVariantList WebSocketClient::roomList() const
     return m_roomList;
 }
 
-QVariantList WebSocketClient::messages() const
+MessageListModel *WebSocketClient::chatMessages() const
 {
-    return m_messages;
+    return m_chatModel;
+}
+
+MessageListModel *WebSocketClient::actionMessages() const
+{
+    return m_actionModel;
 }
