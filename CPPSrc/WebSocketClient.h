@@ -151,7 +151,11 @@ private:
     void handleServerMessage(const QJsonObject &json);
     // 动态/聊天历史合并进消息模型(去重 + 批量增量追加 + 截断到 200 条)
     void mergeRoomActions(const QJsonArray &actions);
-    void handleSongInfoBroadcast(const QJsonObject &data);
+    // allowSeek=false：来自歌单同步消息内嵌 song_info 的调用——服务器的
+    // played_percent 只在 5s 定时器里累加，这类快照最多滞后 5s，拿它判 seek
+    // 会先向后跳、下拍新鲜进度再向前跳（加歌"卡一下"的根因），进度同步
+    // 交给专门的进度广播（快照新鲜）
+    void handleSongInfoBroadcast(const QJsonObject &data, bool allowSeek = true);
     void handleSongProgressBroadcast(const QJsonObject &data);
     void handleSongListBroadcast(const QJsonObject &json);
     void handleClientListBroadcast(const QJsonObject &json);

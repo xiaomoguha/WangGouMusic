@@ -708,7 +708,7 @@ void WebSocketClient::mergeRoomActions(const QJsonArray &actions)
     emit roomActionsReceived(actions);
 }
 
-void WebSocketClient::handleSongInfoBroadcast(const QJsonObject &data)
+void WebSocketClient::handleSongInfoBroadcast(const QJsonObject &data, bool allowSeek)
 {
     QString songHash     = data["songhash"].toString();
     QString songUrl      = data["song_url"].toString();
@@ -798,7 +798,7 @@ void WebSocketClient::handleSongInfoBroadcast(const QJsonObject &data)
             {
                 durationMs = static_cast<qint64>(duration.toDouble() * 1000);
             }
-            if (durationMs > 0)
+            if (durationMs > 0 && allowSeek)
             {
                 double diff = qAbs(localPercent - playedPercent) * durationMs / 1000.0;
                 if (diff > 3.0)
@@ -869,13 +869,16 @@ void WebSocketClient::handleSongListBroadcast(const QJsonObject &json)
     }
     // 合并消息可能同时包含 song_info
     // 只在是当前播放歌曲或客户端尚未播放时才处理，避免别人添加歌曲触发错误切歌
+    // allowSeek=false：内嵌快照的 played_percent 最多滞后 5s（服务器 5s 才累加
+    // 一次），用它判 seek 会"先后跳再前跳"造成可闻卡顿；进度纠偏交给专门的
+    // 进度广播（BROADCAST_SONG_PROGRESS，每拍都是新鲜值）
     if (json.contains("song_info") && json["song_info"].isObject())
     {
         QJsonObject songInfo = json["song_info"].toObject();
         QString infoHash     = songInfo["songhash"].toString();
         if (m_currentTogetherSongHash.isEmpty() || infoHash == m_currentTogetherSongHash)
         {
-            handleSongInfoBroadcast(songInfo);
+            handleSongInfoBroadcast(songInfo, false);
         }
     }
     // 添加歌曲成功确认
