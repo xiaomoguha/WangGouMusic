@@ -234,7 +234,7 @@ Item {
                     "cover": coverUrl,
                     "union_cover": coverUrl,
                     "album_name": (s.albuminfo && s.albuminfo.name) ? s.albuminfo.name : (s.album_name || ""),
-                    "duration": s.duration ? (String(s.duration).indexOf(":") >= 0 ? s.duration : fmtDuration(s.duration)) : (s.timelen ? fmtDuration(Math.round(s.timelen / 1000)) : ""),
+                    "duration": s.duration ? (String(s.duration).indexOf(":") >= 0 ? s.duration : fmtDuration(s.duration)) : (s.timelen ? fmtDuration(Math.round(s.timelen / 1000)) : "--:--"),
                 })
             }
             if (detailPage === 1) {
@@ -493,7 +493,7 @@ Item {
                                                         "singername": sn || (s.name || "").split(" - ")[0] || "",
                                                         "hash": s.hash || "", "cover": cu, "union_cover": cu,
                                                         "album_name": (s.albuminfo && s.albuminfo.name) ? s.albuminfo.name : (s.album_name || ""),
-                                                        "duration": s.duration ? (String(s.duration).indexOf(":") >= 0 ? s.duration : fmtDuration(s.duration)) : (s.timelen ? fmtDuration(Math.round(s.timelen / 1000)) : ""),
+                                                        "duration": s.duration ? (String(s.duration).indexOf(":") >= 0 ? s.duration : fmtDuration(s.duration)) : (s.timelen ? fmtDuration(Math.round(s.timelen / 1000)) : "--:--"),
                                                     })
                                                 }
                                                 currentSongs = normalized

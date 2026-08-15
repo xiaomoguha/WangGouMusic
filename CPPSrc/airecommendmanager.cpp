@@ -16,7 +16,7 @@ const char *const kApiRoot = "https://api.special520.com";
 QString secondsToMinutesSeconds(int seconds)
 {
     if (seconds <= 0)
-        return QString();
+        return QStringLiteral("--:--");   // 与其他 manager 统一;空串会传进一起听成空白
     const int m = seconds / 60;
     const int s = seconds % 60;
     return QStringLiteral("%1:%2").arg(m).arg(s, 2, 10, QLatin1Char('0'));

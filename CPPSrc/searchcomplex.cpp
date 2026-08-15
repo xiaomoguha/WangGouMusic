@@ -193,6 +193,8 @@ bool SearchComplex::getIsLoading() const
 
 QString SearchComplex::secondsToMinutesSeconds(int totalSeconds)
 {
+    if (totalSeconds <= 0)
+        return QStringLiteral("--:--");   // 缺时长不再给 "00:00"(传给服务器会解析成 0)
     QTime time(0, 0);
     time = time.addSecs(totalSeconds);
     return time.toString("mm:ss");
