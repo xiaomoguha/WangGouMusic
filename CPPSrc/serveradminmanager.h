@@ -13,7 +13,10 @@
  * 对接服务器 /admin/token 管理接口（需 x-admin-key 鉴权）：
  * - fetchStatus：查询服务器当前共享 token 概况（脱敏）
  * - syncToken：把客户端当前登录的 token 推到服务器（服务端先校验再热更新+持久化）
- * - checkToken：检测服务器当前共享 token 是否仍有效
+ * - checkToken：检测服务器当前共享 token 是否仍有效（服务端现场真查一次酷狗）
+ * - fetchGuardStatus：读服务器看门狗(token-guard)最近一轮验活的缓存结果，
+ *   不触发真实检测（服务器仍按自身的 30 分钟/16:30-16:45 30 秒节奏检测），
+ *   供顶栏状态点低频轮询（客户端每 30 秒问一次）
  * 管理密钥持久化在 QSettings，只在客户端与自己的服务器之间传输。
  */
 class ServerAdminManager : public QObject
@@ -32,6 +35,7 @@ public:
     Q_INVOKABLE void fetchStatus();
     Q_INVOKABLE void syncToken(const QString &token, const QString &userid);
     Q_INVOKABLE void checkToken();
+    Q_INVOKABLE void fetchGuardStatus();
 
 signals:
     void adminKeyChanged();
@@ -42,6 +46,9 @@ signals:
     void syncResult(const QVariantMap &data);
     /// checkToken 成功：{valid, error_code, userid, vip_type, msg}
     void checkResult(const QVariantMap &data);
+    /// fetchGuardStatus 成功：{guard:{state,checked_at,...}|无效, shared:{...}, server_time}
+    /// guard.state: "ok"=存活 / "invalid"=已失效 / "net-error"=服务器检测请求异常；guard 为 null 表示看门狗还没写过状态
+    void guardStatusReceived(const QVariantMap &data);
     /// 任一操作失败（网络错误 / 密钥不对 / 校验未通过），operation 为 "status"/"sync"/"check"
     void requestFailed(const QString &operation, const QString &error);
 
