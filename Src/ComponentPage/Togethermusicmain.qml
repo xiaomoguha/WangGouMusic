@@ -21,6 +21,50 @@ Item {
         return gradientDark ? darkHex : lightHex
     }
 
+    // 瞬态滚动条:仅滚动时淡入,停止 800ms 后淡出。
+    // visible 绑定 size<1(内容超出视口才可滚动)做硬性门控 —— 不可滚动时
+    // 彻底隐藏、不响应鼠标;透明状态也不靠 hover 触发,避免鼠标扫过就闪现
+    component TransientScrollBar: ScrollBar {
+        id: sb
+        policy: ScrollBar.AsNeeded
+        visible: size < 1.0
+        implicitWidth: 8
+        opacity: 0
+
+        contentItem: Rectangle {
+            width: 6
+            radius: 3
+            color: AppTheme.isDark ? "#99FFFFFF" : "#99000000"
+        }
+        background: null
+
+        onActiveChanged: {
+            if (active) {
+                opacity = 0.9
+                hideTimer.stop()
+            } else {
+                hideTimer.restart()
+            }
+        }
+        onPressedChanged: {
+            if (pressed) {
+                opacity = 0.9
+                hideTimer.stop()
+            }
+        }
+
+        Timer {
+            id: hideTimer
+            interval: 800
+            onTriggered: {
+                if (!sb.pressed && !sb.active)
+                    sb.opacity = 0
+            }
+        }
+
+        Behavior on opacity { NumberAnimation { duration: 250 } }
+    }
+
     // ========== 离开房间确认弹窗 ==========
     Dialog {
         id: leaveConfirmDialog
@@ -103,15 +147,21 @@ Item {
     // ========== 数据 ==========
     property var onlineUsers: []
     property int onlineCount: 0
-    property var messages: websocket ? websocket.messages : []
+    // 消息列表是 C++ 的 QAbstractListModel(指针恒定,行级增量更新),
+    // 不再是每次整体替换的 JS 数组 —— ListView 不会整表销毁重建 delegate。
+    // 左栏聊天 / 右栏系统动态,从 C++ 侧分流
+    property var chatMessages: websocket ? websocket.chatMessages : null
+    property var actionMessages: websocket ? websocket.actionMessages : null
+    property int chatCount: chatMessages ? chatMessages.count : 0
+    property int actionCount: actionMessages ? actionMessages.count : 0
     property var confirmedMsgIds: ({})
     property var roomSongData: ({})   // 房间当前播放歌曲（由 songInfoUpdated 广播更新，驱动顶部「正在播放」卡）
     property int prevMsgCount: 0      // 上次消息数，用于判断哪些是新增的
     property bool firstLoad: true     // 首次加载不播动画
 
-    onMessagesChanged: {
-        if (firstLoad && messages.length > 0) {
-            prevMsgCount = messages.length;
+    onChatCountChanged: {
+        if (firstLoad && chatCount > 0) {
+            prevMsgCount = chatCount;
             firstLoad = false;
         }
         if (!firstLoad)
@@ -122,7 +172,7 @@ Item {
         id: updateCountTimer
         interval: 500
         repeat: false
-        onTriggered: root.prevMsgCount = root.messages.length
+        onTriggered: root.prevMsgCount = root.chatCount
     }
 
     // ========== 连接状态横幅 ==========
@@ -744,21 +794,28 @@ Item {
         }
     }
 
-    // ========== 消息列表（聊天 + 操作动态统一显示）==========
-    ListView {
-        id: messageListView
+    // ========== 左半：聊天（自己右侧 / 别人左侧，微信风格）+ 输入栏 ==========
+    Item {
+        id: chatPane
         anchors.left: parent.left
-        anchors.right: parent.right
         anchors.top: heroCard.bottom
-        anchors.bottom: inputBar.top
-        anchors.topMargin: 10
-        anchors.leftMargin: 20
-        anchors.rightMargin: 20
-        anchors.bottomMargin: 6
-        clip: true
-        spacing: 6
-        cacheBuffer: 1000
-        model: messages
+        anchors.bottom: parent.bottom
+        width: parent.width * 0.5
+
+        ListView {
+            id: messageListView
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.bottom: inputBar.top
+            anchors.topMargin: 10
+            anchors.leftMargin: 20
+            anchors.rightMargin: 12
+            anchors.bottomMargin: 6
+            clip: true
+            spacing: 6
+            cacheBuffer: 1000
+            model: chatMessages
 
         // 是否自动滚动到底部（用户在底部附近时为 true，手动上滑后变 false）
         property bool _autoScroll: true
@@ -780,12 +837,25 @@ Item {
             }
         }
 
+        // 行数变化时 positionViewAtEnd 按估算行高定位,delegate 实例化后真实
+        // 高度确定的瞬间 contentHeight 会再变一次,此处再贴底校准,确保真正到底
+        onContentHeightChanged: {
+            if (_autoScroll) {
+                Qt.callLater(positionViewAtEnd)
+            }
+        }
+
+        // 滚动时短暂出现的滚动条
+        ScrollBar.vertical: TransientScrollBar { }
+
         footer: Item { height: 4 }
 
         delegate: Item {
             id: messageDelegate
             width: messageListView.width
-            height: modelData.type === "action" ? actionItem.height + 10 : chatBubble.height + 8
+            // 微信式判断：userid 是自己 → 消息靠右
+            property bool isMine: userManager && modelData.userid === userManager.userid
+            height: bubbleCol.height + 8
 
             property bool isNewMsg: false
             property real slideX: 0
@@ -798,7 +868,7 @@ Item {
                 var newMsg = index >= root.prevMsgCount && modelData.status !== "sent";
                 if (newMsg) {
                     isNewMsg = true;
-                    slideX = -60;
+                    slideX = messageDelegate.isMine ? 60 : -60;
                     msgOpacity = 0;
                     slideInAnim.start();
                 }
@@ -808,7 +878,7 @@ Item {
                 id: slideInAnim
                 NumberAnimation {
                     target: messageDelegate; property: "slideX"
-                    from: -60; to: 0; duration: 500; easing.type: Easing.OutCubic
+                    from: messageDelegate.isMine ? 60 : -60; to: 0; duration: 500; easing.type: Easing.OutCubic
                 }
                 NumberAnimation {
                     target: messageDelegate; property: "msgOpacity"
@@ -816,61 +886,11 @@ Item {
                 }
             }
 
-            // --- 操作动态（居中胶囊，时间 hover 时显示在右侧）---
-            Item {
-                id: actionItem
-                visible: modelData.type === "action"
-                width: parent.width
-                height: Math.max(actionPill.height, actionTime.height)
-
-                HoverHandler { id: actionHover }
-
-                // 时间：鼠标放上消息时淡入，紧贴胶囊右侧
-                Text {
-                    id: actionTime
-                    anchors.left: actionPill.right
-                    anchors.leftMargin: 8
-                    anchors.verticalCenter: parent.verticalCenter
-                    visible: actionHover.hovered && modelData.time > 0
-                    opacity: actionHover.hovered ? 1 : 0
-                    text: Qt.formatTime(new Date(modelData.time * 1000), "hh:mm")
-                    font.pixelSize: AppTheme.fontSizeXs
-                    font.family: AppTheme.fontFamily
-                    color: AppTheme.textDim
-                    Behavior on opacity { NumberAnimation { duration: 120 } }
-                }
-
-                // 半透明白胶囊：渐变下融入背景，无渐变时回退主题卡片色
-                Rectangle {
-                    id: actionPill
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: actionText.implicitWidth + 22
-                    height: 26
-                    radius: 13
-                    color: root.tint("#12FFFFFF", "#33FFFFFF", AppTheme.bgCard)
-                    border.width: 1
-                    border.color: root.tint("#1EFFFFFF", "#40FFFFFF", "transparent")
-
-                    Text {
-                        id: actionText
-                        anchors.centerIn: parent
-                        text: (modelData.nickname || modelData.userid || "") + " " + (modelData.message || "")
-                        font.pixelSize: AppTheme.fontSizeSmall
-                        font.family: AppTheme.fontFamily
-                        color: AppTheme.textSecondary
-                        elide: Text.ElideRight
-                        width: Math.min(implicitWidth, messageListView.width - 240)
-                    }
-                }
-            }
-
-            // --- 聊天消息 ---
+            // 微信式排布：自己 → 头像在右、气泡靠右；别人 → 头像在左、气泡靠左
             Row {
-                id: chatBubble
-                visible: modelData.type === "chat"
-                anchors.left: parent.left
                 spacing: 8
+                layoutDirection: messageDelegate.isMine ? Qt.RightToLeft : Qt.LeftToRight
+                width: parent.width
 
                 // 头像
                 Rectangle {
@@ -890,28 +910,31 @@ Item {
                     }
                 }
 
-                Column {
-                    spacing: 2
+                // Column 的子项只能左贴(不支持行内右对齐),自己消息的气泡会被顶到
+                // 时间行的最左端;改用 Item + x 定位,按 isMine 贴对应边
+                Item {
+                    id: bubbleCol
                     anchors.verticalCenter: parent.verticalCenter
+                    width: Math.max(nameRow.width, bubbleRow.width)
+                    height: nameRow.height + 2 + bubbleRow.height
 
+                    // 昵称 + 时间
                     Row {
+                        id: nameRow
                         spacing: 6
+                        layoutDirection: messageDelegate.isMine ? Qt.RightToLeft : Qt.LeftToRight
+                        x: messageDelegate.isMine ? bubbleCol.width - width : 0
 
                         Text {
                             text: modelData.nickname || modelData.userid || "未知"
                             font.pixelSize: AppTheme.fontSizeSmall
                             font.family: AppTheme.fontFamily
-                            color: AppTheme.accent
+                            color: messageDelegate.isMine ? AppTheme.accent : AppTheme.textDim
                             font.weight: Font.DemiBold
                         }
 
                         Text {
-                            text: {
-                                if (modelData.time > 0) {
-                                    return Qt.formatTime(new Date(modelData.time * 1000), "hh:mm");
-                                }
-                                return "";
-                            }
+                            text: modelData.time > 0 ? Qt.formatTime(new Date(modelData.time * 1000), "hh:mm") : ""
                             font.pixelSize: AppTheme.fontSizeXs
                             font.family: AppTheme.fontFamily
                             color: AppTheme.textDim
@@ -919,20 +942,40 @@ Item {
                         }
                     }
 
+                    // 气泡 + 发送状态
                     Row {
+                        id: bubbleRow
                         spacing: 4
-                        anchors.right: parent.right
+                        layoutDirection: messageDelegate.isMine ? Qt.RightToLeft : Qt.LeftToRight
+                        x: messageDelegate.isMine ? bubbleCol.width - width : 0
+                        y: nameRow.height + 2
 
-                        Text {
-                            text: modelData.message || ""
-                            font.pixelSize: AppTheme.fontSizeBody
-                            font.family: AppTheme.fontFamily
-                            color: AppTheme.textSecondary
-                            wrapMode: Text.Wrap
-                            width: Math.min(messageListView.width - 90, 380)
+                        Rectangle {
+                            id: chatBubbleRect
+                            width: bubbleText.width + 24
+                            height: bubbleText.height + 14
+                            radius: 10
+                            color: messageDelegate.isMine
+                                       ? AppTheme.accentDim
+                                       : root.tint("#12FFFFFF", "#33FFFFFF", AppTheme.bgCard)
+                            border.width: 1
+                            border.color: messageDelegate.isMine
+                                              ? AppTheme.accentSubtle
+                                              : root.tint("#1EFFFFFF", "#40FFFFFF", "transparent")
+
+                            Text {
+                                id: bubbleText
+                                anchors.centerIn: parent
+                                text: modelData.message || ""
+                                font.pixelSize: AppTheme.fontSizeBody
+                                font.family: AppTheme.fontFamily
+                                color: messageDelegate.isMine ? AppTheme.textPrimary : AppTheme.textSecondary
+                                wrapMode: Text.Wrap
+                                width: Math.min(implicitWidth, messageListView.width - 120)
+                            }
                         }
 
-                        // 发送状态指示器
+                        // 发送状态指示器（仅自己的消息有 status）
                         Item {
                             width: 16
                             height: 16
@@ -1013,7 +1056,7 @@ Item {
     // ========== 聊天空状态 ==========
     Column {
         anchors.centerIn: messageListView
-        visible: messages.length === 0
+        visible: chatCount === 0
         spacing: 8
 
         Rectangle {
@@ -1129,6 +1172,135 @@ Item {
             }
         }
     }
+    }   // chatPane 结束
+
+    // 左右分栏分隔线
+    Rectangle {
+        width: 1
+        anchors.left: chatPane.right
+        anchors.top: heroCard.bottom
+        anchors.bottom: parent.bottom
+        color: AppTheme.borderSubtle
+    }
+
+    // ========== 右半：房间动态（系统消息）==========
+    Item {
+        id: actionPane
+        anchors.left: chatPane.right
+        anchors.leftMargin: 1
+        anchors.right: parent.right
+        anchors.top: heroCard.bottom
+        anchors.bottom: parent.bottom
+
+        Text {
+            id: actionPaneTitle
+            text: "房间动态"
+            font.pixelSize: AppTheme.fontSizeSmall
+            font.family: AppTheme.fontFamily
+            color: AppTheme.textDim
+            anchors.top: parent.top
+            anchors.topMargin: 14
+            anchors.left: parent.left
+            anchors.leftMargin: 16
+        }
+
+        ListView {
+            id: actionListView
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.leftMargin: 8
+            anchors.rightMargin: 16
+            anchors.top: actionPaneTitle.bottom
+            anchors.topMargin: 8
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: 8
+            clip: true
+            spacing: 6
+            cacheBuffer: 1000
+            model: actionMessages
+
+            // 与聊天列表相同的"贴底自动滚动/上滑停止"策略
+            property bool _autoScroll: true
+            onContentYChanged: {
+                if (moving || flicking)
+                    _autoScroll = (contentY + height >= contentHeight - 30)
+            }
+            onMovementEnded: {
+                _autoScroll = (contentY + height >= contentHeight - 30)
+            }
+            onCountChanged: {
+                if (_autoScroll)
+                    Qt.callLater(positionViewAtEnd)
+            }
+            // 同聊天列表:估算行高定位后再按真实 contentHeight 校准一次,确保贴底
+            onContentHeightChanged: {
+                if (_autoScroll)
+                    Qt.callLater(positionViewAtEnd)
+            }
+
+            ScrollBar.vertical: TransientScrollBar { }
+
+            footer: Item { height: 4 }
+
+            delegate: Item {
+                id: actionDelegate
+                width: actionListView.width
+                height: actionPill.height + 10
+
+                HoverHandler { id: actionHover }
+
+                // 时间：鼠标放上时淡入，紧贴胶囊右侧
+                Text {
+                    id: actionTime
+                    anchors.left: actionPill.right
+                    anchors.leftMargin: 8
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: actionHover.hovered && modelData.time > 0
+                    opacity: actionHover.hovered ? 1 : 0
+                    text: Qt.formatTime(new Date(modelData.time * 1000), "hh:mm")
+                    font.pixelSize: AppTheme.fontSizeXs
+                    font.family: AppTheme.fontFamily
+                    color: AppTheme.textDim
+                    Behavior on opacity { NumberAnimation { duration: 120 } }
+                }
+
+                // 半透明白胶囊：渐变下融入背景，无渐变时回退主题卡片色
+                Rectangle {
+                    id: actionPill
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: actionText.implicitWidth + 22
+                    height: 26
+                    radius: 13
+                    color: root.tint("#12FFFFFF", "#33FFFFFF", AppTheme.bgCard)
+                    border.width: 1
+                    border.color: root.tint("#1EFFFFFF", "#40FFFFFF", "transparent")
+
+                    Text {
+                        id: actionText
+                        anchors.centerIn: parent
+                        text: (modelData.nickname || modelData.userid || "") + " " + (modelData.message || "")
+                        font.pixelSize: AppTheme.fontSizeSmall
+                        font.family: AppTheme.fontFamily
+                        color: AppTheme.textSecondary
+                        elide: Text.ElideRight
+                        width: Math.min(implicitWidth, actionListView.width - 60)
+                    }
+                }
+            }
+        }
+
+        // 动态空状态（浅色主题下 textDim 太浅，直接黑色）
+        Text {
+            anchors.centerIn: actionListView
+            visible: actionCount === 0
+            text: "暂无房间动态"
+            font.pixelSize: AppTheme.fontSizeSmall
+            font.family: AppTheme.fontFamily
+            color: AppTheme.isDark ? AppTheme.textDim : "#000000"
+            opacity: 0.6
+        }
+    }
 
     // ========== 信号连接 ==========
     // togetherplaylist 现为 QAbstractListModel，列表变化由 model 自身信号驱动，
@@ -1180,9 +1352,9 @@ Item {
         }
 
         function onRoomActionsReceived(actions) {
-            // 新操作动态到达时，仅在用户已在底部时自动滚动
-            if (messageListView._autoScroll) {
-                Qt.callLater(messageListView.positionViewAtEnd)
+            // 新系统动态到达时，仅在用户已在底部时自动滚动
+            if (actionListView._autoScroll) {
+                Qt.callLater(actionListView.positionViewAtEnd)
             }
         }
 
@@ -1201,12 +1373,25 @@ Item {
         }
     }
 
+    // 切回本页(Rightpage 的 pageLoaders 只切 visible/opacity,页面常驻)时,
+    // 若离开前列表在底部,确保滚到最新消息;离开前在翻历史则保留原位置
+    onVisibleChanged: {
+        if (!visible)
+            return
+        if (messageListView._autoScroll)
+            Qt.callLater(messageListView.positionViewAtEnd)
+        if (actionListView._autoScroll)
+            Qt.callLater(actionListView.positionViewAtEnd)
+    }
+
     Component.onCompleted: {
         if (websocket && websocket.connected) {
             websocket.requestClientList();
         }
         // 延迟到下一帧执行，确保 delegate 已完成布局
         messageListView._autoScroll = true;
+        actionListView._autoScroll = true;
+        Qt.callLater(actionListView.positionViewAtEnd);
         Qt.callLater(messageListView.positionViewAtEnd);
     }
 }
