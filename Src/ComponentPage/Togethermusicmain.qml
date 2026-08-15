@@ -747,7 +747,8 @@ Item {
                     anchors.right: parent.right
                     anchors.rightMargin: 8
                     anchors.verticalCenter: parent.verticalCenter
-                    text: model.duration
+                    // 空时长（历史遗留的 FM 歌等）兜底显示，不空白
+                    text: model.duration || "--:--"
                     font.pixelSize: AppTheme.fontSizeCaption; font.family: AppTheme.fontFamily
                     color: AppTheme.textDim
                 }

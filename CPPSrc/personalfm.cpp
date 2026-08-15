@@ -142,8 +142,12 @@ void PersonalFM::onData(const QByteArray &data)
         item["union_cover"] = cover;
         item["album_name"]  = s["album_name"].toString();
         item["album_id"]    = s["album_id"].toString();
-        // FM 接口不返回时长，留空由 UI 兜底 "--:--"
-        item["duration"]    = QString();
+        // FM 接口的 song_list 已带 time_length（秒）。个别缺失时留空，
+        // 由一起听列表的 "--:--" 兜底显示；服务器对空时长也有 240s 推进兜底
+        const int fmSec = s["time_length"].toInt(0);
+        item["duration"]    = fmSec > 0
+                                  ? QStringLiteral("%1:%2").arg(fmSec / 60).arg(fmSec % 60, 2, 10, QLatin1Char('0'))
+                                  : QString();
         songs.append(item);
     }
     if (songs.isEmpty())
