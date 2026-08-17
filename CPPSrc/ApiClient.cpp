@@ -226,6 +226,9 @@ QNetworkReply *ApiClient::postJson(
 )
 {
     const QByteArray payload = QJsonDocument(body).toJson(QJsonDocument::Compact);
+    // post() 不会自动带 Content-Type，缺了它服务端(express.json 等)不解析 body
+    QMap<QString, QString> headers = extraHeaders;
+    headers.insert(QStringLiteral("Content-Type"), QStringLiteral("application/json"));
     auto wrapped             = [onSuccess, onError](QByteArray resp)
     {
         QJsonParseError perr;
@@ -252,6 +255,6 @@ QNetworkReply *ApiClient::postJson(
             if (onError)
                 onError(err, code);
         },
-        timeoutMs, extraHeaders
+        timeoutMs, headers
     );
 }
