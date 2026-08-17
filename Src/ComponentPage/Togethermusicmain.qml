@@ -307,7 +307,10 @@ Item {
 
                                     Image {
                                         anchors.fill: parent
-                                        source: modelData.avatar_url && modelData.avatar_url !== "" ? modelData.avatar_url : "qrc:/image/touxi.jpg"
+                                        // 只认 http(s) 头像：网页游客曾传网页相对路径 /images/app-icon.png，
+                                        // 按 qrc 解析成不存在的资源刷 Cannot open 警告
+                                        source: modelData.avatar_url && String(modelData.avatar_url).indexOf("http") === 0
+                                            ? modelData.avatar_url : "qrc:/image/touxi.jpg"
                                         fillMode: Image.PreserveAspectCrop
                                         asynchronous: true
                                         layer.enabled: true
@@ -901,7 +904,9 @@ Item {
 
                     Image {
                         anchors.fill: parent
-                        source: modelData.avatarUrl && modelData.avatarUrl !== "" ? modelData.avatarUrl : "qrc:/image/touxi.jpg"
+                        // 同成员列表：非 http(s) 头像一律走内置兜底，避免无效 qrc 路径警告
+                        source: modelData.avatarUrl && String(modelData.avatarUrl).indexOf("http") === 0
+                            ? modelData.avatarUrl : "qrc:/image/touxi.jpg"
                         fillMode: Image.PreserveAspectCrop
                         asynchronous: true
                         layer.enabled: true
