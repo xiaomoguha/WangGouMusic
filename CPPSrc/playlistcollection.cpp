@@ -24,6 +24,66 @@ PlaylistCollection::PlaylistCollection(QObject *parent) : QObject(parent)
 void PlaylistCollection::setUserManager(UserManager *um)
 {
     m_userManager = um;
+    if (um)
+    {
+        // 红心缓存未命中 → 现场拉歌单列表 → 到达后（缓存已落盘）自动重试一次
+        connect(um, &UserManager::userPlaylistReceived, this, &PlaylistCollection::onUserPlaylistsForRetry);
+    }
+}
+
+bool PlaylistCollection::findFavorite(QString &listid, QString &gid) const
+{
+    if (!m_userManager)
+        return false;
+    const QVariantMap cached = m_userManager->loadCachedPlaylists();
+    // 缓存根结构 {data: {info: [...]}}，兼容无 data 包裹的情况
+    const QVariantList infos = cached["data"].toMap()["info"].toList();
+    if (infos.isEmpty())
+        return false;
+    const QString uid        = m_userManager->userid();
+    const QString gidFav     = QStringLiteral("collection_3_%1_2_0").arg(uid);  // 「我喜欢」系统位
+    const QString gidDefault = QStringLiteral("collection_3_%1_1_0").arg(uid);  // 「默认收藏」系统位（老账号）
+    // 多级匹配：精确名 → 系统 gid → 包含名 → 默认收藏 gid → 默认收藏名。
+    // 顺序保证用户自建的「我喜欢的XX」不会被排在真「我喜欢」前面。
+    for (int pass = 0; pass < 5; ++pass)
+    {
+        for (const QVariant &v : infos)
+        {
+            const QVariantMap p    = v.toMap();
+            const QString    name  = p["name"].toString();
+            const QString    g     = p["global_collection_id"].toString();
+            const QString    l     = p["listid"].toString();
+            bool hit = false;
+            switch (pass)
+            {
+            case 0: hit = (name == QStringLiteral("我喜欢")); break;
+            case 1: hit = (g == gidFav); break;
+            case 2: hit = name.contains(QStringLiteral("我喜欢")); break;
+            case 3: hit = (g == gidDefault); break;
+            case 4: hit = name.contains(QStringLiteral("默认收藏")); break;
+            }
+            if (hit && !l.isEmpty())
+            {
+                listid = l;
+                gid    = g;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+void PlaylistCollection::onUserPlaylistsForRetry(const QVariantMap &data)
+{
+    Q_UNUSED(data);
+    if (!m_favRetryPending)
+        return;
+    m_favRetryPending = false;
+    const QString name = m_favPendingName, hash = m_favPendingHash, singer = m_favPendingSinger;
+    m_favPendingName.clear();
+    m_favPendingHash.clear();
+    m_favPendingSinger.clear();
+    addToFavorite(name, hash, singer);
 }
 
 QVariantList PlaylistCollection::favoriteHashes() const
@@ -213,25 +273,20 @@ void PlaylistCollection::addToFavorite(const QString &songname, const QString &s
         emit operationFinished(false, "当前歌曲信息不完整");
         return;
     }
-    // 「我喜欢」是普通歌单：从歌单缓存按名字匹配取 listid
-    QString listid;
-    if (m_userManager)
+    // 「我喜欢」定位：多级匹配（名字/系统 gid/默认收藏兜底），见 findFavorite
+    QString listid, gid;
+    if (!findFavorite(listid, gid))
     {
-        const QVariantMap cached = m_userManager->loadCachedPlaylists();
-        // 缓存根结构 {data: {info: [...]}}，兼容无 data 包裹的情况
-        const QVariantList infos = cached["data"].toMap()["info"].toList();
-        for (const QVariant &v : infos)
+        // 缓存里没有：登录状态下现场拉一次歌单列表，到达后自动重试本方法（防循环只试一轮）
+        if (m_userManager && m_userManager->isLoggedIn() && !m_favRetryPending)
         {
-            const QString name = v.toMap()["name"].toString();
-            if (name.contains(QStringLiteral("我喜欢")))
-            {
-                listid = v.toMap()["listid"].toString();
-                break;
-            }
+            m_favRetryPending  = true;
+            m_favPendingName   = songname;
+            m_favPendingHash   = songhash;
+            m_favPendingSinger = singername;
+            m_userManager->fetchUserPlaylist(1, 50);
+            return;
         }
-    }
-    if (listid.isEmpty())
-    {
         emit operationFinished(false, "未找到「我喜欢」歌单，请先刷新歌单");
         return;
     }
@@ -247,23 +302,10 @@ void PlaylistCollection::addToFavorite(const QString &songname, const QString &s
 
 void PlaylistCollection::refreshFavoriteHashes()
 {
-    // 找「我喜欢」歌单 gid（缓存）
-    if (m_userManager)
-    {
-        const QVariantMap cached = m_userManager->loadCachedPlaylists();
-        // 缓存根结构 {data: {info: [...]}}，兼容无 data 包裹的情况
-        const QVariantList infos = cached["data"].toMap()["info"].toList();
-        for (const QVariant &v : infos)
-        {
-            const QVariantMap p  = v.toMap();
-            const QString    gid = p["global_collection_id"].toString();
-            if (!gid.isEmpty() && p["name"].toString().contains(QStringLiteral("我喜欢")))
-            {
-                m_favGid = gid;
-                break;
-            }
-        }
-    }
+    // 找「我喜欢」歌单 gid：与 addToFavorite 同一套多级定位，保证红心状态与收藏目标一致
+    QString listid, gid;
+    if (findFavorite(listid, gid))
+        m_favGid = gid;
     if (m_favGid.isEmpty())
         return;
     // 接口单页上限 300：分页拉全，避免红心漏判

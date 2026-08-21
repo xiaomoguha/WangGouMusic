@@ -74,6 +74,12 @@ private:
     // 红心 hash 集合本地缓存：启动即显示，网络刷新后台更新
     void loadFavoriteHashesFromCache();
     void saveFavoriteHashesToCache();
+    /// 统一定位「我喜欢」歌单：名字精确 → 系统 gid(_2_0) → 名字包含 →
+    /// 默认收藏 gid(_1_0) → 默认收藏名字。老账号只有「默认收藏」、
+    /// 部分账号列表命名不同，单按名字匹配会误报「未找到」
+    bool findFavorite(QString &listid, QString &gid) const;
+    /// 红心重试：缓存未命中时现场拉一次歌单列表（信号到达时缓存已落盘）再试
+    void onUserPlaylistsForRetry(const QVariantMap &data);
 
     UserManager *m_userManager = nullptr;
     HttpGetRequester m_favRequester;
@@ -82,6 +88,8 @@ private:
     int m_favPage   = 0;          // 分页拉全（接口单页上限 300）
     int m_favTotal  = 0;
     bool m_isWorking = false;
+    bool m_favRetryPending = false;  // 已发起现场拉取等重试（防循环）
+    QString m_favPendingName, m_favPendingHash, m_favPendingSinger;
 };
 
 #endif // PLAYLISTCOLLECTION_H
