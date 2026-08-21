@@ -87,7 +87,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/CPPSrc/ClickThroughHelper.cpp
             PROPERTIES LANGUAGE OBJCXX)
         target_sources(WangGouMusic PRIVATE CPPSrc/macoswindow.mm CPPSrc/macoswindow.h
-                        CPPSrc/NowPlayingMediaController.mm CPPSrc/NowPlayingMediaController.h)
+                        CPPSrc/NowPlayingMediaController.mm CPPSrc/NowPlayingMediaController.h
+                        CPPSrc/mactrayitem.mm CPPSrc/mactrayitem.h)
         set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/cmake_wanggou.icns PROPERTIES
             MACOSX_PACKAGE_LOCATION Resources)
         target_sources(WangGouMusic PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/cmake_wanggou.icns)

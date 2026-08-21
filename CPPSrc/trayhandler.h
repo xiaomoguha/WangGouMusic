@@ -27,7 +27,9 @@ protected:
 private:
     QQuickWindow *m_window;
     QApplication *m_app;
-    QSystemTrayIcon *m_tray;
-    QMenu *m_menu;
+    QSystemTrayIcon *m_tray = nullptr; // macOS 26+ 原生路径下不创建（见 mactrayitem.h）
+    QMenu *m_menu = nullptr;
     bool m_quitRequested;
+    /// macOS 26+ 原生托盘（Qt systray 在 26 上空白渲染 + 点击闪退，见 mactrayitem.h）
+    bool m_nativeTray = false;
 };

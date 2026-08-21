@@ -5,11 +5,50 @@
 #include <QTimer>
 #include <QCoreApplication>
 #include <QGuiApplication>
+#include <QSysInfo>
 #include <QWindow>
+#ifdef Q_OS_MAC
+#include "mactrayitem.h"
+#endif
 
 TrayHandler::TrayHandler(QQuickWindow *win, QApplication *app, const QIcon &icon, QObject *parent)
     : QObject(parent), m_window(win), m_app(app), m_quitRequested(false)
 {
+#ifdef Q_OS_MAC
+    // macOS 26（Tahoe）+：Qt systray 状态项空白渲染，点击/拖动展开菜单时
+    // QStatusItemDelegate 对非鼠标事件读 clickCount 抛 NSException 闪退。
+    // 且 QSystemTrayIcon 构造即创建 QPA 托盘对象（qsystemtrayicon_qpa.cpp），
+    // 光"不 show"也躲不开——26+ 上完全不建 QSystemTrayIcon，改用原生
+    // NSStatusItem（见 mactrayitem.mm）。旧版 macOS 保持 QSystemTrayIcon 老路径。
+    // 注意 productVersion() 形如 "27.0"，toInt() 对带小数点的串返回 0，
+    // 必须先 section('.') 取主版本号再比
+    const int macosMajor = QSysInfo::productVersion().section('.', 0, 0).toInt();
+    qDebug() << "[TrayHandler] macOS 版本:" << QSysInfo::productVersion()
+             << "主版本:" << macosMajor << "原生托盘:" << (macosMajor >= 26);
+    if (macosMajor >= 26)
+    {
+        m_nativeTray = true;
+        // 先免疫 Qt 内部 systray 委托的崩溃路径（26+ 上我们不用 Qt 托盘，
+        // 详见 mactrayitem.mm：NSEvent.clickCount 保险丝 + 委托入口 no-op）
+        macNeutralizeQtTrayDelegateCrash();
+
+        // 安装事件过滤器拦截关闭事件
+        if (m_window)
+            m_window->installEventFilter(this);
+
+        // 监听应用程序激活事件（macOS 点击 Dock 图标）
+        m_app->installEventFilter(this);
+
+        macInstallNativeTrayItem(
+            QStringLiteral(":/image/tray_icon_mac.png"),
+            QStringLiteral("网狗音乐"),
+            [this]() { onShowRequested(); },
+            [this]() { onQuitRequested(); }
+        );
+        return;
+    }
+#endif
+
     // 创建托盘图标和菜单
     m_tray = new QSystemTrayIcon(icon, this);
     // QMenu 需 QWidget* 作为 parent，TrayHandler 是 QObject 不是 QWidget，
@@ -56,6 +95,10 @@ TrayHandler::~TrayHandler()
     // 先移除事件过滤器，避免在销毁过程中处理事件
     if (m_app)
         m_app->removeEventFilter(this);
+#ifdef Q_OS_MAC
+    if (m_nativeTray)
+        macRemoveNativeTrayItem();
+#endif
     if (m_window)
         m_window->removeEventFilter(this);
     // m_menu 无 Qt parent（QMenu 需 QWidget*），手动释放以避免泄漏。
@@ -119,6 +162,10 @@ void TrayHandler::onQuitRequested()
         m_window->removeEventFilter(this);
 
     // 隐藏托盘图标
+#ifdef Q_OS_MAC
+    if (m_nativeTray)
+        macRemoveNativeTrayItem();
+#endif
     if (m_tray)
     {
         m_tray->hide();
