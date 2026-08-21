@@ -130,35 +130,6 @@ void ServerAdminManager::syncToken(const QString &token, const QString &userid)
     );
 }
 
-void ServerAdminManager::fetchGuardStatus()
-{
-    // 顶栏状态点的 30 秒轮询：服务器只回读看门狗落盘的缓存结果，
-    // 不会触发真实检测——不走 busy 闸门，也不与手动同步/检测互相阻塞
-    if (m_adminKey.isEmpty())
-    {
-        emit requestFailed(QStringLiteral("guard"), QStringLiteral("请先填写服务器管理密钥"));
-        return;
-    }
-    ApiClient::instance().getJson(
-        kApiRoot + QStringLiteral("/admin/token/status"),
-        [this](QJsonObject root)
-        {
-            QVariantMap data;
-            QString err;
-            if (parseBusinessReply(root, data, err))
-                emit guardStatusReceived(data);
-            else
-                emit requestFailed(QStringLiteral("guard"), err);
-        },
-        [this](QString err, int /*httpStatus*/)
-        {
-            emit requestFailed(QStringLiteral("guard"), QStringLiteral("连接服务器失败：") + err);
-        },
-        8000,
-        {{QStringLiteral("x-admin-key"), m_adminKey}}
-    );
-}
-
 void ServerAdminManager::checkToken()
 {
     if (m_busy || !ensureKeyPresent(QStringLiteral("check")))
