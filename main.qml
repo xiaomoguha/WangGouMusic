@@ -75,6 +75,11 @@ ApplicationWindow {
     // 当前是否展开歌词
     property bool lyricsOpened: false
 
+    // 窗口真实可见（非最小化且未隐藏）：常驻动画的统一开关。
+    // QML 的 visible 属性在最小化时仍为 true，若动画只看 visible，
+    // 最小化后仍会驱动渲染循环持续出帧（CPU 降不下来）
+    readonly property bool appActive: visible && visibility !== Window.Minimized
+
     // 启动后延迟拉取热搜与推荐数据，让首屏先渲染完
     Timer {
         id: startupFetchTimer
@@ -180,6 +185,9 @@ ApplicationWindow {
         id: windowShell
         anchors.fill: parent
         enabled: !root.lyricsOpened
+        // 播放详情页完全展开后整块隐藏：否则三个面板（含当前页全部节点/离屏 layer）
+        // 仍参与每帧渲染（覆盖≠隐藏）；收起滑动过程中保持可见，避免露出空底
+        visible: !root.lyricsOpened || lyricsSlideAnim.running
     Leftpage {
         id: leftrect
         width: 200
@@ -375,8 +383,13 @@ ApplicationWindow {
         active: root.lyricsOpened || lyricsPageLoader.item !== null
         source: "qrc:/Src/PlayingPage/PlayingPage.qml"
 
+        // 收起滑动动画结束后整页 visible=false（不销毁）：从场景图摘除，
+        // 页面内所有渲染/动画/绑定链路彻底停止（暂停语义而非销毁）
+        visible: root.lyricsOpened || lyricsSlideAnim.running
+
         Behavior on y {
             NumberAnimation {
+                id: lyricsSlideAnim
                 duration: 350
                 easing.type: Easing.InOutQuad
             }

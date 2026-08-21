@@ -310,7 +310,7 @@ Item {
         anchors.bottom: parent.bottom
         anchors.topMargin: 4
         clip: true
-            cacheBuffer: 2000
+            cacheBuffer: 400
             model: artistManager ? artistManager.songsModel : null
             spacing: 2
             leftMargin: 30
@@ -619,7 +619,7 @@ Item {
         anchors.bottom: parent.bottom
         anchors.topMargin: 4
         clip: true
-        cacheBuffer: 2000
+        cacheBuffer: 400
         model: artistManager ? artistManager.albumsModel : null
         // cellWidth 按「可用宽」（减左右 margin）算，否则 floor 后放不下两个 cell 退成 1 列
         cellWidth: (width - leftMargin - rightMargin) / 2

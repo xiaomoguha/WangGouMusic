@@ -184,7 +184,8 @@ Rectangle {
 
                     NowPlayingIndicator {
                         anchors.centerIn: parent
-                        visible: albumCoverContainer.isCoverPlaying && !coverHover.hovered
+                        // 最小化/隐藏窗口时 visible=false → 内部动画停（visible 不随最小化变 false，需显式判断）
+                        visible: albumCoverContainer.isCoverPlaying && !coverHover.hovered && root.appActive
                         playing: playlistmanager ? !playlistmanager.isPaused : true
                     }
 
@@ -245,14 +246,23 @@ Rectangle {
                             color: AppTheme.textSongTitle
                             visible: songNameClip.overflow
                         }
-                        NumberAnimation on x {
-                            running: songNameClip.overflow
-                            from: 0; to: -songNameClip.unitWidth
-                            duration: Math.max(3000, songNameClip.unitWidth * 40)
-                            loops: Animation.Infinite
-                            easing.type: Easing.Linear
+                        // 33ms Timer 步进滚动（~30fps）：NumberAnimation 按 60Hz 驱动，
+                        // 会把整窗钉在 60fps 重绘；线性滚动 30fps 视觉无差
+                        Timer {
+                            id: songNameScroll
+                            interval: 50
+                            repeat: true
+                            // 窗口最小化/隐藏时停止（appActive 见 main.qml），否则渲染循环不得休眠
+                            running: songNameClip.overflow && root.appActive
+                            onRunningChanged: if (running) songNameRow.x = 0
+                            onTriggered: {
+                                var dur = Math.max(3000, songNameClip.unitWidth * 40)
+                                songNameRow.x -= songNameClip.unitWidth * interval / dur
+                                if (songNameRow.x <= -songNameClip.unitWidth)
+                                    songNameRow.x += songNameClip.unitWidth
+                            }
                         }
-                        // overflow 关闭（短文字）时把 x 归零，避免动画停在负值导致左边字被裁
+                        // overflow 关闭（短文字）时把 x 归零，避免停在负值导致左边字被裁
                         Connections {
                             target: songNameClip
                             function onOverflowChanged() {
@@ -289,12 +299,18 @@ Rectangle {
                             color: AppTheme.textMuted
                             visible: singerNameClip.overflow
                         }
-                        NumberAnimation on x {
-                            running: singerNameClip.overflow
-                            from: 0; to: -singerNameClip.unitWidth
-                            duration: Math.max(3000, singerNameClip.unitWidth * 40)
-                            loops: Animation.Infinite
-                            easing.type: Easing.Linear
+                        Timer {
+                            id: singerNameScroll
+                            interval: 50
+                            repeat: true
+                            running: singerNameClip.overflow && root.appActive
+                            onRunningChanged: if (running) singerNameRow.x = 0
+                            onTriggered: {
+                                var dur = Math.max(3000, singerNameClip.unitWidth * 40)
+                                singerNameRow.x -= singerNameClip.unitWidth * interval / dur
+                                if (singerNameRow.x <= -singerNameClip.unitWidth)
+                                    singerNameRow.x += singerNameClip.unitWidth
+                            }
                         }
                         Connections {
                             target: singerNameClip
@@ -939,7 +955,7 @@ Rectangle {
                             height: parent.height - 44
                             clip: true
                             spacing: 0
-                            cacheBuffer: 1500
+                            cacheBuffer: 600
 
                             model: queueModel
 

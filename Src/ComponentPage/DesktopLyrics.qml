@@ -48,6 +48,9 @@ Window {
         verticalTextContainer.charProgress    = playlistmanager.lyricCharProgress || 0
     }
     onVisibleChanged: {
+        // 向 C++ 上报本窗口是否为歌词动画消费方（可见 60Hz / 隐藏停用）
+        if (playlistmanager)
+            playlistmanager.setDesktopLyricsActive(desktopLyrics.visible)
         if (desktopLyrics.visible)
             syncLyricValues()  // 重新可见时立即同步（隐藏期间值已陈旧）
     }
@@ -139,6 +142,8 @@ Window {
     }
 
     Component.onCompleted: {
+        if (playlistmanager)
+            playlistmanager.setDesktopLyricsActive(desktopLyrics.visible)
         _suppressCentering = true;
         // 延迟到 Screen 属性就绪后再恢复位置
         Qt.callLater(function () {
@@ -270,10 +275,9 @@ Window {
                         var target = hlX - visWidth * 0.4;
                         return Math.max(0, Math.min(target, totalWidth - visWidth));
                     }
-
-                    Behavior on scrollOffset {
-                        SmoothedAnimation { duration: AppTheme.animThemeTransition; easing.type: Easing.OutCubic }
-                    }
+                    // 不用 Behavior 平滑：scrollOffset 随逐字进度 60Hz 变化，Behavior 的
+                    // SmoothedAnimation 会把步进目标转成 60fps 持续动画，整窗钉在全速渲染；
+                    // 60Hz 直接赋值步进（每步 <1px）视觉连续
 
                     // 底层（隐藏，仅测量整行宽度/高度，供容器宽度与 scrollOffset 使用）
                     Text {
@@ -422,10 +426,19 @@ Window {
                                 y: hStarCursor.height * 0.9 + vy * life * (fontPx * 1.5)
                                    + 0.2 * (life * 10) * (life * 10) - height / 2
                                 opacity: Math.max(0, 1 - life) * 0.8 * hStarCursor.opacity
-                                SequentialAnimation on life {
+                                // 50ms 定时步进替代 60Hz 持续动画：拖尾周期 2s，20fps 视觉无差。
+                                // 持续 NumberAnimation 会把整窗钉在全速渲染；与逐字刷新同频步进，
+                                // 避免两个同频源相位交错让渲染器每帧都有活干
+                                Timer {
+                                    interval: 50
                                     running: hStarCursor.visible && playlistmanager && !playlistmanager.isPaused
-                                    PauseAnimation { duration: index * 500 }
-                                    NumberAnimation { from: 0; to: 1; duration: 2000; loops: Animation.Infinite }
+                                    repeat: true
+                                    property real t: 0
+                                    onTriggered: {
+                                        t += interval
+                                        var tt = t - index * 500   // 与 PauseAnimation 相同的错峰起点
+                                        hTrailStar.life = tt < 0 ? 0 : (tt % 2000) / 2000
+                                    }
                                 }
                                 Connections {
                                     target: desktopLyrics
@@ -533,9 +546,7 @@ Window {
                         return Math.max(0, Math.min(target, totalHeight - visHeight));
                     }
 
-                    Behavior on scrollOffset {
-                        SmoothedAnimation { duration: AppTheme.animThemeTransition; easing.type: Easing.OutCubic }
-                    }
+                    // 同横向：直接赋值步进，不用 Behavior（避免整窗钉在全速渲染）
 
                     // 底层：完整灰色文字（整列）
                     Column {

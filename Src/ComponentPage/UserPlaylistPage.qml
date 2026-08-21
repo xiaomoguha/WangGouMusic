@@ -832,7 +832,7 @@ Item {
                             height: parent.height - 60 - detailActions.height - 12
                             clip: true
                             interactive: true
-                            cacheBuffer: 1500
+                            cacheBuffer: 600
                             spacing: 0
                             model: songsModel
 

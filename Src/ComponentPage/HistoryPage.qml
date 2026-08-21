@@ -137,7 +137,7 @@ Item {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         clip: true
-        cacheBuffer: 2000
+        cacheBuffer: 400
         model: historyModel
         spacing: 2
         leftMargin: 30

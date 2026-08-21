@@ -245,7 +245,7 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
         clip: true
-        cacheBuffer: 2000
+        cacheBuffer: 400
         model: albumManager ? albumManager.songs : []
         spacing: 2
         leftMargin: 30
