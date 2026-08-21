@@ -300,6 +300,7 @@ void UserManager::refreshToken()
 
 void UserManager::logout()
 {
+    m_manualLogout = true; // 主动退出：UI 不弹登录窗
     m_token.clear();
     m_userid.clear();
     m_nickname.clear();
@@ -474,7 +475,23 @@ void UserManager::postForm(
     const QJsonObject body; // 原实现是空 body（POST 表单无 JSON body）
     const QString url = API_BASE + path + "?" + query.toString();
 
-    ApiClient::instance().postJson(url, body, std::move(onSuccess), std::move(onError), timeoutMs);
+    // 统一拦截：任何用户接口返回 20018（token 被踢/失效）都清登录态并通知 UI，
+    // 否则 12h 刷新盲区里 token 被踢后界面仍显示已登录、操作全失败却无人引导重登
+    auto guarded = [this, onSuccess = std::move(onSuccess)](QJsonObject root) mutable
+    {
+        if (root.value("status").toInt() != 1 && root.value("error_code").toInt() == 20018 && !m_token.isEmpty())
+        {
+            qWarning() << "[UserManager] 登录态已被服务端吊销（20018），清除本地登录";
+            m_token.clear();
+            m_userid.clear();
+            clearSettings();
+            syncTokenToApiClient();
+            m_manualLogout = false; // 被踢不是主动退出，UI 可弹登录窗引导
+            emit loginStatusChanged();
+        }
+        onSuccess(root);
+    };
+    ApiClient::instance().postJson(url, body, std::move(guarded), std::move(onError), timeoutMs);
 }
 
 void UserManager::saveToSettings()
