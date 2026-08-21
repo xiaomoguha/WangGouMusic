@@ -104,6 +104,14 @@ PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent
                 qint64 totalDuration = m_player->duration();
                 m_duration           = formatTime(totalDuration);
                 emit durationChanged();
+                // 高潮点补请求：恢复播放/流媒体 duration 延迟就绪时，首次 climax 请求
+                // 因 totalMs=0 未算成（m_climaxHash 仍标记该 hash）——就绪后重试一次
+                if (!m_climaxHash.isEmpty() && m_climaxPercent <= 0)
+                {
+                    const QString h = m_climaxHash;
+                    m_climaxHash.clear(); // 绕过去重
+                    fetchClimax(h);
+                }
                 // TOGETHER 模式下，歌曲加载完成后 seek 到目标进度
                 if (type == TOGETHER && m_togetherSeekPercent > 0)
                 {
@@ -116,18 +124,54 @@ PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent
     );
     // 连接播放进度变化信号
     connect(m_player, &QMediaPlayer::positionChanged, this, &PlaylistManager::updatePlaybackProgress);
-    // 逐字进度 16ms 高频刷新（60Hz）：positionChanged 实测仅 ~11-20Hz（无损缓存更低），
+    // 逐字进度高频刷新：positionChanged 实测仅 ~11-20Hz（无损缓存更低），
     // 定时器按真实播放位置重算补足——跳跃歌词动画（星星/字压扁）因此 60fps 平滑。
-    // 渲染已优化（三文本每帧 2 节点），60Hz 通知无重绘压力
-    m_lyricAnimTimer.setInterval(16);
+    // 频率由消费方可见性自适应（recomputeLyricFeed）：播放页或桌面歌词可见均 60Hz /
+    // 都不可见停表。渲染已优化（三文本每帧 2 节点），通知无重绘压力
     m_lyricAnimTimer.setTimerType(Qt::PreciseTimer);
     connect(&m_lyricAnimTimer, &QTimer::timeout, this, [this]() {
         if (m_player->playbackState() == QMediaPlayer::PlayingState)
             updateLyricProgress(m_player->position());
     });
-    m_lyricAnimTimer.start();
+    recomputeLyricFeed();
     connect(m_player, &QMediaPlayer::errorOccurred, this, &PlaylistManager::handlePlayerError);
     connect(&m_lyricParser, &LyricParser::parselyricsuc, this, &PlaylistManager::parlyricsuc);
+}
+
+// 歌词逐字动画的自适应刷新频率。消费方（QML 窗口）主动上报可见性：
+// 播放页展开或桌面歌词可见 → 60Hz；都不可见 → 停表。
+// 降低频率/停表时立即补刷一次，避免切换瞬间错过切行。
+void PlaylistManager::recomputeLyricFeed()
+{
+    const int hz = (m_playingPageLyricsActive || m_desktopLyricsActive) ? 60 : 0;
+    if (hz == m_lyricFeedHz)
+        return;
+    m_lyricFeedHz = hz;
+    if (hz == 0)
+    {
+        m_lyricAnimTimer.stop();
+        return;
+    }
+    m_lyricAnimTimer.setInterval(1000 / hz);
+    m_lyricAnimTimer.start();
+    if (m_player->playbackState() == QMediaPlayer::PlayingState)
+        updateLyricProgress(m_player->position());
+}
+
+void PlaylistManager::setPlayingPageLyricsActive(bool active)
+{
+    if (m_playingPageLyricsActive == active)
+        return;
+    m_playingPageLyricsActive = active;
+    recomputeLyricFeed();
+}
+
+void PlaylistManager::setDesktopLyricsActive(bool active)
+{
+    if (m_desktopLyricsActive == active)
+        return;
+    m_desktopLyricsActive = active;
+    recomputeLyricFeed();
 }
 
 // 静态：从 QVariantMap 构造 SongInfo。统一字段映射（hash->songhash, cover->union_cover 等）
@@ -1564,8 +1608,13 @@ void PlaylistManager::fetchClimax(const QString &hash)
                     {
                         const qint64 startMs = arr[0].toObject().value("start_time").toVariant().toLongLong();
                         const qint64 totalMs = parseDurationMs(m_duration);
-                        if (totalMs > 0)
-                            pct = qMin(qreal(startMs) / totalMs, 1.0);
+                        if (totalMs <= 0)
+                        {
+                            // duration 未就绪（恢复播放/流媒体刚启动）：不算死成 0，
+                            // m_climaxHash 保持标记，duration 就绪后自动补请求重试
+                            return;
+                        }
+                        pct = qMin(qreal(startMs) / totalMs, 1.0);
                     }
                 }
             }
@@ -1797,10 +1846,11 @@ void PlaylistManager::updatePlaybackProgress(qint64 position)
     {
         m_percent    = static_cast<float>(position) / m_player->duration();
         m_percentstr = formatTime(position);
-        // 限频 33ms：本地文件播放 positionChanged 可达 80Hz+，进度条 30fps 视觉无差，
-        // 避免主窗口（进度条/时长文本/渐变）每帧全量更新与桌面歌词 60Hz 动画抢帧
+        // 限频 100ms（10fps）：本地文件播放 positionChanged 可达 80Hz+。
+        // 进度条 10fps 视觉无差（每秒仅走 ~0.1%），拖动由 QML 侧直接 seek 不受影响；
+        // 省掉主窗口（进度条/时长文本/渐变）高频整窗重渲染——它才是歌单页渲染主驱动
         const qint64 percentNow = QDateTime::currentMSecsSinceEpoch();
-        if (percentNow - m_lastPercentNotifyMs >= 33)
+        if (percentNow - m_lastPercentNotifyMs >= 100)
         {
             m_lastPercentNotifyMs = percentNow;
             emit percentChanged();
@@ -1926,15 +1976,18 @@ void PlaylistManager::updateLyricProgress(qint64 position)
     bool progressChanged = qAbs(newCharProgress - m_lyricCharProgress) > 0.001f;
     m_lyricCharProgress  = newCharProgress;
 
-    if (newlyric != currlyric || newCharIndex != m_lyricCharIndex)
+    const bool lineChanged = (newlyric != currlyric);
+    if (lineChanged || newCharIndex != m_lyricCharIndex)
     {
-        // 只在切行/切字时构建字符列表（高频调用时避免 QVariantList 分配）
-        QVariantList newChars = m_lyricParser.getCurrentChars(position);
+        // 字符列表仅切行时重建（切字时列表内容不变）：省掉高频 QVariantList 分配，
+        // 值相等时 QML 绑定不触发 Repeater 重建
+        if (lineChanged)
+        {
+            m_lyricChars     = m_lyricParser.getCurrentChars(position);
+            m_lyricCharCount = m_lyricChars.size();
+        }
         currlyric        = newlyric;
         m_lyricCharIndex = newCharIndex;
-        m_lyricChars     = newChars;
-        // 更新字符数（用于英文歌词高亮计算）
-        m_lyricCharCount = newChars.size();
         emit currlyricChanged();
     }
     else if (progressChanged)

@@ -155,7 +155,7 @@ Item {
         cellWidth: (playlistGrid.width - 20) / 2
         cellHeight: 118
         model: playlistModel
-        cacheBuffer: 2000
+        cacheBuffer: 400
 
         ScrollBar.vertical: ScrollBar {
             anchors.right: parent.right

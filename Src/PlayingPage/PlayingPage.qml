@@ -17,10 +17,10 @@ Rectangle {
     property string dominantColor: playlistmanager ? playlistmanager.dominantColor : "#FF6B6B"
 
     // ── 逐字歌词进度（可见性隔离）──
-    // 页面由 Rightpage Loader 池管理：切走时 Loader opacity=0（visible 不变），
-    // 用 parent.opacity 判断真实可见性。隐藏时 Connections 关闭 → proxy 不变 →
-    // 逐字绑定零重算（主线程 60Hz 动画不卡的关键）
-    property bool _lyricsVisible: parent ? parent.opacity > 0 : false
+    // 本页由 main.qml 的 lyricsPageLoader 加载（active 常驻、y 滑动切换）：
+    // 收起/最小化时 Connections 关闭 → proxy 不变 → 逐字绑定零重算。
+    // 注意不能用 parent.opacity 判断——该 Loader 的 opacity 恒为 1
+    property bool _lyricsVisible: root.lyricsOpened && root.appActive
     property int lyricCharIdxProxy: -1
     property real lyricCharProgressProxy: 0.0
     property int lyricCharCountProxy: 0
@@ -37,8 +37,16 @@ Rectangle {
         lyricCharCountProxy     = playlistmanager.lyricCharCount
     }
     on_LyricsVisibleChanged: {
-        if (_lyricsVisible)
+        // 向 C++ 上报本页是否为歌词动画消费方：展开 60Hz / 收起停用（桌面歌词另计）
+        if (playlistmanager)
+            playlistmanager.setPlayingPageLyricsActive(_lyricsVisible)
+        if (_lyricsVisible) {
             syncLyricValues()  // 切回播放页时立即同步（隐藏期间值已陈旧）
+            // 进入页面立即无动画居中当前行：页面隐藏期间的行切换视图未必跟随，
+            // 不主动定位要等下一次切行才归位
+            if (lyricList.count > 0 && lyricList.currentIndex >= 0)
+                lyricList.positionViewAtIndex(lyricList.currentIndex, ListView.Center)
+        }
     }
 
     // 安全地把 "#RRGGBB" 转为 rgba：避免 dominantColor 为空 / 非 #RRGGBB 格式时
@@ -160,6 +168,8 @@ Rectangle {
     // 页面加载时预拉当前歌曲评论（打开播放页立即显示评论数）
     Component.onCompleted: {
         lyricspage.ensureComments()
+        if (playlistmanager)
+            playlistmanager.setPlayingPageLyricsActive(_lyricsVisible)
     }
 
     // ======================= 左上角收起按钮 =======================
@@ -320,7 +330,7 @@ Rectangle {
                     // 暂停/隐藏/最小化时暂停，避免持续渲染拉高 CPU。
                     function updateRotation() {
                         const active = playlistmanager && !playlistmanager.isPaused
-                                       && root.visible && root.visibility !== Window.Minimized;
+                                       && root.lyricsOpened && root.appActive;
                         if (active) {
                             if (rotationAnim.paused)
                                 rotationAnim.resume();
@@ -338,6 +348,8 @@ Rectangle {
                         target: root
                         function onVisibleChanged() { avatarImage.updateRotation(); }
                         function onVisibilityChanged() { avatarImage.updateRotation(); }
+                        function onLyricsOpenedChanged() { avatarImage.updateRotation(); }
+                        function onAppActiveChanged() { avatarImage.updateRotation(); }
                     }
                 }
             }
@@ -432,7 +444,7 @@ Rectangle {
         anchors.bottom: parent.bottom
         width: panelHost.width
         clip: true
-        cacheBuffer: 1500
+        cacheBuffer: 600
 
         model: playlistmanager ? playlistmanager.m_lyrics : 0
         interactive: false   //是否可以手动滚动
@@ -441,7 +453,10 @@ Rectangle {
         currentIndex: playlistmanager ? playlistmanager.lyricsindex : -1
 
         highlightFollowsCurrentItem: true
-        highlightRangeMode: ListView.ApplyRange
+        // StrictlyEnforceRange：任何时刻（含首次创建的初始布局）强制当前行落在中间带。
+        // ApplyRange 不在初始布局时归位，是"一进页面当前行不在中间"的根因；
+        // interactive=false 下也用不到 ApplyRange 的自由滚动
+        highlightRangeMode: ListView.StrictlyEnforceRange
         preferredHighlightBegin: lyricList.height * 0.4
         preferredHighlightEnd: lyricList.height * 0.6
 
@@ -507,7 +522,10 @@ Rectangle {
                         spacing: 0
 
                         Repeater {
-                            model: playlistmanager ? playlistmanager.lyricChars : []
+                            // 仅当前行实例化字符行：cacheBuffer 内每行 delegate 都常驻，
+                            // 若无条件建模，25+ 行 × 每行一份字符 Repeater = 2000+ item，
+                            // 且全部随 16ms 逐字进度重算绑定。非当前行建空模型，实例数降一个量级
+                            model: isCurrentLine && playlistmanager ? playlistmanager.lyricChars : []
                             delegate: Item {
                                 required property int index
                                 required property var modelData
@@ -630,7 +648,8 @@ Rectangle {
                                    + 0.2 * (life * 10) * (life * 10) - height / 2
                                 opacity: Math.max(0, 1 - life) * 0.8 * starCursor.opacity
                                 SequentialAnimation on life {
-                                    running: starCursor.visible && playlistmanager && !playlistmanager.isPaused
+                                    running: starCursor.visible && lyricspage._lyricsVisible
+                                             && playlistmanager && !playlistmanager.isPaused
                                     PauseAnimation { duration: index * 500 }
                                     NumberAnimation { from: 0; to: 1; duration: 2000; loops: Animation.Infinite }
                                 }
@@ -761,7 +780,7 @@ Rectangle {
             clip: true
             model: songComments ? songComments.comments : []
             spacing: 18
-            cacheBuffer: 1500
+            cacheBuffer: 600
 
         ScrollBar.vertical: ScrollBar {
             anchors.right: parent.right

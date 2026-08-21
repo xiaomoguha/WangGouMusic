@@ -81,6 +81,10 @@ class PlaylistManager : public QObject
 public:
     explicit PlaylistManager(Recommendation *recommendation, QObject *parent = nullptr);
     ~PlaylistManager(); // 清理退出中断留下的半截下载文件
+    // 歌词逐字动画刷新频率的自适应开关：播放页展开 → 60Hz（用户直接看动画），
+    // 桌面歌词窗口可见 → 60Hz（与播放页一致），都不可见 → 定时器停止
+    Q_INVOKABLE void setPlayingPageLyricsActive(bool active);
+    Q_INVOKABLE void setDesktopLyricsActive(bool active);
     Q_INVOKABLE void addSong(const SongInfo &song);
     Q_INVOKABLE void addSong(const QVariantMap &songMap);
     Q_INVOKABLE void removeSong(int index);
@@ -233,6 +237,11 @@ private:
     // （三文本方案每帧仅 2 个几何节点），60Hz 通知无压力；隐藏歌词页 Connections 关闭
     void updateLyricProgress(qint64 position);
     QTimer m_lyricAnimTimer;
+    // 歌词动画消费方可见性（QML 上报）：决定 16ms 定时器跑不跑/跑多快
+    bool m_playingPageLyricsActive = false;
+    bool m_desktopLyricsActive     = false;
+    int m_lyricFeedHz              = 0; // 当前实际刷新频率：60=任一歌词消费方可见 / 0=停
+    void recomputeLyricFeed();
     void handlePlayerError(QMediaPlayer::Error error, const QString &errorString);
     QString formatTime(qint64 milliseconds);
     Recommendation *m_recommendation = nullptr;

@@ -510,7 +510,7 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
         clip: true
-        cacheBuffer: 2000
+        cacheBuffer: 400
         // 显示全部已加载歌曲
         model: recommendation ? recommendation.playlistTracksModel : null
         spacing: 2
@@ -588,14 +588,9 @@ Item {
                             sourceSize.width: 80
                             sourceSize.height: 80
                             fillMode: Image.PreserveAspectCrop
-                            layer.enabled: true
-                            layer.effect: OpacityMask {
-                                maskSource: Rectangle {
-                                    width: 40
-                                    height: 40
-                                    radius: 6
-                                }
-                            }
+                            // 列表行小封面不再用 layer+OpacityMask 圆角：每行一个离屏 FBO，
+                            // 行数多时每帧批次/纹理绑定成本很高（CPU 大头）；40px 直角视觉差异极小。
+                            // 头部 110px 大封面保留圆角 mask（单实例，成本可忽略）
                         }
 
                         Column {
