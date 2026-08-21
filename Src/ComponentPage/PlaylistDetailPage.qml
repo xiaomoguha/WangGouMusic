@@ -594,7 +594,8 @@ Item {
                         }
 
                         Column {
-                            width: 0.3 * tracksListView.width
+                            // 0.15：歌名列进一步收窄，悬停按钮尽量贴左
+                            width: 0.15 * tracksListView.width
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: 4
 
@@ -732,34 +733,43 @@ Item {
                             }
                         }
 
-                        // 专辑名（与最近播放一致的列）
-                        Text {
-                            text: model.album_name
-                            width: 0.2 * tracksListView.width
-                            elide: Text.ElideRight
-                            font.pixelSize: AppTheme.fontSizeBodyLg
-                            font.family: AppTheme.fontFamily
-                            font.bold: true
-                            color: AppTheme.textPrimary
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
+                    }
 
-                        Text {
-                            text: {
-                                var d = model.duration
-                                if (!d) return "--:--"
-                                if (d.indexOf(":") !== -1) return d
-                                var sec = parseInt(d)
-                                if (isNaN(sec)) return d
-                                var m = Math.floor(sec / 60)
-                                var s = sec % 60
-                                return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s
-                            }
-                            font.pixelSize: AppTheme.fontSizeBodyLg
-                            font.family: AppTheme.fontFamily
-                            color: AppTheme.textMuted
-                            anchors.verticalCenter: parent.verticalCenter
+                    // 专辑名 + 时长：右对齐锚定（不参与 Row 流式布局）。
+                    // 专辑名锚在时长左侧并留 25px 间距，不再紧贴时间。
+                    Text {
+                        text: model.album_name
+                        width: 0.18 * tracksListView.width
+                        horizontalAlignment: Text.AlignRight
+                        elide: Text.ElideRight
+                        font.pixelSize: AppTheme.fontSizeBodyLg
+                        font.family: AppTheme.fontFamily
+                        font.bold: true
+                        color: AppTheme.textPrimary
+                        anchors.right: rowDuration.left
+                        anchors.rightMargin: 70
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+
+                    Text {
+                        id: rowDuration
+                        text: {
+                            var d = model.duration
+                            if (!d) return "--:--"
+                            if (d.indexOf(":") !== -1) return d
+                            var sec = parseInt(d)
+                            if (isNaN(sec)) return d
+                            var m = Math.floor(sec / 60)
+                            var s = sec % 60
+                            return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s
                         }
+                        font.pixelSize: AppTheme.fontSizeBodyLg
+                        font.family: AppTheme.fontFamily
+                        color: AppTheme.textMuted
+                        // 离右边缘 28px，避开滚动条（滚动条占右侧 5~15px）
+                        anchors.right: parent.right
+                        anchors.rightMargin: 28
+                        anchors.verticalCenter: parent.verticalCenter
                     }
 
                     }   // 行内容固定高容器结束
