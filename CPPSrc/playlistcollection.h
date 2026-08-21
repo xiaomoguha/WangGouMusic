@@ -43,7 +43,8 @@ public:
     // 从歌单删歌：fileids 为数字 id 数组
     Q_INVOKABLE void removeTracks(const QString &listid, const QVariantList &fileids);
     // 添加到「我喜欢」：从歌单缓存找名字含「我喜欢」的歌单，把歌加进去
-    Q_INVOKABLE void addToFavorite(const QString &songname, const QString &songhash, const QString &singername);
+    Q_INVOKABLE void addToFavorite(const QString &songname, const QString &songhash, const QString &singername,
+                                   const QVariantList &freshPlaylists = {});
     // 拉取「我喜欢」歌单的歌曲 hash 集合（红心状态用），成功后发 favoriteHashesChanged
     Q_INVOKABLE void refreshFavoriteHashes();
     // 当前 hash 是否已在「我喜欢」（红心是否点亮）
@@ -77,7 +78,7 @@ private:
     /// 统一定位「我喜欢」歌单：名字精确 → 系统 gid(_2_0) → 名字包含 →
     /// 默认收藏 gid(_1_0) → 默认收藏名字。老账号只有「默认收藏」、
     /// 部分账号列表命名不同，单按名字匹配会误报「未找到」
-    bool findFavorite(QString &listid, QString &gid) const;
+    bool findFavorite(QString &listid, QString &gid, const QVariantList &freshPlaylists = {}) const;
     /// 红心重试：缓存未命中时现场拉一次歌单列表（信号到达时缓存已落盘）再试
     void onUserPlaylistsForRetry(const QVariantMap &data);
 
