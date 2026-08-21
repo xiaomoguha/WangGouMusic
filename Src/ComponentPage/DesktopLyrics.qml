@@ -87,13 +87,14 @@ Window {
 
     // 根据配置恢复位置（带边界检查）
     function restorePosition() {
-        var screenW = Screen.desktopAvailableWidth;
-        var screenH = Screen.desktopAvailableHeight;
-        console.log("[DesktopLyrics] restorePosition: screen=" + screenW + "x" + screenH
+        // 多屏适配：按真实屏幕列表校验（Screen.desktopAvailable* 是整个虚拟桌面的
+        // 包围盒，混合分辨率/错位排列时坐标可能在包围盒内却不在任何一块屏上）
+        var screens = Qt.application.screens
+        console.log("[DesktopLyrics] restorePosition: 屏幕数=" + screens.length
             + " windowSize=" + width + "x" + height
             + " isVertical=" + isVertical);
 
-        if (screenW <= 0 || screenH <= 0) {
+        if (!screens || screens.length === 0) {
             console.log("[DesktopLyrics] Screen not ready, skipping");
             return;
         }
@@ -110,22 +111,36 @@ Window {
         }
         console.log("[DesktopLyrics] config pos: " + targetX + "," + targetY);
 
-        // 默认位置
-        if (targetX === undefined || (targetX === 0 && targetY === 0)) {
+        // 坐标落得的屏：取窗口中心点所在的屏
+        var home = null;
+        if (targetX !== undefined && !(targetX === 0 && targetY === 0)) {
+            var cx = targetX + width / 2, cy = targetY + height / 2;
+            for (var i = 0; i < screens.length; i++) {
+                var s = screens[i];
+                if (cx >= s.virtualX && cx < s.virtualX + s.width
+                    && cy >= s.virtualY && cy < s.virtualY + s.height) {
+                    home = s;
+                    break;
+                }
+            }
+        }
+        // 不在任何屏上（拔了显示器/重排了布局/无有效配置）：用当前屏兜底
+        if (!home) {
+            home = screen || screens[0];
+            targetX = home.virtualX + (home.width - width) / 2;
+            targetY = home.virtualY + home.height - height - 50;
+            console.log("[DesktopLyrics] 不在任何屏幕范围内，重置到: " + targetX + "," + targetY);
+        }
+        // 默认位置（首次使用，home 已定）
+        else if (targetX === undefined || (targetX === 0 && targetY === 0)) {
             if (isVertical) {
-                targetX = screenW - width - 20;
-                targetY = (screenH - height) / 2;
+                targetX = home.virtualX + home.width - width - 20;
+                targetY = home.virtualY + (home.height - height) / 2;
             } else {
-                targetX = (screenW - width) / 2;
-                targetY = screenH - height - 50;
+                targetX = home.virtualX + (home.width - width) / 2;
+                targetY = home.virtualY + home.height - height - 50;
             }
             console.log("[DesktopLyrics] using default pos: " + targetX + "," + targetY);
-        }
-        // 边界检查：窗口完全在屏幕外才重置（允许部分超出，如 Dock 区域）
-        if (targetX + width < 0 || targetX > screenW || targetY + height < 0 || targetY > screenH) {
-            targetX = (screenW - width) / 2;
-            targetY = screenH - height - 50;
-            console.log("[DesktopLyrics] boundary check FAILED, reset to: " + targetX + "," + targetY);
         }
         x = targetX;
         y = targetY;
