@@ -132,6 +132,15 @@ ApplicationWindow {
                 loginPopup.open()
             }
         }
+        // 使用中途被服务端踢下线（任何用户接口返回 20018）：清登录态后自动弹登录窗引导重登
+        // （主动退出登录 manualLogout=true 不弹）
+        property bool everLoggedIn: userManager ? userManager.isLoggedIn : false
+        function onLoginStatusChanged() {
+            if (userManager.isLoggedIn)
+                everLoggedIn = true
+            else if (everLoggedIn && !userManager.manualLogout && !loginPopup.visible)
+                loginPopup.open()
+        }
     }
     Timer {
         id: tokenRefreshTimer

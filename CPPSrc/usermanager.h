@@ -23,11 +23,14 @@ class UserManager : public QObject
     Q_PROPERTY(QString token READ token NOTIFY userInfoUpdated)  // 设置页「同步到服务器」推送给 serverAdmin 用
     Q_PROPERTY(bool isVip READ isVip NOTIFY userInfoUpdated)
     Q_PROPERTY(bool isLoading READ isLoading NOTIFY isLoadingChanged)
+    // 最近一次退出是否用户主动（false = 被服务端踢下线，UI 弹登录窗引导重登）
+    Q_PROPERTY(bool manualLogout READ manualLogout NOTIFY loginStatusChanged)
 
 public:
     explicit UserManager(QObject *parent = nullptr);
 
     bool isLoggedIn() const;
+    bool manualLogout() const { return m_manualLogout; }
     QString nickname() const;
     QString avatarUrl() const;
     QString userid() const;
@@ -97,6 +100,8 @@ private:
     QString m_avatarUrl;
     bool m_isVip     = false;
     bool m_isLoading = false;
+    /// true = 用户主动退出登录（UI 不弹登录窗）；被踢（20018）时为 false，UI 引导重登
+    bool m_manualLogout = false;
 };
 
 #endif // USERMANAGER_H
