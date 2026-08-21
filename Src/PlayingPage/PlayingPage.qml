@@ -144,6 +144,40 @@ Rectangle {
     // ── 评论页状态 ──
     property bool showComments: false
     property string commentsLoadedHash: ""
+
+    // 五角星共享纹理：母版 Canvas 只画一次导出 dataURL，主星 + 4 颗拖尾 Image
+    // 共用同一 source（QQuickPixmap 缓存复用单张纹理）——替代原先 5 个独立
+    // Canvas（各占一个离屏 FBO + Context2D 光栅机制），动画只驱动便宜的变换
+    property string starTexture: ""
+    Canvas {
+        id: starSourceCanvas
+        width: 64; height: 64
+        visible: false
+        Component.onCompleted: requestPaint()
+        Connections {
+            target: AppTheme
+            function onAccentChanged() { starSourceCanvas.requestPaint() }
+        }
+        onPaint: {
+            var ctx = getContext("2d")
+            ctx.reset()
+            ctx.fillStyle = AppTheme.accent
+            ctx.beginPath()
+            var cx = width / 2, cy = height / 2
+            var R = Math.min(width, height) / 2
+            var r = R * 0.5
+            for (var i = 0; i < 5; i++) {
+                var oA = -Math.PI / 2 + i * 2 * Math.PI / 5
+                var iA = oA + Math.PI / 5
+                if (i === 0) ctx.moveTo(cx + R * Math.cos(oA), cy + R * Math.sin(oA))
+                else ctx.lineTo(cx + R * Math.cos(oA), cy + R * Math.sin(oA))
+                ctx.lineTo(cx + r * Math.cos(iA), cy + r * Math.sin(iA))
+            }
+            ctx.closePath()
+            ctx.fill()
+            lyricspage.starTexture = toDataURL("image/png")
+        }
+    }
     function ensureComments() {
         if (!playlistmanager || !songComments) return
         var hash = playlistmanager.currentSonghash
@@ -632,9 +666,10 @@ Rectangle {
                         Behavior on opacity { NumberAnimation { duration: AppTheme.animFast } }
 
                         // 拖尾：从主星位置随机喷出的小星粒子，各自随机轨迹飘散+淡出；未播放时不动
+                        // 共享 lyricspage.starTexture 纹理（原先每粒子独立 Canvas 离屏 FBO）
                         Repeater {
                             model: 4
-                            delegate: Canvas {
+                            delegate: Image {
                                 id: trailStar
                                 required property int index
                                 property real life: 0
@@ -643,6 +678,8 @@ Rectangle {
                                 property real vy: -0.1 + Math.random() * 0.3
                                 width: starCursor.width * (0.35 + Math.random() * 0.15)
                                 height: width
+                                source: lyricspage.starTexture
+                                fillMode: Image.PreserveAspectFit
                                 x: starCursor.width * -0.2 + vx * life * 70 - width / 2
                                 y: starCursor.height * 0.9 + vy * life * 60
                                    + 0.2 * (life * 10) * (life * 10) - height / 2
@@ -653,33 +690,11 @@ Rectangle {
                                     PauseAnimation { duration: index * 500 }
                                     NumberAnimation { from: 0; to: 1; duration: 2000; loops: Animation.Infinite }
                                 }
-                                Connections {
-                                    target: AppTheme
-                                    function onAccentChanged() { trailStar.requestPaint() }
-                                }
-                                onPaint: {
-                                    var ctx = getContext("2d")
-                                    ctx.reset()
-                                    ctx.fillStyle = AppTheme.accent
-                                    ctx.beginPath()
-                                    var cx = width / 2, cy = height / 2
-                                    var R = Math.min(width, height) / 2
-                                    var r = R * 0.5
-                                    for (var k = 0; k < 5; k++) {
-                                        var oA = -Math.PI / 2 + k * 2 * Math.PI / 5
-                                        var iA = oA + Math.PI / 5
-                                        if (k === 0) ctx.moveTo(cx + R * Math.cos(oA), cy + R * Math.sin(oA))
-                                        else ctx.lineTo(cx + R * Math.cos(oA), cy + R * Math.sin(oA))
-                                        ctx.lineTo(cx + r * Math.cos(iA), cy + r * Math.sin(iA))
-                                    }
-                                    ctx.closePath()
-                                    ctx.fill()
-                                }
                             }
                         }
 
-                        Canvas {
-                            id: starCanvas
+                        Image {
+                            id: starImage
                             width: parent.width
                             height: parent.height
                             anchors.horizontalCenter: parent.horizontalCenter
@@ -687,29 +702,8 @@ Rectangle {
                             // 自转跟随实际像素位置（滚动模型），与位移完全同步
                             // 一字转一个角(72°)，跟随字进度
                             rotation: (lyricLine.charIdx + lyricLine.charProgress) * 72
-                            // 主题色变化时重绘（Canvas 不会自动跟随属性重绘）
-                            Connections {
-                                target: AppTheme
-                                function onAccentChanged() { starCanvas.requestPaint() }
-                            }
-                            onPaint: {
-                                var ctx = getContext("2d")
-                                ctx.reset()
-                                ctx.fillStyle = AppTheme.accent
-                                ctx.beginPath()
-                                var cx = width / 2, cy = height / 2
-                                var R = Math.min(width, height) / 2
-                                var r = R * 0.5
-                                for (var i = 0; i < 5; i++) {
-                                    var oA = -Math.PI / 2 + i * 2 * Math.PI / 5
-                                    var iA = oA + Math.PI / 5
-                                    if (i === 0) ctx.moveTo(cx + R * Math.cos(oA), cy + R * Math.sin(oA))
-                                    else ctx.lineTo(cx + R * Math.cos(oA), cy + R * Math.sin(oA))
-                                    ctx.lineTo(cx + r * Math.cos(iA), cy + r * Math.sin(iA))
-                                }
-                                ctx.closePath()
-                                ctx.fill()
-                            }
+                            source: lyricspage.starTexture
+                            fillMode: Image.PreserveAspectFit
                         }
                     }
                 }
@@ -770,17 +764,23 @@ Rectangle {
     }
 
 
-        // 评论列表（右半页）
-        ListView {
-            id: commentList
+        // 评论列表（右半页）：首次切到评论页才实例化（active 一旦为 true 不再回 false），
+        // 之后常驻复用，避免只看歌词时几十条评论 delegate 空占内存/绑定
+        Loader {
+            id: commentLoader
             x: panelHost.width
             width: panelHost.width
             anchors.top: parent.top
             anchors.bottom: parent.bottom
-            clip: true
-            model: songComments ? songComments.comments : []
-            spacing: 18
-            cacheBuffer: 600
+            active: lyricspage.showComments || item !== null
+
+            ListView {
+                id: commentList
+                anchors.fill: parent
+                clip: true
+                model: songComments ? songComments.comments : []
+                spacing: 18
+                cacheBuffer: 600
 
         ScrollBar.vertical: ScrollBar {
             anchors.right: parent.right
@@ -1067,6 +1067,7 @@ Rectangle {
                 font.family: AppTheme.fontFamily
             }
         }
+        } // commentLoader
         }
     }
     } // ── 歌词页容器结束 ──
