@@ -31,15 +31,20 @@ void PlaylistCollection::setUserManager(UserManager *um)
     }
 }
 
-bool PlaylistCollection::findFavorite(QString &listid, QString &gid) const
+bool PlaylistCollection::findFavorite(QString &listid, QString &gid, const QVariantList &freshPlaylists) const
 {
     if (!m_userManager)
         return false;
-    const QVariantMap cached = m_userManager->loadCachedPlaylists();
-    // 缓存根结构 {data: {info: [...]}}，兼容无 data 包裹的情况
-    const QVariantList infos = cached["data"].toMap()["info"].toList();
+    // 优先用调用方带来的现场数据（重试路径：接口刚返回的歌单列表，缓存文件可能
+    // 没写成功或陈旧）；否则退回缓存文件 {data: {info: [...]}}（兼容无 data 包裹）
+    QVariantList infos = freshPlaylists;
     if (infos.isEmpty())
-        return false;
+    {
+        const QVariantMap cached = m_userManager->loadCachedPlaylists();
+        infos = cached["data"].toMap()["info"].toList();
+        if (infos.isEmpty())
+            return false;
+    }
     const QString uid        = m_userManager->userid();
     const QString gidFav     = QStringLiteral("collection_3_%1_2_0").arg(uid);  // 「我喜欢」系统位
     const QString gidDefault = QStringLiteral("collection_3_%1_1_0").arg(uid);  // 「默认收藏」系统位（老账号）
@@ -75,15 +80,19 @@ bool PlaylistCollection::findFavorite(QString &listid, QString &gid) const
 
 void PlaylistCollection::onUserPlaylistsForRetry(const QVariantMap &data)
 {
-    Q_UNUSED(data);
     if (!m_favRetryPending)
         return;
-    m_favRetryPending = false;
     const QString name = m_favPendingName, hash = m_favPendingHash, singer = m_favPendingSinger;
     m_favPendingName.clear();
     m_favPendingHash.clear();
     m_favPendingSinger.clear();
-    addToFavorite(name, hash, singer);
+    // 直接用本次响应里的歌单列表重试（缓存文件可能没写成功/陈旧，读它会一直 miss）
+    const QVariantList fresh = data.value("data").toMap().value("info").toList();
+    // 注意：m_favRetryPending 故意在这一轮保持 true——重试的 addToFavorite 若仍然
+    // 找不到「我喜欢」就不会再发起拉取（否则 fetch→信号→addToFavorite→fetch 死循环，
+    // 曾把服务器打出每秒十几个 /user/playlist）。本轮结束才清标志，下次点击可再重试。
+    addToFavorite(name, hash, singer, fresh);
+    m_favRetryPending = false;
 }
 
 QVariantList PlaylistCollection::favoriteHashes() const
@@ -266,7 +275,9 @@ void PlaylistCollection::addTracks(const QString &listid, const QVariantList &so
     );
 }
 
-void PlaylistCollection::addToFavorite(const QString &songname, const QString &songhash, const QString &singername)
+void PlaylistCollection::addToFavorite(
+    const QString &songname, const QString &songhash, const QString &singername, const QVariantList &freshPlaylists
+)
 {
     if (songname.isEmpty() || songhash.isEmpty())
     {
@@ -275,7 +286,7 @@ void PlaylistCollection::addToFavorite(const QString &songname, const QString &s
     }
     // 「我喜欢」定位：多级匹配（名字/系统 gid/默认收藏兜底），见 findFavorite
     QString listid, gid;
-    if (!findFavorite(listid, gid))
+    if (!findFavorite(listid, gid, freshPlaylists))
     {
         // 缓存里没有：登录状态下现场拉一次歌单列表，到达后自动重试本方法（防循环只试一轮）
         if (m_userManager && m_userManager->isLoggedIn() && !m_favRetryPending)
