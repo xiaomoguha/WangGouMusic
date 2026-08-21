@@ -958,6 +958,8 @@ Item {
                                     }
 
                                     // 操作按钮区（固定宽度，悬停时显示按钮）
+                                    // 注意：专辑名/时长已改为右对齐锚定（见 delegate 尾部），
+                                    // 不再参与行内流式布局——按钮紧跟歌名列，整体位置更靠左
                                     Item {
                                         width: isTogetherMode ? 34 : 68
                                         height: 30
@@ -1026,25 +1028,32 @@ Item {
                                             }
                                         }
                                     }
+                                }
 
-                                    Text {
-                                        text: filteredSongs[index] ? filteredSongs[index].album_name : ""
-                                        width: 0.2 * userPlaylistPage.width
-                                        elide: Text.ElideRight
-                                        font.pixelSize: AppTheme.fontSizeBodyLg
-                                        font.family: AppTheme.fontFamily
-                                        font.bold: true
-                                        color: AppTheme.textPrimary
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
+                                // 时长：右对齐锚定，离右边缘 28px，避开滚动条（滚动条占右侧 5~15px）
+                                Text {
+                                    text: filteredSongs[index] ? filteredSongs[index].duration : ""
+                                    font.pixelSize: AppTheme.fontSizeBodyLg
+                                    font.family: AppTheme.fontFamily
+                                    color: AppTheme.textMuted
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: 28
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
 
-                                    Text {
-                                        text: filteredSongs[index] ? filteredSongs[index].duration : ""
-                                        font.pixelSize: AppTheme.fontSizeBodyLg
-                                        font.family: AppTheme.fontFamily
-                                        color: AppTheme.textMuted
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
+                                // 专辑名：锚定在时长左侧（右对齐列，与时长保持固定间距）
+                                Text {
+                                    text: filteredSongs[index] ? filteredSongs[index].album_name : ""
+                                    width: Math.min(0.2 * userPlaylistPage.width, parent.width - 160)
+                                    horizontalAlignment: Text.AlignRight
+                                    elide: Text.ElideLeft
+                                    font.pixelSize: AppTheme.fontSizeBodyLg
+                                    font.family: AppTheme.fontFamily
+                                    font.bold: true
+                                    color: AppTheme.textPrimary
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: 78
+                                    anchors.verticalCenter: parent.verticalCenter
                                 }
 
                                 // 双击切换播放列表。用 TapHandler 而非 MouseArea：
