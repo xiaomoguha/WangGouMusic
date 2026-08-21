@@ -2,6 +2,7 @@
 #include "ApiClient.h"
 #include "PlaylistCacheStore.h"
 
+#include <QDateTime>
 #include <QDir>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -91,6 +92,7 @@ void UserManager::login(const QString &username, const QString &password)
             m_nickname             = data["nickname"].toString();
             m_avatarUrl            = data["pic"].toString();
             m_isVip                = data["is_vip"].toInt() == 1;
+            m_settings.setValue("lastTokenRefreshMs", QDateTime::currentMSecsSinceEpoch()); // 刚拿到全新 token，同样计入 12h 节流
             saveToSettings();
             syncTokenToApiClient();
             emit loginStatusChanged();
@@ -163,6 +165,7 @@ void UserManager::loginByPhone(const QString &mobile, const QString &code)
             m_nickname             = data["nickname"].toString();
             m_avatarUrl            = data["pic"].toString();
             m_isVip                = data["is_vip"].toInt() == 1;
+            m_settings.setValue("lastTokenRefreshMs", QDateTime::currentMSecsSinceEpoch()); // 刚拿到全新 token，同样计入 12h 节流
             saveToSettings();
             syncTokenToApiClient();
             emit loginStatusChanged();
@@ -222,6 +225,7 @@ void UserManager::checkQrStatus(const QString &key)
             m_nickname             = data["nickname"].toString();
             m_avatarUrl            = data["pic"].toString();
             m_isVip                = data["is_vip"].toInt() == 1;
+            m_settings.setValue("lastTokenRefreshMs", QDateTime::currentMSecsSinceEpoch()); // 刚拿到全新 token，同样计入 12h 节流
             saveToSettings();
             syncTokenToApiClient();
             emit qrStatusReady(4);
@@ -241,6 +245,17 @@ void UserManager::refreshToken()
     if (m_token.isEmpty() || m_userid.isEmpty())
     {
         emit tokenRefreshResult(false);
+        return;
+    }
+    // 12h 节流：启动时的 token 刷新太频繁容易触发酷狗风控（账号被踢）。
+    // 上次刷新时间持久化在 QSettings；未满 12h 直接按成功跳过（登录态原样保留）。
+    constexpr qint64 kMinRefreshIntervalMs = 12LL * 60 * 60 * 1000;
+    const qint64 last = m_settings.value("lastTokenRefreshMs").toLongLong();
+    const qint64 now  = QDateTime::currentMSecsSinceEpoch();
+    if (last > 0 && now - last < kMinRefreshIntervalMs)
+    {
+        qDebug() << "[UserManager] 距上次 token 刷新不足 12h，跳过启动刷新";
+        emit tokenRefreshResult(true);
         return;
     }
     setIsLoading(true);
@@ -266,6 +281,7 @@ void UserManager::refreshToken()
             m_nickname             = data["nickname"].toString();
             m_avatarUrl            = data["pic"].toString();
             m_isVip                = data["is_vip"].toInt() == 1;
+            m_settings.setValue("lastTokenRefreshMs", QDateTime::currentMSecsSinceEpoch());
             saveToSettings();
             syncTokenToApiClient();
             emit loginStatusChanged();
