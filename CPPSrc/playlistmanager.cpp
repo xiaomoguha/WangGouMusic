@@ -333,10 +333,6 @@ void PlaylistManager::loadRecentFromCache()
 
 bool PlaylistManager::verifyCachedFileMd5(const QString &filePath, const QString &songhash)
 {
-    // 高音质档（320/flac）的转码文件 MD5 与歌曲 hash 不同源，不做播放前比对——
-    // 这些文件的完整性由下载完成时的字节数+MD5 校验把关
-    if (m_quality >= 2)
-        return true;
     QCryptographicHash md5(QCryptographicHash::Md5);
     QFile f(filePath);
     if (!f.open(QIODevice::ReadOnly))
@@ -344,11 +340,20 @@ bool PlaylistManager::verifyCachedFileMd5(const QString &filePath, const QString
     md5.addData(&f);
     f.close();
     const QString actualHex = QString::fromLatin1(md5.result().toHex());  // 小写
-    // 注意：toHex() 输出小写，与歌曲 hash 比较必须忽略大小写（曾因大写比对恒失败误删全库缓存）
-    if (actualHex.compare(songhash, Qt::CaseInsensitive) == 0)
-        return true;
+    // 注意：toHex() 输出小写，与 hash 比较必须忽略大小写（曾因大写比对恒失败误删全库缓存）
+    // 会话期望优先：取址响应 hash 即该音质实际下发文件的 MD5（实测全音质成立），
+    // 有期望即可精确判定，320/flac 也不再无条件放行
     const QString sessionMd5 = m_sessionFileMd5.value(filePath);
-    if (!sessionMd5.isEmpty() && sessionMd5.compare(actualHex, Qt::CaseInsensitive) == 0)
+    bool ok;
+    if (!sessionMd5.isEmpty())
+        ok = sessionMd5.compare(actualHex, Qt::CaseInsensitive) == 0;
+    else if (m_quality >= 2)
+        // 高音质转码文件 MD5 与歌单 hash 不同源且无会话期望：无法比对，放行
+        // （这些文件由下载完成时的字节数+MD5 校验把关）
+        ok = true;
+    else
+        ok = actualHex.compare(songhash, Qt::CaseInsensitive) == 0;
+    if (ok)
         return true;
 
     const qint64 now = QDateTime::currentMSecsSinceEpoch();
@@ -1374,11 +1379,11 @@ void PlaylistManager::downloadAndStream(
                     m_player->stop();
                     m_player->setSource(QUrl());
                 }
-                // 不对就重新下载：同曲 30 秒冷却内只自动重下一次，防止接口持续异常时死循环
-                const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
-                if (nowMs - m_integrityRetryAtMs.value(songHash, 0) > 30 * 1000)
+                // 不对就重新下载：同曲最多自动重下 2 次（首次下载 + 2 次重试），
+                // 仍失败则放弃并走取址失败统一收尾（本地模式跳下一首/一起听暂停提示），绝不死循环
+                const int fails = ++m_integrityFailCount[songHash.toUpper()];
+                if (fails <= 2)
                 {
-                    m_integrityRetryAtMs.insert(songHash, nowMs);
                     m_isBuffering = false;
                     emit isBufferingChanged();
                     fetchSongUrl(
@@ -1388,16 +1393,18 @@ void PlaylistManager::downloadAndStream(
                             if (!url.isEmpty())
                                 downloadAndStream(url, songHash, cacheFilePath, coverUrlForColor, seekPercent,
                                                   onStreamStart);
-                        });
+                        },
+                        true);  // 重试链：保留失败计数不清零
                 }
-                else if (m_isBuffering)
+                else
                 {
-                    m_isBuffering = false;
-                    emit isBufferingChanged();
+                    m_integrityFailCount.remove(songHash.toUpper());  // 放弃后清零，用户再点播可重新来过
+                    handleSongUrlFailed(songHash, QStringLiteral("缓存文件多次校验失败，已放弃下载"));
                 }
                 return;
             }
 
+            m_integrityFailCount.remove(songHash.toUpper());  // 校验通过：清零失败计数
             m_downloadProgress = 1.0;
             m_downloadedBytes  = m_totalDownloadBytes;
             emit downloadProgressChanged();
@@ -1845,10 +1852,14 @@ qint64 PlaylistManager::parseDurationMs(const QString &str)
     return static_cast<qint64>(str.toDouble() * 1000);
 }
 
-void PlaylistManager::fetchSongUrl(const QString &hash, std::function<void(QString)> callback)
+void PlaylistManager::fetchSongUrl(const QString &hash, std::function<void(QString)> callback,
+                                   bool keepIntegrityCount)
 {
     m_pendingFileSize = 0;  // 每次取址先重置期望大小
     m_pendingFileMd5.clear();
+    // 用户主动点播（非校验失败重试链）：清零该曲的完整性失败计数，重新给足重试额度
+    if (!keepIntegrityCount)
+        m_integrityFailCount.remove(hash.toUpper());
     // 音质：0自动(默认128) / 1标准128 / 2高品320 / 3无损flac（服务器共享 VIP token）
     static const char *const kQualityParam[] = {"", "128", "320", "flac"};
     const QString qs = m_quality > 0 && m_quality <= 3 ? QStringLiteral("&quality=%1").arg(kQualityParam[m_quality]) : QString();
@@ -1864,8 +1875,10 @@ void PlaylistManager::fetchSongUrl(const QString &hash, std::function<void(QStri
                 const QJsonArray urlarray = o["url"].toArray();
                 if (!urlarray.isEmpty())
                     songUrl = urlarray[0].toString();
-                // 接口提供精确字节数：供下载完成时做完整性校验
+                // 接口提供精确字节数与文件内容 MD5：响应 hash 即该音质实际下发文件的
+                // MD5（实测 128/320/flac 皆如此，与请求 hash 无关），供下载完成时校验
                 m_pendingFileSize = o["fileSize"].toVariant().toLongLong();
+                m_pendingFileMd5  = o["hash"].toString();
             }
             if (songUrl.isEmpty())
             {
