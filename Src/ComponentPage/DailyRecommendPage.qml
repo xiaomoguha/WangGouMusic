@@ -377,40 +377,27 @@ Item {
                     }
 
                     HoverHandler { id: songHover }
-                    // 整行点击 = 播放该曲（一起听模式 = 加入一起听）；
-                    // 悬停在操作按钮区时不触发，避免与按钮点击重复
+                    // 整行双击 = 载入整个每日推荐列表并从该曲开始播放（同「我喜欢」歌单页交互）。
+                    // 普通模式单击不动作：此前单击直接播放 + 双击载列表，一次双击会
+                    // 打出「2 次单击播放 + 1 次双击」共 3 次 /song/url 请求
+                    // 一起听模式保留单击 = 把歌曲加入房间
                     TapHandler {
                         cursorShape: Qt.PointingHandCursor
+                        acceptedButtons: Qt.LeftButton
+                        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
                         onTapped: {
+                            if (!isTogetherMode) return
                             if (actionHover.hovered) return
-                            if (isTogetherMode) {
-                                if (websocket) {
-                                    websocket.addSongToTogether(songData.songname, songData.songhash,
-                                        songData.singername, songData.album_name,
-                                        songData.duration, songData.union_cover)
-                                }
-                            } else {
-                                playlistmanager.playNextAndPlay({
-                                    "songname": songData.songname,
-                                    "songhash": songData.songhash,
-                                    "singername": songData.singername,
-                                    "union_cover": songData.union_cover,
-                                    "album_name": songData.album_name,
-                                    "duration": songData.duration
-                                })
-                                BasicConfig.emitSongAdded("正在播放: " + songData.songname)
+                            if (websocket) {
+                                websocket.addSongToTogether(songData.songname, songData.songhash,
+                                    songData.singername, songData.album_name,
+                                    songData.duration, songData.union_cover)
                             }
                         }
-                    }
-
-                    // 双击 = 切换到每日推荐播放列表，从该曲开始（同歌单详情页）
-                    // TapHandler 之间不互相吞噬：双击时单击的 playNextAndPlay 会被
-                    // 这里的 clearPlaylist+重载覆盖，最终结果即整个列表载入
-                    TapHandler {
-                        acceptedButtons: Qt.LeftButton
-                        enabled: !isTogetherMode
-                        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-                        onDoubleTapped: root.playListFromIndex(index)
+                        onDoubleTapped: {
+                            if (isTogetherMode) return
+                            root.playListFromIndex(index)
+                        }
                     }
                 }
             }

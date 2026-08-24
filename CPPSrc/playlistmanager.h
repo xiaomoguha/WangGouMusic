@@ -218,7 +218,6 @@ private:
     void startPlayback(const SongInfo &song);
     void fetchSongUrl(const QString &hash, std::function<void(QString)> callback);
     void handleSongUrlFailed(const QString &hash, const QString &reason);  // 拿不到 url:停 loading+提示;本地模式自动跳下一首(连败达上限则停),一起听只暂停
-    void showplaylist();
     float m_percent      = 0.0;
     QString m_percentstr = "00:00";
     // 音量淡入/淡出：切歌/恢复渐强、暂停/自然结束前渐弱，各 1.5s
@@ -283,8 +282,8 @@ private:
     // （startPlayback 用于 emit currentSongChanged，一起听路径不需要）。
     // 抽出以消除 startPlayback 与 playTogetherSongFromServer 的重复下载代码。
     void downloadAndStream(
-        const QString &songUrl, const QString &cacheFilePath, const QString &coverUrlForColor, double seekPercent,
-        std::function<void()> onStreamStart
+        const QString &songUrl, const QString &songHash, const QString &cacheFilePath, const QString &coverUrlForColor,
+        double seekPercent, std::function<void()> onStreamStart
     );
     QString currlyric         = "网狗音乐！";
     QString m_dominantColor   = "#FF6B6B";
@@ -308,6 +307,22 @@ private:
     // 正在下载的缓存文件路径：app 退出时进程中断下载会留下半截 flac，
     // 下次播放 probe 失败（0 channels 无声音）——析构时删除它们
     QSet<QString> m_activeDownloadFiles;
+    // 同路径下载代际：重新触发同路径下载时递增，旧下载回调据此静默退出，
+    // 避免旧回调的校验/删除逻辑误伤新下载正在写的文件
+    QHash<QString, qint64> m_downloadGen;
+    // 播放前 MD5 校验失败时刻：同曲 5 分钟冷却，防止个别目录级异常导致反复重下
+    QHash<QString, qint64> m_md5FailAtMs;
+    // 下载完整性失败自动重下时刻：同曲 30 秒冷却，防止接口持续异常时死循环
+    QHash<QString, qint64> m_integrityRetryAtMs;
+    /// 播放缓存前的完整性校验：酷狗歌曲 hash 即对应音质文件的 MD5（实测），
+    /// 本地文件算出的 MD5 与之不符 = 损坏。返回 false = 应删除重新下载
+    bool verifyCachedFileMd5(const QString &filePath, const QString &songhash);
+    // 取歌接口（song/url）返回的期望文件字节数与内容 MD5（酷狗 hash 即该音质文件的 MD5，
+    // 已实测验证）：downloadAndStream 进入时消费一次，下载完成时做完整性校验
+    qint64 m_pendingFileSize = 0;
+    QString m_pendingFileMd5;
+    // 本会话内各缓存路径对应的期望 MD5：播放前校验时兼容不同页面携带的不同 hash 口味
+    QHash<QString, QString> m_sessionFileMd5;
 
     // 主色调提取（独立模块）：异步后台线程 + 内存 LRU 缓存
     DominantColorExtractor *m_colorExtractor;
