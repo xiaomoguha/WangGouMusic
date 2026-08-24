@@ -216,7 +216,8 @@ private:
     QMediaPlayer *m_player      = new QMediaPlayer(this);
     QAudioOutput *m_audioOutput = new QAudioOutput(this);
     void startPlayback(const SongInfo &song);
-    void fetchSongUrl(const QString &hash, std::function<void(QString)> callback);
+    void fetchSongUrl(const QString &hash, std::function<void(QString)> callback,
+                      bool keepIntegrityCount = false);
     void handleSongUrlFailed(const QString &hash, const QString &reason);  // 拿不到 url:停 loading+提示;本地模式自动跳下一首(连败达上限则停),一起听只暂停
     float m_percent      = 0.0;
     QString m_percentstr = "00:00";
@@ -312,8 +313,9 @@ private:
     QHash<QString, qint64> m_downloadGen;
     // 播放前 MD5 校验失败时刻：同曲 5 分钟冷却，防止个别目录级异常导致反复重下
     QHash<QString, qint64> m_md5FailAtMs;
-    // 下载完整性失败自动重下时刻：同曲 30 秒冷却，防止接口持续异常时死循环
-    QHash<QString, qint64> m_integrityRetryAtMs;
+    // 下载完整性失败连续计数（hash 大写）：同曲最多自动重下 2 次，仍失败则放弃；
+    // 用户重新点播（fetchSongUrl 非 retry 链入口）自动清零
+    QHash<QString, int> m_integrityFailCount;
     /// 播放缓存前的完整性校验：酷狗歌曲 hash 即对应音质文件的 MD5（实测），
     /// 本地文件算出的 MD5 与之不符 = 损坏。返回 false = 应删除重新下载
     bool verifyCachedFileMd5(const QString &filePath, const QString &songhash);
@@ -321,7 +323,8 @@ private:
     // 已实测验证）：downloadAndStream 进入时消费一次，下载完成时做完整性校验
     qint64 m_pendingFileSize = 0;
     QString m_pendingFileMd5;
-    // 本会话内各缓存路径对应的期望 MD5：播放前校验时兼容不同页面携带的不同 hash 口味
+    // 本会话内各缓存路径对应的期望 MD5（取址响应 hash = 该音质实际下发文件的 MD5，实测全音质成立）：
+    // 播放前校验优先比对它，无期望时才退回歌单 hash（仅 128 口味可比）
     QHash<QString, QString> m_sessionFileMd5;
 
     // 主色调提取（独立模块）：异步后台线程 + 内存 LRU 缓存
