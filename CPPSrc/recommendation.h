@@ -29,6 +29,10 @@ public:
     Q_INVOKABLE void fetchPlaylistTracks(const QString &globalCollectionId);
     Q_INVOKABLE void fetchMorePlaylistTracks();
     Q_INVOKABLE void loadAllPlaylistTracks();
+    /// 手动刷新：全量重拉（page 1 起自动连拉到歌单尽头），缓存随每页写穿
+    Q_INVOKABLE void refreshPlaylistTracks(const QString &globalCollectionId);
+    /// 进页面缓存优先：读到 playlist_<gid>.json 即填充模型并返回 true（无需走网络）
+    Q_INVOKABLE bool loadCachedPlaylistTracks(const QString &globalCollectionId);
     // C++ 内部用：按页拉取指定歌单歌曲，结果通过 callback 返回（QVariantList，每项含
     // songname/songhash/singername/union_cover/album_name/duration）
     void fetchPlaylistTracksPage(
@@ -86,10 +90,13 @@ private:
     SongListModel *m_playlistTracksModel = nullptr;
     QString m_currentPlaylistId;
     int m_playlistPage       = 0;
-    int m_playlistPageSize   = 30;
+    // 与 UserManager/UserPlaylistPage 的 300/页对齐：30/页时几百首的歌单
+    // 滚一次要连发几十个小请求，对风控不友好
+    int m_playlistPageSize   = 300;
     int m_playlistTotal      = 0;
     bool m_playlistHasMore   = true;
     bool m_playlistIsLoading = false;
+    bool m_fetchAllPages     = false; // refreshPlaylistTracks：拉到一页后自动续拉剩余页
     bool m_playlistsLoading  = false;
     HttpGetRequester m_lazyRequester;
     std::function<void(const QVariantList &)> m_pendingLazyCallback;

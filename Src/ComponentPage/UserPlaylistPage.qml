@@ -39,7 +39,9 @@ Item {
 
     // ── 歌曲详情分页 ──
     property int detailPage: 1
-    property int detailPageSize: 30
+    // 300/页与红心歌单(playlistcollection)一致：服务端直接透传给酷狗，无截断；
+    // 30/页时几百首的歌单滚一次要连发几十个小请求（日志里 22 连发），对风控不友好
+    property int detailPageSize: 300
     property bool hasMoreSongs: true
     property bool isLoadingDetail: false
     property bool isLoadingMoreSongs: false
@@ -51,6 +53,7 @@ Item {
     property bool _songsAppending: false     // 加载更多时为 true：songsModel 走追加而非清空重建，保留 contentY
     property int currentSongIndex: -1        // 当前播放在 filteredSongs 中的下标，-1 = 不在此列表
     property bool _autoLocated: false        // 进入歌单后是否已自动定位过一次
+    property bool _refreshingAll: false      // 手动刷新：全量连拉中（滚动加载让位，避免双请求）
 
     onSearchKeywordChanged: triggerSearch()
     onCurrentSongsChanged: updateFilteredSongs()
@@ -92,6 +95,20 @@ Item {
             return
         }
         updateFilteredSongs()
+    }
+
+    // 手动刷新：全量重拉当前歌单（每页实时写穿缓存文件），拉满自动停
+    function refreshDetailList() {
+        if (!userManager || currentListId === "") return
+        _refreshingAll = true
+        _autoLocated = false
+        isSearchAllLoaded = false
+        searchKeyword = ""   // 先复位标志再清词，退出搜索态回到全量视图
+        currentSongs = []
+        detailPage = 1
+        hasMoreSongs = true
+        isLoadingDetail = true
+        userManager.fetchPlaylistDetail(currentListId, 1, detailPageSize)
     }
 
     function updateFilteredSongs() {
@@ -256,6 +273,16 @@ Item {
             if (isSearchAllLoaded) {
                 hasMoreSongs = false
                 updateFilteredSongs()
+            }
+            // 手动刷新：自动续拉到全量（缓存随每页写穿），拉满即停
+            if (_refreshingAll) {
+                if (hasMoreSongs) {
+                    detailPage += 1
+                    isLoadingMoreSongs = true
+                    userManager.fetchPlaylistDetail(currentListId, detailPage, detailPageSize)
+                } else {
+                    _refreshingAll = false
+                }
             }
         }
     }
@@ -501,9 +528,19 @@ Item {
                                         }
 
                                         _autoLocated = false
-                                        isLoadingDetail = currentSongs.length === 0
                                         viewState = "detail"
-                                        userManager.fetchPlaylistDetail(gid, 1, detailPageSize)
+                                        // 有缓存直接展示（来自启动红心同步/上次刷新落盘），不再自动拉；
+                                        // 点刷新按钮才走网络；没缓存（首次进入）才拉第 1 页
+                                        if (currentSongs.length > 0) {
+                                            // 缓存是已加载前缀：续拉从下一页接着
+                                            detailPage = Math.ceil(currentSongs.length / detailPageSize)
+                                            hasMoreSongs = currentSongs.length < currentListCount
+                                            isLoadingDetail = false
+                                        } else {
+                                            isLoadingDetail = true
+                                            detailPage = 1
+                                            userManager.fetchPlaylistDetail(gid, 1, detailPageSize)
+                                        }
                                     }
                                 }
                             }
@@ -716,6 +753,38 @@ Item {
                         Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
                     }
 
+                    // 刷新当前歌单：全量重拉并写穿缓存（图标随加载旋转）
+                    Rectangle {
+                        width: 35; height: 35; radius: 17
+                        color: refreshListHover.hovered ? AppTheme.iconButtonHover : "transparent"
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        Image {
+                            id: refreshListIcon
+                            anchors.centerIn: parent
+                            source: AppIcon.refresh
+                            sourceSize: Qt.size(128, 128)
+                            mipmap: true
+                            width: 16; height: 16
+                            fillMode: Image.PreserveAspectFit
+                            layer.enabled: true
+                            layer.effect: ColorOverlay {
+                                source: refreshListIcon
+                                color: AppTheme.iconDefault
+                            }
+                            NumberAnimation on rotation {
+                                from: 0; to: 360; duration: 800; loops: Animation.Infinite
+                                running: _refreshingAll || isLoadingDetail
+                            }
+                        }
+                        HoverHandler { id: refreshListHover; cursorShape: Qt.PointingHandCursor }
+                        TapHandler {
+                            cursorShape: Qt.PointingHandCursor
+                            onTapped: refreshDetailList()
+                        }
+                        Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+                    }
+
                     Text {
                         visible: isLoadingDetail
                         text: "加载中..."
@@ -838,7 +907,7 @@ Item {
 
                             // 滚动接近底部加载下一页（原挂在 Flickable 上）
                             onContentYChanged: {
-                                if (isLoadingMoreSongs || !hasMoreSongs) return
+                                if (isLoadingMoreSongs || !hasMoreSongs || _refreshingAll) return
                                 if (contentY >= contentHeight - height - 200) {
                                     isLoadingMoreSongs = true
                                     detailPage += 1

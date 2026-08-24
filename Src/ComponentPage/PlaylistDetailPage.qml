@@ -142,7 +142,10 @@ Item {
 
     Component.onCompleted: {
         console.log("[PlaylistDetailPage] onCompleted, playlistId:", playlistId)
-        if (recommendation && playlistId !== "")
+        // 缓存优先：有缓存（启动红心同步/上次刷新已落盘）直接展示，
+        // 点刷新按钮才重新拉接口；无缓存（首次进入）才拉第 1 页
+        if (recommendation && playlistId !== ""
+                && !recommendation.loadCachedPlaylistTracks(playlistId))
             recommendation.fetchPlaylistTracks(playlistId)
         requestCoverColor()
         refreshMyPlaylists()
@@ -170,7 +173,9 @@ Item {
         if (root._lastLoadedGid !== playlistId) {
             root._lastLoadedGid = playlistId
             console.log("[PlaylistDetailPage] pageActive, fetch gid:", playlistId)
-            recommendation.fetchPlaylistTracks(playlistId)
+            // 同 onCompleted：缓存命中不重复拉接口，点刷新才走网络
+            if (!recommendation.loadCachedPlaylistTracks(playlistId))
+                recommendation.fetchPlaylistTracks(playlistId)
             requestCoverColor()
         }
     }
@@ -229,7 +234,9 @@ Item {
                 _pendingPlayAll = false
                 _autoLocated = false
                 currentSongIndex = -1
-                recommendation.fetchPlaylistTracks(playlistId)
+                // 同 onCompleted：缓存命中直接展示，点刷新才走网络
+                if (!recommendation.loadCachedPlaylistTracks(playlistId))
+                    recommendation.fetchPlaylistTracks(playlistId)
                 requestCoverColor()
             }
         }
@@ -326,13 +333,13 @@ Item {
                     }
                 }
 
-                // 刷新歌单（重新拉取歌曲列表）
+                // 刷新歌单（全量重拉歌曲列表，每页实时写入缓存文件）
                 SectionRefreshButton {
                     anchors.verticalCenter: parent.verticalCenter
                     busy: recommendation && recommendation.playlistIsLoading
                     onClicked: {
                         if (recommendation && playlistId !== "") {
-                            recommendation.fetchPlaylistTracks(playlistId)
+                            recommendation.refreshPlaylistTracks(playlistId)
                             root.requestCoverColor()
                         }
                     }

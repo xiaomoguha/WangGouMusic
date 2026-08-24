@@ -268,7 +268,10 @@ private:
     QString m_lazySourceId; // 源歌单 id（空 = 非懒加载模式）
     int m_lazyTotal             = 0;
     int m_lazyPage              = 0;
-    int m_lazyPageSize          = 30;
+    // 与页面侧 detailPageSize(300) 对齐：双击建队后按需补拉的单页大小；
+    // 30/页时几百首的歌单补齐要连发几十个小请求，对风控不友好
+    int m_lazyPageSize          = 300;
+    QSet<QString> m_lazySeenHashes; // 队列内已有歌曲 hash：补拉跨页重叠时去重
     bool m_lazyFetching         = false;
     bool m_pendingNextAfterLoad = false; // 到已加载末尾点下一首时，等下一批到位后续播
     void tryLazyLoadMore();              // 接近队列末尾时自动拉下一批
@@ -312,7 +315,15 @@ private:
     // 高潮段：切歌按 hash 去重请求，避免多组件（底栏/播放页 ClimaxDot）重复打 /song/climax
     qreal m_climaxPercent = 0;
     QString m_climaxHash;       // 正在请求的 hash（去重 + 迟到响应核对）
+    bool m_climaxPending = false; // 该 hash 的 climax 请求在途：LoadedMedia 补请求避让竞态
     void setClimaxPercent(qreal p);
+    // 高潮点本地缓存（hash.toUpper() -> start_time 毫秒，0 = 服务端确认无高潮）：
+    // 同一首歌高潮位置不变，重播直接换算不再请求；存原始 ms 而非百分比，
+    // 每次按当前时长换算，兼容流媒体/缓存文件时长差异
+    QHash<QString, qint64> m_climaxCache;
+    bool m_climaxCacheLoaded = false;
+    void loadClimaxCache();
+    void saveClimaxCacheEntry(const QString &hash, qint64 startMs);
     static qint64 parseDurationMs(const QString &str);  // "mm:ss"/秒 → 毫秒
 
     // 歌词去重：同 hash 并发请求合并为一次（多调用点/组件触发同一首歌）

@@ -7,6 +7,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QSet>
 #include <QStandardPaths>
 #include <QUrl>
 #include <QUrlQuery>
@@ -368,9 +369,38 @@ void UserManager::fetchPlaylistDetail(const QString &globalCollectionId, int pag
          {"userid", m_userid},
          {"page", QString::number(page)},
          {"pagesize", QString::number(pagesize)}},
-        [this, globalCollectionId](QJsonObject root)
+        [this, globalCollectionId, page](QJsonObject root)
         {
-            writeCacheFile("playlist_" + globalCollectionId + ".json", QJsonDocument(root));
+            // 缓存按「已加载前缀」维护：page 1 重置，后续页按 hash 追加去重，
+            // 重启后进页面缓存不缺不重；emit 仍发原始单页，QML 自行追加显示
+            QJsonObject cacheRoot = root;
+            if (page > 1)
+            {
+                QJsonObject data          = cacheRoot["data"].toObject();
+                const QJsonDocument oldDoc = readCacheFile("playlist_" + globalCollectionId + ".json");
+                const QJsonArray oldSongs  = oldDoc.object().value("data").toObject().value("songs").toArray();
+                QSet<QString> seen;
+                for (const QJsonValue &v : oldSongs)
+                {
+                    const QString h = v.toObject().value("hash").toString();
+                    if (!h.isEmpty())
+                        seen.insert(h);
+                }
+                QJsonArray merged   = oldSongs;
+                const QJsonArray songs = data.value("songs").toArray();
+                for (const QJsonValue &v : songs)
+                {
+                    const QString h = v.toObject().value("hash").toString();
+                    if (!h.isEmpty() && !seen.contains(h))
+                    {
+                        seen.insert(h);
+                        merged.append(v);
+                    }
+                }
+                data["songs"]     = merged;
+                cacheRoot["data"] = data;
+            }
+            writeCacheFile("playlist_" + globalCollectionId + ".json", QJsonDocument(cacheRoot));
             emit playlistDetailReceived(root.toVariantMap());
         },
         [](QString, int) {}
