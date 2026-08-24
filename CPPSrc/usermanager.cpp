@@ -248,14 +248,16 @@ void UserManager::refreshToken()
         emit tokenRefreshResult(false);
         return;
     }
-    // 24h 节流：启动时的 token 刷新太频繁容易触发酷狗风控（账号被踢）。
-    // 上次刷新时间持久化在 QSettings；未满 24h 直接按成功跳过（登录态原样保留）。
-    constexpr qint64 kMinRefreshIntervalMs = 24LL * 60 * 60 * 1000;
+    // 3 天节流：启动时的 token 刷新太频繁容易触发酷狗风控（账号被踢）；
+    // 且酷狗「不到期刷新返回同一个 token」，刷新过密没有收益。参照 MoeKoe 客户端
+    // （完全不主动刷新）与上游社区结论，取 3 天。上次刷新时间持久化在 QSettings；
+    // 未满 3 天直接按成功跳过（登录态原样保留）。
+    constexpr qint64 kMinRefreshIntervalMs = 3LL * 24 * 60 * 60 * 1000;
     const qint64 last = m_settings.value("lastTokenRefreshMs").toLongLong();
     const qint64 now  = QDateTime::currentMSecsSinceEpoch();
     if (last > 0 && now - last < kMinRefreshIntervalMs)
     {
-        qDebug() << "[UserManager] 距上次 token 刷新不足 24h，跳过启动刷新";
+        qDebug() << "[UserManager] 距上次 token 刷新不足 3 天，跳过启动刷新";
         emit tokenRefreshResult(true);
         return;
     }
