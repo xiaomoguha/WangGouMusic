@@ -568,6 +568,15 @@ Rectangle {
             spacing: 10
             anchors.verticalCenter: parent.verticalCenter
 
+            // 时间文字定宽（按同字体下最宽的 "00:00" 量取）：比例字体数字宽度不一
+            // （"1"比"0"窄），每秒换数字时 implicitWidth 抖动会带动整条进度条左右晃
+            TextMetrics {
+                id: timeLabelMetrics
+                font.family: AppTheme.fontFamily
+                font.pixelSize: AppTheme.fontSizeCaption
+                text: "00:00"
+            }
+
             Text {
                 id: currentTimeText
                 text: playlistmanager ? playlistmanager.percentstr : "00:00"
@@ -575,13 +584,15 @@ Rectangle {
                 font.pixelSize: AppTheme.fontSizeCaption
                 color: AppTheme.isDark ? "#99FFFFFF" : AppTheme.textMuted
                 anchors.verticalCenter: parent.verticalCenter
+                width: timeLabelMetrics.width
+                horizontalAlignment: Text.AlignRight  // 定宽盒内右对齐：文字始终贴进度条一侧
             }
 
             Item {
                 id: progressContainer
                 height: parent.height
                 // 弹性填充剩余宽度：随 leftSection(贴合歌名)/歌词容器宽度动态变化，保证右端按钮始终贴右
-                width: controlBar.width - leftSection.width - lyricsControlContainer.width - rightSection.width - volumeSection.width - currentTimeText.implicitWidth - totalTimeText.implicitWidth - 56
+                width: controlBar.width - leftSection.width - lyricsControlContainer.width - rightSection.width - volumeSection.width - currentTimeText.width - totalTimeText.width - 56
 
                 // 底层轨道
                 Rectangle {
@@ -708,6 +719,8 @@ Rectangle {
                 font.pixelSize: AppTheme.fontSizeCaption
                 color: AppTheme.isDark ? "#99FFFFFF" : AppTheme.textMuted
                 anchors.verticalCenter: parent.verticalCenter
+                width: timeLabelMetrics.width
+                horizontalAlignment: Text.AlignLeft  // 定宽盒内左对齐：文字始终贴进度条一侧
             }
         }
 
