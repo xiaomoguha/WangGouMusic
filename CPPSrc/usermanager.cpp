@@ -92,7 +92,7 @@ void UserManager::login(const QString &username, const QString &password)
             m_nickname             = data["nickname"].toString();
             m_avatarUrl            = data["pic"].toString();
             m_isVip                = data["is_vip"].toInt() == 1;
-            m_settings.setValue("lastTokenRefreshMs", QDateTime::currentMSecsSinceEpoch()); // 刚拿到全新 token，同样计入 12h 节流
+            m_settings.setValue("lastTokenRefreshMs", QDateTime::currentMSecsSinceEpoch()); // 刚拿到全新 token，同样计入 24h 节流
             saveToSettings();
             syncTokenToApiClient();
             emit loginStatusChanged();
@@ -165,7 +165,7 @@ void UserManager::loginByPhone(const QString &mobile, const QString &code)
             m_nickname             = data["nickname"].toString();
             m_avatarUrl            = data["pic"].toString();
             m_isVip                = data["is_vip"].toInt() == 1;
-            m_settings.setValue("lastTokenRefreshMs", QDateTime::currentMSecsSinceEpoch()); // 刚拿到全新 token，同样计入 12h 节流
+            m_settings.setValue("lastTokenRefreshMs", QDateTime::currentMSecsSinceEpoch()); // 刚拿到全新 token，同样计入 24h 节流
             saveToSettings();
             syncTokenToApiClient();
             emit loginStatusChanged();
@@ -225,7 +225,7 @@ void UserManager::checkQrStatus(const QString &key)
             m_nickname             = data["nickname"].toString();
             m_avatarUrl            = data["pic"].toString();
             m_isVip                = data["is_vip"].toInt() == 1;
-            m_settings.setValue("lastTokenRefreshMs", QDateTime::currentMSecsSinceEpoch()); // 刚拿到全新 token，同样计入 12h 节流
+            m_settings.setValue("lastTokenRefreshMs", QDateTime::currentMSecsSinceEpoch()); // 刚拿到全新 token，同样计入 24h 节流
             saveToSettings();
             syncTokenToApiClient();
             emit qrStatusReady(4);
@@ -247,14 +247,14 @@ void UserManager::refreshToken()
         emit tokenRefreshResult(false);
         return;
     }
-    // 12h 节流：启动时的 token 刷新太频繁容易触发酷狗风控（账号被踢）。
-    // 上次刷新时间持久化在 QSettings；未满 12h 直接按成功跳过（登录态原样保留）。
-    constexpr qint64 kMinRefreshIntervalMs = 12LL * 60 * 60 * 1000;
+    // 24h 节流：启动时的 token 刷新太频繁容易触发酷狗风控（账号被踢）。
+    // 上次刷新时间持久化在 QSettings；未满 24h 直接按成功跳过（登录态原样保留）。
+    constexpr qint64 kMinRefreshIntervalMs = 24LL * 60 * 60 * 1000;
     const qint64 last = m_settings.value("lastTokenRefreshMs").toLongLong();
     const qint64 now  = QDateTime::currentMSecsSinceEpoch();
     if (last > 0 && now - last < kMinRefreshIntervalMs)
     {
-        qDebug() << "[UserManager] 距上次 token 刷新不足 12h，跳过启动刷新";
+        qDebug() << "[UserManager] 距上次 token 刷新不足 24h，跳过启动刷新";
         emit tokenRefreshResult(true);
         return;
     }
@@ -476,7 +476,7 @@ void UserManager::postForm(
     const QString url = API_BASE + path + "?" + query.toString();
 
     // 统一拦截：任何用户接口返回 20018（token 被踢/失效）都清登录态并通知 UI，
-    // 否则 12h 刷新盲区里 token 被踢后界面仍显示已登录、操作全失败却无人引导重登
+    // 否则 24h 刷新盲区里 token 被踢后界面仍显示已登录、操作全失败却无人引导重登
     auto guarded = [this, onSuccess = std::move(onSuccess)](QJsonObject root) mutable
     {
         if (root.value("status").toInt() != 1 && root.value("error_code").toInt() == 20018 && !m_token.isEmpty())
