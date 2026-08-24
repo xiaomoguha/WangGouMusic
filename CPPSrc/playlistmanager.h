@@ -8,7 +8,9 @@
 #include <functional>
 #include <QHash>
 #include <QList>
+#include <QPair>
 #include <QSet>
+#include <QVector>
 #include <QString>
 #include <QMediaPlayer>
 #include <QNetworkAccessManager>
@@ -218,6 +220,11 @@ private:
     void startPlayback(const SongInfo &song);
     void fetchSongUrl(const QString &hash, std::function<void(QString)> callback,
                       bool keepIntegrityCount = false);
+    // 音质解析取址（借鉴 MoeKoe）：/privilege/lite 拿该曲各音质专属 hash（同一首歌
+    // 不同音质 hash 不同），按当前档位从高到低逐档试 /song/url，跳过无 URL/mp4 档
+    void resolvePrivilegeThenFetch(const QString &hash, std::function<void(QString)> callback);
+    void trySongUrlCandidates(const QString &songHash, const QVector<QPair<QString, QString>> &candidates, int idx,
+                              std::function<void(QString)> callback);
     void handleSongUrlFailed(const QString &hash, const QString &reason);  // 拿不到 url:停 loading+提示;本地模式自动跳下一首(连败达上限则停),一起听只暂停
     float m_percent      = 0.0;
     QString m_percentstr = "00:00";
@@ -323,6 +330,9 @@ private:
     // 已实测验证）：downloadAndStream 进入时消费一次，下载完成时做完整性校验
     qint64 m_pendingFileSize = 0;
     QString m_pendingFileMd5;
+    // 音质解析缓存（歌曲 hash 大写 -> [音质档, 该音质文件专属 hash]，会话内有效）：
+    // /privilege/lite 每曲只打一次，重播/重试链不再重复请求
+    QHash<QString, QVector<QPair<QString, QString>>> m_privilegeCache;
     // 本会话内各缓存路径对应的期望 MD5（取址响应 hash = 该音质实际下发文件的 MD5，实测全音质成立）：
     // 播放前校验优先比对它，无期望时才退回歌单 hash（仅 128 口味可比）
     QHash<QString, QString> m_sessionFileMd5;

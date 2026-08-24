@@ -1860,41 +1860,147 @@ void PlaylistManager::fetchSongUrl(const QString &hash, std::function<void(QStri
     // 用户主动点播（非校验失败重试链）：清零该曲的完整性失败计数，重新给足重试额度
     if (!keepIntegrityCount)
         m_integrityFailCount.remove(hash.toUpper());
-    // 音质：0自动(默认128) / 1标准128 / 2高品320 / 3无损flac（服务器共享 VIP token）
-    static const char *const kQualityParam[] = {"", "128", "320", "flac"};
-    const QString qs = m_quality > 0 && m_quality <= 3 ? QStringLiteral("&quality=%1").arg(kQualityParam[m_quality]) : QString();
+    resolvePrivilegeThenFetch(hash, std::move(callback));
+}
+
+void PlaylistManager::resolvePrivilegeThenFetch(const QString &hash, std::function<void(QString)> callback)
+{
+    // 音质候选（音质档, 该音质文件专属 hash），按当前档位从高到低排列：
+    // flac 档 -> [flac,320,128]，320 -> [320,128]，128/自动 -> [128]
+    auto buildChain = [this](const QVector<QPair<QString, QString>> &byQuality)
+    {
+        const QString prefer = m_quality >= 3 ? QStringLiteral("flac")
+                              : m_quality == 2 ? QStringLiteral("320")
+                                               : QStringLiteral("128");
+        QVector<QPair<QString, QString>> chain;
+        bool take = false;
+        for (const QString &key : {QStringLiteral("flac"), QStringLiteral("320"), QStringLiteral("128")})
+        {
+            if (key == prefer)
+                take = true;
+            if (!take)
+                continue;
+            for (const auto &c : byQuality)
+            {
+                if (c.first == key)
+                {
+                    chain.append(c);
+                    break;
+                }
+            }
+        }
+        return chain;
+    };
+
+    const auto cacheHit = m_privilegeCache.constFind(hash.toUpper());
+    if (cacheHit != m_privilegeCache.constEnd())
+    {
+        QVector<QPair<QString, QString>> chain = buildChain(*cacheHit);
+        // 解析结果一个可用档都没有（罕见）：退回歌单 hash 直取
+        if (chain.isEmpty())
+            chain.append({QStringLiteral("128"), hash});
+        trySongUrlCandidates(hash, chain, 0, std::move(callback));
+        return;
+    }
+
+    ApiClient::instance().getJson(
+        QString("https://api.special520.com/privilege/lite?hash=%1").arg(hash),
+        [this, hash, callback, buildChain](QJsonObject root)
+        {
+            // data[] 每项及其 relate_goods 携带各音质变体：quality/hash/level（0=不可用）
+            QVector<QPair<QString, QString>> byQuality;
+            const QJsonArray data = root["data"].toArray();
+            for (const QJsonValue &itemVal : data)
+            {
+                const QJsonObject item = itemVal.toObject();
+                QJsonArray variants;
+                variants.append(item);
+                for (const QJsonValue &rv : item["relate_goods"].toArray())
+                    variants.append(rv);
+                for (const QJsonValue &vv : variants)
+                {
+                    const QJsonObject v        = vv.toObject();
+                    const QString quality      = v["quality"].toString();
+                    const QString fileHash     = v["hash"].toString();
+                    if (fileHash.isEmpty() || v["level"].toInt() == 0)
+                        continue;
+                    if (quality != QLatin1String("128") && quality != QLatin1String("320")
+                        && quality != QLatin1String("flac"))
+                        continue;
+                    bool dup = false;
+                    for (const auto &c : byQuality)
+                    {
+                        if (c.first == quality)
+                        {
+                            dup = true;
+                            break;
+                        }
+                    }
+                    if (!dup)
+                        byQuality.append({quality, fileHash});
+                }
+            }
+            m_privilegeCache.insert(hash.toUpper(), byQuality);
+            QVector<QPair<QString, QString>> chain = buildChain(byQuality);
+            if (chain.isEmpty())
+                chain.append({QStringLiteral("128"), hash});
+            trySongUrlCandidates(hash, chain, 0, callback);
+        },
+        [this, hash, callback](QString, int)
+        {
+            // privilege 拉取失败：退回歌单 hash 直取（旧行为）
+            QVector<QPair<QString, QString>> fallback;
+            fallback.append({QStringLiteral("128"), hash});
+            trySongUrlCandidates(hash, fallback, 0, callback);
+        },
+        10000
+    );
+}
+
+void PlaylistManager::trySongUrlCandidates(
+    const QString &songHash, const QVector<QPair<QString, QString>> &candidates, int idx,
+    std::function<void(QString)> callback
+)
+{
+    m_pendingFileSize = 0;  // 每档尝试前清掉上一档可能残留的期望值
+    m_pendingFileMd5.clear();
+    if (idx < 0 || idx >= candidates.size() || idx >= 4)  // 最多 4 档，防异常数据长循环
+    {
+        handleSongUrlFailed(songHash, QStringLiteral("无可用播放地址"));
+        callback(QString());
+        return;
+    }
     ApiClient::instance().get(
-        QString("https://api.special520.com/song/url?hash=%1%2").arg(hash).arg(qs),
-        [this, hash, callback](QByteArray body)
+        QString("https://api.special520.com/song/url?hash=%1&quality=%2").arg(candidates[idx].second, candidates[idx].first),
+        [this, songHash, candidates, idx, callback](QByteArray body)
         {
             const QJsonDocument doc = QJsonDocument::fromJson(body);
             QString songUrl;
+            QString extName;
             if (doc.isObject())
             {
                 const QJsonObject o = doc.object();
                 const QJsonArray urlarray = o["url"].toArray();
                 if (!urlarray.isEmpty())
                     songUrl = urlarray[0].toString();
+                extName = o["extName"].toString();
                 // 接口提供精确字节数与文件内容 MD5：响应 hash 即该音质实际下发文件的
                 // MD5（实测 128/320/flac 皆如此，与请求 hash 无关），供下载完成时校验
                 m_pendingFileSize = o["fileSize"].toVariant().toLongLong();
                 m_pendingFileMd5  = o["hash"].toString();
             }
-            if (songUrl.isEmpty())
-            {
-                handleSongUrlFailed(hash, QStringLiteral("无可用播放地址"));
-                callback(QString());
-            }
-            else
+            // extName==mp4 是该档位对应的高清MV音轨而非音频，视作本档不可用，降下一档
+            if (!songUrl.isEmpty() && extName.compare(QLatin1String("mp4"), Qt::CaseInsensitive) != 0)
             {
                 m_urlFailStreak = 0;  // 成功取到 URL，清连续失败计数
                 callback(songUrl);
+                return;
             }
+            trySongUrlCandidates(songHash, candidates, idx + 1, callback);
         },
-        [this, hash, callback](QString err, int)
+        [this, songHash, candidates, idx, callback](QString, int)
         {
-            handleSongUrlFailed(hash, err);
-            callback(QString());
+            trySongUrlCandidates(songHash, candidates, idx + 1, callback);
         },
         10000
     );
