@@ -24,13 +24,21 @@ QString PlaylistCacheStore::cacheDir()
 
 void PlaylistCacheStore::ensureCacheDir()
 {
-    QDir dir(cacheDir());
-    if (!dir.exists())
+    // 一次建全所有子目录：只建根目录时，config/lyrics/songs/* 在全新安装
+    // （无旧缓存可触发迁移建目录）的机器上不存在，后续所有写入会静默失败
+    static const QStringList subDirs = {
+        QStringLiteral("config"),
+        QStringLiteral("lyrics"),
+        QStringLiteral("songs/128"),
+        QStringLiteral("songs/320"),
+        QStringLiteral("songs/flac"),
+    };
+    const QString root = cacheDir();
+    for (const QString &d : subDirs)
     {
-        if (!dir.mkpath(QStringLiteral(".")))
-        {
-            qCritical() << "无法创建缓存目录:" << cacheDir();
-        }
+        QDir dir(root + QStringLiteral("/") + d);
+        if (!dir.exists() && !dir.mkpath(QStringLiteral(".")))
+            qCritical() << "无法创建缓存目录:" << dir.absolutePath();
     }
 }
 
@@ -105,6 +113,9 @@ QString PlaylistCacheStore::songCachePath(const QString &title, const QString &s
 
 QString PlaylistCacheStore::configPath(const QString &name)
 {
+    // 兜底建目录：部分调用方（写穿缓存/红心同步/高潮点缓存）直接取路径写入，
+    // 不经过 ensureCacheDir；config/ 在全新安装的机器上可能不存在
+    ensureCacheDir();
     return cacheDir() + QStringLiteral("/config/") + name;
 }
 

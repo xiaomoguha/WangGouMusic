@@ -323,6 +323,7 @@ void PlaylistCollection::refreshFavoriteHashes()
     m_favPage  = 0;
     m_favTotal = 0;
     m_favoriteHashes.clear();
+    m_favSongsAccum = QJsonArray();
     requestFavPage(1);
 }
 
@@ -346,6 +347,7 @@ void PlaylistCollection::onFavoriteHashesData(const QByteArray &data)
     const QJsonArray  songs   = dataObj["songs"].toArray();
     for (const QJsonValue &val : songs)
     {
+        m_favSongsAccum.append(val.toObject()); // 全量歌曲顺带累积，完成后落盘复用
         const QString h = val.toObject()["hash"].toString().toUpper();
         if (!h.isEmpty())
             m_favoriteHashes << h;
@@ -360,6 +362,20 @@ void PlaylistCollection::onFavoriteHashesData(const QByteArray &data)
         return;
     }
     qDebug() << "[PlaylistCollection] 我喜欢 hash 集合更新，共" << m_favoriteHashes.size() << "个 / 总量" << m_favTotal;
+    // 同步已拿到全量歌曲：落盘成歌单详情缓存（与 fetchPlaylistDetail 同格式），
+    // 进「我喜欢」页面直接展示完整列表，不再重复拉接口
+    QJsonObject full;
+    full["count"] = m_favTotal;
+    full["songs"] = m_favSongsAccum;
+    QJsonObject root;
+    root["status"] = 1;
+    root["data"]   = full;
+    QFile cacheFile(PlaylistCacheStore::configPath("playlist_" + m_favGid + ".json"));
+    if (cacheFile.open(QIODevice::WriteOnly))
+    {
+        cacheFile.write(QJsonDocument(root).toJson(QJsonDocument::Compact));
+        cacheFile.close();
+    }
     emit favoriteHashesChanged();
     saveFavoriteHashesToCache();
 }

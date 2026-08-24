@@ -2,6 +2,7 @@
 #define PLAYLISTCOLLECTION_H
 
 #include "HttpGetRequester.h"
+#include <QJsonArray>
 #include <QObject>
 #include <QVariantMap>
 #include <functional>
@@ -88,6 +89,7 @@ private:
     QString m_favGid;             // 「我喜欢」歌单的 gid（缓存里找到才拉）
     int m_favPage   = 0;          // 分页拉全（接口单页上限 300）
     int m_favTotal  = 0;
+    QJsonArray m_favSongsAccum;   // 同步过程中顺带累积的全量歌曲（落盘成歌单详情缓存）
     bool m_isWorking = false;
     bool m_favRetryPending = false;  // 已发起现场拉取等重试（防循环）
     QString m_favPendingName, m_favPendingHash, m_favPendingSinger;

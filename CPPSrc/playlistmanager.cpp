@@ -105,12 +105,14 @@ PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent
                 m_duration           = formatTime(totalDuration);
                 emit durationChanged();
                 // 高潮点补请求：恢复播放/流媒体 duration 延迟就绪时，首次 climax 请求
-                // 因 totalMs=0 未算成（m_climaxHash 仍标记该 hash）——就绪后重试一次
-                if (!m_climaxHash.isEmpty() && m_climaxPercent <= 0)
+                // 因 totalMs=0 未算成（m_climaxHash 仍标记该 hash）——就绪后重试一次。
+                // 在途避让：请求还在路上时它返回时 duration 已就绪、能正常算出，
+                // 此时补请求只会造成同 hash 双发（曾出现在日志里的两条连发）
+                if (!m_climaxHash.isEmpty() && m_climaxPercent <= 0 && !m_climaxPending)
                 {
                     const QString h = m_climaxHash;
                     m_climaxHash.clear(); // 绕过去重
-                    fetchClimax(h);
+                    fetchClimax(h);       // 命中本地缓存则不再发网络请求
                 }
                 // TOGETHER 模式下，歌曲加载完成后 seek 到目标进度
                 if (type == TOGETHER && m_togetherSeekPercent > 0)
@@ -259,6 +261,7 @@ void PlaylistManager::clearPlaylist()
     m_lazySourceId.clear();
     m_lazyTotal    = 0;
     m_lazyPage     = 0;
+    m_lazySeenHashes.clear();
     m_lazyFetching = false;
     if (type == LOCAL)
         savePlaylistToCache();
@@ -567,14 +570,24 @@ void PlaylistManager::playPlaylistFromSource(
         return; // 一起听模式不处理
     m_lazySourceId = sourceId;
     m_lazyTotal    = totalCount;
-    m_lazyPage     = 1; // 首批已由 QML 提供，视为第 1 页已加载
     m_lazyFetching = false;
 
     // 清空队列，用首批数据立即建队（无网络延迟）
     m_playlist.clear();
+    m_lazySeenHashes.clear();
     QList<SongInfo> songs = convertToSongInfoList(firstBatch);
     for (const SongInfo &s : songs)
+    {
         m_playlist.append(s);
+        m_lazySeenHashes.insert(s.songhash);
+    }
+    // 首批不一定恰好是 m_lazyPageSize 的整数页（旧缓存只有 30 条、QML 已
+    // 滚动加载了多页等）：按已加载完整页数向上取整；不足一页且源还有更多时
+    // 按第 0 页算——补拉从第 1 页开始，append 时按 hash 去重不会重复入队
+    const int loaded = songs.size();
+    m_lazyPage       = loaded > 0 ? (loaded + m_lazyPageSize - 1) / m_lazyPageSize : 0;
+    if (loaded > 0 && loaded < m_lazyPageSize && m_lazyTotal > loaded)
+        m_lazyPage = 0;
 
     savePlaylistToCache();
     m_playlistModel->syncFromList(m_playlist);
@@ -587,10 +600,9 @@ void PlaylistManager::playPlaylistFromSource(
     if (localIndex < 0)
         localIndex = 0;
     playSongbyindex(localIndex);
-    // 立即自动拉取剩余所有页（fetchNextSourcePage 内部会级联到全量），
-    // 让队列真实就是完整播放列表，数量即时对上
-    if (m_lazyPage * m_lazyPageSize < m_lazyTotal)
-        fetchNextSourcePage();
+    // 双击播放不再立即级联拉全量（每次双击都拉一遍剩余页对风控不友好）：
+    // 剩余页由 tryLazyLoadMore（播放临近已加载末尾）/ requestMoreSourceTracks
+    // （队列弹窗滚动）/ playNext 到末尾（m_pendingNextAfterLoad）按需单页补拉
 }
 
 void PlaylistManager::tryLazyLoadMore()
@@ -628,16 +640,22 @@ void PlaylistManager::fetchNextSourcePage()
                 m_lazyFetching        = false;
                 QList<SongInfo> songs = convertToSongInfoList(items);
                 for (const SongInfo &s : songs)
+                {
+                    // 补拉页与首批可能重叠（首批不足一页时从第 1 页重拉）：
+                    // 按 hash 去重，已在队列里的直接跳过
+                    if (m_lazySeenHashes.contains(s.songhash))
+                        continue;
+                    m_lazySeenHashes.insert(s.songhash);
                     m_playlist.append(s);
-                m_lazyPage += 1;
+                }
+                // 空页（含失败兜底）不推进页号，下次触发重试同一页；
+                // 正常拿到数据才前进，避免跳页漏歌
+                if (!items.isEmpty())
+                    m_lazyPage += 1;
                 savePlaylistToCache();
                 m_playlistModel->syncFromList(m_playlist);
                 emit playlistUpdated();
-                // 全量填充：剩余页自动续拉直到源全部加载完，
-                // 播放列表不再按需动态拓展，底部弹窗即完整列表。
-                // 空页（含失败兜底的空结果）停下，避免断网时无限重试
-                if (m_lazyPage * m_lazyPageSize < m_lazyTotal && !items.isEmpty())
-                    fetchNextSourcePage();
+                // 单页补拉：不再级联拉全量，由触发方（临近末尾/弹窗滚动/下一首）按需再拉
                 // playNext 在已加载末尾触发拉取时，下一批到位后续播下一首
                 if (m_pendingNextAfterLoad)
                 {
@@ -1590,11 +1608,30 @@ void PlaylistManager::fetchClimax(const QString &hash)
     m_climaxHash = hash;
     setClimaxPercent(0);  // 切歌先清旧高潮点
 
+    // 本地缓存命中：直接换算，不发请求（duration 未就绪时保持 0，
+    // LoadedMedia 就绪后既有补请求机制重试，重试仍命中缓存）
+    loadClimaxCache();
+    const QString key = hash.toUpper();
+    if (m_climaxCache.contains(key))
+    {
+        const qint64 cachedStart = m_climaxCache.value(key);
+        if (cachedStart > 0)
+        {
+            const qint64 totalMs = parseDurationMs(m_duration);
+            if (totalMs > 0)
+                setClimaxPercent(qMin(qreal(cachedStart) / totalMs, 1.0));
+        }
+        // cachedStart<=0 = 已知该曲无高潮点：保持 0
+        return;
+    }
+
+    m_climaxPending = true;
     ApiClient::instance().get(
         QString("https://api.special520.com/song/climax?hash=%1").arg(hash),
-        [this, hash](QByteArray body) {
+        [this, hash, key](QByteArray body) {
             if (m_climaxHash != hash)  // 迟到核对：期间已切歌则丢弃
                 return;
+            m_climaxPending = false;
             qreal pct = 0;
             QJsonParseError pe;
             const QJsonDocument doc = QJsonDocument::fromJson(body, &pe);
@@ -1607,6 +1644,10 @@ void PlaylistManager::fetchClimax(const QString &hash)
                     if (!arr.isEmpty() && arr[0].isObject())
                     {
                         const qint64 startMs = arr[0].toObject().value("start_time").toVariant().toLongLong();
+                        // 先落缓存再算（与 duration 是否就绪无关）：
+                        // duration 未就绪的补请求重试将直接命中缓存
+                        if (startMs > 0)
+                            saveClimaxCacheEntry(key, startMs);
                         const qint64 totalMs = parseDurationMs(m_duration);
                         if (totalMs <= 0)
                         {
@@ -1616,16 +1657,55 @@ void PlaylistManager::fetchClimax(const QString &hash)
                         }
                         pct = qMin(qreal(startMs) / totalMs, 1.0);
                     }
+                    else
+                    {
+                        // 服务端确认该曲无高潮数据：也缓存（存 0），重播不再询问
+                        saveClimaxCacheEntry(key, 0);
+                    }
                 }
             }
             setClimaxPercent(pct);
         },
         [this, hash](QString, int) {
             if (m_climaxHash == hash)
+            {
+                m_climaxPending = false;
                 setClimaxPercent(0);
+            }
         },
         10000
     );
+}
+
+void PlaylistManager::loadClimaxCache()
+{
+    if (m_climaxCacheLoaded)
+        return;
+    m_climaxCacheLoaded = true;
+    QFile f(PlaylistCacheStore::configPath("climax_cache.json"));
+    if (!f.open(QIODevice::ReadOnly))
+        return;
+    const QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
+    f.close();
+    const QJsonObject o = doc.object();
+    for (auto it = o.begin(); it != o.end(); ++it)
+        m_climaxCache.insert(it.key(), it.value().toVariant().toLongLong());
+}
+
+void PlaylistManager::saveClimaxCacheEntry(const QString &hash, qint64 startMs)
+{
+    if (m_climaxCache.value(hash, -1) == startMs)
+        return;
+    m_climaxCache.insert(hash, startMs);
+    QJsonObject o;
+    for (auto it = m_climaxCache.cbegin(); it != m_climaxCache.cend(); ++it)
+        o.insert(it.key(), double(it.value()));
+    QFile f(PlaylistCacheStore::configPath("climax_cache.json"));
+    if (f.open(QIODevice::WriteOnly))
+    {
+        f.write(QJsonDocument(o).toJson(QJsonDocument::Compact));
+        f.close();
+    }
 }
 
 void PlaylistManager::setClimaxPercent(qreal p)
