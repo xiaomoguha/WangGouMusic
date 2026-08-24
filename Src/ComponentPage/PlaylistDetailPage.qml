@@ -24,6 +24,9 @@ Item {
     readonly property bool isMyOwnPlaylist: findPlaylistItem("global_collection_id") !== null
     // 当前歌单是否已收藏（list_create_gid 命中我的歌单 = 我收藏的别人歌单）
     readonly property bool isCollected: findPlaylistItem("list_create_gid") !== null
+    // 当前详情页就是「我喜欢」歌单：红心按钮隐藏（列表里的歌本就都是喜欢的）
+    readonly property bool isFavPlaylist: playlistCollection && playlistCollection.favGid !== ""
+                                          && String(playlistId) === playlistCollection.favGid
     // 我自己歌单的 listid（移除歌曲用）
     readonly property string myOwnListid: {
         var item = findPlaylistItem("global_collection_id")
@@ -703,9 +706,9 @@ Item {
                                     }
                                 }
 
-                                // 收藏到歌单（弹出歌单选择器）
+                                // 收藏到歌单（弹出歌单选择器）；「我喜欢」歌单内不显示
                                 IconButton {
-                                    visible: !isTogetherMode && !isPlaying
+                                    visible: !isTogetherMode && !isPlaying && !root.isFavPlaylist
                                     iconSource: AppIcon.heart
                                     iconColor: AppTheme.textSecondary
                                     size: 30

@@ -237,7 +237,7 @@ void PlaylistCollection::createPlaylist(const QString &name)
     );
 }
 
-void PlaylistCollection::addTracks(const QString &listid, const QVariantList &songs)
+void PlaylistCollection::addTracks(const QString &listid, const QVariantList &songs, const QString &successMsg)
 {
     if (listid.isEmpty() || songs.isEmpty())
     {
@@ -270,7 +270,8 @@ void PlaylistCollection::addTracks(const QString &listid, const QVariantList &so
     setWorking(true);
     postForm(
         "/playlist/tracks/add", {{"listid", listid}, {"data", parts.join(',')}},
-        [this](QJsonObject root) { parseResult(root, "已添加到歌单"); },
+        [this, successMsg](QJsonObject root)
+        { parseResult(root, successMsg.isEmpty() ? QStringLiteral("已添加到歌单") : successMsg); },
         [this](QString err, int) { setWorking(false); emit operationFinished(false, "网络错误: " + err); }
     );
 }
@@ -308,15 +309,22 @@ void PlaylistCollection::addToFavorite(
     song["singername"] = singername;
     QVariantList songs;
     songs.append(song);
-    addTracks(listid, songs);
+    // 专属成功文案（弹「已添加到我喜欢」弹窗，与加入一起听同款）：带歌名，超长截断
+    QString display = songname;
+    if (display.size() > 18)
+        display = display.left(18) + QStringLiteral("…");
+    addTracks(listid, songs, QStringLiteral("已添加到我喜欢 ♥ ") + display);
 }
 
 void PlaylistCollection::refreshFavoriteHashes()
 {
     // 找「我喜欢」歌单 gid：与 addToFavorite 同一套多级定位，保证红心状态与收藏目标一致
     QString listid, gid;
-    if (findFavorite(listid, gid))
+    if (findFavorite(listid, gid) && m_favGid != gid)
+    {
         m_favGid = gid;
+        emit favGidChanged();  // 详情页据此隐藏红心按钮
+    }
     if (m_favGid.isEmpty())
         return;
     // 接口单页上限 300：分页拉全，避免红心漏判

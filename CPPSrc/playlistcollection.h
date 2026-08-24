@@ -21,12 +21,15 @@ class PlaylistCollection : public QObject
     Q_PROPERTY(bool isWorking READ isWorking NOTIFY isWorkingChanged)
     // 「我喜欢」hash 集合（QML 绑定依赖它监听 favoriteHashesChanged，红心状态才会刷新）
     Q_PROPERTY(QVariantList favoriteHashes READ favoriteHashes NOTIFY favoriteHashesChanged)
+    // 「我喜欢」歌单 gid（定位成功才有值）：详情页据此隐藏红心按钮
+    Q_PROPERTY(QString favGid READ favGid NOTIFY favGidChanged)
 
 public:
     explicit PlaylistCollection(QObject *parent = nullptr);
 
     bool isWorking() const { return m_isWorking; }
     QVariantList favoriteHashes() const;
+    QString favGid() const { return m_favGid; }
 
     // 绑定登录态来源（main.cpp 里 userManager 构造后调用）
     void setUserManager(UserManager *um);
@@ -39,8 +42,9 @@ public:
     Q_INVOKABLE void uncollectPlaylist(const QString &listid);
     // 新建歌单（type=0），返回新歌单 listid 通过 signal
     Q_INVOKABLE void createPlaylist(const QString &name);
-    // 往歌单加歌：songs 每项含 songname/songhash/album_id/mixsongid
-    Q_INVOKABLE void addTracks(const QString &listid, const QVariantList &songs);
+    // 往歌单加歌：songs 每项含 songname/songhash/album_id/mixsongid；
+    // successMsg 为成功提示文案（默认「已添加到歌单」，加「我喜欢」时传专属文案）
+    Q_INVOKABLE void addTracks(const QString &listid, const QVariantList &songs, const QString &successMsg = QString());
     // 从歌单删歌：fileids 为数字 id 数组
     Q_INVOKABLE void removeTracks(const QString &listid, const QVariantList &fileids);
     // 添加到「我喜欢」：从歌单缓存找名字含「我喜欢」的歌单，把歌加进去
@@ -62,6 +66,8 @@ signals:
     void operationFinished(bool success, const QString &message);
     // 「我喜欢」歌曲 hash 集合已更新（红心状态刷新）
     void favoriteHashesChanged();
+    // 「我喜欢」歌单 gid 已定位（详情页隐藏红心用）
+    void favGidChanged();
 
 private:
     void setWorking(bool working);
