@@ -3,6 +3,8 @@
 #include "DominantColorExtractor.h"
 #include "PlaylistCacheStore.h"
 #include <QAudioDevice>
+#include <QCryptographicHash>
+#include <QDateTime>
 #include <QDebug>
 #include <QEventLoop>
 #include <QRandomGenerator>
@@ -329,6 +331,33 @@ void PlaylistManager::loadRecentFromCache()
     emit recentPlaylistUpdated();
 }
 
+bool PlaylistManager::verifyCachedFileMd5(const QString &filePath, const QString &songhash)
+{
+    // 高音质档（320/flac）的转码文件 MD5 与歌曲 hash 不同源，不做播放前比对——
+    // 这些文件的完整性由下载完成时的字节数+MD5 校验把关
+    if (m_quality >= 2)
+        return true;
+    QCryptographicHash md5(QCryptographicHash::Md5);
+    QFile f(filePath);
+    if (!f.open(QIODevice::ReadOnly))
+        return false;
+    md5.addData(&f);
+    f.close();
+    const QString actualHex = QString::fromLatin1(md5.result().toHex());  // 小写
+    // 注意：toHex() 输出小写，与歌曲 hash 比较必须忽略大小写（曾因大写比对恒失败误删全库缓存）
+    if (actualHex.compare(songhash, Qt::CaseInsensitive) == 0)
+        return true;
+    const QString sessionMd5 = m_sessionFileMd5.value(filePath);
+    if (!sessionMd5.isEmpty() && sessionMd5.compare(actualHex, Qt::CaseInsensitive) == 0)
+        return true;
+
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (now - m_md5FailAtMs.value(songhash.toUpper(), 0) < 5 * 60 * 1000)
+        return true; // 冷却期内放行
+    m_md5FailAtMs.insert(songhash.toUpper(), now);
+    return false;
+}
+
 // 判断是否有缓存文件
 int PlaylistManager::is_have_cache(const SongInfo &song, const int index)
 {
@@ -340,6 +369,14 @@ int PlaylistManager::is_have_cache(const SongInfo &song, const int index)
 
     if (cacheFile.exists())
     {
+        // 播放前完整性校验（决绝版，不兼容旧缓存）：酷狗 hash 即该音质文件的 MD5（实测），
+        // 本地文件与之不符 = 半截/损坏——删除并走网络重新下载。5 分钟冷却防反复
+        if (!verifyCachedFileMd5(cacheFilePath, song.songhash))
+        {
+            qWarning() << "缓存 MD5 校验失败，删除重新下载:" << cacheFilePath;
+            cacheFile.remove();
+            return 0;
+        }
         qDebug() << "缓存文件已存在，直接播放:" << cacheFilePath;
 
         // 播放本地缓存文件
@@ -940,7 +977,6 @@ void PlaylistManager::doAddSong(const SongInfo &song, bool /*toHead*/, bool /*pl
     copy.url.clear();
     copy.lyric.clear();
     list.append(copy);
-    showplaylist();
     if (type == LOCAL)
     {
         savePlaylistToCache();
@@ -1175,8 +1211,8 @@ float PlaylistManager::getpercent() const
 
 // 边下边播共享逻辑（startPlayback 与 playTogetherSongFromServer 共用）
 void PlaylistManager::downloadAndStream(
-    const QString &songUrl, const QString &cacheFilePath, const QString &coverUrlForColor, double seekPercent,
-    std::function<void()> onStreamStart
+    const QString &songUrl, const QString &songHash, const QString &cacheFilePath, const QString &coverUrlForColor,
+    double seekPercent, std::function<void()> onStreamStart
 )
 {
     // flac 边下边播：500KB 阈值会在播放中遇到写盘中的截断帧（invalid sync code），
@@ -1188,6 +1224,14 @@ void PlaylistManager::downloadAndStream(
 
     // 音质子目录（songs/128|320|flac）可能尚未创建
     QDir().mkpath(QFileInfo(cacheFilePath).absolutePath());
+    // 消费一次取歌期望值（字节数 + 内容 MD5），防止陈旧值泄漏到后续无关下载
+    const qint64 expectBytes = m_pendingFileSize;
+    const QString expectMd5  = m_pendingFileMd5.toLower();
+    m_pendingFileSize = 0;
+    m_pendingFileMd5.clear();
+    // 会话内记住该文件的期望 MD5：播放前校验时兼容不同页面携带的不同 hash 口味
+    if (!expectMd5.isEmpty())
+        m_sessionFileMd5[cacheFilePath] = expectMd5;
     QFile *tempFile = new QFile(cacheFilePath, this);
     if (!tempFile->open(QIODevice::WriteOnly))
     {
@@ -1208,6 +1252,8 @@ void PlaylistManager::downloadAndStream(
                                  : 0;
     // 登记下载中文件：退出时析构删除半截（见 ~PlaylistManager）
     m_activeDownloadFiles.insert(cacheFilePath);
+    // 代际递增：同路径若有在途旧下载，其回调将检测到被接管并静默退出
+    const qint64 myGen = ++m_downloadGen[cacheFilePath];
 
     QObject::connect(
         reply, &QNetworkReply::readyRead, this,
@@ -1271,6 +1317,9 @@ void PlaylistManager::downloadAndStream(
         reply, &QNetworkReply::errorOccurred, this,
         [=](QNetworkReply::NetworkError err)
         {
+            // 被同路径的新下载接管：只清理自己的句柄，不删新下载正在写的文件
+            if (m_downloadGen.value(cacheFilePath) != myGen)
+                return;
             qWarning() << "下载失败:" << err << songUrl;
             m_activeDownloadFiles.remove(cacheFilePath);
             tempFile->remove();
@@ -1290,6 +1339,65 @@ void PlaylistManager::downloadAndStream(
             m_activeDownloadFiles.remove(cacheFilePath);
             tempFile->flush();
             tempFile->close();
+
+            // 被同路径的新下载接管：不校验、不删改文件、不动播放状态，静默退出
+            if (m_downloadGen.value(cacheFilePath) != myGen)
+                return;
+
+            // 完整性校验：字节数（快，优先接口 fileSize，兜底 HTTP Content-Length）
+            // + 内容 MD5（强：酷狗 hash 即该音质文件的 MD5，已实测）。
+            // 任一不符即损坏——删除，绝不把坏文件留进缓存
+            const qint64 actual = QFileInfo(cacheFilePath).size();
+            const qint64 expect = expectBytes > 0 ? expectBytes : m_totalDownloadBytes;
+            QString failReason;
+            if (expect > 0 && actual != expect)
+                failReason = QStringLiteral("字节数不符（期望 %1 实际 %2）").arg(expect).arg(actual);
+            else if (!expectMd5.isEmpty())
+            {
+                QCryptographicHash md5(QCryptographicHash::Md5);
+                QFile vf(cacheFilePath);
+                if (vf.open(QIODevice::ReadOnly))
+                {
+                    md5.addData(&vf);
+                    vf.close();
+                }
+                if (md5.result().toHex() != expectMd5)
+                    failReason = QStringLiteral("MD5 不符（期望 %1 实际 %2）")
+                                     .arg(expectMd5, QString::fromLatin1(md5.result().toHex()));
+            }
+            if (!failReason.isEmpty())
+            {
+                qWarning() << "缓存完整性校验失败（" << failReason << "），删除:" << cacheFilePath;
+                QFile::remove(cacheFilePath);  // Windows 下若播放器仍占用则删不掉，靠下次播放前的 MD5 校验兜底
+                if (m_player->source().toLocalFile() == cacheFilePath)
+                {
+                    m_player->stop();
+                    m_player->setSource(QUrl());
+                }
+                // 不对就重新下载：同曲 30 秒冷却内只自动重下一次，防止接口持续异常时死循环
+                const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+                if (nowMs - m_integrityRetryAtMs.value(songHash, 0) > 30 * 1000)
+                {
+                    m_integrityRetryAtMs.insert(songHash, nowMs);
+                    m_isBuffering = false;
+                    emit isBufferingChanged();
+                    fetchSongUrl(
+                        songHash,
+                        [this, songHash, cacheFilePath, coverUrlForColor, seekPercent, onStreamStart](const QString &url)
+                        {
+                            if (!url.isEmpty())
+                                downloadAndStream(url, songHash, cacheFilePath, coverUrlForColor, seekPercent,
+                                                  onStreamStart);
+                        });
+                }
+                else if (m_isBuffering)
+                {
+                    m_isBuffering = false;
+                    emit isBufferingChanged();
+                }
+                return;
+            }
+
             m_downloadProgress = 1.0;
             m_downloadedBytes  = m_totalDownloadBytes;
             emit downloadProgressChanged();
@@ -1386,8 +1494,16 @@ void PlaylistManager::startPlayback(const SongInfo &song)
     PlaylistCacheStore::ensureCacheDir();
     QString cacheFilePath = PlaylistCacheStore::songCachePath(song.title, song.singername, m_quality);
 
-    // 本地缓存命中：直接播放（各音质独立目录，互不影响）
-    if (QFile::exists(cacheFilePath))
+    // 本地缓存命中：直接播放（各音质独立目录，互不影响）。
+    // 播放前 MD5 完整性校验：不符 = 半截/损坏，删除后落到下方下载管线覆盖重下
+    bool playLocal = QFile::exists(cacheFilePath);
+    if (playLocal && !verifyCachedFileMd5(cacheFilePath, song.songhash))
+    {
+        qWarning() << "缓存 MD5 校验失败，删除重新下载:" << cacheFilePath;
+        QFile::remove(cacheFilePath);
+        playLocal = false;
+    }
+    if (playLocal)
     {
         qDebug() << "缓存文件已存在，直接播放:" << cacheFilePath;
         m_player->stop();
@@ -1424,7 +1540,7 @@ void PlaylistManager::startPlayback(const SongInfo &song)
 
     // 无缓存：边下边播（下载逻辑与一起听路径共用 downloadAndStream）
     // onStreamStart 无需再 emit currentSongChanged（已在入口 emit）
-    downloadAndStream(song.url, cacheFilePath, song.union_cover, resumePercent, nullptr);
+    downloadAndStream(song.url, song.songhash, cacheFilePath, song.union_cover, resumePercent, nullptr);
 }
 
 // 保存播放列表到本地缓存
@@ -1731,6 +1847,8 @@ qint64 PlaylistManager::parseDurationMs(const QString &str)
 
 void PlaylistManager::fetchSongUrl(const QString &hash, std::function<void(QString)> callback)
 {
+    m_pendingFileSize = 0;  // 每次取址先重置期望大小
+    m_pendingFileMd5.clear();
     // 音质：0自动(默认128) / 1标准128 / 2高品320 / 3无损flac（服务器共享 VIP token）
     static const char *const kQualityParam[] = {"", "128", "320", "flac"};
     const QString qs = m_quality > 0 && m_quality <= 3 ? QStringLiteral("&quality=%1").arg(kQualityParam[m_quality]) : QString();
@@ -1742,9 +1860,12 @@ void PlaylistManager::fetchSongUrl(const QString &hash, std::function<void(QStri
             QString songUrl;
             if (doc.isObject())
             {
-                const QJsonArray urlarray = doc.object()["url"].toArray();
+                const QJsonObject o = doc.object();
+                const QJsonArray urlarray = o["url"].toArray();
                 if (!urlarray.isEmpty())
                     songUrl = urlarray[0].toString();
+                // 接口提供精确字节数：供下载完成时做完整性校验
+                m_pendingFileSize = o["fileSize"].toVariant().toLongLong();
             }
             if (songUrl.isEmpty())
             {
@@ -1908,13 +2029,6 @@ void PlaylistManager::fetchLyricContent(
     );
 }
 
-void PlaylistManager::showplaylist()
-{
-    for (int index = 0; index < (*m_curplaylist).size(); index++)
-    {
-        qDebug() << "当前歌曲列表:" << index + 1 << (*m_curplaylist)[index].title;
-    }
-}
 void PlaylistManager::updatePlaybackProgress(qint64 position)
 {
     // 歌曲播完后 position 会重置到 0，跳过以避免歌词闪回第一句
@@ -2434,7 +2548,7 @@ void PlaylistManager::playTogetherSongFromServer(
         double seekPercent    = m_togetherSeekPercent;
         m_togetherSeekPercent = 0;
         // 一起听路径不需要再提取封面色（已在调用方处理）也不需要 currentSongChanged
-        downloadAndStream(songUrl, cacheFilePath, QString(), seekPercent, nullptr);
+        downloadAndStream(songUrl, songHash, cacheFilePath, QString(), seekPercent, nullptr);
     }
     else
     {

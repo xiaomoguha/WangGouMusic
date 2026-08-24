@@ -3,6 +3,7 @@
 
 #include "SongInfo.h"
 #include <QDir>
+#include <QSet>
 #include <QString>
 #include <QList>
 
