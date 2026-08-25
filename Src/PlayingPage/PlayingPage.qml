@@ -572,8 +572,11 @@ Rectangle {
                                 property real squeeze: {
                                     if (!lyricsConfig || !lyricsConfig.jumpEnabled) return 1.0
                                     if (index !== charIdx || charIdx < 0) return 1.0
+                                    // 暂停/歌曲结束：位置冻结，字内进度可能停在 65% 前(末字声明时长
+                                    // 常比实际音频长，音频先结束)——冻结态释放压扁回弹原状
+                                    if (playlistmanager && playlistmanager.isPaused) return 1.0
                                     var p = charProgress
-                                    if (p <= 0) return 1.0  // 进度为0=还没唱到(前奏/行首留白/暂停冻结)：不压扁
+                                    if (p <= 0) return 1.0  // 进度为0=还没唱到(前奏/行首留白)：不压扁
                                     var a = 0.65
                                     if (p < a) {
                                         var t = p / a
