@@ -331,6 +331,7 @@ Window {
                                         if (!desktopLyrics.jumpEnabled) return 1.0
                                         if (index !== horizontalLyricContainer.charIndex || horizontalLyricContainer.charIndex < 0) return 1.0
                                         var p = horizontalLyricContainer.charProgress
+                                        if (p <= 0) return 1.0  // 进度为0=还没唱到(前奏/行首留白/暂停冻结)：不压扁
                                         var a = 0.65
                                         if (p < a) {
                                             var t = p / a
