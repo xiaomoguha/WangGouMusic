@@ -2267,12 +2267,17 @@ void PlaylistManager::updateLyricProgress(qint64 position)
         }
     }
     // position 值外推：flac 音频帧 4096 采样（≈92ms）导致 position 值 92ms 才前进一次，
-    // 阶梯间隙按真实时间外推——跳跃歌词动画（星星/字压扁）因此 60Hz 平滑
+    // 阶梯间隙按真实时间外推——跳跃歌词动画（星星/字压扁）因此 60Hz 平滑。
+    // 暂停/停止时不外推（否则暂停期间歌词按真实时间自己走完），
+    // 但基准时刻仍刷新，避免恢复播放瞬间把暂停时长一次性累加进外推
     const qint64 tickNow = QDateTime::currentMSecsSinceEpoch();
     if (position == m_lastRawPosMs)
     {
-        // 值未刷新（阶梯间隙）：按真实时间推进
-        position = m_lastRawPosMs + (tickNow - m_lastRawTickMs);
+        // 值未刷新（阶梯间隙）：仅播放中按真实时间推进
+        if (m_player->playbackState() == QMediaPlayer::PlayingState)
+            position = m_lastRawPosMs + (tickNow - m_lastRawTickMs);
+        else
+            m_lastRawTickMs = tickNow;
     }
     else
     {
