@@ -146,12 +146,10 @@ Item {
                     color: artistAvatar.status === Image.Ready ? AppTheme.bgCard : "transparent"
                     Behavior on color { ColorAnimation { duration: 150 } }
 
-                    Image {
+                    RetryImage {
                         id: artistAvatar
                         anchors.fill: parent
-                        source: artistManager && artistManager.artist ? artistManager.artist.avatar : ""
-                        asynchronous: true
-                        cache: true
+                        coverSource: artistManager && artistManager.artist ? artistManager.artist.avatar : ""
                         fillMode: Image.PreserveAspectCrop
                         sourceSize: Qt.size(240, 240)
                         // 加载完成才淡入，避免头像还没到的时候露出占位圆
@@ -419,13 +417,11 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                     }
 
-                    Image {
+                    RetryImage {
                         width: 40
                         height: 40
                         anchors.verticalCenter: parent.verticalCenter
-                        source: songData.union_cover
-                        asynchronous: true
-                        cache: true
+                        coverSource: songData.union_cover
                         fillMode: Image.PreserveAspectCrop
                         layer.enabled: true
                         layer.effect: OpacityMask {
@@ -701,13 +697,11 @@ Item {
                     anchors.margins: 8
                     spacing: 12
 
-                    Image {
+                    RetryImage {
                         id: albumCoverImg
                         width: 80
                         height: 80
-                        source: model.cover
-                        asynchronous: true
-                        cache: true
+                        coverSource: model.cover
                         sourceSize.width: 160
                         sourceSize.height: 160
                         fillMode: Image.PreserveAspectCrop

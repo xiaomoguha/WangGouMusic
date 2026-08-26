@@ -63,13 +63,11 @@ Rectangle {
     }
 
     // 1. 原始图片
-    Image {
+    RetryImage {
         id: originalImage
         anchors.fill: parent
-        source: albumCover
+        coverSource: albumCover
         fillMode: Image.PreserveAspectCrop
-        asynchronous: true
-        cache: true
         visible: false  // 隐藏原图
         sourceSize.width: 600
         sourceSize.height: 600
@@ -331,14 +329,12 @@ Rectangle {
                 radius: width / 2
                 clip: true
 
-                Image {
+                RetryImage {
                     id: avatarImage
                     anchors.fill: parent
                     property real currentRotation: 0
-                    source: albumCover
+                    coverSource: albumCover
                     rotation: currentRotation
-                    asynchronous: true
-                    cache: true
                     mipmap: true
                     sourceSize: Qt.size(720, 720)
                     // Rectangle.clip 不裁圆角，圆形封面需 OpacityMask。
@@ -843,11 +839,9 @@ Rectangle {
                         clip: true
                         color: "#33FFFFFF"
 
-                        Image {
+                        RetryImage {
                             anchors.fill: parent
-                            source: modelData.user_pic
-                            asynchronous: true
-                            cache: true
+                            coverSource: modelData.user_pic
                             sourceSize: Qt.size(72, 72)
                             fillMode: Image.PreserveAspectCrop
                         }
@@ -996,11 +990,9 @@ Rectangle {
                                 clip: true
                                 color: "#26FFFFFF"
 
-                                Image {
+                                RetryImage {
                                     anchors.fill: parent
-                                    source: modelData.user_pic
-                                    asynchronous: true
-                                    cache: true
+                                    coverSource: modelData.user_pic
                                     sourceSize: Qt.size(56, 56)
                                     fillMode: Image.PreserveAspectCrop
                                 }

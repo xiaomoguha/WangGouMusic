@@ -132,16 +132,14 @@ Page {
                             anchors.verticalCenter: parent.verticalCenter
                         }
 
-                        Image {
+                        RetryImage {
                             width: 40
                             height: 40
-                            source: modelData.union_cover || ""
+                            coverSource: modelData.union_cover || ""
                             sourceSize.width: 80
                             sourceSize.height: 80
                             fillMode: Image.PreserveAspectCrop
                             anchors.verticalCenter: parent.verticalCenter
-                            asynchronous: true
-                            cache: true
 
                             // ponytail: 封面缺失时的占位（历史记录更易缺封面），不占额外布局
                             Rectangle {

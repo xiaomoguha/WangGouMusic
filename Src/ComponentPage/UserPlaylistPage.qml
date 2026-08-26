@@ -434,12 +434,10 @@ Item {
                                         clip: true
                                         anchors.verticalCenter: parent.verticalCenter
 
-                                        Image {
+                                        RetryImage {
                                             anchors.fill: parent
-                                            source: playlistData.pic || ""
+                                            coverSource: playlistData.pic || ""
                                             fillMode: Image.PreserveAspectCrop
-                                            asynchronous: true
-                                            cache: true
                                             visible: status === Image.Ready
                                         }
                                     }
@@ -987,16 +985,14 @@ Item {
                                         anchors.verticalCenter: parent.verticalCenter
                                     }
 
-                                    Image {
+                                    RetryImage {
                                         width: 40
                                         height: 40
-                                        source: filteredSongs[index] ? filteredSongs[index].cover : ""
+                                        coverSource: filteredSongs[index] ? filteredSongs[index].cover : ""
                                         sourceSize.width: 80
                                         sourceSize.height: 80
                                         fillMode: Image.PreserveAspectCrop
                                         anchors.verticalCenter: parent.verticalCenter
-                                        asynchronous: true
-                                        cache: true
                                     }
 
                                     Column {

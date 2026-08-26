@@ -129,13 +129,11 @@ Item {
                                 anchors.margins: 6
                                 spacing: 10
 
-                                Image {
+                                RetryImage {
                                     id: rankCoverImg
                                     width: 88
                                     height: 88
-                                    source: rankData.imgurl
-                                    asynchronous: true
-                                    cache: true
+                                    coverSource: rankData.imgurl
                                     sourceSize.width: 200
                                     sourceSize.height: 200
                                     fillMode: Image.PreserveAspectCrop
@@ -222,11 +220,9 @@ Item {
                         clip: true
                         color: AppTheme.bgCard
 
-                        Image {
+                        RetryImage {
                             anchors.fill: parent
-                            source: rankList.rankCover
-                            asynchronous: true
-                            cache: true
+                            coverSource: rankList.rankCover
                             sourceSize.width: 200
                             sourceSize.height: 200
                             fillMode: Image.PreserveAspectCrop
@@ -358,11 +354,9 @@ Item {
                                 clip: true
                                 anchors.verticalCenter: parent.verticalCenter
 
-                                Image {
+                                RetryImage {
                                     anchors.fill: parent
-                                    source: songData.union_cover
-                                    asynchronous: true
-                                    cache: true
+                                    coverSource: songData.union_cover
                                     sourceSize.width: 80
                                     sourceSize.height: 80
                                     fillMode: Image.PreserveAspectCrop

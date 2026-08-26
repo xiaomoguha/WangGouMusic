@@ -348,13 +348,11 @@ Item {
                     }
                 }
 
-                Image {
+                RetryImage {
                     id: coverImg
                     width: 110
                     height: 110
-                    source: playlistCover
-                    asynchronous: true
-                    cache: true
+                    coverSource: playlistCover
                     mipmap: true
                     sourceSize.width: 220
                     sourceSize.height: 220
@@ -588,13 +586,11 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                         }
 
-                        Image {
+                        RetryImage {
                             width: 40
                             height: 40
                             anchors.verticalCenter: parent.verticalCenter
-                            source: model.union_cover
-                            asynchronous: true
-                            cache: true
+                            coverSource: model.union_cover
                             sourceSize.width: 80
                             sourceSize.height: 80
                             fillMode: Image.PreserveAspectCrop
@@ -963,13 +959,11 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: 10
 
-                            Image {
+                            RetryImage {
                                 width: 26
                                 height: 26
                                 anchors.verticalCenter: parent.verticalCenter
-                                source: modelData.pic ? modelData.pic.replace("{size}", "80") : ""
-                                asynchronous: true
-                                cache: true
+                                coverSource: modelData.pic ? modelData.pic.replace("{size}", "80") : ""
                                 fillMode: Image.PreserveAspectCrop
                                 layer.enabled: true
                                 layer.effect: OpacityMask {

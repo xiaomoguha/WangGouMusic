@@ -124,13 +124,11 @@ Item {
                 }
 
                 // 专辑封面
-                Image {
+                RetryImage {
                     id: albumCoverImg
                     width: 120
                     height: 120
-                    source: albumManager && albumManager.album ? albumManager.album.cover : albumCover
-                    asynchronous: true
-                    cache: true
+                    coverSource: albumManager && albumManager.album ? albumManager.album.cover : albumCover
                     mipmap: true
                     sourceSize.width: 240
                     sourceSize.height: 240
@@ -311,13 +309,11 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                 }
 
-                Image {
+                RetryImage {
                     width: 40
                     height: 40
                     anchors.verticalCenter: parent.verticalCenter
-                    source: songData.union_cover
-                    asynchronous: true
-                    cache: true
+                    coverSource: songData.union_cover
                     fillMode: Image.PreserveAspectCrop
                     layer.enabled: true
                     layer.effect: OpacityMask {

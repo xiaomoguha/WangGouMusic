@@ -47,13 +47,13 @@ Row {
             }
         }
 
-        Image {
+        RetryImage {
             id: userRealAvatar
             anchors.centerIn: parent
             width: 26
             height: 26
             visible: userManager && userManager.isLoggedIn && userManager.avatarUrl !== ""
-            source: userManager && userManager.avatarUrl !== "" ? userManager.avatarUrl : ""
+            coverSource: userManager && userManager.avatarUrl !== "" ? userManager.avatarUrl : ""
             fillMode: Image.PreserveAspectCrop
             layer.enabled: true
             layer.effect: OpacityMask {
