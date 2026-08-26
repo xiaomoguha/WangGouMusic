@@ -305,14 +305,13 @@ Item {
                                     clip: true
                                     anchors.verticalCenter: parent.verticalCenter
 
-                                    Image {
+                                    RetryImage {
                                         anchors.fill: parent
                                         // 只认 http(s) 头像：网页游客曾传网页相对路径 /images/app-icon.png，
                                         // 按 qrc 解析成不存在的资源刷 Cannot open 警告
-                                        source: modelData.avatar_url && String(modelData.avatar_url).indexOf("http") === 0
+                                        coverSource: modelData.avatar_url && String(modelData.avatar_url).indexOf("http") === 0
                                             ? modelData.avatar_url : "qrc:/image/touxi.jpg"
                                         fillMode: Image.PreserveAspectCrop
-                                        asynchronous: true
                                         layer.enabled: true
                                         layer.effect: OpacityMask {
                                             maskSource: Rectangle { width: 24; height: 24; radius: 12 }
@@ -417,11 +416,10 @@ Item {
                 anchors.left: parent.left; anchors.leftMargin: 10
                 anchors.verticalCenter: parent.verticalCenter
 
-                Image {
+                RetryImage {
                     anchors.fill: parent
-                    source: root.roomSongData.cover_url || ""
+                    coverSource: root.roomSongData.cover_url || ""
                     fillMode: Image.PreserveAspectCrop
-                    asynchronous: true
                     layer.enabled: true
                     layer.effect: OpacityMask {
                         maskSource: Rectangle { width: heroCover.width; height: heroCover.height; radius: 10 }
@@ -618,11 +616,10 @@ Item {
                             width: 30; height: 30; radius: 6
                             color: root.tint("#12FFFFFF", "#33FFFFFF", AppTheme.bgCard)
 
-                            Image {
+                            RetryImage {
                                 anchors.fill: parent
-                                source: model.union_cover
+                                coverSource: model.union_cover
                                 fillMode: Image.PreserveAspectCrop
-                                asynchronous: true
                                 layer.enabled: true
                                 layer.effect: OpacityMask {
                                     maskSource: Rectangle { width: songCover.width; height: songCover.height; radius: 6 }
@@ -631,15 +628,14 @@ Item {
                         }
 
                         // 添加人头像（右下角小图标）
-                        Image {
+                        RetryImage {
                             visible: model.added_by_avatar.length > 0
                             width: 14; height: 14
                             anchors.right: parent.right
                             anchors.bottom: parent.bottom
                             anchors.rightMargin: -3
                             anchors.bottomMargin: -3
-                            source: model.added_by_avatar
-                            asynchronous: true
+                            coverSource: model.added_by_avatar
                             layer.enabled: true
                             layer.effect: OpacityMask {
                                 maskSource: Rectangle {
@@ -902,13 +898,12 @@ Item {
                     clip: true
                     anchors.verticalCenter: parent.verticalCenter
 
-                    Image {
+                    RetryImage {
                         anchors.fill: parent
                         // 同成员列表：非 http(s) 头像一律走内置兜底，避免无效 qrc 路径警告
-                        source: modelData.avatarUrl && String(modelData.avatarUrl).indexOf("http") === 0
+                        coverSource: modelData.avatarUrl && String(modelData.avatarUrl).indexOf("http") === 0
                             ? modelData.avatarUrl : "qrc:/image/touxi.jpg"
                         fillMode: Image.PreserveAspectCrop
-                        asynchronous: true
                         layer.enabled: true
                         layer.effect: OpacityMask {
                             maskSource: Rectangle { width: 28; height: 28; radius: 14 }

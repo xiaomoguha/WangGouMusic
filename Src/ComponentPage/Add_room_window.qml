@@ -422,12 +422,11 @@ Item {
                                     anchors.verticalCenter: parent.verticalCenter
                                     color: !modelData.cover_url ? AppTheme.accentDim : "transparent"
 
-                                    Image {
+                                    RetryImage {
                                         anchors.fill: parent
                                         visible: modelData.cover_url && modelData.cover_url !== ""
-                                        source: modelData.cover_url || ""
+                                        coverSource: modelData.cover_url || ""
                                         fillMode: Image.PreserveAspectCrop
-                                        asynchronous: true
                                     }
 
                                     Text {

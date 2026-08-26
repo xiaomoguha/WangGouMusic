@@ -264,13 +264,11 @@ Item {
                     anchors.margins: 6
                     spacing: 12
 
-                    Image {
+                    RetryImage {
                         id: plCover
                         width: 88
                         height: 88
-                        source: model.imgurl
-                        asynchronous: true
-                        cache: true
+                        coverSource: model.imgurl
                         sourceSize.width: 176
                         sourceSize.height: 176
                         fillMode: Image.PreserveAspectCrop

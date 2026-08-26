@@ -136,13 +136,11 @@ Item {
                     }
 
                     // 封面
-                    Image {
+                    RetryImage {
                         width: 28
                         height: 28
                         anchors.verticalCenter: parent.verticalCenter
-                        source: modelData.union_cover
-                        asynchronous: true
-                        cache: true
+                        coverSource: modelData.union_cover
                         fillMode: Image.PreserveAspectCrop
                         layer.enabled: true
                         layer.effect: OpacityMask {

@@ -165,12 +165,10 @@ Page {
                     clip: true
                     color: AppTheme.bgCard
 
-                    Image {
+                    RetryImage {
                         anchors.fill: parent
-                        source: model.union_cover || ""
+                        coverSource: model.union_cover || ""
                         fillMode: Image.PreserveAspectCrop
-                        asynchronous: true
-                        cache: true
                         sourceSize.width: 80
                         sourceSize.height: 80
                     }

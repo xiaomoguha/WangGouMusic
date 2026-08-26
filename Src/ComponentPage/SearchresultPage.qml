@@ -138,12 +138,10 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 color: singerAvatarImg.status === Image.Ready ? AppTheme.bgSidebar : "transparent"
 
-                Image {
+                RetryImage {
                     id: singerAvatarImg
                     anchors.fill: parent
-                    source: singerData.avatar || ""
-                    asynchronous: true
-                    cache: true
+                    coverSource: singerData.avatar || ""
                     fillMode: Image.PreserveAspectCrop
                     sourceSize: Qt.size(104, 104)
                     // 加载完成才淡入，避免露出深色占位圆

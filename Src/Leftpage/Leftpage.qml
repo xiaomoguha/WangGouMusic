@@ -381,13 +381,11 @@ Rectangle {
                         clip: true
                         anchors.verticalCenter: parent.verticalCenter
                         color: AppTheme.bgCard
-                        Image {
+                        RetryImage {
                             anchors.fill: parent
-                            source: playlistChild.modelData.pic
+                            coverSource: playlistChild.modelData.pic
                                     ? playlistChild.modelData.pic.replace("{size}", "80") : ""
                             fillMode: Image.PreserveAspectCrop
-                            asynchronous: true
-                            cache: true
                         }
                     }
 

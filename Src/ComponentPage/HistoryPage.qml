@@ -280,13 +280,11 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                 }
 
-                Image {
+                RetryImage {
                     width: 40
                     height: 40
                     anchors.verticalCenter: parent.verticalCenter
-                    source: model.union_cover
-                    asynchronous: true
-                    cache: true
+                    coverSource: model.union_cover
                     sourceSize.width: 80
                     sourceSize.height: 80
                     fillMode: Image.PreserveAspectCrop

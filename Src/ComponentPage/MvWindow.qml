@@ -295,11 +295,9 @@ Window {
                     clip: true
                     color: "#1F1F26"
 
-                    Image {
+                    RetryImage {
                         anchors.fill: parent
-                        source: mvWindow.mvCover
-                        asynchronous: true
-                        cache: true
+                        coverSource: mvWindow.mvCover
                         fillMode: Image.PreserveAspectCrop
                     }
                 }
@@ -375,11 +373,9 @@ Window {
                         clip: true
                         color: "#26262E"
 
-                        Image {
+                        RetryImage {
                             anchors.fill: parent
-                            source: modelData.user_pic
-                            asynchronous: true
-                            cache: true
+                            coverSource: modelData.user_pic
                             sourceSize: Qt.size(60, 60)
                             fillMode: Image.PreserveAspectCrop
                         }

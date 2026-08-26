@@ -242,11 +242,9 @@ Item {
                                 }
 
                                 // 专辑封面（C++ 按 album_id 补全后显示；无图时渐变兜底）
-                                Image {
+                                RetryImage {
                                     anchors.fill: parent
-                                    source: songData.union_cover || ""
-                                    asynchronous: true
-                                    cache: true
+                                    coverSource: songData.union_cover || ""
                                     sourceSize.width: 260
                                     sourceSize.height: 260
                                     fillMode: Image.PreserveAspectCrop
@@ -434,12 +432,10 @@ Item {
                                     radius: 10
                                     clip: true
 
-                                    Image {
+                                    RetryImage {
                                         id: songCoverImage
                                         anchors.fill: parent
-                                        source: songData.union_cover
-                                        asynchronous: true
-                                        cache: true
+                                        coverSource: songData.union_cover
                                         sourceSize.width: 400
                                         sourceSize.height: 300
                                         fillMode: Image.PreserveAspectCrop
@@ -622,13 +618,11 @@ Item {
                                     anchors.margins: 8
                                     spacing: 12
 
-                                    Image {
+                                    RetryImage {
                                         id: plCover
                                         width: 80
                                         height: 80
-                                        source: plData.imgurl
-                                        asynchronous: true
-                                        cache: true
+                                        coverSource: plData.imgurl
                                         sourceSize.width: 160
                                         sourceSize.height: 160
                                         fillMode: Image.PreserveAspectCrop
