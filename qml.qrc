@@ -17,6 +17,7 @@
         <file>Src/BasicConfig/ThemedPopup.qml</file>
         <file>Src/BasicConfig/NowPlayingIndicator.qml</file>
         <file>Src/BasicConfig/WindowTintGradient.qml</file>
+        <file>Src/BasicConfig/RetryImage.qml</file>
         <file>Src/ComponentPage/DesktopLyricsControlButton.qml</file>
         <file>Src/ComponentPage/ComplexPage.qml</file>
         <file>Src/ComponentPage/DailyRecommendPage.qml</file>

@@ -134,11 +134,9 @@ Item {
                     clip: true
                     color: AppTheme.bgCard
 
-                    Image {
+                    RetryImage {
                         anchors.fill: parent
-                        source: dailyRecommend ? dailyRecommend.coverUrl : ""
-                        asynchronous: true
-                        cache: true
+                        coverSource: dailyRecommend ? dailyRecommend.coverUrl : ""
                         fillMode: Image.PreserveAspectCrop
                         layer.enabled: true
                         layer.effect: OpacityMask {
@@ -238,13 +236,11 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                         }
 
-                        Image {
+                        RetryImage {
                             width: 40
                             height: 40
                             anchors.verticalCenter: parent.verticalCenter
-                            source: songData.union_cover
-                            asynchronous: true
-                            cache: true
+                            coverSource: songData.union_cover
                             fillMode: Image.PreserveAspectCrop
                             layer.enabled: true
                             layer.effect: OpacityMask {

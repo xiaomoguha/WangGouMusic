@@ -6,3 +6,4 @@ IconButton IconButton.qml
 ThemedPopup ThemedPopup.qml
 NowPlayingIndicator NowPlayingIndicator.qml
 WindowTintGradient WindowTintGradient.qml
+RetryImage RetryImage.qml
