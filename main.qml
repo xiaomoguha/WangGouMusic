@@ -367,6 +367,13 @@ ApplicationWindow {
         property: "windowHeight"
         value: root.height
     }
+    // 窗口遮蔽状态（最小化或关闭到托盘）同步给 BasicConfig：一起听聊天通知的判断依据。
+    // 注意 QML 的 visible 在最小化时仍为 true，必须看 visibility
+    Binding {
+        target: BasicConfig
+        property: "windowObscured"
+        value: root.visibility === Window.Minimized || root.visibility === Window.Hidden || !root.visible
+    }
     // 非歌单页时的渐变来源：正在播放（有歌且未暂停）→ 用当前歌曲封面主色。
     // dominantColor 由 PlaylistManager 内部提取器维护（播放页主题同源）。
     Binding {
