@@ -763,6 +763,20 @@ Window {
                 }
             }
 
+            // 上一曲（一起听模式禁用：队列由服务器控制，本地无上一首概念）
+            DesktopLyricsControlButton {
+                visible: !desktopLyrics.locked
+                scaleFactor: desktopLyrics.scale
+                opacity: (playlistmanager && playlistmanager.type !== 1) ? 1.0 : 0.3
+                normalColor: btnBgNormal
+                hoverColor: btnBgHover
+                iconSource: AppIcon.prev
+                onClicked: {
+                    if (playlistmanager && playlistmanager.type !== 1)
+                        playlistmanager.playPrevious()
+                }
+            }
+
             // 播放/暂停按钮（未锁定时显示）
             DesktopLyricsControlButton {
                 visible: !desktopLyrics.locked
@@ -782,6 +796,23 @@ Window {
                         if (playlistmanager)
                             playlistmanager.playstop();
                     } catch (e) {}
+                }
+            }
+
+            // 下一曲（一起听走服务器切歌广播）
+            DesktopLyricsControlButton {
+                visible: !desktopLyrics.locked
+                scaleFactor: desktopLyrics.scale
+                normalColor: btnBgNormal
+                hoverColor: btnBgHover
+                iconSource: AppIcon.next
+                onClicked: {
+                    if (!playlistmanager) return
+                    if (playlistmanager.type === 1) {
+                        if (websocket) websocket.playNextTogether()
+                    } else {
+                        playlistmanager.playNext()
+                    }
                 }
             }
 
@@ -937,6 +968,20 @@ Window {
                 }
             }
 
+            // 上一曲（一起听模式禁用：队列由服务器控制，本地无上一首概念）
+            DesktopLyricsControlButton {
+                visible: !desktopLyrics.locked
+                scaleFactor: desktopLyrics.scale
+                opacity: (playlistmanager && playlistmanager.type !== 1) ? 1.0 : 0.3
+                normalColor: btnBgNormal
+                hoverColor: btnBgHover
+                iconSource: AppIcon.prev
+                onClicked: {
+                    if (playlistmanager && playlistmanager.type !== 1)
+                        playlistmanager.playPrevious()
+                }
+            }
+
             // 播放/暂停按钮（未锁定时显示）
             DesktopLyricsControlButton {
                 visible: !desktopLyrics.locked
@@ -956,6 +1001,23 @@ Window {
                         if (playlistmanager)
                             playlistmanager.playstop();
                     } catch (e) {}
+                }
+            }
+
+            // 下一曲（一起听走服务器切歌广播）
+            DesktopLyricsControlButton {
+                visible: !desktopLyrics.locked
+                scaleFactor: desktopLyrics.scale
+                normalColor: btnBgNormal
+                hoverColor: btnBgHover
+                iconSource: AppIcon.next
+                onClicked: {
+                    if (!playlistmanager) return
+                    if (playlistmanager.type === 1) {
+                        if (websocket) websocket.playNextTogether()
+                    } else {
+                        playlistmanager.playNext()
+                    }
                 }
             }
 
