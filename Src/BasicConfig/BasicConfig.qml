@@ -67,6 +67,10 @@ QtObject {
     // 主窗口高度（由 main.qml 同步）：用于把「整窗 50% 处淡出」换算成每个面板内的渐变位置
     property real windowHeight: 752
 
+    // 主窗口被遮蔽（最小化或关闭到托盘，由 main.qml 同步）：
+    // 一起听聊天通知只看这个状态——窗口看得见就不打扰，看不见就通知，不论在哪个页面
+    property bool windowObscured: false
+
     // 安全地把 "#RRGGBB" 转为 rgba（与播放页一致，防 NaN 崩溃）
     function rgbFromHex(hex, alpha) {
         if (typeof hex !== "string" || hex.length < 7 || hex.charAt(0) !== "#")

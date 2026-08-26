@@ -1363,8 +1363,9 @@ Item {
             messageListView._autoScroll = true
             Qt.callLater(messageListView.positionViewAtEnd)
 
-            // 不在当前页面时，弹出系统通知
-            if (!root.visible && trayHandler) {
+            // 窗口最小化或关闭到托盘时弹系统通知——不论当前在哪个页面；
+            // 窗口看得见（含在别的页面）不打扰，用户正看着 App
+            if (BasicConfig.windowObscured && trayHandler) {
                 trayHandler.showMessage(
                     "网狗音乐 - " + (nickname || "未知用户"),
                     message,
