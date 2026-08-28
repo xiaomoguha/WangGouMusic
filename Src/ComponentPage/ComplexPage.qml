@@ -79,7 +79,7 @@ Page {
                         NumberAnimation on x {
                             from: -parent.width; to: parent.width
                             duration: 1500; loops: Animation.Infinite
-                            running: loadingOverlay.visible
+                            running: loadingOverlay.visible && !BasicConfig.uiIdle
                         }
                     }
                 }
@@ -209,7 +209,9 @@ Page {
                                 visible: songNameClip.overflow
                             }
                             NumberAnimation on x {
-                                running: songNameClip.overflow
+                                // uiIdle（失焦/被遮挡）时停跑：跑马灯是整窗 60fps 渲染的主驱动，
+                                // 用户没在看时白白烧 CPU（WindowServer 也跟着合成）
+                                running: songNameClip.overflow && !BasicConfig.uiIdle
                                 from: 0; to: -songNameClip.unitWidth
                                 duration: Math.max(3000, songNameClip.unitWidth * 20)
                                 loops: Animation.Infinite
@@ -381,7 +383,7 @@ Page {
                     }
                     RotationAnimation on rotation {
                         from: 0; to: 360; duration: 800; loops: Animation.Infinite
-                        running: parent.parent.visible
+                        running: parent.parent.visible && !BasicConfig.uiIdle
                     }
                 }
 

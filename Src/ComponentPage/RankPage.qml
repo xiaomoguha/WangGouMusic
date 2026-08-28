@@ -568,7 +568,7 @@ Item {
                     to: 360
                     duration: 800
                     loops: Animation.Infinite
-                    running: root.showSongs && rankList && rankList.isLoading
+                    running: root.showSongs && rankList && rankList.isLoading && !BasicConfig.uiIdle
                 }
             }
 

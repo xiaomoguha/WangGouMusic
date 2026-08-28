@@ -357,7 +357,7 @@ Item {
                         to: 360
                         duration: 800
                         loops: Animation.Infinite
-                        running: artistManager && artistManager.songsLoading
+                        running: artistManager && artistManager.songsLoading && !BasicConfig.uiIdle
                     }
                 }
 
@@ -667,7 +667,7 @@ Item {
                     to: 360
                     duration: 800
                     loops: Animation.Infinite
-                    running: artistManager && artistManager.albumsLoading
+                    running: artistManager && artistManager.albumsLoading && !BasicConfig.uiIdle
                 }
             }
 

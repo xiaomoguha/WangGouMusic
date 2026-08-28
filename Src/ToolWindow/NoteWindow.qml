@@ -61,7 +61,7 @@ ThemedPopup {
                             to: 360
                             duration: 800
                             loops: Animation.Infinite
-                            running: toast.visible && toast.mode === "loading"
+                            running: toast.visible && toast.mode === "loading" && !BasicConfig.uiIdle
                         }
                         // 遮挡一半形成弧线效果
                         Rectangle {
@@ -81,7 +81,7 @@ ThemedPopup {
                         anchors.centerIn: parent
                         opacity: 0.6
                         SequentialAnimation on opacity {
-                            running: toast.visible && toast.mode === "loading"
+                            running: toast.visible && toast.mode === "loading" && !BasicConfig.uiIdle
                             loops: Animation.Infinite
                             NumberAnimation {
                                 to: 1
@@ -202,7 +202,7 @@ ThemedPopup {
                 color: AppTheme.accent
                 // 左右来回移动
                 SequentialAnimation on x {
-                    running: toast.visible && toast.mode === "loading"
+                    running: toast.visible && toast.mode === "loading" && !BasicConfig.uiIdle
                     loops: Animation.Infinite
                     NumberAnimation {
                         to: parent.width - width

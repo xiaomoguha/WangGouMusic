@@ -116,7 +116,7 @@ Item {
                 layer.effect: ColorOverlay { source: refreshIco; color: AppTheme.iconDefault }
                 NumberAnimation on rotation {
                     from: 0; to: 360; duration: 800; loops: Animation.Infinite
-                    running: historyManager && historyManager.isLoading
+                    running: historyManager && historyManager.isLoading && !BasicConfig.uiIdle
                 }
             }
             HoverHandler { id: refreshHover; cursorShape: Qt.PointingHandCursor }
@@ -183,7 +183,7 @@ Item {
                     layer.effect: ColorOverlay { source: moreSpinner; color: AppTheme.textMuted }
                     NumberAnimation on rotation {
                         from: 0; to: 360; duration: 800; loops: Animation.Infinite
-                        running: moreSpinner.visible
+                        running: moreSpinner.visible && !BasicConfig.uiIdle
                     }
                 }
                 Text {

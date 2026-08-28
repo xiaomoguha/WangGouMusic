@@ -59,6 +59,9 @@ class PlaylistManager : public QObject
     Q_PROPERTY(QString dominantColor READ dominantColor NOTIFY dominantColorChanged)
     Q_PROPERTY(float percent READ getpercent NOTIFY percentChanged)
     Q_PROPERTY(QString percentstr READ getpercentstr NOTIFY percentChanged)
+    // UI 空闲（窗口被遮蔽或应用失焦，main.qml 同步）：跳过进度条 10fps 发射，
+    // 没人看时省掉主窗口整窗重绘；歌词 60Hz 定时器与桌面歌词不受影响
+    Q_PROPERTY(bool uiIdle READ isUiIdle WRITE setUiIdle NOTIFY uiIdleChanged)
     Q_PROPERTY(QString duration READ durationstr NOTIFY durationChanged)
     Q_PROPERTY(SongListModel *playlist READ playlistModel NOTIFY playlistUpdated)
     Q_PROPERTY(int playlistcount READ playlistcount NOTIFY playlistUpdated)
@@ -87,6 +90,8 @@ public:
     // 桌面歌词窗口可见 → 60Hz（与播放页一致），都不可见 → 定时器停止
     Q_INVOKABLE void setPlayingPageLyricsActive(bool active);
     Q_INVOKABLE void setDesktopLyricsActive(bool active);
+    bool isUiIdle() const { return m_uiIdle; }
+    void setUiIdle(bool idle);
     Q_INVOKABLE void addSong(const SongInfo &song);
     Q_INVOKABLE void addSong(const QVariantMap &songMap);
     Q_INVOKABLE void removeSong(int index);
@@ -191,6 +196,7 @@ signals:
     void dominantColorChanged();
     void downloadProgressChanged();
     void isBufferingChanged();
+    void uiIdleChanged();
     void climaxPercentChanged();
     void volumeChanged();
     void songUrlFailed(const QString &reason);  // 拿不到播放地址(共享号失效/网络异常)
@@ -248,6 +254,7 @@ private:
     bool m_playingPageLyricsActive = false;
     bool m_desktopLyricsActive     = false;
     int m_lyricFeedHz              = 0; // 当前实际刷新频率：60=任一歌词消费方可见 / 0=停
+    bool m_uiIdle                  = false; // 窗口被遮蔽/应用失焦（QML 同步）：停进度条 UI 发射
     void recomputeLyricFeed();
     void handlePlayerError(QMediaPlayer::Error error, const QString &errorString);
     QString formatTime(qint64 milliseconds);

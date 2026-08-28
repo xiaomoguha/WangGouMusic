@@ -197,7 +197,7 @@ Item {
                     layer.effect: ColorOverlay { source: moreSpinner; color: AppTheme.textMuted }
                     NumberAnimation on rotation {
                         from: 0; to: 360; duration: 800; loops: Animation.Infinite
-                        running: moreSpinner.visible
+                        running: moreSpinner.visible && !BasicConfig.uiIdle
                     }
                 }
                 Text {
