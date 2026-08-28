@@ -178,6 +178,21 @@ void PlaylistManager::setDesktopLyricsActive(bool active)
     recomputeLyricFeed();
 }
 
+// UI 空闲（失焦/被遮蔽，QML Binding 同步）：期间跳过进度条 10fps 发射。
+// 恢复可见时立刻补发一次，避免切回时进度条停在旧值
+void PlaylistManager::setUiIdle(bool idle)
+{
+    if (m_uiIdle == idle)
+        return;
+    m_uiIdle = idle;
+    emit uiIdleChanged();
+    if (!idle && m_player->duration() > 0)
+    {
+        m_lastPercentNotifyMs = 0;
+        emit percentChanged();
+    }
+}
+
 // 静态：从 QVariantMap 构造 SongInfo。统一字段映射（hash->songhash, cover->union_cover 等）
 SongInfo PlaylistManager::songFromMap(const QVariantMap &map)
 {
@@ -2161,9 +2176,10 @@ void PlaylistManager::updatePlaybackProgress(qint64 position)
         m_percentstr = formatTime(position);
         // 限频 100ms（10fps）：本地文件播放 positionChanged 可达 80Hz+。
         // 进度条 10fps 视觉无差（每秒仅走 ~0.1%），拖动由 QML 侧直接 seek 不受影响；
-        // 省掉主窗口（进度条/时长文本/渐变）高频整窗重渲染——它才是歌单页渲染主驱动
+        // 省掉主窗口（进度条/时长文本/渐变）高频整窗重渲染——它才是歌单页渲染主驱动。
+        // UI 空闲（失焦/被遮蔽）时完全停发：没人看，整窗重绘纯浪费
         const qint64 percentNow = QDateTime::currentMSecsSinceEpoch();
-        if (percentNow - m_lastPercentNotifyMs >= 100)
+        if (!m_uiIdle && percentNow - m_lastPercentNotifyMs >= 100)
         {
             m_lastPercentNotifyMs = percentNow;
             emit percentChanged();

@@ -374,6 +374,19 @@ ApplicationWindow {
         property: "windowObscured"
         value: root.visibility === Window.Minimized || root.visibility === Window.Hidden || !root.visible
     }
+    // 装饰性动画总闸：被遮蔽或应用失焦（用户切到别的 App）时停掉跑马灯等无限动画。
+    // 注意 root.appActive 只看窗口可见性不看焦点，此处必须看 Qt.application.state
+    Binding {
+        target: BasicConfig
+        property: "uiIdle"
+        value: BasicConfig.windowObscured || Qt.application.state !== Qt.ApplicationActive
+    }
+    // 同一把闸同步给 C++：失焦时停掉进度条 10fps 发射（桌面歌词 60Hz 定时器不受影响）
+    Binding {
+        target: playlistmanager
+        property: "uiIdle"
+        value: BasicConfig.uiIdle
+    }
     // 非歌单页时的渐变来源：正在播放（有歌且未暂停）→ 用当前歌曲封面主色。
     // dominantColor 由 PlaylistManager 内部提取器维护（播放页主题同源）。
     Binding {

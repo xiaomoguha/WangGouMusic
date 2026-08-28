@@ -95,7 +95,7 @@ Item {
                     from: 0; to: 360
                     duration: 800
                     loops: Animation.Infinite
-                    running: root.expanded && root.aiError === ""
+                    running: root.expanded && root.aiError === "" && !BasicConfig.uiIdle
                 }
             }
             Text {

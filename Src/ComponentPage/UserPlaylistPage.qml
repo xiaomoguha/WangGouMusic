@@ -772,7 +772,7 @@ Item {
                             }
                             NumberAnimation on rotation {
                                 from: 0; to: 360; duration: 800; loops: Animation.Infinite
-                                running: _refreshingAll || isLoadingDetail
+                                running: (_refreshingAll || isLoadingDetail) && !BasicConfig.uiIdle
                             }
                         }
                         HoverHandler { id: refreshListHover; cursorShape: Qt.PointingHandCursor }

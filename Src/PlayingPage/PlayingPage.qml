@@ -360,7 +360,8 @@ Rectangle {
                     // 暂停/隐藏/最小化时暂停，避免持续渲染拉高 CPU。
                     function updateRotation() {
                         const active = playlistmanager && !playlistmanager.isPaused
-                                       && root.lyricsOpened && root.appActive;
+                                       && root.lyricsOpened && root.appActive
+                                       && !BasicConfig.uiIdle;
                         if (active) {
                             if (rotationAnim.paused)
                                 rotationAnim.resume();
@@ -373,6 +374,10 @@ Rectangle {
                     Connections {
                         target: playlistmanager
                         function onIsPausedChanged() { avatarImage.updateRotation(); }
+                    }
+                    Connections {
+                        target: BasicConfig
+                        function onUiIdleChanged() { avatarImage.updateRotation(); }
                     }
                     Connections {
                         target: root
@@ -687,6 +692,7 @@ Rectangle {
                                 SequentialAnimation on life {
                                     running: starCursor.visible && lyricspage._lyricsVisible
                                              && playlistmanager && !playlistmanager.isPaused
+                                             && !BasicConfig.uiIdle
                                     PauseAnimation { duration: index * 500 }
                                     NumberAnimation { from: 0; to: 1; duration: 2000; loops: Animation.Infinite }
                                 }
@@ -747,7 +753,7 @@ Rectangle {
                     to: 360
                     duration: 1000
                     loops: Animation.Infinite
-                    running: parent.parent.parent.visible
+                    running: parent.parent.parent.visible && !BasicConfig.uiIdle
                 }
             }
 

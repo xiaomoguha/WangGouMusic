@@ -71,6 +71,11 @@ QtObject {
     // 一起听聊天通知只看这个状态——窗口看得见就不打扰，看不见就通知，不论在哪个页面
     property bool windowObscured: false
 
+    // 装饰性动画总闸（由 main.qml 同步）：窗口被遮蔽或应用失焦时为 true。
+    // 跑马灯/加载圈/唱片旋转这类无限动画不看用户是否在看就 60fps 空转，
+    // 是后台 CPU 高的主因；此闸只停装饰动画，播放进度/歌词等真实数据不受影响
+    property bool uiIdle: false
+
     // 安全地把 "#RRGGBB" 转为 rgba（与播放页一致，防 NaN 崩溃）
     function rgbFromHex(hex, alpha) {
         if (typeof hex !== "string" || hex.length < 7 || hex.charAt(0) !== "#")

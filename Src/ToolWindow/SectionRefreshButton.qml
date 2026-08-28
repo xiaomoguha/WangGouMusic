@@ -42,7 +42,7 @@ Item {
             to: refreshIcon.rotation + 360
             duration: 700
             loops: Animation.Infinite
-            running: root.busy || root._clickPending
+            running: (root.busy || root._clickPending) && !BasicConfig.uiIdle
         }
 
         // 请求结束：从当前角度平滑转完当前圈停稳（不闪、不倒转）

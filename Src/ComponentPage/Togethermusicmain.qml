@@ -1007,6 +1007,9 @@ Item {
                                 NumberAnimation on angle {
                                     from: 0; to: Math.PI * 2
                                     duration: 800; loops: Animation.Infinite
+                                    // 消息确认后 Canvas 仍随 delegate 常驻，不门控会永久 60fps
+                                    // 重画 Canvas（重建纹理）；页面被切走/失焦同理停转
+                                    running: sendingSpinner.visible && !BasicConfig.uiIdle
                                 }
                             }
 
