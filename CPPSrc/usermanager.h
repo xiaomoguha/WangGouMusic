@@ -74,6 +74,10 @@ signals:
     void userPlaylistReceived(const QVariantMap &data);
     void playlistDetailReceived(const QVariantMap &data);
 
+private slots:
+    /// ApiClient 检测到 20018（登录态被吊销）：清登录态并通知 UI 引导重新登录
+    void onTokenKicked();
+
 private:
     void setIsLoading(bool loading);
     void saveToSettings();

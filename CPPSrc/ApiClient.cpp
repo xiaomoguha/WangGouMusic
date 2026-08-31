@@ -185,12 +185,21 @@ QNetworkReply *ApiClient::post(
     return reply;
 }
 
+void ApiClient::checkKicked(const QJsonObject &root)
+{
+    // 酷狗 20018 = 登录态被吊销（被踢/失效）。error_code 字段类型不稳（数字/字符串混用），双读。
+    const QJsonValue v = root.value(QLatin1String("error_code"));
+    const int code = v.isString() ? v.toString().toInt() : v.toInt();
+    if (code == 20018)
+        emit tokenKicked();
+}
+
 QNetworkReply *ApiClient::getJson(
     const QString &url, JsonSuccessCb onSuccess, JsonErrorCb onError, int timeoutMs,
     const QMap<QString, QString> &extraHeaders
 )
 {
-    auto wrapped = [onSuccess, onError](QByteArray body)
+    auto wrapped = [this, onSuccess, onError](QByteArray body)
     {
         QJsonParseError perr;
         const QJsonDocument doc = QJsonDocument::fromJson(body, &perr);
@@ -206,6 +215,7 @@ QNetworkReply *ApiClient::getJson(
                 onError(QStringLiteral("JSON root is not an object"), 0);
             return;
         }
+        checkKicked(doc.object()); // 20018 被踢：先清状态再走业务回调
         if (onSuccess)
             onSuccess(doc.object());
     };
@@ -229,7 +239,7 @@ QNetworkReply *ApiClient::postJson(
     // post() 不会自动带 Content-Type，缺了它服务端(express.json 等)不解析 body
     QMap<QString, QString> headers = extraHeaders;
     headers.insert(QStringLiteral("Content-Type"), QStringLiteral("application/json"));
-    auto wrapped             = [onSuccess, onError](QByteArray resp)
+    auto wrapped             = [this, onSuccess, onError](QByteArray resp)
     {
         QJsonParseError perr;
         const QJsonDocument doc = QJsonDocument::fromJson(resp, &perr);
@@ -245,6 +255,7 @@ QNetworkReply *ApiClient::postJson(
                 onError(QStringLiteral("JSON root is not an object"), 0);
             return;
         }
+        checkKicked(doc.object()); // 20018 被踢：先清状态再走业务回调
         if (onSuccess)
             onSuccess(doc.object());
     };

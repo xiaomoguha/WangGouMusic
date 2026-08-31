@@ -61,6 +61,14 @@ public:
         int timeoutMs = -1, const QMap<QString, QString> &extraHeaders = {}
     );
 
+    /// 检查响应是否为酷狗 20018（登录态被吊销/被踢），是则发 tokenKicked()。
+    /// getJson/postJson 已内置；绕过 JSON 便捷层自行解析的调用方（如 HistoryManager）手动调用。
+    void checkKicked(const QJsonObject &root);
+
+signals:
+    /// 任何接口返回 20018 时发出。UserManager 接收后清登录态并引导重新登录。
+    void tokenKicked();
+
 private:
     explicit ApiClient(QObject *parent = nullptr);
     ~ApiClient() override;

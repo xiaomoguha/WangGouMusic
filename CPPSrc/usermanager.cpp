@@ -19,6 +19,8 @@ UserManager::UserManager(QObject *parent) : QObject(parent)
 {
     loadFromSettings();
     syncTokenToApiClient();
+    // 任何接口返回 20018（被踢/登录态吊销）统一从这里收口处理
+    connect(&ApiClient::instance(), &ApiClient::tokenKicked, this, &UserManager::onTokenKicked);
 }
 
 bool UserManager::isLoggedIn() const
@@ -499,6 +501,7 @@ void UserManager::postForm(
 )
 {
     // 旧接口语义：URL query + JSON body（与原 sendPostRequest 一致）
+    // 20018 被踢的统一拦截在 ApiClient::postJson 内（checkKicked），此处不再重复
     QUrlQuery query;
     for (const auto &p : params)
     {
@@ -506,24 +509,21 @@ void UserManager::postForm(
     }
     const QJsonObject body; // 原实现是空 body（POST 表单无 JSON body）
     const QString url = API_BASE + path + "?" + query.toString();
+    ApiClient::instance().postJson(url, body, std::move(onSuccess), std::move(onError), timeoutMs);
+}
 
-    // 统一拦截：任何用户接口返回 20018（token 被踢/失效）都清登录态并通知 UI，
-    // 否则 24h 刷新盲区里 token 被踢后界面仍显示已登录、操作全失败却无人引导重登
-    auto guarded = [this, onSuccess = std::move(onSuccess)](QJsonObject root) mutable
-    {
-        if (root.value("status").toInt() != 1 && root.value("error_code").toInt() == 20018 && !m_token.isEmpty())
-        {
-            qWarning() << "[UserManager] 登录态已被服务端吊销（20018），清除本地登录";
-            m_token.clear();
-            m_userid.clear();
-            clearSettings();
-            syncTokenToApiClient();
-            m_manualLogout = false; // 被踢不是主动退出，UI 可弹登录窗引导
-            emit loginStatusChanged();
-        }
-        onSuccess(root);
-    };
-    ApiClient::instance().postJson(url, body, std::move(guarded), std::move(onError), timeoutMs);
+void UserManager::onTokenKicked()
+{
+    // 已处于登出状态（如主动退出后残留请求返回）则忽略，避免误弹登录窗
+    if (m_token.isEmpty())
+        return;
+    qWarning() << "[UserManager] 登录态已被服务端吊销（20018），清除本地登录";
+    m_token.clear();
+    m_userid.clear();
+    clearSettings();
+    syncTokenToApiClient();
+    m_manualLogout = false; // 被踢不是主动退出，UI 弹登录窗引导重登
+    emit loginStatusChanged();
 }
 
 void UserManager::saveToSettings()
