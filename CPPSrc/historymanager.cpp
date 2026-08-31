@@ -1,4 +1,5 @@
 #include "historymanager.h"
+#include "ApiClient.h"
 #include "PlaylistCacheStore.h"
 #include "usermanager.h"
 
@@ -177,6 +178,7 @@ void HistoryManager::onPrivilegeData(const QByteArray &data)
     const QJsonDocument doc = QJsonDocument::fromJson(data, &perr);
     if (perr.error == QJsonParseError::NoError && doc.isObject())
     {
+        ApiClient::instance().checkKicked(doc.object()); // 20018 被踢：清登录态并弹重登
         const QJsonArray arr = doc.object()["data"].toArray();
         for (const QJsonValue &v : arr)
         {
@@ -318,6 +320,7 @@ bool HistoryManager::parsePlayhistoryData(const QByteArray &data, QVariantList &
         qWarning() << "[HistoryManager] playhistory parse error:" << perr.errorString();
         return false;
     }
+    ApiClient::instance().checkKicked(doc.object()); // 20018 被踢：清登录态并弹重登
     const QJsonObject dataObj = doc.object()["data"].toObject();
     hasMore = dataObj["has_more"].toInt() > 0;
     nextBp  = dataObj["bp"].toString();
@@ -358,7 +361,10 @@ void HistoryManager::onUploadDone(const QByteArray &data)
     QJsonParseError perr;
     const QJsonDocument doc = QJsonDocument::fromJson(data, &perr);
     if (perr.error == QJsonParseError::NoError && doc.isObject())
+    {
+        ApiClient::instance().checkKicked(doc.object()); // 20018 被踢：清登录态并弹重登
         success = doc.object()["status"].toInt() == 1;
+    }
     if (success)
     {
         for (const QVariant &v : m_pendingCommit)
