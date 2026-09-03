@@ -430,6 +430,47 @@ void UserManager::fetchGradeInfo()
     );
 }
 
+// 登录设备列表（userinfoservice /v2/get_dev）：data.li[] = 正版 App「登录设备管理」的 API 版。
+// 只读查询；t = 登录时间（服务端更新有 ~1 分钟延迟，前端不自动轮询）
+void UserManager::fetchLoginDevices()
+{
+    if (!isLoggedIn())
+    {
+        emit loginDevicesFailed(QStringLiteral("未登录"));
+        return;
+    }
+    postForm(
+        "/login/device", {{"token", m_token}, {"userid", m_userid}},
+        [this](QJsonObject root)
+        {
+            const int status        = root["status"].toInt();
+            const QJsonArray li     = root["data"].toObject()["li"].toArray();
+            if (status != 1 && li.isEmpty())
+            {
+                QString msg = root["message"].toString();
+                if (msg.isEmpty())
+                    msg = QString("获取失败 (错误码: %1)").arg(root["error_code"].toInt());
+                emit loginDevicesFailed(msg);
+                return;
+            }
+            QVariantList devices;
+            for (const QJsonValue &v : li)
+            {
+                const QJsonObject o = v.toObject();
+                QVariantMap d;
+                d["app"] = o["app"].toString();
+                d["dev"] = o["dev"].toString();
+                d["loc"] = o["loc"].toString();
+                d["t"]   = o["t"].toVariant().toLongLong(); // 字段类型数字/字符串混用，双读
+                d["mid"] = o["mid"].toString();
+                devices.append(d);
+            }
+            emit loginDevicesReceived(devices);
+        },
+        [this](QString err, int) { emit loginDevicesFailed(QString("网络错误: %1").arg(err)); }
+    );
+}
+
 // ── 缓存相关（转发到 PlaylistCacheStore，统一缓存目录实现）──
 
 QString UserManager::getCacheDir() const
