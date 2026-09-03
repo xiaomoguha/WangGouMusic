@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(网狗音乐 VERSION 0.7.6 LANGUAGES CXX)
+project(网狗音乐 VERSION 0.7.7 LANGUAGES CXX)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
