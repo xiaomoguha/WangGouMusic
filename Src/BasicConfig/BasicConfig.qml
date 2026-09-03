@@ -76,6 +76,10 @@ QtObject {
     // 是后台 CPU 高的主因；此闸只停装饰动画，播放进度/歌词等真实数据不受影响
     property bool uiIdle: false
 
+    // 模态弹窗输入锁：弹窗置位/复位，main.qml 据此禁用 windowShell。
+    // 点击会沿 z 序穿透到页面 TapHandler（MouseArea 拦不住），只能禁底层
+    property bool modalInputLock: false
+
     // 安全地把 "#RRGGBB" 转为 rgba（与播放页一致，防 NaN 崩溃）
     function rgbFromHex(hex, alpha) {
         if (typeof hex !== "string" || hex.length < 7 || hex.charAt(0) !== "#")

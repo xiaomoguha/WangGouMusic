@@ -57,6 +57,8 @@ public:
     Q_INVOKABLE void cacheUserDetail(const QVariantMap &data);
     Q_INVOKABLE QVariantMap loadCachedUserDetail();
     Q_INVOKABLE void fetchGradeInfo();  // 听歌等级/累计时长查询（标准版协议下上报不记账，仅查询展示）
+    /// 登录设备列表（= 正版 App 的「账号与设备管理」），只读查询，踢下线暂不做
+    Q_INVOKABLE void fetchLoginDevices();
 
 signals:
     void loginStatusChanged();
@@ -71,6 +73,8 @@ signals:
     void tokenRefreshResult(bool success);
     void userDetailReceived(const QVariantMap &data);
     void gradeInfoReceived(const QVariantMap &data);
+    void loginDevicesReceived(const QVariantList &devices);  // data.li[]：app/dev/loc/t/mid
+    void loginDevicesFailed(const QString &error);
     void userPlaylistReceived(const QVariantMap &data);
     void playlistDetailReceived(const QVariantMap &data);
 

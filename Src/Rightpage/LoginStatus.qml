@@ -121,7 +121,7 @@ Row {
         }
     }
 
-    // 用户菜单（已登录时）
+    // 用户菜单（已登录时）：modal + modalInputLock，点击不穿透
     Popup {
         id: userMenu
         y: parent.height + 6
@@ -129,9 +129,19 @@ Row {
         width: 260
         height: menuContent.implicitHeight + 24
         padding: 12
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        modal: true
+        closePolicy: Popup.CloseOnEscape
+        // 透明遮罩：点菜单外 = 关菜单（替代 CloseOnPressOutside）
+        Overlay.modal: Rectangle {
+            color: "transparent"
+            MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons; onClicked: userMenu.close() }
+        }
+
+        // 兜底吞掉菜单内点击
+        MouseArea { anchors.fill: parent; onClicked: {} }
 
         onAboutToShow: {
+            BasicConfig.modalInputLock = true // 锁底层输入，防点击穿透
             if (userManager && userManager.isLoggedIn) {
                 // 先加载缓存
                 var cached = userManager.loadCachedUserDetail()
@@ -142,6 +152,8 @@ Row {
                 userManager.fetchGradeInfo()
             }
         }
+
+        onClosed: BasicConfig.modalInputLock = false
 
         background: Rectangle {
             radius: AppTheme.radiusMedium
@@ -434,6 +446,31 @@ Row {
                 color: AppTheme.borderSubtle
             }
 
+            // ── 登录设备 ──
+            Rectangle {
+                width: parent.width
+                height: 32
+                radius: 6
+                color: menuDeviceHover.hovered ? AppTheme.bgNavHover : "transparent"
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "登录设备"
+                    color: AppTheme.textPrimary
+                    font.pixelSize: AppTheme.fontSizeBody
+                    font.family: AppTheme.fontFamily
+                }
+
+                HoverHandler { id: menuDeviceHover }
+
+                TapHandler {
+                    onTapped: {
+                        userMenu.close()
+                        devicePopup.open()
+                    }
+                }
+            }
+
             // ── 退出登录 ──
             Rectangle {
                 width: parent.width
@@ -455,6 +492,236 @@ Row {
                     onTapped: {
                         userMenu.close()
                         if (userManager) userManager.logout()
+                    }
+                }
+            }
+        }
+    }
+
+    // 登录设备列表窗口：ThemedPopup + modalInputLock，点击不穿透
+    ThemedPopup {
+        id: devicePopup
+        width: 400
+        height: 460
+        padding: 0
+
+        property var devices: []
+        property bool loading: false
+        property string errorMsg: ""
+
+        function refresh() {
+            if (!userManager || !userManager.isLoggedIn) return
+            loading = true
+            errorMsg = ""
+            userManager.fetchLoginDevices()
+        }
+
+        onAboutToShow: {
+            BasicConfig.modalInputLock = true // 锁底层输入，防点击穿透
+            // 首次打开拉一次；之后沿用缓存，手动点刷新才重新请求
+            // （登录时间字段服务端更新有延迟，频繁刷新看不出变化）
+            if (!devices || devices.length === 0) refresh()
+        }
+
+        onClosed: {
+            BasicConfig.modalInputLock = false
+            loading = false
+        }
+
+        Connections {
+            target: userManager
+            function onLoginDevicesReceived(devices) {
+                devicePopup.devices = devices
+                devicePopup.loading = false
+            }
+            function onLoginDevicesFailed(error) {
+                if (!devicePopup.loading) return
+                devicePopup.errorMsg = error
+                devicePopup.loading = false
+            }
+        }
+
+        contentItem: Item {
+            clip: true
+
+            // 兜底吞掉弹窗内点击
+            MouseArea { anchors.fill: parent; onClicked: {} }
+
+            Column {
+                id: deviceCol
+                anchors.fill: parent
+                anchors.margins: 20
+                spacing: 12
+
+                // ── 标题 + 刷新 + 关闭 ──
+                Item {
+                    width: parent.width
+                    height: 24
+
+                    Text {
+                        text: "当前登录设备"
+                        color: AppTheme.textPrimary
+                        font.pixelSize: AppTheme.fontSizeTitle
+                        font.bold: true
+                        font.family: AppTheme.fontFamily
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+
+                    // 刷新
+                    Rectangle {
+                        width: 24
+                        height: 24
+                        radius: 12
+                        anchors.right: deviceCloseBtn.left
+                        anchors.rightMargin: 8
+                        anchors.verticalCenter: parent.verticalCenter
+                        color: deviceRefreshHover.hovered ? AppTheme.iconButtonHover : "transparent"
+
+                        Image {
+                            id: deviceRefreshIcon
+                            anchors.centerIn: parent
+                            width: 13
+                            height: 13
+                            source: AppIcon.refresh
+                            sourceSize: Qt.size(128, 128)
+                            mipmap: true
+                            fillMode: Image.PreserveAspectFit
+                            layer.enabled: true
+                            layer.effect: ColorOverlay { source: deviceRefreshIcon; color: AppTheme.textSecondary }
+                        }
+
+                        HoverHandler { id: deviceRefreshHover }
+                        TapHandler { onTapped: devicePopup.refresh() }
+                    }
+
+                    // 关闭
+                    Rectangle {
+                        id: deviceCloseBtn
+                        width: 24
+                        height: 24
+                        radius: 12
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        color: deviceCloseHover.hovered ? AppTheme.iconButtonHover : "transparent"
+
+                        Image {
+                            id: deviceCloseIcon
+                            anchors.centerIn: parent
+                            width: 12
+                            height: 12
+                            source: AppIcon.close
+                            sourceSize: Qt.size(128, 128)
+                            mipmap: true
+                            fillMode: Image.PreserveAspectFit
+                            layer.enabled: true
+                            layer.effect: ColorOverlay { source: deviceCloseIcon; color: AppTheme.textSecondary }
+                        }
+
+                        HoverHandler { id: deviceCloseHover }
+                        TapHandler { onTapped: devicePopup.close() }
+                    }
+                }
+
+                // ── 加载 / 错误状态 ──
+                Text {
+                    visible: devicePopup.loading
+                    text: "加载中..."
+                    color: AppTheme.textMuted
+                    font.pixelSize: AppTheme.fontSizeBody
+                    font.family: AppTheme.fontFamily
+                    width: parent.width
+                    horizontalAlignment: Text.AlignHCenter
+                    topPadding: 24
+                }
+
+                Text {
+                    visible: !devicePopup.loading && devicePopup.errorMsg !== ""
+                    text: devicePopup.errorMsg
+                    color: AppTheme.errorColor
+                    font.pixelSize: AppTheme.fontSizeBody
+                    font.family: AppTheme.fontFamily
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                    horizontalAlignment: Text.AlignHCenter
+                    topPadding: 24
+                }
+
+                // ── 设备列表 ──
+                ListView {
+                    id: deviceList
+                    visible: !devicePopup.loading && devicePopup.errorMsg === ""
+                    width: parent.width
+                    height: deviceCol.height - 36
+                    clip: true
+                    spacing: 8
+                    boundsBehavior: Flickable.StopAtBounds
+                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+                    model: devicePopup.devices
+
+                    delegate: Rectangle {
+                        width: deviceList.width
+                        height: 58
+                        radius: AppTheme.radiusSmall
+                        color: AppTheme.bgInput
+
+                        Column {
+                            anchors.fill: parent
+                            anchors.margins: 10
+                            spacing: 4
+
+                            Item {
+                                width: parent.width
+                                height: 20
+
+                                Text {
+                                    text: modelData.app || "未知应用"
+                                    color: AppTheme.textPrimary
+                                    font.pixelSize: AppTheme.fontSizeBody
+                                    font.bold: true
+                                    font.family: AppTheme.fontFamily
+                                    anchors.left: parent.left
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+
+                                Text {
+                                    text: modelData.loc || "未知位置"
+                                    color: AppTheme.textMuted
+                                    font.pixelSize: AppTheme.fontSizeCaption
+                                    font.family: AppTheme.fontFamily
+                                    elide: Text.ElideRight
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                            }
+
+                            Item {
+                                width: parent.width
+                                height: 16
+
+                                Text {
+                                    // API 登录不传 dev，酷狗回 "-"：原样显示
+                                    text: modelData.dev || "-"
+                                    color: AppTheme.textSecondary
+                                    font.pixelSize: AppTheme.fontSizeCaption
+                                    font.family: AppTheme.fontFamily
+                                    anchors.left: parent.left
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+
+                                Text {
+                                    text: modelData.t > 0
+                                        ? Qt.formatDateTime(new Date(modelData.t * 1000), "MM-dd hh:mm") + " 登录"
+                                        : ""
+                                    color: AppTheme.textMuted
+                                    font.pixelSize: AppTheme.fontSizeCaption
+                                    font.family: AppTheme.fontFamily
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                            }
+                        }
                     }
                 }
             }

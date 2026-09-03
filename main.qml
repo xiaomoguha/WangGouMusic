@@ -189,11 +189,11 @@ ApplicationWindow {
     }
     // 内容容器：直接铺满窗口（窗口投影方案在本机 Qt6.10.1 下渲染不稳定，已移除）。
     // 播放详情页打开时禁用底层交互：否则点击会沿 z 序穿透到下面页面的 TapHandler
-    // （曾导致点「展开回复」误触底层歌曲卡片，直接切歌）
+    // （曾导致点「展开回复」误触底层歌曲卡片，直接切歌）；模态弹窗同理走 modalInputLock
     Item {
         id: windowShell
         anchors.fill: parent
-        enabled: !root.lyricsOpened
+        enabled: !root.lyricsOpened && !BasicConfig.modalInputLock
         // 播放详情页完全展开后整块隐藏：否则三个面板（含当前页全部节点/离屏 layer）
         // 仍参与每帧渲染（覆盖≠隐藏）；收起滑动过程中保持可见，避免露出空底
         visible: !root.lyricsOpened || lyricsSlideAnim.running
