@@ -31,4 +31,8 @@ void macRemoveNativeTrayItem();
 /// 事件会让 AppKit 抛 NSException）。见 mactrayitem.mm 注释。
 void macNeutralizeQtTrayDelegateCrash();
 
+/// 原生系统通知（UNUserNotificationCenter）。macOS 26+ 无 QSystemTrayIcon，
+/// 托盘 showMessage 不可用，聊天通知从这里走；首次调用触发系统授权弹窗。
+void macShowNotification(const QString &title, const QString &message);
+
 #endif // MACTRAYITEM_H

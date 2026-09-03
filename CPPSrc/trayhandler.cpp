@@ -144,6 +144,14 @@ void TrayHandler::onShowRequested()
 
 void TrayHandler::showMessage(const QString &title, const QString &message, int timeoutMs)
 {
+#ifdef Q_OS_MAC
+    // macOS 26+ 无 QSystemTrayIcon（原生 NSStatusItem 路径），托盘消息改走系统通知
+    if (m_nativeTray)
+    {
+        macShowNotification(title, message);
+        return;
+    }
+#endif
     if (m_tray && m_tray->isVisible())
         m_tray->showMessage(title, message, QSystemTrayIcon::Information, timeoutMs);
 }

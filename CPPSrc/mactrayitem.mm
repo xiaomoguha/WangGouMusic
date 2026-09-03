@@ -1,5 +1,6 @@
 #import <AppKit/AppKit.h>
 #import <objc/runtime.h>
+#import <UserNotifications/UserNotifications.h>
 #include "mactrayitem.h"
 
 #include <QFile>
@@ -142,4 +143,22 @@ void macRemoveNativeTrayItem()
         g_statusItem = nil;
         g_menuTarget = nil;
     }
+}
+
+void macShowNotification(const QString &title, const QString &message)
+{
+    // UNUserNotificationCenter：请求授权幂等（系统只弹一次），未授权时静默丢弃
+    UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+    [center requestAuthorizationWithOptions:UNAuthorizationOptionAlert
+                          completionHandler:^(BOOL granted, NSError *error) {
+                              Q_UNUSED(granted) Q_UNUSED(error)
+                          }];
+    UNMutableNotificationContent *content = [[UNMutableNotificationContent alloc] init];
+    content.title = title.toNSString();
+    content.body = message.toNSString();
+    UNNotificationRequest *request =
+        [UNNotificationRequest requestWithIdentifier:@"wanggou-chat"
+                                              content:content
+                                              trigger:nil];
+    [center addNotificationRequest:request withCompletionHandler:nil];
 }
