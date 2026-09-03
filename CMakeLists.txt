@@ -123,7 +123,8 @@ if(APPLE)
     find_library(MEDIAPLAYER_FRAMEWORK MediaPlayer)
     find_library(COREAUDIO_FRAMEWORK CoreAudio)
     find_library(COREIMAGE_FRAMEWORK CoreImage)
-    target_link_libraries(WangGouMusic PRIVATE ${COCOA_FRAMEWORK} ${MEDIAPLAYER_FRAMEWORK} ${COREAUDIO_FRAMEWORK} ${COREIMAGE_FRAMEWORK})
+    find_library(USERNOTIFICATIONS_FRAMEWORK UserNotifications)
+    target_link_libraries(WangGouMusic PRIVATE ${COCOA_FRAMEWORK} ${MEDIAPLAYER_FRAMEWORK} ${COREAUDIO_FRAMEWORK} ${COREIMAGE_FRAMEWORK} ${USERNOTIFICATIONS_FRAMEWORK})
 
     # QWindowKit：mac 主窗口用真原生 traffic lights（系统级悬停图案 + 动作），
     # 内容铺满到标题栏下方（无透明带）。静态库，仅 mac 链接；Windows 构建不触及。
