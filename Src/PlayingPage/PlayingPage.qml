@@ -474,6 +474,27 @@ Rectangle {
                 NumberAnimation { duration: 300; easing.type: Easing.InOutQuad }
             }
 
+    // 切歌过渡：整块歌词快速退场（淡出 + 下沉）→ 进场（淡入 + 上浮回弹），
+    // 避免新歌歌词"硬切"地蹦出来
+    Connections {
+        target: playlistmanager
+        function onCurrentSonghashChanged() {
+            lyricSwapAnim.restart()
+        }
+    }
+
+    SequentialAnimation {
+        id: lyricSwapAnim
+        ParallelAnimation {
+            NumberAnimation { target: lyricList; property: "opacity"; to: 0.18; duration: 90; easing.type: Easing.OutCubic }
+            NumberAnimation { target: lyricSwapShift; property: "y"; to: 12; duration: 110; easing.type: Easing.OutCubic }
+        }
+        ParallelAnimation {
+            NumberAnimation { target: lyricList; property: "opacity"; to: 1; duration: 260; easing.type: Easing.OutCubic }
+            NumberAnimation { target: lyricSwapShift; property: "y"; to: 0; duration: 340; easing.type: Easing.OutBack; easing.overshoot: 1.15 }
+        }
+    }
+
     ListView {
         id: lyricList
         anchors.left: parent.left
@@ -482,6 +503,7 @@ Rectangle {
         width: panelHost.width
         clip: true
         cacheBuffer: 600
+        transform: Translate { id: lyricSwapShift; y: 0 }
 
         model: playlistmanager ? playlistmanager.m_lyrics : 0
         interactive: false   //是否可以手动滚动
