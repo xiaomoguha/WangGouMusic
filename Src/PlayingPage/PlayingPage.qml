@@ -180,12 +180,14 @@ Rectangle {
         if (!playlistmanager || !songComments) return
         var hash = playlistmanager.currentSonghash
         if (hash === "") return
+        // mxid：一起听由服务器解析下发，有它评论直连免歌名搜索
+        var mxid = playlistmanager.currentSongMxid || ""
         if (lyricspage.commentsLoadedHash !== hash) {
             // fetchComments 返回 false = 有请求在途，不标记已加载，等下一轮重试
-            if (songComments.fetchComments(songName, hash))
+            if (songComments.fetchComments(songName, hash, mxid))
                 lyricspage.commentsLoadedHash = hash
         } else if (songComments.comments.length === 0 && !songComments.isLoading) {
-            songComments.fetchComments(songName, hash)
+            songComments.fetchComments(songName, hash, mxid)
         }
     }
 

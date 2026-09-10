@@ -17,6 +17,9 @@ const char *const kApiRoot = "https://api.special520.com";
 SongComments::SongComments(QObject *parent) : QObject(parent)
 {
     connect(&m_searchRequester, &HttpGetRequester::dataReceived, this, &SongComments::onSearchData);
+    connect(&m_liteRequester, &HttpGetRequester::dataReceived, this, &SongComments::onLiteData);
+    connect(&m_liteRequester, &HttpGetRequester::requestFailed, this, [this](QString) { startNameSearch(); });
+    connect(&m_liteRequester, &HttpGetRequester::requestTimeout, this, [this]() { startNameSearch(); });
     connect(&m_requester, &HttpGetRequester::dataReceived, this, &SongComments::onCommentsData);
     connect(&m_repliesRequester, &HttpGetRequester::dataReceived, this, &SongComments::onRepliesData);
 
@@ -30,7 +33,7 @@ SongComments::SongComments(QObject *parent) : QObject(parent)
     connect(&m_repliesRequester, &HttpGetRequester::requestTimeout, this, timeout);
 }
 
-bool SongComments::fetchComments(const QString &title, const QString &hash)
+bool SongComments::fetchComments(const QString &title, const QString &hash, const QString &mxid)
 {
     if (title.isEmpty() || hash.isEmpty() || m_isLoading)
         return false;
@@ -51,9 +54,25 @@ bool SongComments::fetchComments(const QString &title, const QString &hash)
         return true;
     }
 
-    // 按歌名搜索 → hash 精确匹配拿 album_audio_id（即 mixsongid）。
-    // 去掉结尾的 "(Explicit)" 等括号注释，提高命中率
-    QString keyword = title;
+    // 一起听场景服务器已按 hash 解析好 mixsongid（免歌名搜索，且不会撞错版本）
+    if (!mxid.isEmpty())
+    {
+        m_mixsongid     = mxid;
+        m_mixsongidHash = m_hash;
+        requestComments(mxid, 1);
+        return true;
+    }
+
+    // 服务器没给 mxid（本地播放/旧服务器）：按 hash 解析 album_audio_id
+    // （精确对应正在播的版本），失败再退到歌名搜索
+    m_liteRequester.fetchData(QStringLiteral("%1/privilege/lite?hash=%2").arg(kApiRoot, m_hash));
+    return true;
+}
+
+// 歌名搜索兜底：去掉结尾的 "(Explicit)" 等括号注释，提高命中率
+void SongComments::startNameSearch()
+{
+    QString keyword = m_title;
     keyword.replace(QRegularExpression(QStringLiteral(R"(\s*\([^)]*\)\s*$)")), QString());
     QUrl url(QStringLiteral("%1/search").arg(kApiRoot));
     QUrlQuery query;
@@ -62,7 +81,29 @@ bool SongComments::fetchComments(const QString &title, const QString &hash)
     query.addQueryItem("pagesize", "10");
     url.setQuery(query);
     m_searchRequester.fetchData(url.toString());
-    return true;
+}
+
+// privilege/lite 响应：data[0].album_audio_id 即 mixsongid
+void SongComments::onLiteData(const QByteArray &data)
+{
+    QJsonParseError perr;
+    const QJsonDocument doc = QJsonDocument::fromJson(data, &perr);
+    if (perr.error != QJsonParseError::NoError || !doc.isObject())
+    {
+        onFailed(perr.errorString());
+        return;
+    }
+    const QJsonArray arr = doc.object()["data"].toArray();
+    const qint64 aid     = arr.isEmpty() ? 0 : arr[0].toObject()["album_audio_id"].toVariant().toLongLong();
+    if (aid > 0)
+    {
+        m_mixsongid     = QString::number(aid);
+        m_mixsongidHash = m_hash;
+        requestComments(m_mixsongid, 1);
+        return;
+    }
+    // lite 没回 album_audio_id（冷门歌等）：退到歌名搜索
+    startNameSearch();
 }
 
 void SongComments::fetchMore()

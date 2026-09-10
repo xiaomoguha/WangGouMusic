@@ -38,7 +38,7 @@ WebSocketClient::WebSocketClient(PlaylistManager *playManager, UserManager *user
             playmanager->playTogetherSongFromServer(
                 data["song_url"].toString(), data["songname"].toString(), data["songhash"].toString(),
                 data["singername"].toString(), data["cover_url"].toString(), data["album_name"].toString(),
-                data["duration"].toString()
+                data["duration"].toString(), data["mxid"].toString()
             );
             return;
         }
@@ -717,6 +717,7 @@ void WebSocketClient::handleSongInfoBroadcast(const QJsonObject &data, bool allo
     QString coverUrl     = data["cover_url"].toString();
     QString albumName    = data["album_name"].toString();
     QString duration     = data["duration"].toString();
+    QString mxid         = data["mxid"].toString(); // 评论用 id：服务器解析下发，免客户端按歌名搜索
     double playedPercent = data["played_percent"].toDouble();
     int isPlaying        = data["is_playing"].toInt();
 
@@ -742,7 +743,7 @@ void WebSocketClient::handleSongInfoBroadcast(const QJsonObject &data, bool allo
         {
             playmanager->setTogetherSeekPercent(playedPercent);
         }
-        playmanager->playTogetherSongFromServer(songUrl, songName, songHash, singerName, coverUrl, albumName, duration);
+        playmanager->playTogetherSongFromServer(songUrl, songName, songHash, singerName, coverUrl, albumName, duration, mxid);
     }
     else
     {
@@ -764,7 +765,7 @@ void WebSocketClient::handleSongInfoBroadcast(const QJsonObject &data, bool allo
             {
                 playmanager->clearTogetherSongHash(); // 允许重新播放同一首歌
                 playmanager->playTogetherSongFromServer(
-                    songUrl, songName, songHash, singerName, coverUrl, albumName, duration
+                    songUrl, songName, songHash, singerName, coverUrl, albumName, duration, mxid
                 );
                 return;
             }
@@ -854,6 +855,10 @@ void WebSocketClient::handleSongProgressBroadcast(const QJsonObject &data)
             double diffSec = qAbs(localPercent - playedPercent) * playerDuration / 1000.0;
             if (diffSec > 3.0)
             {
+                // 纠偏诊断：反复倒退/跳动时凭这行定位是 duration 不符、进度停滞还是服务器漂移
+                qDebug() << "[Together] 进度纠偏: 本地" << localPercent << "服务器" << playedPercent
+                         << "时长ms" << playerDuration << "偏差s" << diffSec
+                         << "seek到" << static_cast<qint64>(playedPercent * playerDuration);
                 playmanager->seekToPercent(playedPercent);
             }
         }

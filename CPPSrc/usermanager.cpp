@@ -63,7 +63,8 @@ void UserManager::setIsLoading(bool loading)
 
 void UserManager::syncTokenToApiClient() const
 {
-    ApiClient::instance().setAuthToken(m_token);
+    // token+userid 一起注入：Cookie 头随所有请求发出，服务器按 userid 判定出口 IP
+    ApiClient::instance().setAuthToken(m_token, m_userid);
 }
 
 void UserManager::login(const QString &username, const QString &password)

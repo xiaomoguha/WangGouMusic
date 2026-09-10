@@ -43,7 +43,10 @@ public:
     /// 设置 User-Agent（影响所有后续请求）
     void setUserAgent(const QString &ua);
     /// 设置鉴权 Token（自动以 "Authorization: Bearer <token>" 注入到所有请求）
-    void setAuthToken(const QString &token);
+    /// userid 一并注入为 Cookie 头：服务器按 userid 判定出口——共享账号统一服务器
+    /// IP 出去，其他账号透传本人 IP。效果等价于登录响应种下的会话 cookie，但持久
+    /// （身份来自 plist 登录态，启动即生效，不依赖某次响应的 Set-Cookie）
+    void setAuthToken(const QString &token, const QString &userid = QString());
 
     // ── 原始 HTTP ────────────────────────────────────────
     /// GET 请求。timeoutMs <= 0 表示用 defaultTimeout；extraHeaders 为附加请求头（如管理密钥）
@@ -92,6 +95,7 @@ private:
     QNetworkAccessManager *m_nam;
     QString m_userAgent = QStringLiteral("WangGouMusic/0.5.7");
     QString m_authToken;
+    QString m_authUserid;
     int m_defaultTimeout = 10000;
     QHash<QNetworkReply *, QTimer *> m_timeoutTimers; // 跟踪活跃 reply 的超时
 };

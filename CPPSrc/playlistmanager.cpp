@@ -1079,6 +1079,16 @@ QString PlaylistManager::currentSongHash() const
     return "";
 }
 
+// 当前歌的评论用 album_audio_id：一起听场景由服务器解析下发；本地播放为空（评论走歌名搜索兜底）
+QString PlaylistManager::currentSongMxid() const
+{
+    if (m_currentIndex >= 0 && m_currentIndex < (*m_curplaylist).size())
+    {
+        return (*m_curplaylist)[m_currentIndex].mxid;
+    }
+    return "";
+}
+
 bool PlaylistManager::isPaused() const
 {
     return m_isPaused;
@@ -2544,6 +2554,7 @@ void PlaylistManager::syncTogetherPlaylistFromServer(const QJsonArray &songs)
         song.album_name        = obj["album_name"].toString();
         song.duration          = obj["duration"].toString();
         song.union_cover       = obj["cover_url"].toString();
+        song.mxid              = obj["mxid"].toString();
         song.added_by_nickname = obj["added_by_nickname"].toString();
         song.added_by_avatar   = obj["added_by_avatar"].toString();
         m_togetherplaylist.append(song);
@@ -2572,7 +2583,7 @@ void PlaylistManager::syncTogetherPlaylistFromServer(const QJsonArray &songs)
 
 void PlaylistManager::playTogetherSongFromServer(
     const QString &songUrl, const QString &songName, const QString &songHash, const QString &singerName,
-    const QString &coverUrl, const QString &albumName, const QString &duration
+    const QString &coverUrl, const QString &albumName, const QString &duration, const QString &mxid
 )
 {
     // 防重入：同一首歌正在播放或下载中，跳过
@@ -2602,6 +2613,8 @@ void PlaylistManager::playTogetherSongFromServer(
         if (m_togetherplaylist[i].songhash == songHash)
         {
             m_togetherplaylist[i].url = songUrl;
+            if (!mxid.isEmpty())
+                m_togetherplaylist[i].mxid = mxid; // 服务器下发的评论用 id，更新不覆盖为空
             playIndex                 = i;
             break;
         }
@@ -2613,6 +2626,7 @@ void PlaylistManager::playTogetherSongFromServer(
         song.songhash    = songHash;
         song.url         = songUrl;
         song.singername  = singerName;
+        song.mxid        = mxid;
         song.union_cover = coverUrl;
         song.album_name  = albumName;
         song.duration    = duration;
