@@ -98,31 +98,53 @@ Item {
         }
     }
 
-    // ===== 流星：斜向缓慢划过，方向严格沿拖尾角度 =====
+    // ===== 流星：每次出现都重新随机（时机 / 轨迹 / 长度），避免"固定间隔三个一起冒出来" =====
     Repeater {
         model: root.meteorCount
 
         delegate: Item {
             id: meteor
 
-            // 拖尾角度：既决定条形朝向，也决定飞行方向（否则会出现"竖着掉"）
-            readonly property real angleDeg: 26 + root.rand(index, 48.0) * 16
-            readonly property real angleRad: angleDeg * Math.PI / 180
-            readonly property real dur: 3200 + root.rand(index, 41.0) * 2000
-            readonly property real pause: 4000 + root.rand(index, 42.0) * 9000
-            // 起点在面板上方、横向铺开；沿角度方向飞一段刚好穿过可视区
-            readonly property real startX: root.rand(index, 43.0) * root.width * 1.2 - root.width * 0.35
-            readonly property real startY: -40 - root.rand(index, 44.0) * 90
-            readonly property real travelDist: Math.max(root.width, root.height) * (0.75 + root.rand(index, 45.0) * 0.45)
-            readonly property real travelX: travelDist * Math.cos(angleRad)
-            readonly property real travelY: travelDist * Math.sin(angleRad)
+            property real angleDeg: 30
+            property real dur: 3000
+            property real startX: 0
+            property real startY: -80
+            property real travelX: 0
+            property real travelY: 0
 
-            width: 200 + root.rand(index, 47.0) * 190
-            height: 3.2
+            height: 3.8
+            width: 200
             rotation: angleDeg
+            opacity: 0
             x: startX
             y: startY
-            opacity: 0
+
+            // 重新掷一次：方向、起点、飞多远、飞多久、多长
+            function reroll() {
+                angleDeg = 24 + Math.random() * 18
+                dur = 2600 + Math.random() * 2400
+                startX = Math.random() * root.width * 1.2 - root.width * 0.35
+                startY = -40 - Math.random() * 90
+                var rad = angleDeg * Math.PI / 180
+                var dist = Math.max(root.width, root.height) * (0.75 + Math.random() * 0.5)
+                travelX = dist * Math.cos(rad)
+                travelY = dist * Math.sin(rad)
+                width = 190 + Math.random() * 190
+                x = startX
+                y = startY
+                flightAnim.restart()
+            }
+
+            Timer {
+                // 首次间隔随机；每次触发后再随机下一次间隔（Timer 改 interval 会按新值重排）
+                interval: 1500 + Math.random() * 10000
+                repeat: true
+                running: !BasicConfig.uiIdle
+                onTriggered: {
+                    interval = 1800 + Math.random() * 12000
+                    meteor.reroll()
+                }
+            }
 
             Rectangle {
                 anchors.fill: parent
@@ -130,33 +152,48 @@ Item {
                 gradient: Gradient {
                     orientation: Gradient.Horizontal
                     GradientStop { position: 0.00; color: Qt.rgba(1, 1, 1, 0) }
-                    GradientStop { position: 0.72; color: Qt.rgba(1, 1, 1, 0.45) }
-                    GradientStop { position: 1.00; color: Qt.rgba(1, 1, 1, 0.95) }
+                    GradientStop { position: 0.70; color: Qt.rgba(1, 1, 1, 0.50) }
+                    GradientStop { position: 1.00; color: Qt.rgba(1, 1, 1, 1.0) }
                 }
             }
 
-            SequentialAnimation {
-                loops: Animation.Infinite
-                running: !BasicConfig.uiIdle
+            // 头部：更粗更亮的实心核 + 一圈柔光（尾迹的收束点）
+            Item {
+                width: 17
+                height: 17
+                x: parent.width - width / 2 + 2
+                anchors.verticalCenter: parent.verticalCenter
 
-                PauseAnimation { duration: meteor.pause }
-                ParallelAnimation {
-                    NumberAnimation {
-                        target: meteor; property: "x"
-                        from: meteor.startX; to: meteor.startX + meteor.travelX
-                        duration: meteor.dur; easing.type: Easing.Linear
+                RadialGradient {
+                    anchors.fill: parent
+                    horizontalRadius: width / 2
+                    verticalRadius: height / 2
+                    gradient: Gradient {
+                        GradientStop { position: 0.00; color: Qt.rgba(1, 1, 1, 1.0) }
+                        GradientStop { position: 0.30; color: Qt.rgba(1, 1, 1, 0.45) }
+                        GradientStop { position: 1.00; color: Qt.rgba(1, 1, 1, 0) }
                     }
-                    NumberAnimation {
-                        target: meteor; property: "y"
-                        from: meteor.startY; to: meteor.startY + meteor.travelY
-                        duration: meteor.dur; easing.type: Easing.Linear
-                    }
-                    SequentialAnimation {
-                        NumberAnimation { target: meteor; property: "opacity"; from: 0; to: 1; duration: meteor.dur * 0.15 }
-                        NumberAnimation { target: meteor; property: "opacity"; to: 0; duration: meteor.dur * 0.85 }
-                    }
+                }
+            }
+
+            ParallelAnimation {
+                id: flightAnim
+                NumberAnimation {
+                    target: meteor; property: "x"
+                    from: meteor.startX; to: meteor.startX + meteor.travelX
+                    duration: meteor.dur; easing.type: Easing.Linear
+                }
+                NumberAnimation {
+                    target: meteor; property: "y"
+                    from: meteor.startY; to: meteor.startY + meteor.travelY
+                    duration: meteor.dur; easing.type: Easing.Linear
+                }
+                SequentialAnimation {
+                    NumberAnimation { target: meteor; property: "opacity"; from: 0; to: 1; duration: meteor.dur * 0.15 }
+                    NumberAnimation { target: meteor; property: "opacity"; to: 0; duration: meteor.dur * 0.85 }
                 }
             }
         }
     }
+
 }

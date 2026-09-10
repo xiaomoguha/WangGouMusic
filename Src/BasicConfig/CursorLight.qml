@@ -9,7 +9,7 @@ Item {
     id: root
 
     property bool enabled: true
-    property real lightDiameter: 86
+    property real lightDiameter: 60
     property int moteCount: 14
     // 尾迹采样点数（决定尾巴最长有多长）
     property int trailPoints: 12
@@ -137,8 +137,8 @@ Item {
                 yScale: 1 - 0.10 * root.trailEnergy
             }
             gradient: Gradient {
-                GradientStop { position: 0.00; color: Qt.rgba(1, 1, 1, 0.62) }
-                GradientStop { position: 0.30; color: Qt.rgba(1, 1, 1, 0.30) }
+                GradientStop { position: 0.00; color: Qt.rgba(1, 1, 1, 0.85) }
+                GradientStop { position: 0.32; color: Qt.rgba(1, 1, 1, 0.42) }
                 GradientStop { position: 1.00; color: Qt.rgba(1, 1, 1, 0) }
             }
         }
@@ -212,9 +212,10 @@ Item {
                 width: 2 + (index % 3)
                 height: width
 
-                x: (root.lightDiameter / 2) + orbit * Math.cos(moteAnchor.phase * speedFactor + phaseOff) - width / 2
+                // 围绕锚点（=指针，带滞后）居中环绕；之前多加了半个光斑的偏移 → 偏到右下角
+                x: orbit * Math.cos(moteAnchor.phase * speedFactor + phaseOff) - width / 2
                    + moteAnchor.backX * dragOut
-                y: (root.lightDiameter / 2) + orbit * Math.sin(moteAnchor.phase * speedFactor + phaseOff) * 0.85 - height / 2
+                y: orbit * Math.sin(moteAnchor.phase * speedFactor + phaseOff) * 0.85 - height / 2
                    + moteAnchor.backY * dragOut
 
                 Rectangle {
