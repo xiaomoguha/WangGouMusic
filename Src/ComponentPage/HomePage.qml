@@ -244,7 +244,6 @@ Item {
                         HoverCard {
                             anchors.fill: parent
                             hovered: fmCardHover.hovered || isPlaying
-                            hoverScale: 1.06
                             radius: AppTheme.radiusMedium
                         }
 
@@ -457,7 +456,6 @@ Item {
                         HoverCard {
                             anchors.fill: parent
                             hovered: songCardHover.hovered || isPlaying
-                            hoverScale: 1.03
                             radius: AppTheme.radiusMedium
 
                             Column {

@@ -218,6 +218,7 @@ Row {
         width: root.popupTargetWidth
         padding: 0
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
         transformOrigin: Item.Top
         // 高度随内容自适应，上限 440，超出滚动
         height: Math.min(contentColumn.height + contentColumn.pad * 2, 440)
@@ -245,11 +246,24 @@ Row {
             }
         }
 
+        // 毛玻璃弹层：半透明填充 + 极细描边（原来是纯色块）
         background: Rectangle {
-            color: AppTheme.bgSearchPopup
+            // 黑底上"毛玻璃"的关键：用浅色半透明填充 + 亮边把面撑出来（纯深色透明会像没画）
+            color: Qt.rgba(1, 1, 1, 0.07)
             border.width: 1
-            border.color: AppTheme.borderDefault
+            border.color: Qt.rgba(1, 1, 1, 0.16)
             radius: AppTheme.radiusMedium
+
+            // 顶部受光高光
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 1
+                radius: Math.max(0, parent.radius - 1)
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.06) }
+                    GradientStop { position: 0.5; color: "transparent" }
+                }
+            }
             layer.enabled: true
             layer.effect: DropShadow {
                 transparentBorder: true

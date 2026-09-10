@@ -136,9 +136,10 @@ Rectangle {
                 width: parent.width
                 height: networkCol.implicitHeight + 48
                 radius: AppTheme.radiusLarge
-                color: AppTheme.bgCard
+                // 毛玻璃卡片：半透明填充 + 极细亮边
+                color: Qt.rgba(1, 1, 1, 0.055)
                 border.width: 1
-                border.color: AppTheme.borderSubtle
+                border.color: Qt.rgba(1, 1, 1, 0.12)
 
                 Column {
                     id: networkCol
@@ -354,9 +355,10 @@ Rectangle {
                 width: parent.width
                 height: lyricsCol.implicitHeight + 48
                 radius: AppTheme.radiusLarge
-                color: AppTheme.bgCard
+                // 毛玻璃卡片：半透明填充 + 极细亮边
+                color: Qt.rgba(1, 1, 1, 0.055)
                 border.width: 1
-                border.color: AppTheme.borderSubtle
+                border.color: Qt.rgba(1, 1, 1, 0.12)
 
                 Column {
                     id: lyricsCol
@@ -601,9 +603,10 @@ Rectangle {
                 width: parent.width
                 height: serverCol.implicitHeight + 48
                 radius: AppTheme.radiusLarge
-                color: AppTheme.bgCard
+                // 毛玻璃卡片：半透明填充 + 极细亮边
+                color: Qt.rgba(1, 1, 1, 0.055)
                 border.width: 1
-                border.color: AppTheme.borderSubtle
+                border.color: Qt.rgba(1, 1, 1, 0.12)
 
                 Column {
                     id: serverCol

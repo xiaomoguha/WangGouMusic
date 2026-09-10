@@ -6,6 +6,7 @@ IconButton IconButton.qml
 ThemedPopup ThemedPopup.qml
 NowPlayingIndicator NowPlayingIndicator.qml
 PanelBackdrop PanelBackdrop.qml
+GlassPanel GlassPanel.qml
 RetryImage RetryImage.qml
 StarfieldLayer StarfieldLayer.qml
 Fireworks Fireworks.qml
