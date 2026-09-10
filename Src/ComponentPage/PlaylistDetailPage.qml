@@ -553,10 +553,9 @@ Item {
     // 歌曲列表
     ListView {
         id: tracksListView
-        // 头部收起时整块上滑，盖住淡出的头部（列表本就在头部之后绘制）
-        transform: Translate { y: -112 * root.headerCollapse }
         anchors.top: parent.top
-        anchors.topMargin: 170
+        // 头部收起时视口向上"长"进头部让出的空间（整块上移会让底部空出一截），底部始终贴窗口
+        anchors.topMargin: 170 - 112 * root.headerCollapse
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.right: parent.right
