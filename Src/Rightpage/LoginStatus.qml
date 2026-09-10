@@ -727,43 +727,4 @@ Row {
             }
         }
     }
-
-    // 主题按钮（月亮/太阳切换）
-    Rectangle {
-        width: 28
-        height: 28
-        radius: 14
-        color: moonMouseArea.containsMouse ? AppTheme.iconButtonHover : "transparent"
-
-        Image {
-            id: moonbuttom
-            anchors.centerIn: parent
-            width: 14
-            height: 14
-            fillMode: Image.PreserveAspectFit
-            source: AppTheme.isDark ? AppIcon.moon : AppIcon.sun
-            sourceSize: Qt.size(128, 128)
-            mipmap: true
-            layer.enabled: true
-            layer.effect: ColorOverlay {
-                source: moonbuttom
-                // 渐变时随背景挑白/深色，与搜索框文字一致
-                color: BasicConfig.playlistCoverColor !== ""
-                    ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
-                    : AppTheme.iconDefault
-            }
-        }
-
-        MouseArea {
-            id: moonMouseArea
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: AppTheme.toggleTheme()
-        }
-
-        Behavior on color {
-            ColorAnimation { duration: AppTheme.animFast }
-        }
-    }
 }

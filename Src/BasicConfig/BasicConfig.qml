@@ -66,6 +66,7 @@ QtObject {
 
     // 主窗口高度（由 main.qml 同步）：用于把「整窗 50% 处淡出」换算成每个面板内的渐变位置
     property real windowHeight: 752
+    property real windowWidth: 1057
 
     // 主窗口被遮蔽（最小化或关闭到托盘，由 main.qml 同步）：
     // 一起听聊天通知只看这个状态——窗口看得见就不打扰，看不见就通知，不论在哪个页面
@@ -75,6 +76,9 @@ QtObject {
     // 跑马灯/加载圈/唱片旋转这类无限动画不看用户是否在看就 60fps 空转，
     // 是后台 CPU 高的主因；此闸只停装饰动画，播放进度/歌词等真实数据不受影响
     property bool uiIdle: false
+    // 极光背景相位（0→1 循环）：窗口内所有面板的极光切片共享同一相位，
+    // 保证整窗流体底严格同步；驱动动画在 main.qml（挂 uiIdle 门控）。
+    property real auroraPhase: 0
 
     // 模态弹窗输入锁：弹窗置位/复位，main.qml 据此禁用 windowShell。
     // 点击会沿 z 序穿透到页面 TapHandler（MouseArea 拦不住），只能禁底层

@@ -8,6 +8,39 @@ import "../ToolWindow"
 // 数据源 RankList（/api/rank/list + rank/info + rank/audio）。
 Item {
     id: root
+
+    // 页面入场：淡入 + 轻微上浮（切页时内容"落"下来而不是硬切）；空闲门控下直接落终态。
+    opacity: 0
+    transform: Translate { id: rootEnterShift; y: 14 }
+
+    // 入场触发用 0ms Timer：页面自身可能已有 Component.onCompleted，
+    // 直接再写一个会触发"属性重复赋值"导致整页加载失败（踩过）
+    Timer {
+        interval: 0
+        repeat: false
+        running: true
+        onTriggered: {
+            if (BasicConfig.uiIdle) {
+                root.opacity = 1
+                rootEnterShift.y = 0
+            } else {
+                rootEnterAnim.start()
+            }
+        }
+    }
+
+    ParallelAnimation {
+        id: rootEnterAnim
+        NumberAnimation {
+            target: root; property: "opacity"
+            from: 0; to: 1; duration: 320; easing.type: Easing.OutCubic
+        }
+        NumberAnimation {
+            target: rootEnterShift; property: "y"
+            from: 14; to: 0; duration: 420; easing.type: Easing.OutCubic
+        }
+    }
+
     objectName: "RankPage"
     width: parent ? parent.width : 0
     height: parent ? parent.height : 0
@@ -113,7 +146,8 @@ Item {
                     interactive: false
                     model: rankList ? rankList.ranks : []
 
-                    delegate: Item {
+                    delegate: HoverRow {
+                        hovered: rankHover.hovered
                         width: ranksGrid.cellWidth - 10
                         height: ranksGrid.cellHeight - 10
 
@@ -313,7 +347,8 @@ Item {
                         Behavior on opacity { NumberAnimation { duration: 250 } }
                     }
 
-                    delegate: Rectangle {
+                    delegate: HoverRow {
+                        hovered: songHover.hovered
                         width: songsList.width
                         height: 60
                         radius: 6

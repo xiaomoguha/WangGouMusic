@@ -171,21 +171,40 @@ Rectangle {
                 height: 44
                 radius: 12
                 anchors.horizontalCenter: parent.horizontalCenter
-                // hover 改为文字/图标变亮（背景保持透明，渐变下无块状覆盖层）
-                color: leftpageRectangle.currentIndex === index ? AppTheme.accent : "transparent"
+                // 静止不铺任何底色/遮罩：选中态由左侧细强调条 + 文字变色表达，hover 才给动效
+                color: "transparent"
 
                 property bool isSelected: leftpageRectangle.currentIndex === index
+
+                // 选中指示：左侧细强调条（长出来 + 回弹）
+                Rectangle {
+                    width: 3
+                    height: 18
+                    radius: 1.5
+                    color: AppTheme.accent
+                    anchors.left: parent.left
+                    anchors.leftMargin: 4
+                    anchors.verticalCenter: parent.verticalCenter
+                    opacity: navItemRect.isSelected ? 1 : 0
+                    scale: navItemRect.isSelected ? 1 : 0.3
+                    Behavior on opacity { NumberAnimation { duration: AppTheme.animNormal; easing.type: Easing.OutCubic } }
+                    Behavior on scale { NumberAnimation { duration: AppTheme.animNormal; easing.type: Easing.OutBack } }
+                }
 
                 Row {
                     spacing: 12
                     anchors.left: parent.left
-                    anchors.leftMargin: 16
+                    // hover 响应：整体右移一点 + 小角度倾斜（"被鼠标吸过来"的手感）
+                    anchors.leftMargin: navMouseArea.containsMouse ? 22 : 16
                     anchors.verticalCenter: parent.verticalCenter
+                    rotation: navMouseArea.containsMouse ? -2 : 0
+                    Behavior on anchors.leftMargin { NumberAnimation { duration: AppTheme.animNormal; easing.type: Easing.OutCubic } }
+                    Behavior on rotation { NumberAnimation { duration: AppTheme.animNormal; easing.type: Easing.OutBack } }
 
                     NavIcon {
                         iconType: navColumn.navList[navItemRect.index].iconType
                         selected: navItemRect.isSelected
-                        iconColor: navItemRect.isSelected ? AppTheme.iconActive : (navMouseArea.containsMouse ? AppTheme.textPrimary : AppTheme.iconNav)
+                        iconColor: navItemRect.isSelected ? AppTheme.accent : (navMouseArea.containsMouse ? AppTheme.textPrimary : AppTheme.iconNav)
                         width: 20
                         height: 20
                         anchors.verticalCenter: parent.verticalCenter
@@ -197,7 +216,7 @@ Rectangle {
                         font.pixelSize: AppTheme.fontSizeBodyLg
                         font.family: AppTheme.fontFamily
                         font.bold: true
-                        color: navItemRect.isSelected ? AppTheme.textPrimary : (navMouseArea.containsMouse ? AppTheme.textPrimary : AppTheme.textSecondary)
+                        color: navItemRect.isSelected ? AppTheme.accent : (navMouseArea.containsMouse ? AppTheme.textPrimary : AppTheme.textSecondary)
                     }
                 }
 
@@ -217,11 +236,12 @@ Rectangle {
                 }
 
 
-                scale: navMouseArea.containsMouse && !isSelected ? 1.03 : 1.0
+                // hover 放大（选中项不放大，避免持续抖动的观感）
+                scale: navMouseArea.containsMouse && !isSelected ? 1.06 : 1.0
                 Behavior on scale {
                     NumberAnimation {
-                        duration: AppTheme.animFast
-                        easing.type: Easing.OutCubic
+                        duration: AppTheme.animNormal
+                        easing.type: Easing.OutBack
                     }
                 }
             }
@@ -266,21 +286,36 @@ Rectangle {
             height: 44
             radius: 12
             anchors.horizontalCenter: parent.horizontalCenter
-            // hover 改为文字/图标变亮（背景保持透明，渐变下无块状覆盖层）
-            color: navColumn2._anyPlaylistActive
-                   ? AppTheme.accent
-                   : "transparent"
+            // 静止不铺底色：激活态由细强调条 + 文字变色表达
+            color: "transparent"
+
+            Rectangle {
+                width: 3
+                height: 18
+                radius: 1.5
+                color: AppTheme.accent
+                anchors.left: parent.left
+                anchors.leftMargin: 4
+                anchors.verticalCenter: parent.verticalCenter
+                opacity: navColumn2._anyPlaylistActive ? 1 : 0
+                scale: navColumn2._anyPlaylistActive ? 1 : 0.3
+                Behavior on opacity { NumberAnimation { duration: AppTheme.animNormal; easing.type: Easing.OutCubic } }
+                Behavior on scale { NumberAnimation { duration: AppTheme.animNormal; easing.type: Easing.OutBack } }
+            }
 
             Row {
                 spacing: 12
                 anchors.left: parent.left
-                anchors.leftMargin: 16
+                anchors.leftMargin: headerMA.containsMouse ? 22 : 16
                 anchors.verticalCenter: parent.verticalCenter
+                rotation: headerMA.containsMouse ? -2 : 0
+                Behavior on anchors.leftMargin { NumberAnimation { duration: AppTheme.animNormal; easing.type: Easing.OutCubic } }
+                Behavior on rotation { NumberAnimation { duration: AppTheme.animNormal; easing.type: Easing.OutBack } }
 
                 NavIcon {
                     iconType: "playlist"
                     selected: navColumn2._anyPlaylistActive
-                    iconColor: navColumn2._anyPlaylistActive ? AppTheme.iconActive : (headerMA.containsMouse ? AppTheme.textPrimary : AppTheme.iconNav)
+                    iconColor: navColumn2._anyPlaylistActive ? AppTheme.accent : (headerMA.containsMouse ? AppTheme.textPrimary : AppTheme.iconNav)
                     width: 20
                     height: 20
                     anchors.verticalCenter: parent.verticalCenter
@@ -292,7 +327,7 @@ Rectangle {
                     font.pixelSize: AppTheme.fontSizeBodyLg
                     font.family: AppTheme.fontFamily
                     font.bold: true
-                    color: navColumn2._anyPlaylistActive ? AppTheme.textPrimary : (headerMA.containsMouse ? AppTheme.textPrimary : AppTheme.textSecondary)
+                    color: navColumn2._anyPlaylistActive ? AppTheme.accent : (headerMA.containsMouse ? AppTheme.textPrimary : AppTheme.textSecondary)
                 }
             }
 

@@ -7,6 +7,39 @@ import "../ToolWindow"
 // 歌手页：顶部歌手信息 + 单曲/专辑 tab（数据来自 artistManager）
 Item {
     id: root
+
+    // 页面入场：淡入 + 轻微上浮（切页时内容"落"下来而不是硬切）；空闲门控下直接落终态。
+    opacity: 0
+    transform: Translate { id: rootEnterShift; y: 14 }
+
+    // 入场触发用 0ms Timer：页面自身可能已有 Component.onCompleted，
+    // 直接再写一个会触发"属性重复赋值"导致整页加载失败（踩过）
+    Timer {
+        interval: 0
+        repeat: false
+        running: true
+        onTriggered: {
+            if (BasicConfig.uiIdle) {
+                root.opacity = 1
+                rootEnterShift.y = 0
+            } else {
+                rootEnterAnim.start()
+            }
+        }
+    }
+
+    ParallelAnimation {
+        id: rootEnterAnim
+        NumberAnimation {
+            target: root; property: "opacity"
+            from: 0; to: 1; duration: 320; easing.type: Easing.OutCubic
+        }
+        NumberAnimation {
+            target: rootEnterShift; property: "y"
+            from: 14; to: 0; duration: 420; easing.type: Easing.OutCubic
+        }
+    }
+
     width: parent ? parent.width : 0
     height: parent ? parent.height : 0
     objectName: "ArtistPage"
@@ -372,7 +405,8 @@ Item {
                 }
             }
 
-            delegate: Rectangle {
+            delegate: HoverRow {
+                hovered: songHover.hovered
                 id: songRow
                 width: songsList.width - 60
                 height: 60 + aiExpand.expandedHeight
@@ -683,7 +717,8 @@ Item {
         }
 
         // 卡片：80 封面在左 + 右侧专辑名/日期（与主页精选歌单完全一致）
-        delegate: Item {
+        delegate: HoverRow {
+            hovered: albumHover.hovered
             width: albumsGrid.cellWidth - 10
             height: albumsGrid.cellHeight - 10
 

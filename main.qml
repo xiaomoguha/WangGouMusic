@@ -155,6 +155,25 @@ ApplicationWindow {
             }
         }
     }
+    // ===================== 极光相位驱动 =====================
+    // 整窗极光切片共用这一条动画（面板各自只画自己那块），失焦/被遮挡时停走，避免白烧 CPU
+    NumberAnimation {
+        target: BasicConfig
+        property: "auroraPhase"
+        from: 0
+        to: 1
+        duration: 46000
+        loops: Animation.Infinite
+        running: !BasicConfig.uiIdle
+    }
+
+    // ===================== 鼠标光标光源（整窗，含导航栏）=====================
+    // 一枚比指针略大的亮斑 + 环绕微粒；位于最上层，指针事件必达
+    CursorLight {
+        anchors.fill: parent
+        z: 10000
+    }
+
     MouseArea {
         id: windowDragArea
         anchors.fill: parent
@@ -203,7 +222,8 @@ ApplicationWindow {
         anchors.top: parent.top
         anchors.bottom: bottomrect.top
         // 整窗渐变激活时面板色转透明，露出内嵌的 WindowTintGradient 切片
-        color: BasicConfig.playlistCoverColor !== "" ? "transparent" : AppTheme.bgSidebar
+        // 左栏：底色/极光/封面主色三层都由 WindowTintGradient 负责，这里保持透明
+        color: "transparent"
         radius: 20
         clip: true
         // 盖住其他角
@@ -262,7 +282,8 @@ ApplicationWindow {
         anchors.top: parent.top
         anchors.right: parent.right
         anchors.bottom: bottomrect.top
-        color: BasicConfig.playlistCoverColor !== "" ? "transparent" : AppTheme.bgContent
+        // 内容区：底色/极光/封面主色三层都由 WindowTintGradient 负责，这里保持透明
+        color: "transparent"
         radius: 20
         clip: true
         Rectangle {
@@ -320,7 +341,8 @@ ApplicationWindow {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        color: BasicConfig.playlistCoverColor !== "" ? "transparent" : AppTheme.bgBottomBar
+        // 底部栏：底色/极光/封面主色三层都由 WindowTintGradient 负责，这里保持透明
+        color: "transparent"
         radius: 20
         clip: true
         Rectangle {
@@ -366,6 +388,12 @@ ApplicationWindow {
         target: BasicConfig
         property: "windowHeight"
         value: root.height
+    }
+    // 窗口宽度同步给 BasicConfig：极光切片按窗口全局坐标定位需要
+    Binding {
+        target: BasicConfig
+        property: "windowWidth"
+        value: root.width
     }
     // 窗口遮蔽状态（最小化或关闭到托盘）同步给 BasicConfig：一起听聊天通知的判断依据。
     // 注意 QML 的 visible 在最小化时仍为 true，必须看 visibility

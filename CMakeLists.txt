@@ -51,6 +51,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         CPPSrc/SongInfo.cpp CPPSrc/SongInfo.h
         CPPSrc/CrashHandler.cpp CPPSrc/CrashHandler.h
         CPPSrc/ClickThroughHelper.cpp CPPSrc/ClickThroughHelper.h
+        CPPSrc/cursortracker.cpp CPPSrc/cursortracker.h
         CPPSrc/searchhistorymanager.cpp CPPSrc/searchhistorymanager.h
         CPPSrc/playlistcollection.cpp CPPSrc/playlistcollection.h
         CPPSrc/dailyrecommend.cpp CPPSrc/dailyrecommend.h
