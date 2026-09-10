@@ -155,16 +155,30 @@ ApplicationWindow {
             }
         }
     }
-    // ===================== 极光相位驱动 =====================
-    // 整窗极光切片共用这一条动画（面板各自只画自己那块），失焦/被遮挡时停走，避免白烧 CPU
-    NumberAnimation {
-        target: BasicConfig
-        property: "auroraPhase"
-        from: 0
-        to: 1
-        duration: 46000
-        loops: Animation.Infinite
+    // ===================== 星空时间基准 =====================
+    // 累加秒数供星点计算"生命"节奏（0.1s 精度足够，变化本就缓慢）；失焦/被遮挡时停走
+    Timer {
+        interval: 100
+        repeat: true
         running: !BasicConfig.uiIdle
+        onTriggered: BasicConfig.bgTime += 0.1
+    }
+
+    // ===================== 左栏 / 内容区 分隔线 =====================
+    // 一条两端淡出的极淡竖线，标出这是两块界面
+    Rectangle {
+        x: 200
+        width: 1
+        anchors.top: parent.top
+        anchors.bottom: bottomrect.top
+        z: 500
+        gradient: Gradient {
+            orientation: Gradient.Vertical
+            GradientStop { position: 0.00; color: Qt.rgba(1, 1, 1, 0.0) }
+            GradientStop { position: 0.12; color: Qt.rgba(1, 1, 1, 0.10) }
+            GradientStop { position: 0.88; color: Qt.rgba(1, 1, 1, 0.10) }
+            GradientStop { position: 1.00; color: Qt.rgba(1, 1, 1, 0.0) }
+        }
     }
 
     // ===================== 鼠标光标光源（整窗，含导航栏）=====================
@@ -389,7 +403,7 @@ ApplicationWindow {
         property: "windowHeight"
         value: root.height
     }
-    // 窗口宽度同步给 BasicConfig：极光切片按窗口全局坐标定位需要
+    // 窗口宽度同步给 BasicConfig：背景切片按窗口尺寸取密度需要
     Binding {
         target: BasicConfig
         property: "windowWidth"
