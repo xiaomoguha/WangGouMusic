@@ -11,12 +11,10 @@ Item {
     opacity: 0
     transform: Translate { id: rootEnterShift; y: 14 }
 
-    // 头部收起进度（0=顶部 / 1=完全收起）：由歌曲列表滚动位置驱动。
-    // 头部淡出上移，歌曲列表同步上滑盖住它——"hero 随滚动收起"，纯 transform 不改布局。
+    // 头部收起进度（0=顶部 1=收起）：头部淡出上移、列表同步上滑盖住它；纯 transform 不改布局
     readonly property real headerCollapse: Math.max(0, Math.min(1, tracksListView.contentY / 120))
 
-    // 入场触发用 0ms Timer：页面自身可能已有 Component.onCompleted，
-    // 直接再写一个会触发"属性重复赋值"导致整页加载失败（踩过）
+    // 用 0ms Timer 触发入场（页面自身已有 Component.onCompleted，重复写会让整页加载失败）
     Timer {
         interval: 0
         repeat: false

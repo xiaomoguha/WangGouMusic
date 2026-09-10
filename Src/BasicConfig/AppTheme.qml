@@ -4,83 +4,79 @@ import QtQuick 2.15
 QtObject {
     id: theme
 
-    // ===== 主题状态 =====
-    // 只保留深色模式：浅色模式已整体移除（原切换入口与浅色配色分支不再使用）。
-    // 保留 isDark 令牌是为了兼容既有的大量 `AppTheme.isDark ? ... : ...` 写法，
-    // 恒为 true 后所有三元表达式都取深色分支。
-    readonly property bool isDark: true
+    // 仅深色模式：浅色模式已整体移除（无主题令牌、无切换入口）
 
     // ===== 背景颜色 =====
-    readonly property color bgSidebar: isDark ? "#1a1a21" : "#F5F5F7"
-    readonly property color bgContent: isDark ? "#13131a" : "#FFFFFF"
-    readonly property color bgBottomBar: isDark ? "#1a1a21" : "#F5F5F7"
-    readonly property color bgBottomBarInner: isDark ? "#1a1a24" : "#F0F0F2"
-    readonly property color bgCard: isDark ? "#27272e" : "#F8F8FA"
-    readonly property color bgCardHover: isDark ? "#212127" : "#EEEEF2"
-    readonly property color bgNavHover: isDark ? "#2A2A35" : "#E8E8EC"
-    readonly property color bgInput: isDark ? "#2A2A35" : "#F0F0F3"
-    readonly property color bgOverlay: isDark ? "#1E1E2A" : "#FFFFFF"
-    readonly property color bgSearchPopup: isDark ? "#2d2d37" : "#F0F0F5"
-    readonly property color bgHistoryTag: isDark ? "#2d2d37" : "#EBEBF0"
-    readonly property color bgHistoryTagHover: isDark ? "#393943" : "#DCDCDF"
-    readonly property color bgSuggestionHover: isDark ? "#393943" : "#E0E0E5"
-    readonly property color bgExpandBtn: isDark ? "#2A2A35" : "#EEEEF2"
-    readonly property color bgExpandBtnHover: isDark ? "#3A3A45" : "#E0E0E8"
-    readonly property color bgRoomCard: isDark ? "#393943" : "#F5F5F7"
-    readonly property color bgLoadingOverlay: isDark ? "#13131a" : "#FFFFFF"
-    readonly property color bgTooltip: isDark ? "#1E1E2A" : "#2C2C2E"
+    readonly property color bgSidebar: "#1a1a21"
+    readonly property color bgContent: "#13131a"
+    readonly property color bgBottomBar: "#1a1a21"
+    readonly property color bgBottomBarInner: "#1a1a24"
+    readonly property color bgCard: "#27272e"
+    readonly property color bgCardHover: "#212127"
+    readonly property color bgNavHover: "#2A2A35"
+    readonly property color bgInput: "#2A2A35"
+    readonly property color bgOverlay: "#1E1E2A"
+    readonly property color bgSearchPopup: "#2d2d37"
+    readonly property color bgHistoryTag: "#2d2d37"
+    readonly property color bgHistoryTagHover: "#393943"
+    readonly property color bgSuggestionHover: "#393943"
+    readonly property color bgExpandBtn: "#2A2A35"
+    readonly property color bgExpandBtnHover: "#3A3A45"
+    readonly property color bgRoomCard: "#393943"
+    readonly property color bgLoadingOverlay: "#13131a"
+    readonly property color bgTooltip: "#1E1E2A"
 
     // ===== 强调色 =====
-    readonly property color accent: isDark ? "#FF6B6B" : "#FF8A80"
-    readonly property color accentHover: isDark ? "#FF5252" : "#FF6B6B"
-    readonly property color accentDim: isDark ? "#30FF6B6B" : "#15FF8A80"
-    readonly property color accentGlow: isDark ? "#40FF6B6B" : "#40FF8A80"
-    readonly property color accentPlaying: isDark ? "#e74f50" : "#FF6B6B"
+    readonly property color accent: "#FF6B6B"
+    readonly property color accentHover: "#FF5252"
+    readonly property color accentDim: "#30FF6B6B"
+    readonly property color accentGlow: "#40FF6B6B"
+    readonly property color accentPlaying: "#e74f50"
 
     // 弱化的强调色（空状态图标底色、淡红底纹等）
-    readonly property color accentSubtle: isDark ? "#30FF6B6B" : "#10FF8A80"
+    readonly property color accentSubtle: "#30FF6B6B"
 
     // 主操作按钮(CTA)色：暂保留现有"一起听 / 播放全部"红紫配色，后续可统一到 accent
     readonly property color accentPrimary: "#e94560"
     readonly property color accentPrimaryHover: "#533483"
 
     // ===== 文字颜色 =====
-    readonly property color textPrimary: isDark ? "#FFFFFF" : "#1A1A2E"
+    readonly property color textPrimary: "#FFFFFF"
     // 歌曲名专用：深色纯白、浅色纯黑（比 textPrimary 的浅色 #1A1A2E 更黑）
-    readonly property color textSongTitle: isDark ? "#FFFFFF" : "#000000"
-    readonly property color textSecondary: isDark ? "#CCCCCC" : "#666680"
-    readonly property color textMuted: isDark ? "#888899" : "#9999AA"
-    readonly property color textDim: isDark ? "#666677" : "#AAAAAA"
-    readonly property color textPlaceholder: isDark ? "#666666" : "#AAAAAA"
+    readonly property color textSongTitle: "#FFFFFF"
+    readonly property color textSecondary: "#CCCCCC"
+    readonly property color textMuted: "#888899"
+    readonly property color textDim: "#666677"
+    readonly property color textPlaceholder: "#666666"
     readonly property color textHotIndex: "#eb4d44"
-    readonly property color textNormalIndex: isDark ? "#818187" : "#888899"
-    readonly property color textSearchKeyword: isDark ? "#7f7f85" : "#888899"
+    readonly property color textNormalIndex: "#818187"
+    readonly property color textSearchKeyword: "#7f7f85"
 
     // ===== 边框/分隔线 =====
-    readonly property color borderDefault: isDark ? "#3A3A45" : "#D8D8E0"
-    readonly property color borderSubtle: isDark ? "#2A2A35" : "#E8E8EC"
+    readonly property color borderDefault: "#3A3A45"
+    readonly property color borderSubtle: "#2A2A35"
     readonly property color borderFocus: "#FF6B6B"
 
     // ===== 图标颜色 =====
-    readonly property color iconDefault: isDark ? "#FFFFFF" : "#444455"
-    readonly property color iconHover: isDark ? "#FFFFFF" : "#1A1A2E"
-    readonly property color iconNav: isDark ? "#AAAAAA" : "#888899"
+    readonly property color iconDefault: "#FFFFFF"
+    readonly property color iconHover: "#FFFFFF"
+    readonly property color iconNav: "#AAAAAA"
     readonly property color iconActive: "#FFFFFF"
-    readonly property color iconSearch: isDark ? "#888888" : "#888899"
-    readonly property color iconButtonHover: isDark ? "#30FFFFFF" : "#10000000"
+    readonly property color iconSearch: "#888888"
+    readonly property color iconButtonHover: "#30FFFFFF"
 
     // ===== 滚动条 =====
-    readonly property color scrollbarColor: isDark ? "#42424b" : "#D0D0D5"
+    readonly property color scrollbarColor: "#42424b"
 
     // ===== 对话框/弹窗 =====
-    readonly property color dialogBorder: isDark ? "#30FFFFFF" : "#D8D8E0"
-    readonly property color dialogOverlay: isDark ? "#80000000" : "#40000000"
-    readonly property color dialogAccentBorder: isDark ? "#15FF6B6B" : "#10FF8A80"
+    readonly property color dialogBorder: "#30FFFFFF"
+    readonly property color dialogOverlay: "#80000000"
+    readonly property color dialogAccentBorder: "#15FF6B6B"
 
     // ===== 进度条 =====
-    readonly property color progressTrack: isDark ? "#2A2A35" : "#E0E0E5"
-    readonly property color progressFill: isDark ? "#FF6B6B" : "#FF8A80"
-    readonly property color progressDot: isDark ? "#FFFFFF" : "#FF8A80"
+    readonly property color progressTrack: "#2A2A35"
+    readonly property color progressFill: "#FF6B6B"
+    readonly property color progressDot: "#FFFFFF"
 
     // ===== 功能色 =====
     readonly property color successColor: "#00C853"
@@ -88,10 +84,10 @@ QtObject {
     readonly property color infoColor: "#4FC3F7"
 
     // ===== 房间渐变边框色 =====
-    readonly property color roomOuterStart: isDark ? "#21283d" : "#D8D8E8"
-    readonly property color roomOuterEnd: isDark ? "#382635" : "#E8D8E0"
-    readonly property color roomInnerStart: isDark ? "#1a1d29" : "#EDEDF2"
-    readonly property color roomInnerEnd: isDark ? "#241c26" : "#F2ECF0"
+    readonly property color roomOuterStart: "#21283d"
+    readonly property color roomOuterEnd: "#382635"
+    readonly property color roomInnerStart: "#1a1d29"
+    readonly property color roomInnerEnd: "#241c26"
 
     // ===== 间距常量 =====
     readonly property int spacingTiny: 4

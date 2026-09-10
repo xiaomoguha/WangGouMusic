@@ -2,15 +2,9 @@ import QtQuick 2.15
 import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
 
-// 鼠标光标光源（带灵动的拖尾）：一枚比指针略大的亮斑 + 环绕微粒 + 沿真实路径的流线尾迹。
-//
-// 拖尾原理：
-//   ① 位置滞后：本体比指针慢 ~70ms，移动时"追"在后面（跟手但不硬贴）；
-//   ② 拖尾能量 trailEnergy：由速度驱动——上升快、回落慢（松手后尾巴自己收回去），
-//      映射刻意做得迟钝（speed/16 封顶），小幅移动几乎不出尾；
-//   ③ 尾迹 = 沿指针**真实路径**采样的渐隐光点链（不是一条直条）：
-//      点距 ≥3px 才采样，因此轨迹拐弯时尾巴跟着拐，弯的、活的；
-//   ④ 粒子挂在比本体更滞后的锚点上，并随拖尾能量向运动反方向轻轻散开。
+// 鼠标光标光源：比指针略大的亮斑 + 环绕微粒 + 沿真实路径的流线拖尾。
+// 拖尾三要素：位置滞后 70ms（跟手不硬贴）、trailEnergy 由速度驱动（映射迟钝、停下自动收尾）、
+// 尾迹沿真实路径采样（≥3px 一点）所以会跟着轨迹拐弯；粒子挂更滞后的锚点被"甩"在后面。
 Item {
     id: root
 
@@ -129,8 +123,8 @@ Item {
                 yScale: 1 - 0.10 * root.trailEnergy
             }
             gradient: Gradient {
-                GradientStop { position: 0.00; color: Qt.rgba(1, 1, 1, AppTheme.isDark ? 0.62 : 0.70) }
-                GradientStop { position: 0.30; color: Qt.rgba(1, 1, 1, AppTheme.isDark ? 0.30 : 0.34) }
+                GradientStop { position: 0.00; color: Qt.rgba(1, 1, 1, 0.62) }
+                GradientStop { position: 0.30; color: Qt.rgba(1, 1, 1, 0.30) }
                 GradientStop { position: 1.00; color: Qt.rgba(1, 1, 1, 0) }
             }
         }

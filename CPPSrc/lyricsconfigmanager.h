@@ -27,7 +27,6 @@ class LyricsConfigManager : public QObject
     Q_PROPERTY(bool isVertical READ isVertical WRITE setIsVertical NOTIFY configChanged)
     Q_PROPERTY(qreal scale READ scale WRITE setScale NOTIFY configChanged)
     Q_PROPERTY(int fontSize READ fontSize WRITE setFontSize NOTIFY configChanged)
-    Q_PROPERTY(bool isDark READ isDark WRITE setIsDark NOTIFY configChanged)
     Q_PROPERTY(bool enabled READ enabled WRITE setEnabled NOTIFY configChanged)
     Q_PROPERTY(QString lyricsColor READ lyricsColor WRITE setLyricsColor NOTIFY configChanged)
     Q_PROPERTY(QString starColor READ starColor WRITE setStarColor NOTIFY configChanged)
@@ -89,10 +88,6 @@ public:
     int fontSize() const
     {
         return m_fontSize;
-    }
-    bool isDark() const
-    {
-        return m_isDark;
     }
     bool enabled() const
     {
@@ -160,7 +155,6 @@ private:
     bool m_isVertical = false;
     qreal m_scale     = 1.0;
     int m_fontSize    = 22;
-    bool m_isDark     = false;
     bool m_enabled    = true;  // 桌面歌词开关
     QString m_lyricsColor;     // 已播歌词颜色，空 = 跟随主题
     QString m_starColor;       // 跳跃歌词(星星+拖尾)颜色，空 = 跟随主题

@@ -11,8 +11,7 @@ Item {
     opacity: 0
     transform: Translate { id: rootEnterShift; y: 14 }
 
-    // 入场触发用 0ms Timer：页面自身可能已有 Component.onCompleted，
-    // 直接再写一个会触发"属性重复赋值"导致整页加载失败（踩过）
+    // 用 0ms Timer 触发入场（页面自身已有 Component.onCompleted，重复写会让整页加载失败）
     Timer {
         interval: 0
         repeat: false

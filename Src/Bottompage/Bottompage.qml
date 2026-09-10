@@ -582,7 +582,7 @@ Rectangle {
                 text: playlistmanager ? playlistmanager.percentstr : "00:00"
                 font.family: AppTheme.fontFamily
                 font.pixelSize: AppTheme.fontSizeCaption
-                color: AppTheme.isDark ? "#99FFFFFF" : AppTheme.textMuted
+                color: "#99FFFFFF"
                 anchors.verticalCenter: parent.verticalCenter
                 width: timeLabelMetrics.width
                 horizontalAlignment: Text.AlignRight  // 定宽盒内右对齐：文字始终贴进度条一侧
@@ -601,7 +601,7 @@ Rectangle {
                     width: parent.width
                     height: progressMouseArea.containsMouse || progressSlider.dragging ? 4 : 2
                     radius: height / 2
-                    color: AppTheme.isDark ? "#1AFFFFFF" : "#1A000000"
+                    color: "#1AFFFFFF"
 
                     property real value: playlistmanager ? playlistmanager.percent : 0.0
                     property real dlProgress: playlistmanager ? playlistmanager.downloadProgress : 1.0
@@ -658,7 +658,7 @@ Rectangle {
                         anchors.top: parent.top
                         anchors.bottom: parent.bottom
                         radius: parent.radius
-                        color: AppTheme.isDark ? "#30FFFFFF" : "#20FF8A80"
+                        color: "#30FFFFFF"
                         width: parent.width * progressSlider.dlProgress
                         visible: progressSlider.dlProgress < 1.0
                     }
@@ -675,8 +675,8 @@ Rectangle {
 
                         gradient: Gradient {
                             orientation: Gradient.Horizontal
-                            GradientStop { position: 0.0; color: AppTheme.isDark ? "#B0FFFFFF" : AppTheme.accent }
-                            GradientStop { position: 1.0; color: AppTheme.isDark ? "#FFFFFFFF" : AppTheme.accentHover }
+                            GradientStop { position: 0.0; color: "#B0FFFFFF" }
+                            GradientStop { position: 1.0; color: "#FFFFFFFF" }
                         }
                     }
 
@@ -686,7 +686,7 @@ Rectangle {
                         width: 12
                         height: 12
                         radius: 6
-                        color: AppTheme.isDark ? "#FFFFFF" : AppTheme.accent
+                        color: "#FFFFFF"
                         anchors.verticalCenter: parent.verticalCenter
                         x: progressFill.width - width / 2
                         opacity: progressMouseArea.containsMouse || progressSlider.dragging ? 1 : 0
@@ -698,7 +698,7 @@ Rectangle {
                             width: 20
                             height: 20
                             radius: 10
-                            color: AppTheme.isDark ? "#33FFFFFF" : "#20FF8A80"
+                            color: "#33FFFFFF"
                         }
 
                         Behavior on opacity { NumberAnimation { duration: 180 } }
@@ -707,7 +707,7 @@ Rectangle {
 
                     // 高潮开始点：小圆点（颜色与已播放进度一致），点击可直接跳到高潮
                     ClimaxDot {
-                        color: AppTheme.isDark ? "#B0FFFFFF" : AppTheme.accent
+                        color: "#B0FFFFFF"
                     }
                 }
             }
@@ -717,7 +717,7 @@ Rectangle {
                 text: playlistmanager ? playlistmanager.duration : "00:00"
                 font.family: AppTheme.fontFamily
                 font.pixelSize: AppTheme.fontSizeCaption
-                color: AppTheme.isDark ? "#99FFFFFF" : AppTheme.textMuted
+                color: "#99FFFFFF"
                 anchors.verticalCenter: parent.verticalCenter
                 width: timeLabelMetrics.width
                 horizontalAlignment: Text.AlignLeft  // 定宽盒内左对齐：文字始终贴进度条一侧
@@ -782,11 +782,11 @@ Rectangle {
                     y: volumeSlider.topPadding + volumeSlider.availableHeight / 2 - 2
                     width: volumeSlider.availableWidth
                     height: 4; radius: 2
-                    color: AppTheme.isDark ? "#1AFFFFFF" : "#1A000000"
+                    color: "#1AFFFFFF"
                     Rectangle {
                         width: parent.width * volumeSlider.position
                         height: parent.height; radius: parent.radius
-                        color: AppTheme.isDark ? "#CCFFFFFF" : AppTheme.accent
+                        color: "#CCFFFFFF"
                     }
                 }
                 handle: Rectangle {
