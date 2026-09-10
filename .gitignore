@@ -37,3 +37,9 @@ Thumbs.db
 .qmlls.ini
 *.icns.bak
 ScreenShot_*.png
+
+# 本地打包产物（electron-builder 等输出）
+dist/
+
+# 调研用克隆的第三方项目（folia-major 等，不属于本仓库）
+folia-major/
