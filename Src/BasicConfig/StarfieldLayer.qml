@@ -15,6 +15,12 @@ Item {
     property real panelTopY: 0
 
     readonly property real t: BasicConfig.bgTime
+    // 指针在本面板局部坐标里的位置；离开窗口/失焦时视为不在场
+    readonly property real curX: cursorTracker.pos.x - root.panelLeftX
+    readonly property real curY: cursorTracker.pos.y - root.panelTopY
+    readonly property bool curNear: cursorTracker.active
+    // 联动半径：指针周围多大范围的星会被点亮、轻轻推开
+    property real reactRadius: 140
     // 星点密度：整体偏稀疏（流星才是主角）
     readonly property int starCount: Math.max(6, Math.round(width * height / 12000))
     // 流星条数：小面板也保证 1 条，最多 2 条
@@ -38,23 +44,32 @@ Item {
             readonly property real env: Math.max(0, Math.min(1, Math.min(lifePos / 0.28, (1 - lifePos) / 0.28)))
             readonly property real sx: root.rand(index + gen * 977, 1.0)
             readonly property real sy: root.rand(index + gen * 977, 2.0)
-            readonly property real base: 0.45 + root.rand(index, 6.0) * 0.45
-            readonly property real size: 1.0 + root.rand(index, 3.0) * 2.0
+            readonly property real base: 0.62 + root.rand(index, 6.0) * 0.38
+            readonly property real size: 1.2 + root.rand(index, 3.0) * 2.2
             readonly property real breath: 0.90 + 0.10 * Math.sin(root.t * (0.30 + root.rand(index, 4.0)) + index)
 
-            x: sx * root.width
-            y: sy * root.height
+            // 与指针联动：靠近时变亮 + 被轻轻推开（像被磁力拂过）
+            readonly property real bx: sx * root.width
+            readonly property real by: sy * root.height
+            readonly property real dx: bx - root.curX
+            readonly property real dy: by - root.curY
+            readonly property real dist: Math.sqrt(dx * dx + dy * dy)
+            readonly property real near: root.curNear ? Math.max(0, 1 - dist / root.reactRadius) : 0
+            readonly property real push: near * near * 14
+
+            x: bx + (dist > 0.01 ? dx / dist * push : 0)
+            y: by + (dist > 0.01 ? dy / dist * push : 0)
             width: size
             height: size
             radius: size / 2
-            color: index % 9 === 0 ? "#CFE3FF" : "#FFFFFF"
-            opacity: base * env * breath
+            color: near > 0.5 ? "#E8F1FF" : (index % 9 === 0 ? "#CFE3FF" : "#FFFFFF")
+            opacity: Math.min(1, base * env * breath * (1 + near * 1.2))
         }
     }
 
     // ===== 少量亮星（柔光，撑层次；同样走生命周期）=====
     Repeater {
-        model: Math.max(2, Math.round(root.starCount / 12))
+        model: Math.max(3, Math.round(root.starCount / 10))
 
         delegate: Item {
             readonly property real lifeSec: 50 + root.rand(index, 59.0) * 90
@@ -68,7 +83,7 @@ Item {
             height: width
             x: root.rand(index + gen * 613, 31.0) * root.width - width / 2
             y: root.rand(index + gen * 613, 32.0) * root.height - height / 2
-            opacity: 0.75 * env
+            opacity: 0.92 * env
 
             RadialGradient {
                 anchors.fill: parent
@@ -102,8 +117,8 @@ Item {
             readonly property real travelX: travelDist * Math.cos(angleRad)
             readonly property real travelY: travelDist * Math.sin(angleRad)
 
-            width: 110 + root.rand(index, 47.0) * 130
-            height: 2.5
+            width: 200 + root.rand(index, 47.0) * 190
+            height: 3.2
             rotation: angleDeg
             x: startX
             y: startY
@@ -115,7 +130,7 @@ Item {
                 gradient: Gradient {
                     orientation: Gradient.Horizontal
                     GradientStop { position: 0.00; color: Qt.rgba(1, 1, 1, 0) }
-                    GradientStop { position: 0.70; color: Qt.rgba(1, 1, 1, 0.38) }
+                    GradientStop { position: 0.72; color: Qt.rgba(1, 1, 1, 0.45) }
                     GradientStop { position: 1.00; color: Qt.rgba(1, 1, 1, 0.95) }
                 }
             }
@@ -142,22 +157,6 @@ Item {
                     }
                 }
             }
-        }
-    }
-
-    // ===== 微弱星云：给黑底一点深度 =====
-    RadialGradient {
-        width: root.width * 1.6
-        height: width
-        horizontalRadius: width / 2
-        verticalRadius: height / 2
-        x: root.width * 0.5 - width / 2
-        y: root.height * 0.35 - height / 2
-        opacity: 0.55
-        gradient: Gradient {
-            GradientStop { position: 0.00; color: Qt.rgba(0.35, 0.42, 0.75, 0.09) }
-            GradientStop { position: 0.55; color: Qt.rgba(0.30, 0.32, 0.55, 0.05) }
-            GradientStop { position: 1.00; color: Qt.rgba(0, 0, 0, 0) }
         }
     }
 }

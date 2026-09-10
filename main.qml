@@ -188,6 +188,12 @@ ApplicationWindow {
         z: 10000
     }
 
+    // 点击烟花：铺在最上层画粒子，不接收鼠标事件（点击照常透传）
+    Fireworks {
+        anchors.fill: parent
+        z: 10001
+    }
+
     MouseArea {
         id: windowDragArea
         anchors.fill: parent
