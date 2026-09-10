@@ -182,14 +182,15 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 8
 
-                    Text {
+                    GlowText {
                         text: albumManager && albumManager.album ? albumManager.album.name : albumName
-                        width: parent.width
+                        fillWidth: true
                         elide: Text.ElideRight
                         font.pixelSize: AppTheme.fontSizeHeadline
                         font.bold: true
                         color: AppTheme.textPrimary
-                        font.family: AppTheme.fontFamily
+                        glowColor: AppTheme.accentGlow
+                        glowRadius: 15
                     }
 
                     Text {

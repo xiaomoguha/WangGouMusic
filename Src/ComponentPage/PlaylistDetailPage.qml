@@ -11,6 +11,10 @@ Item {
     opacity: 0
     transform: Translate { id: rootEnterShift; y: 14 }
 
+    // 头部收起进度（0=顶部 / 1=完全收起）：由歌曲列表滚动位置驱动。
+    // 头部淡出上移，歌曲列表同步上滑盖住它——"hero 随滚动收起"，纯 transform 不改布局。
+    readonly property real headerCollapse: Math.max(0, Math.min(1, tracksListView.contentY / 120))
+
     // 入场触发用 0ms Timer：页面自身可能已有 Component.onCompleted，
     // 直接再写一个会触发"属性重复赋值"导致整页加载失败（踩过）
     Timer {
@@ -321,11 +325,16 @@ Item {
         anchors.fill: parent
         spacing: 0
 
-        // 顶部：返回按钮 + 歌单信息
+        // 顶部：返回按钮 + 歌单信息（随滚动收起）
         Rectangle {
+            id: playlistHeader
             width: parent.width
             height: 150
             color: "transparent"
+
+            opacity: 1 - 0.85 * root.headerCollapse
+            scale: 1 - 0.06 * root.headerCollapse
+            transform: Translate { y: -18 * root.headerCollapse }
 
             Row {
                 anchors.fill: parent
@@ -406,14 +415,15 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 8
 
-                    Text {
+                    GlowText {
                         text: playlistName
-                        width: parent.width
+                        fillWidth: true
                         elide: Text.ElideRight
                         font.pixelSize: AppTheme.fontSizeHeadline
                         font.bold: true
                         color: AppTheme.textPrimary
-                        font.family: AppTheme.fontFamily
+                        glowColor: AppTheme.accentGlow
+                        glowRadius: 15
                     }
 
                     Text {
@@ -545,6 +555,8 @@ Item {
     // 歌曲列表
     ListView {
         id: tracksListView
+        // 头部收起时整块上滑，盖住淡出的头部（列表本就在头部之后绘制）
+        transform: Translate { y: -112 * root.headerCollapse }
         anchors.top: parent.top
         anchors.topMargin: 170
         anchors.bottom: parent.bottom

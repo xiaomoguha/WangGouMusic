@@ -129,12 +129,13 @@ Item {
                 spacing: 14
                 visible: !root.showSongs
 
-                Text {
+                GlowText {
                     text: "🔥 排行榜"
                     font.pixelSize: AppTheme.fontSizeHeadline
                     font.bold: true
                     color: AppTheme.textPrimary
-                    font.family: AppTheme.fontFamily
+                    glowColor: AppTheme.accentGlow
+                    glowRadius: 15
                 }
 
                 GridView {
