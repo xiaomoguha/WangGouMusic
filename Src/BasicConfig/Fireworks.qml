@@ -82,14 +82,16 @@ Item {
                 return index < root.parts.length ? root.parts[index] : null
             }
 
+            // 注意：粒子对象是「原地修改」的（同一个对象引用），pt 属性本身不会变，
+            // 所以几何/透明度绑定必须显式依赖 root.frame，否则不会重算（曾导致粒子叠成一个点）
             visible: pt !== null
-            width: pt ? pt.r * 2 : 0
+            width: { var _ = root.frame; return pt ? pt.r * 2 : 0 }
             height: width
             radius: width / 2
-            x: pt ? pt.x - width / 2 : 0
-            y: pt ? pt.y - height / 2 : 0
+            x: { var _ = root.frame; return pt ? pt.x - width / 2 : 0 }
+            y: { var _ = root.frame; return pt ? pt.y - height / 2 : 0 }
             color: pt ? pt.color : "transparent"
-            opacity: pt ? Math.max(0, pt.life) : 0
+            opacity: { var _ = root.frame; return pt ? Math.max(0, pt.life) : 0 }
         }
     }
 }
