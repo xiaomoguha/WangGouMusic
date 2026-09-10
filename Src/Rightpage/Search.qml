@@ -246,15 +246,15 @@ Row {
             }
         }
 
-        // 毛玻璃弹层：半透明填充 + 极细描边（原来是纯色块）
+        // 玻璃弹层：浅色半透明填充 + 亮边 + 顶部受光。
+        // 真·背景模糊（ShaderEffectSource 抓窗口内容 + FastBlur）试过一版没渲染出来，
+        // 待另起一轮用离屏纹理方案重做；这里先用视觉等效的玻璃底，保证弹层稳定可见。
         background: Rectangle {
-            // 黑底上"毛玻璃"的关键：用浅色半透明填充 + 亮边把面撑出来（纯深色透明会像没画）
-            color: Qt.rgba(1, 1, 1, 0.07)
+            color: Qt.rgba(1, 1, 1, 0.075)
             border.width: 1
             border.color: Qt.rgba(1, 1, 1, 0.16)
             radius: AppTheme.radiusMedium
 
-            // 顶部受光高光
             Rectangle {
                 anchors.fill: parent
                 anchors.margins: 1
@@ -263,6 +263,68 @@ Row {
                     GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.06) }
                     GradientStop { position: 0.5; color: "transparent" }
                 }
+            }
+        }
+        padding: 0
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        transformOrigin: Item.Top
+        // 高度随内容自适应，上限 440，超出滚动
+        height: Math.min(contentColumn.height + contentColumn.pad * 2, 440)
+        onHeightChanged: console.log(">>> seachPop height =", height, "contentColumn.height =", contentColumn.height)
+        // 宽度随内容平滑缩放
+        Behavior on width { NumberAnimation { duration: AppTheme.animNormal; easing.type: Easing.OutCubic } }
+        onAboutToShow: {
+            updateHotWidth()
+            console.log(">>> popup show: suggestCount =", suggestModel.count,
+                        "historyLen =", searchHistory ? searchHistory.history.length : -1,
+                        "hotItems =", hostSearch ? hostSearch.items.length : -1,
+                        "contentColumn.h =", contentColumn.height)
+        }
+
+        enter: Transition {
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 180; easing.type: Easing.OutCubic }
+                NumberAnimation { property: "scale"; from: 0.96; to: 1; duration: 180; easing.type: Easing.OutCubic }
+            }
+        }
+        exit: Transition {
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 1; to: 0; duration: AppTheme.animFast; easing.type: Easing.InCubic }
+                NumberAnimation { property: "scale"; from: 1; to: 0.96; duration: AppTheme.animFast; easing.type: Easing.InCubic }
+            }
+        }
+
+        // 真·背景模糊弹层：把弹层背后的整窗内容抓成纹理再做高斯模糊。
+        // 弹层渲染在 window 的 overlay 层，不在 contentItem 里，所以抓不到自己（无反馈回路）。
+        background: Item {
+            ShaderEffectSource {
+                id: glassCapture
+                anchors.fill: parent
+                sourceItem: Window.window ? Window.window.contentItem : null
+                live: true
+                recursive: false
+                sourceRect: {
+                    var p = seachPop.mapToItem(null, 0, 0)
+                    return Qt.rect(p.x, p.y, seachPop.width, seachPop.height)
+                }
+                visible: false
+            }
+
+            FastBlur {
+                anchors.fill: parent
+                source: glassCapture
+                radius: 26
+                transparentBorder: false
+            }
+
+            // 压暗 + 描边：保证模糊之上文字依然清晰
+            Rectangle {
+                anchors.fill: parent
+                radius: AppTheme.radiusMedium
+                color: Qt.rgba(0.05, 0.05, 0.08, 0.55)
+                border.width: 1
+                border.color: Qt.rgba(1, 1, 1, 0.16)
             }
             layer.enabled: true
             layer.effect: DropShadow {
