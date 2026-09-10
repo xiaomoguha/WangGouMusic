@@ -62,49 +62,16 @@ Rectangle {
         return Qt.rgba(r / 255, g / 255, b / 255, alpha)
     }
 
-    // 1. 原始图片
-    RetryImage {
-        id: originalImage
+    // 背景：纯黑底 + 星空（原"封面模糊沉浸背景 + 取色"已移除）
+    Rectangle {
         anchors.fill: parent
-        coverSource: albumCover
-        fillMode: Image.PreserveAspectCrop
-        visible: false  // 隐藏原图
-        sourceSize.width: 600
-        sourceSize.height: 600
+        color: AppTheme.bgContent
     }
 
-    // 2. 先进行高斯模糊
-    GaussianBlur {
-        id: blurredImage
+    StarfieldLayer {
         anchors.fill: parent
-        source: originalImage
-        radius: 80  // 固定值：避免随窗口 resize 重算；80px 背景模糊足够柔和
-        samples: 81  // 略大于 radius 即可（原 120 过高），降低 GPU 采样开销
-        transparentBorder: false  // 全屏背景图：边缘钳制、不向透明衰减，避免四边发黑
-        visible: false  // 隐藏模糊结果
-    }
-
-    // === 最终覆盖层 ===
-    ColorOverlay {
-        id: cover
-        anchors.fill: blurredImage
-        source: blurredImage
-        color: Qt.rgba(0, 0, 0, 0.5)
-        opacity: 1.0
-        visible: false
-    }
-
-    // 3. 最后应用圆角裁剪
-    OpacityMask {
-        id: bgopmk
-        anchors.fill: parent
-        source: cover
-        maskSource: Rectangle {
-            width: originalImage.width
-            height: originalImage.height
-            radius: 20
-            visible: false
-        }
+        panelLeftX: 0
+        panelTopY: 0
     }
 
     // 全页拖动窗口（评论列表/歌词在上层自行滚动，未消费的拖动落到这里）

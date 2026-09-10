@@ -15,6 +15,20 @@ Item {
     property int trailPoints: 12
     // 尾迹强度倍率（0 = 关闭拖尾）
     property real trailGain: 1.25
+    // 光圈直径（静止时）；0 = 关闭
+    property real ringSize: 38
+
+    // 点击脉冲：按下瞬间光圈撑开一下
+    property real clickPulse: 0
+    Connections {
+        target: cursorTracker
+        function onPressed(x, y) { clickPulseAnim.restart() }
+    }
+    SequentialAnimation {
+        id: clickPulseAnim
+        NumberAnimation { target: root; property: "clickPulse"; to: 1; duration: 90; easing.type: Easing.OutCubic }
+        NumberAnimation { target: root; property: "clickPulse"; to: 0; duration: 340; easing.type: Easing.OutCubic }
+    }
 
     // 指针位置来自 C++ 系统级追踪（cursorTracker）。
     // 注意：本层铺满窗口且位于最上层，**不能**挂 HoverHandler——那会独占 hover 事件，
@@ -210,6 +224,36 @@ Item {
                     opacity: 0.10 + 0.55 * mote.twinkle
                 }
             }
+        }
+    }
+
+    // ===== ⑥ 光圈：一圈薄环，比拖尾更"黏"地跟着指针（参考自定义光标环）=====
+    Item {
+        id: ringFrame
+        width: 1
+        height: 1
+        visible: opacity > 0.01
+        opacity: (root.active && root.ringSize > 0) ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+
+        x: root.ppos.x
+        y: root.ppos.y
+        Behavior on x { NumberAnimation { duration: 230; easing.type: Easing.OutCubic } }
+        Behavior on y { NumberAnimation { duration: 230; easing.type: Easing.OutCubic } }
+
+        Rectangle {
+            anchors.centerIn: parent
+            width: root.ringSize + 16 * root.trailEnergy + 24 * root.clickPulse
+            height: width
+            radius: width / 2
+            color: root.clickPulse > 0.02 ? Qt.rgba(1, 0.5, 0.5, 0.10 * root.clickPulse) : "transparent"
+            border.width: 1.5
+            border.color: root.clickPulse > 0.02
+                          ? Qt.rgba(1, 0.58, 0.58, 0.50 + 0.40 * root.clickPulse)
+                          : Qt.rgba(1, 1, 1, 0.40)
+            Behavior on width { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+            Behavior on border.color { ColorAnimation { duration: 200 } }
+            Behavior on color { ColorAnimation { duration: 200 } }
         }
     }
 }

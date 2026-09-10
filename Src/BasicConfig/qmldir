@@ -5,9 +5,10 @@ LocateCurrentButton LocateCurrentButton.qml
 IconButton IconButton.qml
 ThemedPopup ThemedPopup.qml
 NowPlayingIndicator NowPlayingIndicator.qml
-WindowTintGradient WindowTintGradient.qml
+PanelBackdrop PanelBackdrop.qml
 RetryImage RetryImage.qml
 StarfieldLayer StarfieldLayer.qml
+Fireworks Fireworks.qml
 CursorLight CursorLight.qml
 GlowText GlowText.qml
 HoverCard HoverCard.qml

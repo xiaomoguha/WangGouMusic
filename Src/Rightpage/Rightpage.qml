@@ -10,7 +10,7 @@ Rectangle {
     property var navStack: []
 
     // 整窗统一渐变：本面板切片（面板根色在 main.qml 改为透明时生效）
-    WindowTintGradient {
+    PanelBackdrop {
         baseColor: AppTheme.bgContent
         panelLeftX: 200   // 左侧导航栏宽 200，极光切片按窗口全局坐标对齐
         panelTopY: 0

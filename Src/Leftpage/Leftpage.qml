@@ -27,7 +27,7 @@ Rectangle {
     }
 
     // 整窗统一渐变：本面板切片（面板根色在 main.qml 改为透明时生效）
-    WindowTintGradient {
+    PanelBackdrop {
         baseColor: AppTheme.bgSidebar
         panelTopY: 0
     }

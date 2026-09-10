@@ -45,7 +45,7 @@ Rectangle {
 
     // 整窗统一渐变：本面板切片（面板根色在 main.qml 改为透明时生效）。
     // 底部栏整段都在淡出线以下，实际渲染为纯底色，但保留切片以维持结构统一。
-    WindowTintGradient {
+    PanelBackdrop {
         baseColor: AppTheme.bgBottomBar
         panelTopY: BasicConfig.windowHeight - controlBar.height
     }

@@ -16,9 +16,10 @@
         <file>Src/BasicConfig/IconButton.qml</file>
         <file>Src/BasicConfig/ThemedPopup.qml</file>
         <file>Src/BasicConfig/NowPlayingIndicator.qml</file>
-        <file>Src/BasicConfig/WindowTintGradient.qml</file>
+        <file>Src/BasicConfig/PanelBackdrop.qml</file>
         <file>Src/BasicConfig/RetryImage.qml</file>
         <file>Src/BasicConfig/StarfieldLayer.qml</file>
+        <file>Src/BasicConfig/Fireworks.qml</file>
         <file>Src/BasicConfig/CursorLight.qml</file>
         <file>Src/BasicConfig/GlowText.qml</file>
         <file>Src/BasicConfig/HoverCard.qml</file>
