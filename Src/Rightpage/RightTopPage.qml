@@ -7,6 +7,8 @@ import "../BasicConfig"
 Item {
     id: rightTop
     property bool canGoBack: false
+    // 搜索弹层做真模糊的抓取源（弹层背后那一层），由 Rightpage 注入
+    property Item searchBlurSource: null
     signal goBack()
 
     // 后退按钮
@@ -58,6 +60,7 @@ Item {
         anchors.leftMargin: canGoBack ? 48 : 0.03 * root.width
         anchors.verticalCenter: parent.verticalCenter
         spacing: 15
+        blurSource: rightTop.searchBlurSource
 
         Behavior on anchors.leftMargin { NumberAnimation { duration: AppTheme.animFast } }
     }

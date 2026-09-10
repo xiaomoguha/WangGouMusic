@@ -8,6 +8,26 @@ Row {
     id: root
     spacing: 10
 
+    // 弹层真模糊的抓取源：由 Rightpage 注入「弹层背后那一层」（rightPage 整层）
+    property Item blurSource: null
+
+    // 弹层内的行 hover：两端淡出的柔光带（不铺实心块），淡入淡出
+    component HoverBand: Rectangle {
+        id: hoverBand
+        property bool active: false
+        anchors.fill: parent
+        radius: height / 2
+        opacity: hoverBand.active ? 1 : 0
+        gradient: Gradient {
+            orientation: Gradient.Horizontal
+            GradientStop { position: 0.00; color: Qt.rgba(1, 1, 1, 0) }
+            GradientStop { position: 0.12; color: Qt.rgba(1, 1, 1, 0.10) }
+            GradientStop { position: 0.60; color: Qt.rgba(1, 1, 1, 0.06) }
+            GradientStop { position: 1.00; color: Qt.rgba(1, 1, 1, 0) }
+        }
+        Behavior on opacity { NumberAnimation { duration: AppTheme.animFast; easing.type: Easing.OutCubic } }
+    }
+
     // ── 搜索建议请求（防抖 300ms） ──────────────────────────────
     HttpGetRequester {
         id: suggestRequester
@@ -246,94 +266,68 @@ Row {
             }
         }
 
-        // 玻璃弹层：浅色半透明填充 + 亮边 + 顶部受光。
-        // 真·背景模糊（ShaderEffectSource 抓窗口内容 + FastBlur）试过一版没渲染出来，
-        // 待另起一轮用离屏纹理方案重做；这里先用视觉等效的玻璃底，保证弹层稳定可见。
-        background: Rectangle {
-            color: Qt.rgba(1, 1, 1, 0.075)
-            border.width: 1
-            border.color: Qt.rgba(1, 1, 1, 0.16)
-            radius: AppTheme.radiusMedium
-
+        // ── 真·背景模糊弹层 ────────────────────────────────────────
+        // 抓「弹层背后那一层」离屏渲染成纹理 → 高斯模糊 → 圆角遮罩 → 压暗着色。
+        // 抓 rightPage 而不是 Window.contentItem：弹层自己就挂在 rightPage 的父链里，
+        // 但 recursive:false 时 Qt 会把「抓取源子树内的这个 effect source」渲染成空白，
+        // 递归被掐断 —— 实测出图正常（抓整窗反而会把弹层以外的窗口装饰也糊进来）。
+        background: Item {
+            // 兜底底板：抓取/模糊万一没渲染出来时，弹层依然是可读的深色面板
             Rectangle {
                 anchors.fill: parent
-                anchors.margins: 1
-                radius: Math.max(0, parent.radius - 1)
-                gradient: Gradient {
-                    GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.06) }
-                    GradientStop { position: 0.5; color: "transparent" }
-                }
+                radius: AppTheme.radiusMedium
+                color: Qt.rgba(0.07, 0.07, 0.10, 0.9)
             }
-        }
-        padding: 0
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
-        transformOrigin: Item.Top
-        // 高度随内容自适应，上限 440，超出滚动
-        height: Math.min(contentColumn.height + contentColumn.pad * 2, 440)
-        onHeightChanged: console.log(">>> seachPop height =", height, "contentColumn.height =", contentColumn.height)
-        // 宽度随内容平滑缩放
-        Behavior on width { NumberAnimation { duration: AppTheme.animNormal; easing.type: Easing.OutCubic } }
-        onAboutToShow: {
-            updateHotWidth()
-            console.log(">>> popup show: suggestCount =", suggestModel.count,
-                        "historyLen =", searchHistory ? searchHistory.history.length : -1,
-                        "hotItems =", hostSearch ? hostSearch.items.length : -1,
-                        "contentColumn.h =", contentColumn.height)
-        }
-
-        enter: Transition {
-            ParallelAnimation {
-                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 180; easing.type: Easing.OutCubic }
-                NumberAnimation { property: "scale"; from: 0.96; to: 1; duration: 180; easing.type: Easing.OutCubic }
-            }
-        }
-        exit: Transition {
-            ParallelAnimation {
-                NumberAnimation { property: "opacity"; from: 1; to: 0; duration: AppTheme.animFast; easing.type: Easing.InCubic }
-                NumberAnimation { property: "scale"; from: 1; to: 0.96; duration: AppTheme.animFast; easing.type: Easing.InCubic }
-            }
-        }
-
-        // 真·背景模糊弹层：把弹层背后的整窗内容抓成纹理再做高斯模糊。
-        // 弹层渲染在 window 的 overlay 层，不在 contentItem 里，所以抓不到自己（无反馈回路）。
-        background: Item {
             ShaderEffectSource {
-                id: glassCapture
+                id: backdropCapture
                 anchors.fill: parent
-                sourceItem: Window.window ? Window.window.contentItem : null
-                live: true
+                sourceItem: root.blurSource
+                live: true               // 背后星空一直在动，抓活的才不会糊住不动
                 recursive: false
                 sourceRect: {
-                    var p = seachPop.mapToItem(null, 0, 0)
-                    return Qt.rect(p.x, p.y, seachPop.width, seachPop.height)
+                    if (!root.blurSource)
+                        return Qt.rect(0, 0, 1, 1);
+                    // 用 seachPop.x/y 经父项换算，不走 seachPop 自身变换（避开入场缩放影响）
+                    var p = Qt.point(seachPop.x, seachPop.y);
+                    if (seachPop.parent)
+                        p = seachPop.parent.mapToItem(root.blurSource, p.x, p.y);
+                    return Qt.rect(p.x, p.y, seachPop.width, seachPop.height);
                 }
                 visible: false
             }
 
             FastBlur {
+                id: backdropBlur
                 anchors.fill: parent
-                source: glassCapture
-                radius: 26
-                transparentBorder: false
+                source: backdropCapture
+                radius: 40                // Retina 按设备像素算，视觉半径约为这里的一半
+                transparentBorder: false  // 边缘夹取，避免四周糊出一圈透明边
+                visible: false
             }
 
-            // 压暗 + 描边：保证模糊之上文字依然清晰
+            // 圆角遮罩：模糊只保留在弹层圆角之内
+            Rectangle {
+                id: backdropMask
+                anchors.fill: parent
+                radius: AppTheme.radiusMedium
+                color: "black"
+                visible: false
+            }
+
+            OpacityMask {
+                anchors.fill: parent
+                source: backdropBlur
+                maskSource: backdropMask
+            }
+
+            // 压暗 + 亮边：模糊之上还要保证文字清晰
             Rectangle {
                 anchors.fill: parent
                 radius: AppTheme.radiusMedium
-                color: Qt.rgba(0.05, 0.05, 0.08, 0.55)
+                color: Qt.rgba(0.05, 0.05, 0.09, 0.45)
                 border.width: 1
-                border.color: Qt.rgba(1, 1, 1, 0.16)
-            }
-            layer.enabled: true
-            layer.effect: DropShadow {
-                transparentBorder: true
-                horizontalOffset: 0
-                verticalOffset: 4
-                radius: 12
-                samples: 16
-                color: "#40000000"
+                border.color: Qt.rgba(1, 1, 1, 0.14)
             }
         }
 
@@ -366,9 +360,14 @@ Row {
                     // 直达行：搜索 "<当前词>"
                     Rectangle {
                         width: parent.width; height: 40; radius: AppTheme.radiusSmall
-                        color: directHover.containsMouse ? AppTheme.bgSuggestionHover : "transparent"
+                        color: "transparent"
+                        HoverBand { active: directHover.containsMouse }
                         Row {
                             anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 12; spacing: 10
+                            transform: Translate {
+                                x: directHover.containsMouse ? 4 : 0
+                                Behavior on x { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                            }
                             Image {
                                 id: directIcon; source: AppIcon.search; sourceSize: Qt.size(128,128); mipmap: true
                                 width: 16; height: 16; fillMode: Image.PreserveAspectFit
@@ -394,9 +393,14 @@ Row {
                         model: suggestModel
                         delegate: Rectangle {
                             width: contentColumn.width; height: 40; radius: AppTheme.radiusSmall
-                            color: suggestHover.containsMouse ? AppTheme.bgSuggestionHover : "transparent"
+                            color: "transparent"
+                            HoverBand { active: suggestHover.containsMouse }
                             Row {
                                 anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 12; spacing: 10
+                                transform: Translate {
+                                    x: suggestHover.containsMouse ? 4 : 0
+                                    Behavior on x { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                                }
                                 Image {
                                     id: suggestIcon; source: AppIcon.search; sourceSize: Qt.size(128,128); mipmap: true
                                     width: 16; height: 16; fillMode: Image.PreserveAspectFit
@@ -484,9 +488,16 @@ Row {
                                 delegate: Rectangle {
                                     id: chip
                                     width: chipLabel.implicitWidth + 22; height: 32; radius: 16
-                                    color: chipBody.containsMouse ? AppTheme.bgHistoryTagHover : AppTheme.bgHistoryTag
-                                    border.width: 1; border.color: AppTheme.borderDefault
+                                    // 玻璃底上不再铺不透明灰块：半透明填充 + hover 提亮 + 轻微放大
+                                    color: chipBody.containsMouse ? Qt.rgba(1, 1, 1, 0.14) : Qt.rgba(1, 1, 1, 0.07)
+                                    border.width: 1
+                                    border.color: chipBody.containsMouse ? Qt.rgba(1, 1, 1, 0.26) : Qt.rgba(1, 1, 1, 0.13)
+                                    scale: chipBody.containsMouse ? 1.05 : 1
                                     Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+                                    Behavior on border.color { ColorAnimation { duration: AppTheme.animFast } }
+                                    Behavior on scale {
+                                        NumberAnimation { duration: 200; easing.type: Easing.OutBack; easing.overshoot: 1.6 }
+                                    }
                                     Text {
                                         id: chipLabel
                                         anchors.centerIn: parent
@@ -533,10 +544,15 @@ Row {
                             model: hostSearch ? hostSearch.items : []
                             delegate: Rectangle {
                                 width: (parent.width - parent.spacing) / 2; height: 36; radius: AppTheme.radiusSmall
-                                color: hotHover.containsMouse ? AppTheme.bgSuggestionHover : "transparent"
+                                color: "transparent"
+                                HoverBand { active: hotHover.containsMouse }
                                 Row {
                                     anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 8
                                     spacing: 8
+                                    transform: Translate {
+                                        x: hotHover.containsMouse ? 4 : 0
+                                        Behavior on x { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                                    }
                                     Text {
                                         width: 14
                                         horizontalAlignment: Text.AlignHCenter
