@@ -7,6 +7,39 @@ import "../BasicConfig"
 // 数据源 DiscoverManager：/playlist/tags 分类树 + /top/playlist?category_id= 歌单列表
 Item {
     id: root
+
+    // 页面入场：淡入 + 轻微上浮（切页时内容"落"下来而不是硬切）；空闲门控下直接落终态。
+    opacity: 0
+    transform: Translate { id: rootEnterShift; y: 14 }
+
+    // 入场触发用 0ms Timer：页面自身可能已有 Component.onCompleted，
+    // 直接再写一个会触发"属性重复赋值"导致整页加载失败（踩过）
+    Timer {
+        interval: 0
+        repeat: false
+        running: true
+        onTriggered: {
+            if (BasicConfig.uiIdle) {
+                root.opacity = 1
+                rootEnterShift.y = 0
+            } else {
+                rootEnterAnim.start()
+            }
+        }
+    }
+
+    ParallelAnimation {
+        id: rootEnterAnim
+        NumberAnimation {
+            target: root; property: "opacity"
+            from: 0; to: 1; duration: 320; easing.type: Easing.OutCubic
+        }
+        NumberAnimation {
+            target: rootEnterShift; property: "y"
+            from: 14; to: 0; duration: 420; easing.type: Easing.OutCubic
+        }
+    }
+
     width: parent ? parent.width : 0
     height: parent ? parent.height : 0
     objectName: "DiscoverPage"
@@ -250,7 +283,8 @@ Item {
             }
         }
 
-        delegate: Item {
+        delegate: HoverRow {
+            hovered: plHover.hovered
             width: playlistGrid.cellWidth - 10
             height: playlistGrid.cellHeight - 10
 

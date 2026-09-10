@@ -125,6 +125,31 @@ Item {
             leftPadding: width * 0.04
             rightPadding: width * 0.04
 
+            // 入场动效：内容整体淡入 + 轻微上浮（柔和进场），空闲门控时直接落到终态
+            opacity: 0
+            transform: Translate { id: contentShift; y: 16 }
+
+            Component.onCompleted: {
+                if (BasicConfig.uiIdle) {
+                    contentColumn.opacity = 1
+                    contentShift.y = 0
+                } else {
+                    entranceAnim.start()
+                }
+            }
+
+            ParallelAnimation {
+                id: entranceAnim
+                NumberAnimation {
+                    target: contentColumn; property: "opacity"
+                    from: 0; to: 1; duration: 520; easing.type: Easing.OutCubic
+                }
+                NumberAnimation {
+                    target: contentShift; property: "y"
+                    from: 16; to: 0; duration: 640; easing.type: Easing.OutCubic
+                }
+            }
+
             Item { width: 1; height: 5 }
 
             // ========== 个人 FM ==========
@@ -135,12 +160,13 @@ Item {
                 Row {
                     spacing: 6
 
-                    Text {
+                    GlowText {
                         text: "✦ 个人FM"
                         font.pixelSize: AppTheme.fontSizeTitleLg
                         font.bold: true
                         color: AppTheme.textPrimary
-                        font.family: AppTheme.fontFamily
+                        glowColor: AppTheme.accentGlow
+                        glowRadius: 16
                     }
 
                     // 换一批（请求期间图标持续旋转；FM 模式下播放队列自动接上）
@@ -186,7 +212,10 @@ Item {
                 ListView {
                     id: fmList
                     width: parent.width
-                    height: 180
+                    // 高度比卡片高 16px 并留 8px 上边距：hover 时卡片要上浮/放大，
+                    // clip 下必须有这个余量，否则动效被裁掉（表现为"没动效"）
+                    height: 196
+                    topMargin: 8
                     orientation: ListView.Horizontal
                     spacing: 12
                     clip: true
@@ -211,17 +240,26 @@ Item {
                         readonly property var songData: modelData
                         readonly property bool isPlaying: playlistmanager && playlistmanager.currentSonghash === songData.songhash
 
+                        // 毛玻璃卡：hover 上浮（整页光圈由页面级 pageLight 提供，卡内不重复打光）
+                        HoverCard {
+                            anchors.fill: parent
+                            hovered: fmCardHover.hovered || isPlaying
+                            hoverScale: 1.06
+                            radius: AppTheme.radiusMedium
+                        }
+
                         Column {
                             anchors.fill: parent
+                            anchors.margins: 8
                             spacing: 6
 
                             // FM 接口无封面：用主题渐变占位封面（不同卡片不同色系），
                             // 中间大号 ♪，hover/播放时压暗 + 动态图
                             Rectangle {
                                 id: fmCoverCard
-                                width: 130
-                                height: 130
-                                radius: 12
+                                width: parent.width
+                                height: width
+                                radius: 10
                                 clip: true
 
                                 // 渐变色板：按卡片序号循环取一对
@@ -375,12 +413,13 @@ Item {
                 Row {
                     spacing: 6
 
-                    Text {
+                    GlowText {
                         text: "✦ 热门推荐"
                         font.pixelSize: AppTheme.fontSizeTitleLg
                         font.bold: true
                         color: AppTheme.textPrimary
-                        font.family: AppTheme.fontFamily
+                        glowColor: AppTheme.accentGlow
+                        glowRadius: 16
                     }
 
                     // 换一批：随机挑一个排行榜，把榜单歌曲注入推荐区（请求期间图标持续旋转）
@@ -414,11 +453,12 @@ Item {
                         property var songData: modelData
                         readonly property bool isPlaying: playlistmanager && playlistmanager.currentSonghash === songData.songhash
 
-                        Rectangle {
+                        // hover 提起：上浮 + 回弹 + 投影（无面板）
+                        HoverCard {
                             anchors.fill: parent
-                            // hover 改为歌曲名高亮（背景透明，渐变下无块状覆盖层）
-                            color: "transparent"
-                            radius: 12
+                            hovered: songCardHover.hovered || isPlaying
+                            hoverScale: 1.03
+                            radius: AppTheme.radiusMedium
 
                             Column {
                                 anchors.fill: parent
@@ -555,12 +595,13 @@ Item {
                 Row {
                     spacing: 6
 
-                    Text {
+                    GlowText {
                         text: "↑ 精选歌单"
                         font.pixelSize: AppTheme.fontSizeTitleLg
                         font.bold: true
                         color: AppTheme.textPrimary
-                        font.family: AppTheme.fontFamily
+                        glowColor: AppTheme.accentGlow
+                        glowRadius: 16
                     }
 
                     SectionRefreshButton {
@@ -607,12 +648,13 @@ Item {
 
                             property var plData: modelData
 
-                            Rectangle {
+                            // hover 提起：上浮 + 回弹 + 投影
+                            HoverCard {
                                 anchors.fill: parent
-                                // hover 改为歌单名高亮（背景透明，渐变下无块状覆盖层）
-                                color: "transparent"
-                                radius: 12
-
+                                hovered: plHover.hovered
+                                hoverScale: 1.015
+                                radius: AppTheme.radiusMedium
+    
                                 Row {
                                     anchors.fill: parent
                                     anchors.margins: 8

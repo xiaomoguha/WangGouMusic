@@ -7,6 +7,9 @@
 #include <QQmlContext>
 #include <QQuickWindow>
 #include <QTimer>
+#include <QSettings>
+#include <QScreen>
+#include <QGuiApplication>
 #include <QtQuickControls2/QQuickStyle>
 #include <QNetworkAccessManager>
 #include <QNetworkDiskCache>
@@ -20,6 +23,7 @@
 #include <QWKQuick/quickwindowagent.h>
 #endif
 #include "./CPPSrc/CrashHandler.h"
+#include "./CPPSrc/cursortracker.h"
 #include "./CPPSrc/ClickThroughHelper.h"
 #include "./CPPSrc/PlaylistCacheStore.h"
 #include "./CPPSrc/dailyrecommend.h"
@@ -175,6 +179,9 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("hostSearch", &hostSearch);
     engine.rootContext()->setContextProperty("complexsearch", &complexsearch);
     engine.rootContext()->setContextProperty("searchHistory", &searchHistory);
+    // 全局指针追踪：窗口级光标光源用（见 CursorLight.qml 的说明）
+    CursorTracker cursorTracker;
+    engine.rootContext()->setContextProperty("cursorTracker", &cursorTracker);
     engine.rootContext()->setContextProperty("playlistmanager", &playlistmanager);
     engine.rootContext()->setContextProperty("playlistColorExtractor", &playlistColorExtractor);
     engine.rootContext()->setContextProperty("recommendation", &recommendation);
@@ -270,6 +277,74 @@ int main(int argc, char *argv[])
         QObject *rootObj = engine.rootObjects().first();
         window           = qobject_cast<QQuickWindow *>(rootObj);
     }
+
+    // ---------------- 主窗口位置：恢复上次位置，首次优先副屏 ----------------
+    // 位置持久化在 QSettings("WangGouMusic","UserConfig") 的 window/* 键：
+    //   ① 有记录且原屏幕仍在 → 恢复上次位置（用户拖到哪就是哪）；
+    //   ② 首次启动或原屏幕已拔掉 → 多屏时优先落在非主屏（避免每次都弹在主屏），单屏居中。
+    if (window)
+    {
+        QSettings winSettings("WangGouMusic", "UserConfig");
+        const bool hasSavedPos = winSettings.contains("window/x") && winSettings.contains("window/y");
+        const int savedX = winSettings.value("window/x").toInt();
+        const int savedY = winSettings.value("window/y").toInt();
+
+        // 保存的坐标点（窗口中心）仍落在某块屏幕内才恢复——不依赖屏幕名，
+        // 外接屏改分辨率/名字变化也不会误判；屏幕被拔掉则走下面的兜底。
+        const auto screens = QGuiApplication::screens();
+        bool savedPosOnScreen = false;
+        for (QScreen *sc : screens)
+        {
+            if (sc && sc->geometry().contains(savedX + window->width() / 2, savedY + window->height() / 2))
+            {
+                savedPosOnScreen = true;
+                break;
+            }
+        }
+
+        if (hasSavedPos && savedPosOnScreen)
+        {
+            window->setX(savedX);
+            window->setY(savedY);
+        }
+        else
+        {
+            QScreen *secondary = nullptr;
+            for (QScreen *sc : screens)
+            {
+                if (sc && sc != QGuiApplication::primaryScreen())
+                {
+                    secondary = sc;
+                    break;
+                }
+            }
+            QScreen *posTarget = secondary ? secondary : QGuiApplication::primaryScreen();
+            if (posTarget)
+            {
+                const QRect avail = posTarget->availableGeometry();
+                window->setX(avail.x() + (avail.width() - window->width()) / 2);
+                window->setY(avail.y() + (avail.height() - window->height()) / 2);
+            }
+        }
+
+        // 移动/拖动后延迟落盘（600ms 单次，避免拖动过程频繁写配置）
+        auto *posSaveTimer = new QTimer(window);
+        posSaveTimer->setSingleShot(true);
+        posSaveTimer->setInterval(600);
+        QObject::connect(posSaveTimer, &QTimer::timeout, window, [window]() {
+            if (window->visibility() != QWindow::Windowed)
+                return; // 最大化/全屏下的坐标不是用户意图位置，不记录
+            QSettings s("WangGouMusic", "UserConfig");
+            s.setValue("window/x", window->x());
+            s.setValue("window/y", window->y());
+        });
+        QObject::connect(window, &QWindow::xChanged, posSaveTimer, [posSaveTimer]() { posSaveTimer->start(); });
+        QObject::connect(window, &QWindow::yChanged, posSaveTimer, [posSaveTimer]() { posSaveTimer->start(); });
+    }
+
+    // 把主窗口交给光标追踪（换算窗口局部坐标 / 判断指针是否在窗口内）
+    if (window)
+        cursorTracker.attachWindow(window);
 
 #ifdef Q_OS_MAC
     // QWindowKit 接管主窗口：真原生 traffic lights（系统级悬停图案 + 关/最小/缩放动作），

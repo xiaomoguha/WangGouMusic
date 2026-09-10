@@ -105,7 +105,8 @@ Page {
             }
         }
 
-        delegate: Rectangle {
+        delegate: HoverRow {
+            hovered: itemHover.hovered
             id: songItem
             width: flick.width
             height: 56 + aiExpand.expandedHeight

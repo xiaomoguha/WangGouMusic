@@ -93,7 +93,8 @@ Page {
             Repeater {
                 model: playlistmanager ? playlistmanager.recentPlaylist : []
 
-                delegate: Rectangle {
+                delegate: HoverRow {
+                    hovered: itemHover.hovered
                     id: songItem
                     required property int index
                     required property var modelData

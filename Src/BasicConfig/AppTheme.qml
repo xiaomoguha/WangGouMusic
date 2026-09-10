@@ -5,19 +5,10 @@ QtObject {
     id: theme
 
     // ===== 主题状态 =====
-    // 开机时从 C++ 加载，C++ 构造时从本地配置读取
-    property bool isDark: lyricsConfig ? lyricsConfig.isDark : true
-
-    signal themeChanged
-
-    function toggleTheme() {
-        isDark = !isDark;
-        if (lyricsConfig) {
-            lyricsConfig.isDark = isDark;
-            lyricsConfig.saveConfig();
-        }
-        themeChanged();
-    }
+    // 只保留深色模式：浅色模式已整体移除（原切换入口与浅色配色分支不再使用）。
+    // 保留 isDark 令牌是为了兼容既有的大量 `AppTheme.isDark ? ... : ...` 写法，
+    // 恒为 true 后所有三元表达式都取深色分支。
+    readonly property bool isDark: true
 
     // ===== 背景颜色 =====
     readonly property color bgSidebar: isDark ? "#1a1a21" : "#F5F5F7"
