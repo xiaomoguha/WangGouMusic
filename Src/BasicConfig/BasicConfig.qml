@@ -48,10 +48,9 @@ QtObject {
         ? playlistPageCoverColor
         : (playingActive ? playingCoverColor : ""))
 
-    // 深色主题下把封面主色按最大分量线性压暗到 ≤0.5 亮度（保持色相），
-    // 避免切到浅色封面时整窗渐变与浮层文字一起变白；浅色主题/空色原样返回。
+    // 把封面主色按最大分量线性压暗到 ≤0.5 亮度（保持色相），
+    // 避免浅色封面时整窗渐变与浮层文字一起变白；空色原样返回。
     function clampCoverColor(hex) {
-        if (!AppTheme.isDark) return hex
         if (typeof hex !== "string" || hex.length < 7 || hex.charAt(0) !== "#") return hex
         var c = rgbFromHex(hex, 1)
         var mx = Math.max(c.r, Math.max(c.g, c.b))

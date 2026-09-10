@@ -1,10 +1,8 @@
 import QtQuick 2.15
 import "../BasicConfig"
 
-// 列表行 hover 反馈（歌曲行/条目行通用）：
-//   hover 时整行内容轻微右移（OutBack 回弹，像被"抽"出来一点），
-//   同时在行背后浮出一条两端淡出的柔光带（不是常驻底色，不遮内容）。
-// 行内原有的文字高亮 / 播放态逻辑保持不变。
+// 列表行 hover 反馈：整行内容右移 6px（OutBack 回弹）+ 背后一条两端淡出的柔光带。
+// 不铺常驻底色，行内原有的文字高亮/播放态逻辑不受影响。
 Rectangle {
     id: root
 
@@ -45,8 +43,8 @@ Rectangle {
         gradient: Gradient {
             orientation: Gradient.Horizontal
             GradientStop { position: 0.00; color: Qt.rgba(1, 1, 1, 0) }
-            GradientStop { position: 0.15; color: Qt.rgba(1, 1, 1, AppTheme.isDark ? 0.075 : 0.13) }
-            GradientStop { position: 0.60; color: Qt.rgba(1, 1, 1, AppTheme.isDark ? 0.05 : 0.09) }
+            GradientStop { position: 0.15; color: Qt.rgba(1, 1, 1, 0.075) }
+            GradientStop { position: 0.60; color: Qt.rgba(1, 1, 1, 0.05) }
             GradientStop { position: 1.00; color: Qt.rgba(1, 1, 1, 0) }
         }
     }

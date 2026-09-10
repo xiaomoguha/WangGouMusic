@@ -72,7 +72,7 @@ Page {
                             orientation: Gradient.Horizontal
                             GradientStop { position: 0.0; color: "transparent" }
                             GradientStop { position: 0.4; color: "transparent" }
-                            GradientStop { position: 0.5; color: AppTheme.isDark ? "#15FFFFFF" : "#10FF8A80" }
+                            GradientStop { position: 0.5; color: "#15FFFFFF" }
                             GradientStop { position: 0.6; color: "transparent" }
                             GradientStop { position: 1.0; color: "transparent" }
                         }
@@ -311,7 +311,7 @@ Page {
                     iconSource: AppIcon.addTogether
                     size: 30
                     iconSize: 16
-                    iconColor: AppTheme.isDark ? (togetherBtn.hovered ? AppTheme.accent : AppTheme.iconDefault) : AppTheme.iconDefault
+                    iconColor: (togetherBtn.hovered ? AppTheme.accent : AppTheme.iconDefault)
                     onClicked: websocket.addSongToTogether(model.songname, model.songhash, model.singername, model.album_name, model.duration, model.union_cover)
                 }
 

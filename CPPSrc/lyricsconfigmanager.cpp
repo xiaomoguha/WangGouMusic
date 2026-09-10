@@ -69,7 +69,6 @@ void LyricsConfigManager::saveConfig()
     config["isVertical"]  = m_isVertical;
     config["scale"]       = m_scale;
     config["fontSize"]    = m_fontSize;
-    config["isDark"]      = m_isDark;
     config["enabled"]     = m_enabled;
     config["lyricsColor"] = m_lyricsColor;
     config["starColor"]   = m_starColor;
@@ -141,7 +140,6 @@ void LyricsConfigManager::loadConfig()
         m_isVertical  = config["isVertical"].toBool(m_isVertical);
         m_scale       = config["scale"].toDouble(m_scale);
         m_fontSize    = config["fontSize"].toInt(m_fontSize);
-        m_isDark      = config["isDark"].toBool(m_isDark);
         m_enabled     = config["enabled"].toBool(m_enabled);
         m_lyricsColor = config["lyricsColor"].toString(m_lyricsColor);
         m_starColor   = config["starColor"].toString(m_starColor);
@@ -277,14 +275,6 @@ void LyricsConfigManager::setFontSize(int value)
     if (m_fontSize != value)
     {
         m_fontSize = value;
-        emit configChanged();
-    }
-}
-void LyricsConfigManager::setIsDark(bool value)
-{
-    if (m_isDark != value)
-    {
-        m_isDark = value;
         emit configChanged();
     }
 }

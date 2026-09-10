@@ -2,10 +2,8 @@ import QtQuick 2.15
 import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
 
-// 卡片 hover 反馈（无常驻底板、无玻璃壳）：
-//   hover 时整卡被"提起"——上浮 8px + 放大 1.06（都带 OutBack 回弹），
-//   同时在卡片背后垫一团无边界柔光把这块"点亮"（深色底上投影不可见，柔光才有效）。
-//   内容层（封面 / 歌名 / 歌手）保持原样，不铺任何面板。
+// 卡片 hover 反馈：无常驻底板——hover 时上浮 8px + 放大 1.06（OutBack 回弹），
+// 并垫一团无边界柔光把这块"点亮"（深色底上投影不可见，所以用柔光）；内容层保持原样。
 Rectangle {
     id: root
 
@@ -53,8 +51,8 @@ Rectangle {
         opacity: root._active ? 1 : 0
         Behavior on opacity { NumberAnimation { duration: AppTheme.animNormal; easing.type: Easing.OutCubic } }
         gradient: Gradient {
-            GradientStop { position: 0.00; color: Qt.rgba(1, 1, 1, AppTheme.isDark ? 0.11 : 0.18) }
-            GradientStop { position: 0.45; color: Qt.rgba(1, 1, 1, AppTheme.isDark ? 0.045 : 0.07) }
+            GradientStop { position: 0.00; color: Qt.rgba(1, 1, 1, 0.11) }
+            GradientStop { position: 0.45; color: Qt.rgba(1, 1, 1, 0.045) }
             GradientStop { position: 1.00; color: Qt.rgba(1, 1, 1, 0) }
         }
     }

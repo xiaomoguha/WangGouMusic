@@ -202,7 +202,7 @@ Page {
                                     size: 30
                                     iconSize: 16
                                     iconSource: AppIcon.playCircle
-                                    iconColor: AppTheme.isDark ? (playBtn.hovered ? "#4FC3F7" : "#FFFFFF") : AppTheme.iconDefault
+                                    iconColor: (playBtn.hovered ? "#4FC3F7" : "#FFFFFF")
                                     onClicked: {
                                         // 先读取为基本类型：playNextAndPlay 会触发 recentPlaylist 重置，
                                         // 之后 modelData 按失效下标取值会得到 undefined（toast 显示“正在播放 undefined”）。
@@ -243,7 +243,7 @@ Page {
                                     size: 30
                                     iconSize: 16
                                     iconSource: AppIcon.addToList
-                                    iconColor: AppTheme.isDark ? (addBtn.hovered ? AppTheme.accent : "#FFFFFF") : AppTheme.iconDefault
+                                    iconColor: (addBtn.hovered ? AppTheme.accent : "#FFFFFF")
                                     onClicked: {
                                         var md = modelData
                                         playlistmanager.addSongNext({
@@ -264,7 +264,7 @@ Page {
                                     size: 30
                                     iconSize: 16
                                     iconSource: AppIcon.addTogether
-                                    iconColor: AppTheme.isDark ? (togetherBtn.hovered ? AppTheme.accent : "#FFFFFF") : AppTheme.iconDefault
+                                    iconColor: (togetherBtn.hovered ? AppTheme.accent : "#FFFFFF")
                                     onClicked: {
                                         var md = modelData
                                         websocket.addSongToTogether(md.title, md.songhash, md.singername, md.album_name, md.duration, md.union_cover)

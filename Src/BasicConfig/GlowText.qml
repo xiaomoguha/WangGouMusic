@@ -2,9 +2,9 @@ import QtQuick 2.15
 import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
 
-// Folia 风格发光文字：文字本体 + 同色柔光（Glow）。
-// 关键点：容器四周留出 glowRadius 的空白，光晕才有扩散空间、不会被图层边界裁掉；
-// 效果作用在整个容器上（Glow 的输出包含文字本体，因此不会出现重影）。
+// 发光文字：文字本体 + 同色柔光。
+// 容器四周留出 glowRadius 空白给光晕扩散（否则被图层边界裁掉）；效果作用在整个容器上
+// （Glow 的输出包含文字本体，不会重影）。
 Item {
     id: root
 

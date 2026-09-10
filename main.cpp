@@ -278,10 +278,8 @@ int main(int argc, char *argv[])
         window           = qobject_cast<QQuickWindow *>(rootObj);
     }
 
-    // ---------------- 主窗口位置：恢复上次位置，首次优先副屏 ----------------
-    // 位置持久化在 QSettings("WangGouMusic","UserConfig") 的 window/* 键：
-    //   ① 有记录且原屏幕仍在 → 恢复上次位置（用户拖到哪就是哪）；
-    //   ② 首次启动或原屏幕已拔掉 → 多屏时优先落在非主屏（避免每次都弹在主屏），单屏居中。
+    // 主窗口位置：有记录且原屏幕仍在就恢复；否则多屏优先落非主屏（避免每次弹在主屏），单屏居中。
+    // 位置存 QSettings("WangGouMusic","UserConfig") 的 window/x|y。
     if (window)
     {
         QSettings winSettings("WangGouMusic", "UserConfig");

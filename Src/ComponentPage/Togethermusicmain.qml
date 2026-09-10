@@ -34,7 +34,7 @@ Item {
         contentItem: Rectangle {
             width: 6
             radius: 3
-            color: AppTheme.isDark ? "#99FFFFFF" : "#99000000"
+            color: "#99FFFFFF"
         }
         background: null
 
@@ -1089,7 +1089,7 @@ Item {
             font.pixelSize: AppTheme.fontSizeSmall
             font.family: AppTheme.fontFamily
             // 浅色主题下 textDim 太浅看不见，直接黑色
-            color: AppTheme.isDark ? AppTheme.textDim : "#000000"
+            color: AppTheme.textDim
             anchors.horizontalCenter: parent.horizontalCenter
         }
     }
@@ -1115,17 +1115,13 @@ Item {
                 width: parent.width - sendBtn.width - parent.spacing
                 height: 36
                 placeholderText: "说点什么..."
-                // 浅色主题下文字/占位符直接黑色（浅色渐变上黑字清晰），深色保持渐变感知白字
-                color: AppTheme.isDark
-                    ? (BasicConfig.playlistCoverColor !== ""
-                        ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
-                        : AppTheme.textPrimary)
-                    : "#000000"
-                palette.placeholderText: AppTheme.isDark
-                    ? (BasicConfig.playlistCoverColor !== ""
-                        ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
-                        : AppTheme.textPlaceholder)
-                    : "#000000"
+                // 有封面主色时按对比度取色，否则用主题文字色
+                color: BasicConfig.playlistCoverColor !== ""
+                    ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
+                    : AppTheme.textPrimary
+                palette.placeholderText: BasicConfig.playlistCoverColor !== ""
+                    ? BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent)
+                    : AppTheme.textPlaceholder
                 font.pixelSize: AppTheme.fontSizeBody
                 font.family: AppTheme.fontFamily
                 verticalAlignment: Text.AlignVCenter
@@ -1136,7 +1132,7 @@ Item {
                     // idle 边框：深色主题白边、浅色主题黑边，聚焦变红
                     color: root.tint("#1EFFFFFF", "#40FFFFFF", AppTheme.bgInput)
                     border.color: chatInput.activeFocus ? AppTheme.borderFocus
-                        : (AppTheme.isDark ? "#FFFFFF" : "#000000")
+                        : "#FFFFFF"
                     border.width: 1
                 }
                 onAccepted: {
@@ -1301,7 +1297,7 @@ Item {
             text: "暂无房间动态"
             font.pixelSize: AppTheme.fontSizeSmall
             font.family: AppTheme.fontFamily
-            color: AppTheme.isDark ? AppTheme.textDim : "#000000"
+            color: AppTheme.textDim
             opacity: 0.6
         }
     }

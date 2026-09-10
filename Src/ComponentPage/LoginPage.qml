@@ -291,7 +291,7 @@ ThemedPopup {
             Text {
                 anchors.centerIn: parent
                 text: userManager && userManager.isLoading ? "登录中..." : "登录"
-                color: AppTheme.isDark ? "#1A1A2E" : "#FFFFFF"
+                color: "#1A1A2E"
                 font.pixelSize: AppTheme.fontSizeBodyLg
                 font.weight: Font.DemiBold
                 font.family: AppTheme.fontFamily
