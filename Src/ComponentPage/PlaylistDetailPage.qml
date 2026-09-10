@@ -330,9 +330,10 @@ Item {
             height: 150
             color: "transparent"
 
-            opacity: 1 - 0.85 * root.headerCollapse
+            // 完全收起：滚下去后不留半透明残影（原来是淡到 15% 挂着，看着像"影子"）
+            opacity: 1 - root.headerCollapse
             scale: 1 - 0.06 * root.headerCollapse
-            transform: Translate { y: -18 * root.headerCollapse }
+            transform: Translate { y: -30 * root.headerCollapse }
 
             Row {
                 anchors.fill: parent
