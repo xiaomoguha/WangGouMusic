@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
 
 // 设置页：顶部横向标签页（网易云风格）+ 下方分区滚动。
@@ -10,6 +11,62 @@ Rectangle {
     width: parent ? parent.width : 0
     height: parent ? parent.height : 0
 
+    // ===== 入场动画 =====
+    // 标题/标签先起，三张卡片依次上浮（错开 0.12）；页面首次创建时播一次
+    property real enterProgress: 0
+    function enterAlpha(i) {
+        var p = (settingsPage.enterProgress - i * 0.12) / 0.5
+        return Math.max(0, Math.min(1, p))
+    }
+    Timer {
+        interval: 24
+        running: true
+        repeat: false
+        onTriggered: enterAnim.start()
+    }
+    NumberAnimation {
+        id: enterAnim
+        target: settingsPage
+        property: "enterProgress"
+        from: 0
+        to: 1
+        duration: 560
+        easing.type: Easing.OutCubic
+    }
+
+    // 分区标题：只占文字本体尺寸，光晕溢出到父项外
+    //（直接用 GlowText 的话，它给光晕留的 padding 会把列布局撑开、标题也会错位）
+    component SectionTitle: Item {
+        property alias text: secLabel.text
+        readonly property real glowPad: 10
+        implicitWidth: secLabel.implicitWidth - glowPad * 2
+        implicitHeight: secLabel.implicitHeight - glowPad * 2
+
+        GlowText {
+            id: secLabel
+            anchors.centerIn: parent
+            color: AppTheme.textPrimary
+            font.pixelSize: AppTheme.fontSizeTitle
+            font.weight: Font.Bold
+            glowRadius: parent.glowPad
+            glowSpread: 0.05
+            glowColor: Qt.rgba(1, 1, 1, 0.26)
+        }
+    }
+
+    // 两端淡出的分隔线：玻璃卡片里比通栏实线柔和，不会有"切一刀"的观感
+    component SoftDivider: Rectangle {
+        width: parent ? parent.width : 0
+        height: 1
+        gradient: Gradient {
+            orientation: Gradient.Horizontal
+            GradientStop { position: 0.00; color: Qt.rgba(1, 1, 1, 0.0) }
+            GradientStop { position: 0.12; color: Qt.rgba(1, 1, 1, 0.10) }
+            GradientStop { position: 0.88; color: Qt.rgba(1, 1, 1, 0.10) }
+            GradientStop { position: 1.00; color: Qt.rgba(1, 1, 1, 0.0) }
+        }
+    }
+
     // 顶部标题 + 横向标签
     Item {
         id: tabBar
@@ -17,17 +74,22 @@ Rectangle {
         anchors.right: parent.right
         anchors.top: parent.top
         height: 96
+        opacity: settingsPage.enterAlpha(0)
+        transform: Translate { y: 10 * (1 - settingsPage.enterAlpha(0)) }
 
-        Text {
+        GlowText {
+            // 36/24 是文字本体的目标位置，GlowText 四周留了 glowRadius 给光晕，这里减掉
+            anchors.left: parent.left
+            anchors.leftMargin: 36 - 14
+            anchors.top: parent.top
+            anchors.topMargin: 24 - 14
             text: "设置"
             color: AppTheme.textPrimary
             font.pixelSize: AppTheme.fontSizeTitleLg
             font.weight: Font.Bold
-            font.family: AppTheme.fontFamily
-            anchors.left: parent.left
-            anchors.leftMargin: 36
-            anchors.top: parent.top
-            anchors.topMargin: 24
+            glowRadius: 14
+            glowSpread: 0.06
+            glowColor: Qt.rgba(1, 1, 1, 0.30)
         }
 
         Row {
@@ -45,8 +107,28 @@ Rectangle {
                 ]
                 delegate: Item {
                     required property var modelData
-                    width: tabText.implicitWidth
+                    width: tabText.implicitWidth + 24
                     height: 42
+
+                    readonly property bool selected: settingsPage.currentSection === modelData.key
+
+                    // hover 柔光胶囊（与搜索弹层同款：两端淡出，不铺实心块）
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.margins: 4
+                        anchors.leftMargin: -2
+                        anchors.rightMargin: -2
+                        radius: height / 2
+                        opacity: (tabHover.hovered && !parent.selected) ? 1 : 0
+                        Behavior on opacity { NumberAnimation { duration: AppTheme.animFast; easing.type: Easing.OutCubic } }
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: 0.00; color: Qt.rgba(1, 1, 1, 0) }
+                            GradientStop { position: 0.25; color: Qt.rgba(1, 1, 1, 0.09) }
+                            GradientStop { position: 0.75; color: Qt.rgba(1, 1, 1, 0.09) }
+                            GradientStop { position: 1.00; color: Qt.rgba(1, 1, 1, 0) }
+                        }
+                    }
 
                     Text {
                         id: tabText
@@ -54,25 +136,35 @@ Rectangle {
                         anchors.top: parent.top
                         anchors.topMargin: 8
                         text: modelData.title
-                        color: settingsPage.currentSection === modelData.key ? AppTheme.textPrimary : AppTheme.textSecondary
+                        color: parent.selected ? AppTheme.textPrimary : (tabHover.hovered ? AppTheme.textPrimary : AppTheme.textSecondary)
                         font.pixelSize: AppTheme.fontSizeBodyLg
-                        font.weight: settingsPage.currentSection === modelData.key ? Font.DemiBold : Font.Normal
+                        font.weight: parent.selected ? Font.DemiBold : Font.Normal
                         font.family: AppTheme.fontFamily
                         Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
                     }
 
-                    // 选中下划线（缩放进出）
+                    // 选中下划线（缩放进出）+ 同色柔光
                     Rectangle {
+                        id: tabUnderline
                         anchors.horizontalCenter: parent.horizontalCenter
                         anchors.bottom: parent.bottom
                         width: tabText.implicitWidth + 8
                         height: 3
                         radius: 1.5
                         color: AppTheme.accent
-                        scale: settingsPage.currentSection === modelData.key ? 1 : 0
-                        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+                        scale: parent.selected ? 1 : 0
+                        Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack; easing.overshoot: 1.5 } }
+                        layer.enabled: true
+                        layer.effect: Glow {
+                            radius: 7
+                            samples: 13
+                            spread: 0.12
+                            color: AppTheme.accentGlow
+                            transparentBorder: true
+                        }
                     }
 
+                    HoverHandler { id: tabHover }
                     TapHandler {
                         cursorShape: Qt.PointingHandCursor
                         onTapped: settingsPage.selectSection(modelData.key)
@@ -81,13 +173,19 @@ Rectangle {
             }
         }
 
-        // 底部分隔线
+        // 底部分隔线（两端淡出）
         Rectangle {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             height: 1
-            color: AppTheme.borderSubtle
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0.00; color: Qt.rgba(1, 1, 1, 0.0) }
+                GradientStop { position: 0.10; color: Qt.rgba(1, 1, 1, 0.10) }
+                GradientStop { position: 0.90; color: Qt.rgba(1, 1, 1, 0.10) }
+                GradientStop { position: 1.00; color: Qt.rgba(1, 1, 1, 0.0) }
+            }
         }
     }
 
@@ -136,10 +234,17 @@ Rectangle {
                 width: parent.width
                 height: networkCol.implicitHeight + 48
                 radius: AppTheme.radiusLarge
-                // 毛玻璃卡片：半透明填充 + 极细亮边
-                color: Qt.rgba(1, 1, 1, 0.055)
+                // 玻璃卡片：上亮下暗的竖向渐变（有上方光源感）+ 极细亮边
+                color: "transparent"
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.085) }
+                    GradientStop { position: 1.0; color: Qt.rgba(1, 1, 1, 0.030) }
+                }
                 border.width: 1
                 border.color: Qt.rgba(1, 1, 1, 0.12)
+                // 入场：依次上浮 + 淡入
+                opacity: settingsPage.enterAlpha(1)
+                transform: Translate { y: 16 * (1 - settingsPage.enterAlpha(1)) }
 
                 Column {
                     id: networkCol
@@ -149,13 +254,7 @@ Rectangle {
                     anchors.margins: 24
                     spacing: 16
 
-                    Text {
-                        text: "网络代理"
-                        color: AppTheme.textPrimary
-                        font.pixelSize: AppTheme.fontSizeTitle
-                        font.weight: Font.Bold
-                        font.family: AppTheme.fontFamily
-                    }
+                    SectionTitle { text: "网络代理" }
                     Text {
                         width: parent.width
                         text: "代理影响所有网络请求（接口、歌曲、一起听）。选择「不使用代理」可绕开 Clash 等全局代理。"
@@ -177,13 +276,18 @@ Rectangle {
                                 { mode: 2, title: "自定义代理", desc: "指定 HTTP / SOCKS5 代理地址" }
                             ]
                             delegate: Rectangle {
+                                id: modeRow
                                 required property var modelData
+                                readonly property bool _selected: settingsPage.editMode === modelData.mode
                                 width: parent.width
                                 height: 52
                                 radius: AppTheme.radiusMedium
-                                color: settingsPage.editMode === modelData.mode ? AppTheme.accentDim : AppTheme.bgInput
+                                // 玻璃底：不再铺不透明块；选中=强调色淡染，hover=提亮一档
+                                color: _selected ? AppTheme.accentDim
+                                                 : (modeHover.hovered ? Qt.rgba(1, 1, 1, 0.10) : Qt.rgba(1, 1, 1, 0.05))
                                 border.width: 1
-                                border.color: settingsPage.editMode === modelData.mode ? AppTheme.accent : AppTheme.borderSubtle
+                                border.color: _selected ? AppTheme.accent
+                                                        : (modeHover.hovered ? Qt.rgba(1, 1, 1, 0.24) : Qt.rgba(1, 1, 1, 0.12))
                                 Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
                                 Behavior on border.color { ColorAnimation { duration: AppTheme.animFast } }
 
@@ -192,6 +296,11 @@ Rectangle {
                                     anchors.leftMargin: 14
                                     anchors.verticalCenter: parent.verticalCenter
                                     spacing: 2
+                                    // hover 时内容轻微右移（与列表行同款反馈）
+                                    transform: Translate {
+                                        x: (modeHover.hovered && !modeRow._selected) ? 4 : 0
+                                        Behavior on x { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                                    }
                                     Text {
                                         text: modelData.title
                                         color: AppTheme.textPrimary
@@ -215,9 +324,16 @@ Rectangle {
                                     color: AppTheme.accent
                                     font.pixelSize: AppTheme.fontSizeBodyLg
                                     font.weight: Font.Bold
-                                    visible: settingsPage.editMode === modelData.mode
+                                    // 选中标记：淡入 + 回弹放大
+                                    opacity: modeRow._selected ? 1 : 0
+                                    scale: modeRow._selected ? 1 : 0.5
+                                    Behavior on opacity { NumberAnimation { duration: AppTheme.animFast } }
+                                    Behavior on scale {
+                                        NumberAnimation { duration: 220; easing.type: Easing.OutBack; easing.overshoot: 1.7 }
+                                    }
                                 }
 
+                                HoverHandler { id: modeHover }
                                 TapHandler {
                                     cursorShape: Qt.PointingHandCursor
                                     onTapped: settingsPage.editMode = modelData.mode
@@ -246,24 +362,34 @@ Rectangle {
                             Row {
                                 anchors.right: parent.right
                                 anchors.verticalCenter: parent.verticalCenter
-                                spacing: 0
+                                spacing: 8
                                 Repeater {
                                     model: [{ t: "HTTP", v: 0 }, { t: "SOCKS5", v: 1 }]
                                     delegate: Rectangle {
+                                        id: typeChip
                                         required property var modelData
+                                        readonly property bool _on: settingsPage.editType === modelData.v
                                         width: 64; height: 30; radius: 15
-                                        color: settingsPage.editType === modelData.v ? AppTheme.accent : "transparent"
+                                        color: _on ? AppTheme.accent
+                                                   : (typeHover.hovered ? Qt.rgba(1, 1, 1, 0.10) : Qt.rgba(1, 1, 1, 0.04))
                                         border.width: 1
-                                        border.color: settingsPage.editType === modelData.v ? AppTheme.accent : AppTheme.borderDefault
+                                        border.color: _on ? AppTheme.accent
+                                                          : (typeHover.hovered ? Qt.rgba(1, 1, 1, 0.28) : Qt.rgba(1, 1, 1, 0.14))
+                                        scale: typeTap.pressed ? 0.95 : (typeHover.hovered ? 1.04 : 1)
                                         Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+                                        Behavior on border.color { ColorAnimation { duration: AppTheme.animFast } }
+                                        Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack; easing.overshoot: 1.5 } }
                                         Text {
                                             anchors.centerIn: parent
                                             text: modelData.t
-                                            color: settingsPage.editType === modelData.v ? "white" : AppTheme.textSecondary
+                                            color: typeChip._on ? "white" : (typeHover.hovered ? AppTheme.textPrimary : AppTheme.textSecondary)
                                             font.pixelSize: AppTheme.fontSizeSmall
                                             font.family: AppTheme.fontFamily
+                                            Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
                                         }
+                                        HoverHandler { id: typeHover }
                                         TapHandler {
+                                            id: typeTap
                                             cursorShape: Qt.PointingHandCursor
                                             onTapped: settingsPage.editType = modelData.v
                                         }
@@ -283,9 +409,11 @@ Rectangle {
                             verticalAlignment: Text.AlignVCenter
                             background: Rectangle {
                                 radius: AppTheme.radiusMedium
-                                color: AppTheme.bgInput
-                                border.color: hostInput.activeFocus ? AppTheme.borderFocus : AppTheme.borderSubtle
-                                border.width: 1
+                                // 玻璃输入框：半透明填充，聚焦时提亮 + 强调色描边
+                                color: hostInput.activeFocus ? Qt.rgba(1, 1, 1, 0.10) : Qt.rgba(1, 1, 1, 0.05)
+                                border.width: hostInput.activeFocus ? 1.5 : 1
+                                border.color: hostInput.activeFocus ? AppTheme.borderFocus : Qt.rgba(1, 1, 1, 0.13)
+                                Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
                                 Behavior on border.color { ColorAnimation { duration: AppTheme.animFast } }
                             }
                             onEditingFinished: settingsPage.editHost = text.trim()
@@ -303,9 +431,10 @@ Rectangle {
                             inputMethodHints: Qt.ImhDigitsOnly
                             background: Rectangle {
                                 radius: AppTheme.radiusMedium
-                                color: AppTheme.bgInput
-                                border.color: portInput.activeFocus ? AppTheme.borderFocus : AppTheme.borderSubtle
-                                border.width: 1
+                                color: portInput.activeFocus ? Qt.rgba(1, 1, 1, 0.10) : Qt.rgba(1, 1, 1, 0.05)
+                                border.width: portInput.activeFocus ? 1.5 : 1
+                                border.color: portInput.activeFocus ? AppTheme.borderFocus : Qt.rgba(1, 1, 1, 0.13)
+                                Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
                                 Behavior on border.color { ColorAnimation { duration: AppTheme.animFast } }
                             }
                             onEditingFinished: {
@@ -331,7 +460,10 @@ Rectangle {
                         width: parent.width; height: 42
                         radius: AppTheme.radiusMedium
                         color: applyHover.hovered ? AppTheme.accentHover : AppTheme.accent
+                        // hover 轻微上浮、按下回弹
+                        scale: applyTap.pressed ? 0.985 : (applyHover.hovered ? 1.012 : 1)
                         Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+                        Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
                         Text {
                             anchors.centerIn: parent
                             text: "应用"
@@ -342,6 +474,7 @@ Rectangle {
                         }
                         HoverHandler { id: applyHover }
                         TapHandler {
+                            id: applyTap
                             cursorShape: Qt.PointingHandCursor
                             onTapped: settingsPage.applyConfig()
                         }
@@ -355,10 +488,17 @@ Rectangle {
                 width: parent.width
                 height: lyricsCol.implicitHeight + 48
                 radius: AppTheme.radiusLarge
-                // 毛玻璃卡片：半透明填充 + 极细亮边
-                color: Qt.rgba(1, 1, 1, 0.055)
+                // 玻璃卡片：上亮下暗的竖向渐变（有上方光源感）+ 极细亮边
+                color: "transparent"
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.085) }
+                    GradientStop { position: 1.0; color: Qt.rgba(1, 1, 1, 0.030) }
+                }
                 border.width: 1
                 border.color: Qt.rgba(1, 1, 1, 0.12)
+                // 入场：依次上浮 + 淡入
+                opacity: settingsPage.enterAlpha(2)
+                transform: Translate { y: 16 * (1 - settingsPage.enterAlpha(2)) }
 
                 Column {
                     id: lyricsCol
@@ -368,13 +508,7 @@ Rectangle {
                     anchors.margins: 24
                     spacing: 16
 
-                    Text {
-                        text: "桌面歌词"
-                        color: AppTheme.textPrimary
-                        font.pixelSize: AppTheme.fontSizeTitle
-                        font.weight: Font.Bold
-                        font.family: AppTheme.fontFamily
-                    }
+                    SectionTitle { text: "桌面歌词" }
 
                     // 方向：横向 / 竖向
                     Item {
@@ -391,41 +525,46 @@ Rectangle {
                         Row {
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
-                            spacing: 0
-                            Rectangle {
-                                width: 56; height: 30; radius: 15
-                                color: (lyricsConfig && !lyricsConfig.isVertical) ? AppTheme.accent : "transparent"
-                                border.width: 1
-                                border.color: (lyricsConfig && !lyricsConfig.isVertical) ? AppTheme.accent : AppTheme.borderDefault
-                                Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: "横向"
-                                    font.family: AppTheme.fontFamily
-                                    font.pixelSize: AppTheme.fontSizeSmall
-                                    color: (lyricsConfig && !lyricsConfig.isVertical) ? "white" : AppTheme.textSecondary
+                            spacing: 8
+                            Repeater {
+                                model: [{ t: "横向", v: false }, { t: "竖向", v: true }]
+                                delegate: Rectangle {
+                                    id: orientChip
+                                    required property var modelData
+                                    readonly property bool _on: !!lyricsConfig && lyricsConfig.isVertical === modelData.v
+                                    width: 56; height: 30; radius: 15
+                                    color: _on ? AppTheme.accent
+                                               : (orientHover.hovered ? Qt.rgba(1, 1, 1, 0.10) : Qt.rgba(1, 1, 1, 0.04))
+                                    border.width: 1
+                                    border.color: _on ? AppTheme.accent
+                                                      : (orientHover.hovered ? Qt.rgba(1, 1, 1, 0.28) : Qt.rgba(1, 1, 1, 0.14))
+                                    scale: orientTap.pressed ? 0.95 : (orientHover.hovered ? 1.04 : 1)
+                                    Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+                                    Behavior on border.color { ColorAnimation { duration: AppTheme.animFast } }
+                                    Behavior on scale {
+                                        NumberAnimation { duration: 180; easing.type: Easing.OutBack; easing.overshoot: 1.5 }
+                                    }
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: modelData.t
+                                        font.family: AppTheme.fontFamily
+                                        font.pixelSize: AppTheme.fontSizeSmall
+                                        color: orientChip._on ? "white"
+                                                              : (orientHover.hovered ? AppTheme.textPrimary : AppTheme.textSecondary)
+                                        Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+                                    }
+                                    HoverHandler { id: orientHover }
+                                    TapHandler {
+                                        id: orientTap
+                                        cursorShape: Qt.PointingHandCursor
+                                        onTapped: settingsPage._setOrientation(modelData.v)
+                                    }
                                 }
-                                TapHandler { cursorShape: Qt.PointingHandCursor; onTapped: settingsPage._setOrientation(false) }
-                            }
-                            Rectangle {
-                                width: 56; height: 30; radius: 15
-                                color: (lyricsConfig && lyricsConfig.isVertical) ? AppTheme.accent : "transparent"
-                                border.width: 1
-                                border.color: (lyricsConfig && lyricsConfig.isVertical) ? AppTheme.accent : AppTheme.borderDefault
-                                Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: "竖向"
-                                    font.family: AppTheme.fontFamily
-                                    font.pixelSize: AppTheme.fontSizeSmall
-                                    color: (lyricsConfig && lyricsConfig.isVertical) ? "white" : AppTheme.textSecondary
-                                }
-                                TapHandler { cursorShape: Qt.PointingHandCursor; onTapped: settingsPage._setOrientation(true) }
                             }
                         }
                     }
 
-                    Rectangle { width: parent.width; height: 1; color: AppTheme.borderSubtle }
+                    SoftDivider {}
 
                     // 跳跃歌词开关
                     Item {
@@ -449,16 +588,28 @@ Rectangle {
                             }
                         }
                         Rectangle {
+                            id: jumpSwitch
+                            readonly property bool _on: !!lyricsConfig && lyricsConfig.jumpEnabled
                             width: 46; height: 26; radius: 13
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
-                            color: (lyricsConfig && lyricsConfig.jumpEnabled) ? AppTheme.accent : AppTheme.scrollbarColor
+                            color: _on ? AppTheme.accent : Qt.rgba(1, 1, 1, 0.14)
+                            border.width: 1
+                            border.color: _on ? AppTheme.accent
+                                              : (jumpSwitchHover.hovered ? Qt.rgba(1, 1, 1, 0.30) : Qt.rgba(1, 1, 1, 0.18))
+                            scale: jumpSwitchHover.hovered ? 1.06 : 1
                             Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+                            Behavior on border.color { ColorAnimation { duration: AppTheme.animFast } }
+                            Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+                            // 滑块：OutBack 回弹，切换时有点"咔哒"的手感
                             Rectangle {
-                                x: (lyricsConfig && lyricsConfig.jumpEnabled) ? parent.width - width - 3 : 3
+                                x: jumpSwitch._on ? parent.width - width - 3 : 3
                                 y: 3; width: 20; height: 20; radius: 10; color: "white"
-                                Behavior on x { NumberAnimation { duration: AppTheme.animFast; easing.type: Easing.OutCubic } }
+                                Behavior on x {
+                                    NumberAnimation { duration: 240; easing.type: Easing.OutBack; easing.overshoot: 1.35 }
+                                }
                             }
+                            HoverHandler { id: jumpSwitchHover }
                             TapHandler {
                                 cursorShape: Qt.PointingHandCursor
                                 onTapped: {
@@ -470,7 +621,7 @@ Rectangle {
                         }
                     }
 
-                    Rectangle { width: parent.width; height: 1; color: AppTheme.borderSubtle }
+                    SoftDivider {}
 
                     ColorField {
                         width: parent.width
@@ -494,7 +645,7 @@ Rectangle {
                         }
                     }
 
-                    Rectangle { width: parent.width; height: 1; color: AppTheme.borderSubtle }
+                    SoftDivider {}
 
                     // 大小
                     Column {
@@ -521,7 +672,9 @@ Rectangle {
                             }
                         }
                         Slider {
+                            id: scaleSlider
                             width: parent.width
+                            height: 34
                             from: 0.6; to: 1.5; stepSize: 0.05
                             Binding on value { value: lyricsConfig ? lyricsConfig.scale : 1.0; restoreMode: Binding.RestoreBindingOrValue }
                             onMoved: {
@@ -529,10 +682,51 @@ Rectangle {
                                 lyricsConfig.scale = value
                                 lyricsConfig.saveConfig()
                             }
+
+                            // 轨道：半透明底 + 强调色填充（拖拽时不做动画，跟手）
+                            background: Rectangle {
+                                implicitHeight: 6
+                                x: scaleSlider.leftPadding
+                                y: scaleSlider.topPadding + scaleSlider.availableHeight / 2 - height / 2
+                                width: scaleSlider.availableWidth
+                                height: 6
+                                radius: 3
+                                color: Qt.rgba(1, 1, 1, 0.10)
+                                Rectangle {
+                                    width: parent.width * scaleSlider.visualPosition
+                                    height: parent.height
+                                    radius: parent.radius
+                                    color: AppTheme.accent
+                                    Behavior on width {
+                                        enabled: !scaleSlider.pressed
+                                        NumberAnimation { duration: AppTheme.animFast }
+                                    }
+                                }
+                            }
+
+                            // 白色旋钮 + 强调色描边，hover/拖拽时放大
+                            handle: Rectangle {
+                                implicitWidth: 18
+                                implicitHeight: 18
+                                x: scaleSlider.leftPadding + scaleSlider.visualPosition * (scaleSlider.availableWidth - width)
+                                y: scaleSlider.topPadding + scaleSlider.availableHeight / 2 - height / 2
+                                width: 18
+                                height: 18
+                                radius: 9
+                                color: "white"
+                                border.width: 2
+                                border.color: AppTheme.accent
+                                scale: scaleSlider.pressed ? 1.25 : (scaleSliderHover.hovered ? 1.12 : 1)
+                                Behavior on scale {
+                                    NumberAnimation { duration: 160; easing.type: Easing.OutBack; easing.overshoot: 1.4 }
+                                }
+                            }
+
+                            HoverHandler { id: scaleSliderHover }
                         }
                     }
 
-                    Rectangle { width: parent.width; height: 1; color: AppTheme.borderSubtle }
+                    SoftDivider {}
 
                     // 歌词偏移（±0.25s 微调，按歌生效）
                     Column {
@@ -568,21 +762,29 @@ Rectangle {
                             Repeater {
                                 model: [{ t: "提前 0.25s", d: 250 }, { t: "复原", d: 0 }, { t: "延后 0.25s", d: -250 }]
                                 delegate: Rectangle {
+                                    id: offsetChip
                                     required property var modelData
                                     width: (parent.width - 12) / 3; height: 32; radius: 16
-                                    color: offsetHover.hovered ? AppTheme.iconButtonHover : AppTheme.bgInput
+                                    color: offsetHover.hovered ? Qt.rgba(1, 1, 1, 0.11) : Qt.rgba(1, 1, 1, 0.05)
                                     border.width: 1
-                                    border.color: AppTheme.borderDefault
+                                    border.color: offsetHover.hovered ? Qt.rgba(1, 1, 1, 0.28) : Qt.rgba(1, 1, 1, 0.13)
+                                    scale: offsetTap.pressed ? 0.96 : (offsetHover.hovered ? 1.03 : 1)
                                     Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+                                    Behavior on border.color { ColorAnimation { duration: AppTheme.animFast } }
+                                    Behavior on scale {
+                                        NumberAnimation { duration: 180; easing.type: Easing.OutBack; easing.overshoot: 1.5 }
+                                    }
                                     Text {
                                         anchors.centerIn: parent
                                         text: modelData.t
                                         font.pixelSize: AppTheme.fontSizeSmall
                                         font.family: AppTheme.fontFamily
-                                        color: AppTheme.textSecondary
+                                        color: offsetHover.hovered ? AppTheme.textPrimary : AppTheme.textSecondary
+                                        Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
                                     }
                                     HoverHandler { id: offsetHover }
                                     TapHandler {
+                                        id: offsetTap
                                         cursorShape: Qt.PointingHandCursor
                                         onTapped: {
                                             if (!playlistmanager) return
@@ -603,10 +805,17 @@ Rectangle {
                 width: parent.width
                 height: serverCol.implicitHeight + 48
                 radius: AppTheme.radiusLarge
-                // 毛玻璃卡片：半透明填充 + 极细亮边
-                color: Qt.rgba(1, 1, 1, 0.055)
+                // 玻璃卡片：上亮下暗的竖向渐变（有上方光源感）+ 极细亮边
+                color: "transparent"
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.085) }
+                    GradientStop { position: 1.0; color: Qt.rgba(1, 1, 1, 0.030) }
+                }
                 border.width: 1
                 border.color: Qt.rgba(1, 1, 1, 0.12)
+                // 入场：依次上浮 + 淡入
+                opacity: settingsPage.enterAlpha(3)
+                transform: Translate { y: 16 * (1 - settingsPage.enterAlpha(3)) }
 
                 Column {
                     id: serverCol
@@ -616,13 +825,7 @@ Rectangle {
                     anchors.margins: 24
                     spacing: 16
 
-                    Text {
-                        text: "服务器共享 Token"
-                        color: AppTheme.textPrimary
-                        font.pixelSize: AppTheme.fontSizeTitle
-                        font.weight: Font.Bold
-                        font.family: AppTheme.fontFamily
-                    }
+                    SectionTitle { text: "服务器共享 Token" }
                     Text {
                         width: parent.width
                         text: "服务器取歌 token 被踢失效时：在本客户端重新扫码登录共享账号，回来点「同步」即可，服务器热更新免重启，重启后也会保留最新值。"
@@ -654,9 +857,10 @@ Rectangle {
                             verticalAlignment: Text.AlignVCenter
                             background: Rectangle {
                                 radius: AppTheme.radiusMedium
-                                color: AppTheme.bgInput
-                                border.color: adminKeyInput.activeFocus ? AppTheme.borderFocus : AppTheme.borderSubtle
-                                border.width: 1
+                                color: adminKeyInput.activeFocus ? Qt.rgba(1, 1, 1, 0.10) : Qt.rgba(1, 1, 1, 0.05)
+                                border.width: adminKeyInput.activeFocus ? 1.5 : 1
+                                border.color: adminKeyInput.activeFocus ? AppTheme.borderFocus : Qt.rgba(1, 1, 1, 0.13)
+                                Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
                                 Behavior on border.color { ColorAnimation { duration: AppTheme.animFast } }
                             }
                             onEditingFinished: {
@@ -666,7 +870,7 @@ Rectangle {
                         }
                     }
 
-                    Rectangle { width: parent.width; height: 1; color: AppTheme.borderSubtle }
+                    SoftDivider {}
 
                     // 服务器当前状态
                     Column {
@@ -684,12 +888,26 @@ Rectangle {
                                 anchors.verticalCenter: parent.verticalCenter
                             }
                             Text {
+                                id: refreshLink
                                 text: serverAdmin && serverAdmin.busy ? "查询中..." : "刷新"
                                 color: refreshStatusHover.hovered ? AppTheme.textPrimary : AppTheme.accent
                                 font.pixelSize: AppTheme.fontSizeSmall
                                 font.family: AppTheme.fontFamily
                                 anchors.right: parent.right
                                 anchors.verticalCenter: parent.verticalCenter
+                                Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+
+                                // hover 时下划线从中间展开
+                                Rectangle {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    anchors.top: parent.bottom
+                                    anchors.topMargin: 1
+                                    height: 1
+                                    width: parent.width * (refreshStatusHover.hovered ? 1 : 0)
+                                    color: refreshLink.color
+                                    Behavior on width { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+                                }
+
                                 HoverHandler { id: refreshStatusHover }
                                 TapHandler {
                                     cursorShape: Qt.PointingHandCursor
@@ -745,7 +963,7 @@ Rectangle {
                         }
                     }
 
-                    Rectangle { width: parent.width; height: 1; color: AppTheme.borderSubtle }
+                    SoftDivider {}
 
                     // 操作按钮
                     Row {
@@ -756,9 +974,12 @@ Rectangle {
                         Rectangle {
                             width: (parent.width - 12) / 2; height: 42
                             radius: AppTheme.radiusMedium
-                            opacity: userManager && userManager.isLoggedIn ? 1 : 0.4
+                            // 未登录时置灰但仍可点（点了会提示先登录）
+                            opacity: userManager && userManager.isLoggedIn ? 1 : 0.45
                             color: syncHover.hovered ? AppTheme.accentHover : AppTheme.accent
+                            scale: syncTap.pressed ? 0.985 : (syncHover.hovered ? 1.012 : 1)
                             Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+                            Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
 
                             Text {
                                 anchors.centerIn: parent
@@ -770,6 +991,7 @@ Rectangle {
                             }
                             HoverHandler { id: syncHover }
                             TapHandler {
+                                id: syncTap
                                 cursorShape: Qt.PointingHandCursor
                                 onTapped: {
                                     if (!serverAdmin) return
@@ -787,10 +1009,13 @@ Rectangle {
                         Rectangle {
                             width: (parent.width - 12) / 2; height: 42
                             radius: AppTheme.radiusMedium
-                            color: checkHover.hovered ? AppTheme.iconButtonHover : AppTheme.bgInput
+                            color: checkHover.hovered ? Qt.rgba(1, 1, 1, 0.12) : Qt.rgba(1, 1, 1, 0.05)
                             border.width: 1
-                            border.color: AppTheme.borderDefault
+                            border.color: checkHover.hovered ? Qt.rgba(1, 1, 1, 0.28) : Qt.rgba(1, 1, 1, 0.14)
+                            scale: checkTap.pressed ? 0.985 : (checkHover.hovered ? 1.012 : 1)
                             Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+                            Behavior on border.color { ColorAnimation { duration: AppTheme.animFast } }
+                            Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
 
                             Text {
                                 anchors.centerIn: parent
@@ -802,6 +1027,7 @@ Rectangle {
                             }
                             HoverHandler { id: checkHover }
                             TapHandler {
+                                id: checkTap
                                 cursorShape: Qt.PointingHandCursor
                                 onTapped: {
                                     if (!serverAdmin) return

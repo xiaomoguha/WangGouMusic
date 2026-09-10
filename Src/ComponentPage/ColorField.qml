@@ -67,16 +67,26 @@ Item {
                 height: 26
                 radius: 13
                 border.width: 1
-                border.color: AppTheme.borderDefault
-                color: root.followTheme ? AppTheme.accent : "transparent"
+                border.color: root.followTheme ? AppTheme.accent
+                                               : (followHover.hovered ? Qt.rgba(1, 1, 1, 0.28) : Qt.rgba(1, 1, 1, 0.14))
+                color: root.followTheme ? AppTheme.accent
+                                        : (followHover.hovered ? Qt.rgba(1, 1, 1, 0.10) : Qt.rgba(1, 1, 1, 0.04))
+                scale: followTap.pressed ? 0.95 : (followHover.hovered ? 1.04 : 1)
+                Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+                Behavior on border.color { ColorAnimation { duration: AppTheme.animFast } }
+                Behavior on scale {
+                    NumberAnimation { duration: 180; easing.type: Easing.OutBack; easing.overshoot: 1.5 }
+                }
                 Text {
                     id: followLbl
                     anchors.centerIn: parent
                     text: "跟随主题"
                     font.pixelSize: AppTheme.fontSizeSmall
-                    color: root.followTheme ? "white" : AppTheme.textSecondary
+                    color: root.followTheme ? "white" : (followHover.hovered ? AppTheme.textPrimary : AppTheme.textSecondary)
+                    Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
                 }
-                TapHandler { cursorShape: Qt.PointingHandCursor; onTapped: root.colorEdited("") }
+                HoverHandler { id: followHover }
+                TapHandler { id: followTap; cursorShape: Qt.PointingHandCursor; onTapped: root.colorEdited("") }
             }
 
             // 预设色
@@ -84,13 +94,22 @@ Item {
                 model: root.presets
                 delegate: Rectangle {
                     required property string modelData
+                    readonly property bool _on: root.colorValue === modelData
                     width: 26
                     height: 26
                     radius: 13
                     color: modelData
-                    border.width: root.colorValue === modelData ? 3 : 1
-                    border.color: root.colorValue === modelData ? AppTheme.textPrimary : AppTheme.borderDefault
-                    TapHandler { cursorShape: Qt.PointingHandCursor; onTapped: root.colorEdited(modelData) }
+                    border.width: _on ? 3 : 1
+                    border.color: _on ? AppTheme.textPrimary
+                                      : (swatchHover.hovered ? Qt.rgba(1, 1, 1, 0.55) : Qt.rgba(1, 1, 1, 0.18))
+                    // hover 放大、按下回缩，选中有白圈
+                    scale: swatchTap.pressed ? 0.9 : (swatchHover.hovered ? 1.14 : 1)
+                    Behavior on border.color { ColorAnimation { duration: AppTheme.animFast } }
+                    Behavior on scale {
+                        NumberAnimation { duration: 180; easing.type: Easing.OutBack; easing.overshoot: 1.6 }
+                    }
+                    HoverHandler { id: swatchHover }
+                    TapHandler { id: swatchTap; cursorShape: Qt.PointingHandCursor; onTapped: root.colorEdited(modelData) }
                 }
             }
 
@@ -101,7 +120,14 @@ Item {
                 radius: 13
                 color: "transparent"
                 border.width: root.isCustom ? 3 : 1
-                border.color: root.isCustom ? AppTheme.textPrimary : AppTheme.borderDefault
+                border.color: root.isCustom ? AppTheme.textPrimary
+                                            : (customHover.hovered ? Qt.rgba(1, 1, 1, 0.55) : Qt.rgba(1, 1, 1, 0.18))
+                scale: customTap.pressed ? 0.9 : (customHover.hovered ? 1.14 : 1)
+                Behavior on border.color { ColorAnimation { duration: AppTheme.animFast } }
+                Behavior on scale {
+                    NumberAnimation { duration: 180; easing.type: Easing.OutBack; easing.overshoot: 1.6 }
+                }
+                HoverHandler { id: customHover }
                 Rectangle {
                     anchors.centerIn: parent
                     width: 18
@@ -115,7 +141,7 @@ Item {
                         GradientStop { position: 1.0; color: "#4FC3F7" }
                     }
                 }
-                TapHandler { cursorShape: Qt.PointingHandCursor; onTapped: dlg.open() }
+                TapHandler { id: customTap; cursorShape: Qt.PointingHandCursor; onTapped: dlg.open() }
             }
         }
 
@@ -142,7 +168,11 @@ Item {
                     return root.displayColor
                 }
                 border.width: 1
-                border.color: AppTheme.borderDefault
+                border.color: swatchBigHover.hovered ? Qt.rgba(1, 1, 1, 0.45) : Qt.rgba(1, 1, 1, 0.18)
+                scale: swatchBigHover.hovered ? 1.08 : 1
+                Behavior on border.color { ColorAnimation { duration: AppTheme.animFast } }
+                Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+                HoverHandler { id: swatchBigHover }
                 TapHandler { cursorShape: Qt.PointingHandCursor; onTapped: dlg.open() }
                 Text {
                     visible: root.followTheme
@@ -166,9 +196,12 @@ Item {
                 onEditingFinished: root.applyHex()
                 background: Rectangle {
                     radius: 6
-                    color: AppTheme.bgInput
-                    border.width: 1
-                    border.color: hexInput.activeFocus ? AppTheme.borderFocus : AppTheme.borderDefault
+                    // 与设置页其它输入框同款：半透明底，聚焦提亮 + 强调色描边
+                    color: hexInput.activeFocus ? Qt.rgba(1, 1, 1, 0.10) : Qt.rgba(1, 1, 1, 0.05)
+                    border.width: hexInput.activeFocus ? 1.5 : 1
+                    border.color: hexInput.activeFocus ? AppTheme.borderFocus : Qt.rgba(1, 1, 1, 0.13)
+                    Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+                    Behavior on border.color { ColorAnimation { duration: AppTheme.animFast } }
                 }
                 Connections {
                     target: root

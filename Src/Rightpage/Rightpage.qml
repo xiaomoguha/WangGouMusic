@@ -22,6 +22,8 @@ Rectangle {
         anchors.right: parent.right
         anchors.top: parent.top
         height: 60
+        // 搜索弹层的真模糊抓取源 = 本面板整层（含不透明底、顶栏、当前页面）
+        searchBlurSource: rightPage
         canGoBack: navStack.length > 0
         onGoBack: rightPage.goBack()
     }
