@@ -51,6 +51,8 @@ class PlaylistManager : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(QString currentSonghash READ currentSongHash NOTIFY currentSongChanged)
+    // 当前歌评论用 album_audio_id（一起听由服务器下发；本地播放为空走歌名搜索兜底）
+    Q_PROPERTY(QString currentSongMxid READ currentSongMxid NOTIFY currentSongChanged)
     Q_PROPERTY(int currentIndex READ currentIndex NOTIFY currentIndexChanged)
     Q_PROPERTY(QString currentTitle READ currentTitle NOTIFY currentSongChanged)
     Q_PROPERTY(QString currentsingername READ currentsingername NOTIFY currentSongChanged)
@@ -122,6 +124,7 @@ public:
     QString currentTitle() const;
     QString currentsingername() const;
     QString currentSongHash() const;
+    QString currentSongMxid() const;
     bool isPaused() const;
     QString union_cover() const;
     QString dominantColor() const;
@@ -150,7 +153,7 @@ public:
     void syncTogetherPlaylistFromServer(const QJsonArray &songs);
     void playTogetherSongFromServer(
         const QString &songUrl, const QString &songName, const QString &songHash, const QString &singerName,
-        const QString &coverUrl, const QString &albumName, const QString &duration
+        const QString &coverUrl, const QString &albumName, const QString &duration, const QString &mxid = QString()
     );
     void seekToPercent(double percent);
     void setPaused(bool paused);

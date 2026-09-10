@@ -51,9 +51,10 @@ void ApiClient::setUserAgent(const QString &ua)
     m_userAgent = ua;
 }
 
-void ApiClient::setAuthToken(const QString &token)
+void ApiClient::setAuthToken(const QString &token, const QString &userid)
 {
-    m_authToken = token;
+    m_authToken  = token;
+    m_authUserid = userid;
 }
 
 void ApiClient::setupReply(
@@ -159,6 +160,8 @@ QNetworkReply *ApiClient::get(
     if (!m_authToken.isEmpty())
     {
         req.setRawHeader("Authorization", "Bearer " + m_authToken.toUtf8());
+        if (!m_authUserid.isEmpty())
+            req.setRawHeader("Cookie", QString("token=%1; userid=%2").arg(m_authToken, m_authUserid).toUtf8());
     }
     applyExtraHeaders(req, extraHeaders);
 
@@ -177,6 +180,8 @@ QNetworkReply *ApiClient::post(
     if (!m_authToken.isEmpty())
     {
         req.setRawHeader("Authorization", "Bearer " + m_authToken.toUtf8());
+        if (!m_authUserid.isEmpty())
+            req.setRawHeader("Cookie", QString("token=%1; userid=%2").arg(m_authToken, m_authUserid).toUtf8());
     }
     applyExtraHeaders(req, extraHeaders);
 

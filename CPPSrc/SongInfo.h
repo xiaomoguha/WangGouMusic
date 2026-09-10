@@ -27,6 +27,8 @@ struct SongInfo
     Q_PROPERTY(QString fileid MEMBER fileid)
     // MV 播放 hash（mvhash）：仅含 MV 的歌曲有值，歌单/搜索数据源填充
     Q_PROPERTY(QString mvhash MEMBER mvhash)
+    // 评论用 album_audio_id：一起听广播由服务器解析下发，评论直连免歌名搜索
+    Q_PROPERTY(QString mxid MEMBER mxid)
 
 public:
     QString title;
@@ -41,6 +43,7 @@ public:
     QString added_by_avatar;
     QString fileid;
     QString mvhash;
+    QString mxid;
 };
 
 #endif // SONG_INFO_H

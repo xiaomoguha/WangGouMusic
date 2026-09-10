@@ -37,7 +37,7 @@ public:
 
     /// 拉取指定歌曲评论：内部解析 mixsongid → 拉第一页（总数取列表响应里的 count）。
     /// 返回是否真正发起（正在加载中会拒绝并发请求）
-    Q_INVOKABLE bool fetchComments(const QString &title, const QString &hash);
+    Q_INVOKABLE bool fetchComments(const QString &title, const QString &hash, const QString &mxid = QString());
     /// 加载下一页评论（hasMore 时）
     Q_INVOKABLE void fetchMore();
     /// 展开某条评论的回复：audioId=评论里的 special_child_id（歌曲 audio_id），
@@ -53,6 +53,10 @@ signals:
 
 private slots:
     void onSearchData(const QByteArray &data);
+    /// privilege/lite 按 hash 解析 album_audio_id（本地播放的首选路径，hash 精确不撞版本）
+    void onLiteData(const QByteArray &data);
+    /// 歌名搜索兜底（lite 拿不到 album_audio_id 时才走）
+    void startNameSearch();
     void onCommentsData(const QByteArray &data);
     void onRepliesData(const QByteArray &data);
 
@@ -61,6 +65,7 @@ private:
     void requestComments(const QString &mixsongid, int page);
 
     HttpGetRequester m_searchRequester;
+    HttpGetRequester m_liteRequester;
     HttpGetRequester m_requester;
     HttpGetRequester m_repliesRequester;
 
