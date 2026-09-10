@@ -7,10 +7,10 @@ QtObject {
     // 仅深色模式：浅色模式已整体移除（无主题令牌、无切换入口）
 
     // ===== 背景颜色 =====
-    readonly property color bgSidebar: "#1a1a21"
-    readonly property color bgContent: "#13131a"
-    readonly property color bgBottomBar: "#1a1a21"
-    readonly property color bgBottomBarInner: "#1a1a24"
+    readonly property color bgSidebar: "#0b0b10"
+    readonly property color bgContent: "#07070b"
+    readonly property color bgBottomBar: "#0b0b10"
+    readonly property color bgBottomBarInner: "#0e0e14"
     readonly property color bgCard: "#27272e"
     readonly property color bgCardHover: "#212127"
     readonly property color bgNavHover: "#2A2A35"
@@ -23,7 +23,7 @@ QtObject {
     readonly property color bgExpandBtn: "#2A2A35"
     readonly property color bgExpandBtnHover: "#3A3A45"
     readonly property color bgRoomCard: "#393943"
-    readonly property color bgLoadingOverlay: "#13131a"
+    readonly property color bgLoadingOverlay: "#07070b"
     readonly property color bgTooltip: "#1E1E2A"
 
     // ===== 强调色 =====

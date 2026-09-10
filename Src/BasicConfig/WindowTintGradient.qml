@@ -1,7 +1,7 @@
 import QtQuick 2.15
 import "../BasicConfig"
 
-// 面板底 = 底色（不透明）→ 极光切片 → 封面主色透明渐变，三层合成。
+// 面板底 = 底色（不透明）→ 星空切片 → 封面主色透明渐变，三层合成。
 // 文字始终画在不透明层之上，不用半透明覆盖层压内容（避免 macOS 低分辨率合成糊字）。
 Rectangle {
     id: root
@@ -25,8 +25,8 @@ Rectangle {
     // ① 底色
     color: root.baseColor
 
-    // ② 极光切片
-    AuroraLayer {
+    // ② 星空切片
+    StarfieldLayer {
         anchors.fill: parent
         panelLeftX: root.panelLeftX
         panelTopY: root.panelTopY

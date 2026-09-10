@@ -75,9 +75,9 @@ QtObject {
     // 跑马灯/加载圈/唱片旋转这类无限动画不看用户是否在看就 60fps 空转，
     // 是后台 CPU 高的主因；此闸只停装饰动画，播放进度/歌词等真实数据不受影响
     property bool uiIdle: false
-    // 极光背景相位（0→1 循环）：窗口内所有面板的极光切片共享同一相位，
-    // 保证整窗流体底严格同步；驱动动画在 main.qml（挂 uiIdle 门控）。
-    property real auroraPhase: 0
+    // 背景时间基准（秒，单调递增）：星空的明灭/重生节奏用它驱动；main.qml 里的
+    // Timer 负责累加（挂 uiIdle 门控，失焦即停）。
+    property real bgTime: 0
 
     // 模态弹窗输入锁：弹窗置位/复位，main.qml 据此禁用 windowShell。
     // 点击会沿 z 序穿透到页面 TapHandler（MouseArea 拦不住），只能禁底层

@@ -7,7 +7,7 @@ ThemedPopup ThemedPopup.qml
 NowPlayingIndicator NowPlayingIndicator.qml
 WindowTintGradient WindowTintGradient.qml
 RetryImage RetryImage.qml
-AuroraLayer AuroraLayer.qml
+StarfieldLayer StarfieldLayer.qml
 CursorLight CursorLight.qml
 GlowText GlowText.qml
 HoverCard HoverCard.qml
