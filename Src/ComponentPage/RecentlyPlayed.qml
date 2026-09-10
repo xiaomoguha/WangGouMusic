@@ -19,12 +19,13 @@ Page {
         anchors.topMargin: 16
         spacing: 12
 
-        Text {
+        GlowText {
             text: "最近播放"
             font.pixelSize: 22
             font.bold: true
             color: AppTheme.textPrimary
-            font.family: AppTheme.fontFamily
+            glowColor: AppTheme.accentGlow
+            glowRadius: 15
             anchors.verticalCenter: parent.verticalCenter
         }
 

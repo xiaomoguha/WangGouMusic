@@ -206,14 +206,15 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 10
 
-                    Text {
+                    GlowText {
                         text: artistManager && artistManager.artist ? artistManager.artist.name : artistName
-                        width: parent.width
+                        fillWidth: true
                         elide: Text.ElideRight
                         font.pixelSize: 26
                         font.bold: true
                         color: AppTheme.textPrimary
-                        font.family: AppTheme.fontFamily
+                        glowColor: AppTheme.accentGlow
+                        glowRadius: 16
                     }
 
                     Row {

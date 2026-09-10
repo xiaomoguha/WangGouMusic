@@ -182,12 +182,13 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 10
 
-                    Text {
+                    GlowText {
                         text: "每日推荐"
                         font.pixelSize: AppTheme.fontSizeHeadline
                         font.bold: true
                         color: AppTheme.textPrimary
-                        font.family: AppTheme.fontFamily
+                        glowColor: AppTheme.accentGlow
+                        glowRadius: 15
                     }
 
                     Text {

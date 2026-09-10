@@ -118,12 +118,13 @@ Item {
         spacing: 10
         height: 36
 
-        Text {
+        GlowText {
             text: keyword
             font.pixelSize: 22
             font.bold: true
             color: AppTheme.textPrimary
-            font.family: AppTheme.fontFamily
+            glowColor: AppTheme.accentGlow
+            glowRadius: 15
             anchors.verticalCenter: parent.verticalCenter
         }
 

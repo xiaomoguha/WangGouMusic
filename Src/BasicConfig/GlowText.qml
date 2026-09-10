@@ -27,11 +27,14 @@ Item {
     property real glowSpread: 0.10
     property bool glowEnabled: true
 
+    // 是否占满父宽（标题需要 elide 时用；文字两侧留出光晕 padding）
+    property bool fillWidth: false
+
     // 四周预留光晕扩散空间
     readonly property real _pad: glowEnabled ? glowRadius : 0
     implicitWidth: label.implicitWidth + _pad * 2
     implicitHeight: label.implicitHeight + _pad * 2
-    width: implicitWidth
+    width: fillWidth ? parent.width : implicitWidth
     height: implicitHeight
 
     layer.enabled: root.glowEnabled
@@ -46,6 +49,7 @@ Item {
     Text {
         id: label
         anchors.centerIn: parent
+        width: root.fillWidth ? Math.max(0, parent.width - root._pad * 2) : implicitWidth
         font.family: AppTheme.fontFamily
     }
 }
