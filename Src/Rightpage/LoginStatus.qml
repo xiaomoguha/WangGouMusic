@@ -141,7 +141,7 @@ Row {
         MouseArea { anchors.fill: parent; onClicked: {} }
 
         onAboutToShow: {
-            BasicConfig.modalInputLock = true // 锁底层输入，防点击穿透
+            BasicConfig.pushModalInputLock(userMenu) // 锁底层输入，防点击穿透
             if (userManager && userManager.isLoggedIn) {
                 // 先加载缓存
                 var cached = userManager.loadCachedUserDetail()
@@ -153,7 +153,7 @@ Row {
             }
         }
 
-        onClosed: BasicConfig.modalInputLock = false
+        onClosed: BasicConfig.popModalInputLock(userMenu)
 
         background: Rectangle {
             radius: AppTheme.radiusMedium
@@ -498,7 +498,7 @@ Row {
         }
     }
 
-    // 登录设备列表窗口：ThemedPopup + modalInputLock，点击不穿透
+    // 登录设备列表窗口：ThemedPopup 自带模态输入锁，点击不穿透
     ThemedPopup {
         id: devicePopup
         width: 400
@@ -517,14 +517,12 @@ Row {
         }
 
         onAboutToShow: {
-            BasicConfig.modalInputLock = true // 锁底层输入，防点击穿透
             // 首次打开拉一次；之后沿用缓存，手动点刷新才重新请求
             // （登录时间字段服务端更新有延迟，频繁刷新看不出变化）
             if (!devices || devices.length === 0) refresh()
         }
 
         onClosed: {
-            BasicConfig.modalInputLock = false
             loading = false
         }
 

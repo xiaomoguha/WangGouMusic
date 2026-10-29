@@ -4,14 +4,12 @@
 #include <QObject>
 #include <QPointF>
 #include <QTimer>
-#include <QEvent>
 
-// 全局指针追踪：定时读系统光标位置，换算成主窗口内的局部坐标，供 QML 绘制
-// "跟随鼠标的光源/拖尾"。
+// 全局指针追踪：定时读系统光标位置，换算成主窗口内的局部坐标，供 QML 做
+// "指针附近的星点被点亮、轻轻推开"这类联动（见 StarfieldLayer）。
 //
-// 为什么不用 QML 的 HoverHandler：光标光源是一个铺满窗口、位于最上层的覆盖层，
-// 它一旦持有 hover 处理器就会独占 hover 事件，把下层卡片/导航的 hover 动效全挡掉。
-// 改由 C++ 读指针后，覆盖层不参与任何事件，下层交互完好。
+// 用 C++ 读指针而不是 QML 的 HoverHandler：联动层不必参与事件分发，而且指针
+// 移出窗口/窗口失焦时也有明确状态（active=false），不用靠 enter/exit 推断。
 class CursorTracker : public QObject
 {
     Q_OBJECT
@@ -33,12 +31,6 @@ signals:
     void posChanged();
     void insideWindowChanged();
     void activeChanged();
-    // 鼠标按下（窗口内局部坐标）：供 QML 放烟花用。事件过滤器只旁听、不消费，
-    // 所以点击照常透传给界面。
-    void pressed(qreal x, qreal y);
-
-protected:
-    bool eventFilter(QObject *watched, QEvent *event) override;
 
 private:
     void poll();
@@ -47,7 +39,6 @@ private:
     QPointF m_pos;
     bool m_inside = false;
     bool m_active = false;
-    bool m_filterInstalled = false;
     QTimer m_timer;
 };
 

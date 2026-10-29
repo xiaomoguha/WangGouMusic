@@ -240,17 +240,18 @@ Item {
                         }
                     }
 
-                    // 播放全部（加载全部单曲后播放）
+                    // 播放全部（加载全部单曲后播放）/ 一起听模式下改为「添加到一起听」
                     Rectangle {
-                        width: 110
+                        width: isTogetherMode ? 140 : 110
                         height: 32
                         radius: 16
                         color: playAllHover.hovered ? "#533483" : "#e94560"
-                        visible: !isTogetherMode
 
                         Text {
                             anchors.centerIn: parent
-                            text: (artistManager && artistManager.isLoading && artistManager.songsModel.count === 0) ? "加载中..." : "▶ 播放全部"
+                            text: isTogetherMode
+                                  ? "＋ 添加到一起听"
+                                  : ((artistManager && artistManager.isLoading && artistManager.songsModel.count === 0) ? "加载中..." : "▶ 播放全部")
                             font.pixelSize: AppTheme.fontSizeSmall
                             font.bold: true
                             color: "#ffffff"
@@ -261,6 +262,10 @@ Item {
                             cursorShape: Qt.PointingHandCursor
                             onTapped: {
                                 if (!artistManager || artistManager.songsModel.count === 0) return
+                                if (isTogetherMode) {
+                                    BasicConfig.togetherAddSongs(websocket, artistManager.songsModel)
+                                    return
+                                }
                                 playlistmanager.clearPlaylist()
                                 for (var i = 0; i < artistManager.songsModel.count; i++) {
                                     var s = artistManager.songsModel.get(i)

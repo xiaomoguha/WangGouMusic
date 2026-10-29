@@ -9,8 +9,6 @@ PanelBackdrop PanelBackdrop.qml
 GlassPanel GlassPanel.qml
 RetryImage RetryImage.qml
 StarfieldLayer StarfieldLayer.qml
-Fireworks Fireworks.qml
-CursorLight CursorLight.qml
 GlowText GlowText.qml
 HoverCard HoverCard.qml
 HoverRow HoverRow.qml

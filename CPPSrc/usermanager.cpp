@@ -1,4 +1,5 @@
 #include "usermanager.h"
+#include "SongInfo.h"
 #include "ApiClient.h"
 #include "PlaylistCacheStore.h"
 
@@ -376,6 +377,14 @@ void UserManager::fetchPlaylistDetail(const QString &globalCollectionId, int pag
          {"pagesize", QString::number(pagesize)}},
         [this, globalCollectionId, page](QJsonObject root)
         {
+            // 评论用 album_audio_id 在歌单 tracks 响应里叫 mixsongid（顶层）：拿到列表时
+            // 顺手登记，之后播这些歌拉评论就不用再为拿 id 去搜索/查接口
+            for (const QJsonValue &v : root.value("data").toObject().value("songs").toArray())
+            {
+                const QJsonObject song = v.toObject();
+                SongInfo::rememberMxidFromJson(song, song.value("hash").toString());
+            }
+
             // 缓存按「已加载前缀」维护：page 1 重置，后续页按 hash 追加去重，
             // 重启后进页面缓存不缺不重；emit 仍发原始单页，QML 自行追加显示
             QJsonObject cacheRoot = root;

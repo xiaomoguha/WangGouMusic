@@ -126,6 +126,12 @@ Row {
         suggestMaxWidth = 0;
     }
 
+    // 别处发起的搜索（底栏点歌名/歌手名）：统一走 doSearch，跳转/填框/记历史都一致
+    Connections {
+        target: BasicConfig
+        function onRequestSearch(keyword) { doSearch(keyword) }
+    }
+
     // ── 搜索框 ─────────────────────────────────────────────────
     Rectangle {
         id: searchContainer

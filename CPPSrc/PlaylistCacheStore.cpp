@@ -167,6 +167,8 @@ bool PlaylistCacheStore::savePlaylist(const QList<SongInfo> &playlist, int curre
         obj["union_cover"] = song.union_cover;
         obj["album_name"]  = song.album_name;
         obj["duration"]    = song.duration;
+        // 一起存评论用的 album_audio_id：重启后从缓存恢复的队列也能直接拉评论
+        obj["mxid"]        = song.mxid;
         arr.append(obj);
     }
     QJsonObject root;
@@ -237,6 +239,7 @@ bool PlaylistCacheStore::loadPlaylist(QList<SongInfo> &outPlaylist, int &outCurr
         song.album_name  = obj["album_name"].toString();
         song.duration    = obj["duration"].toString();
         song.lyric       = QString();
+        song.mxid        = obj["mxid"].toString();
         outPlaylist.append(song);
     }
     return true;

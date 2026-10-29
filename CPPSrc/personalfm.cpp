@@ -1,4 +1,5 @@
 #include "personalfm.h"
+#include "SongInfo.h"
 #include "usermanager.h"
 
 #include <QDebug>
@@ -112,6 +113,7 @@ void PersonalFM::onData(const QByteArray &data)
         const QString name  = s["songname"].toString();
         if (hash.isEmpty() || name.isEmpty())
             continue;
+        SongInfo::rememberMxidFromJson(s, hash);
 
         QString singername;
         const QJsonArray singers = s["singerinfo"].toArray();

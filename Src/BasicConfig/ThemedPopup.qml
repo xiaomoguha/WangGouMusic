@@ -1,7 +1,8 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import "../BasicConfig"
 
-// 统一弹窗外壳：modal/focus/居中/进出动画/背景/遮罩一次定义，内容由调用方提供。
+// 统一弹窗外壳：modal/focus/居中/进出动画/背景/遮罩/底层输入锁一次定义，内容由调用方提供。
 // 取代 NoteWindow / UpdateDialog / LoginPage 里重复的 Popup 外壳样板。
 Popup {
     id: root
@@ -12,9 +13,19 @@ Popup {
 
     // 是否绘制半透明遮罩（NoteWindow 无遮罩，保持原样）
     property bool dimBackground: true
+    // 打开期间是否锁掉底层页面输入。有遮罩=模态对话框，默认锁：不锁的话点击会穿透到
+    // 页面的 TapHandler（遮罩 MouseArea 拦不住），"点弹窗"会顺手播了下面对应的歌。
+    // NoteWindow 的 toast（dimBackground:false）允许继续操作界面，不锁。
+    property bool lockInput: dimBackground
     // 背景是否加描边微光（NoteWindow 用）
     property bool accentBorder: false
     property int dialogRadius: 16
+
+    onAboutToShow: if (lockInput) BasicConfig.pushModalInputLock(root)
+    onClosed: if (lockInput) BasicConfig.popModalInputLock(root)
+    // 弹窗随宿主页面（Loader 里的页面）一起销毁时 onClosed 不一定触发，
+    // 锁残留会让整个界面点不动，这里兜底释放
+    Component.onDestruction: if (lockInput) BasicConfig.popModalInputLock(root)
 
     enter: Transition {
         NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic }

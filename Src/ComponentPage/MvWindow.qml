@@ -332,7 +332,7 @@ Window {
             Rectangle { width: parent.width; height: 1; color: "#1C1C22" }
 
             Text {
-                text: songComments ? ("评论 · 共 " + songComments.totalCount + " 条") : "评论"
+                text: songComments ? ("评论 · 共 " + BasicConfig.formatCount(songComments.totalCount) + " 条") : "评论"
                 color: "#8A8A93"
                 font.pixelSize: AppTheme.fontSizeCaption
                 font.family: AppTheme.fontFamily

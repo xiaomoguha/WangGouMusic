@@ -1,4 +1,5 @@
 #include "airecommendmanager.h"
+#include "SongInfo.h"
 
 #include <QDebug>
 #include <QJsonArray>
@@ -87,7 +88,16 @@ void AiRecommendManager::startFlow(const QString &songhash, const QString &songn
     setBusy(true);
     m_seedHash = songhash.toUpper();
 
-    // 酷狗搜索接口支持 album_audio_id 解析：按歌名搜，再按 hash 精确匹配
+    // 种子 id 在解析歌曲列表时就登记过 → 直接用，省掉一次按歌名搜索
+    const QString cached = SongInfo::cachedMxid(m_seedHash);
+    if (!cached.isEmpty())
+    {
+        requestRecommend(cached);
+        return;
+    }
+
+    // 没登记过（冷门歌/列表没带）：酷狗搜索接口支持 album_audio_id 解析，
+    // 按歌名搜，再按 hash 精确匹配
     QString keyword = songname;
     keyword.replace(QRegularExpression(QStringLiteral(R"(\s*\([^)]*\)\s*$)")), QString());
     QUrl url(QStringLiteral("%1/search").arg(kApiRoot));

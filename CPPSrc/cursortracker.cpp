@@ -1,9 +1,6 @@
 #include "cursortracker.h"
 
-#include <QCoreApplication>
 #include <QCursor>
-#include <QEvent>
-#include <QMouseEvent>
 #include <QQuickWindow>
 
 namespace {
@@ -22,31 +19,6 @@ CursorTracker::CursorTracker(QObject *parent)
 void CursorTracker::attachWindow(QObject *window)
 {
     m_window = window;
-    if (qApp && !m_filterInstalled)
-    {
-        qApp->installEventFilter(this);
-        m_filterInstalled = true;
-    }
-}
-
-bool CursorTracker::eventFilter(QObject *watched, QEvent *event)
-{
-    Q_UNUSED(watched)
-    if (event->type() != QEvent::MouseButtonPress)
-        return false;
-
-    auto *win = qobject_cast<QQuickWindow *>(m_window);
-    if (!win || !win->isVisible())
-        return false;
-
-    auto *me = static_cast<QMouseEvent *>(event);
-    const QPointF globalPos = me->globalPosition();
-    if (!win->geometry().contains(globalPos.toPoint()))
-        return false;
-
-    const QPointF local = win->mapFromGlobal(globalPos.toPoint());
-    emit pressed(local.x(), local.y());
-    return false; // 只旁听，不消费——点击照常到达下面的控件
 }
 
 void CursorTracker::poll()

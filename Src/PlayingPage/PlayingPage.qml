@@ -404,7 +404,7 @@ Rectangle {
             Text {
                 id: commentTabLabel
                 anchors.centerIn: parent
-                text: "评论" + (songComments && songComments.totalCount > 0 ? " " + songComments.totalCount : "")
+                text: "评论" + (songComments && songComments.totalCount > 0 ? " " + BasicConfig.formatCount(songComments.totalCount) : "")
                 color: lyricspage.showComments ? "#222222" : "#AAFFFFFF"
                 font.bold: true
                 font.pixelSize: AppTheme.fontSizeBody
@@ -426,9 +426,11 @@ Rectangle {
         anchors.left: leftAlbumSection.right
         anchors.leftMargin: parent.width * 0.13
         anchors.top: parent.top
-        anchors.topMargin: 80
+        // 让开上面的「歌词/评论」tab（tab 高 30、topMargin 40，底边在 y=70），
+        // 留 30px 呼吸位；底部也收一点，整块可视高度比原来短
+        anchors.topMargin: 100
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: 0.2 * root.height
+        anchors.bottomMargin: 0.24 * root.height
         width: parent.width * 0.32
         clip: true
 
@@ -471,6 +473,27 @@ Rectangle {
         clip: true
         cacheBuffer: 600
         transform: Translate { id: lyricSwapShift; y: 0 }
+
+        // 上下边缘淡出：滚到边界的歌词渐渐消失，不在可视区边缘硬切
+        // （遮罩用的是透明度渐变；它同时是"上方歌词淡出 + 下方歌词淡出"的实现）
+        layer.enabled: true
+        layer.effect: OpacityMask {
+            maskSource: Item {
+                width: lyricList.width
+                height: lyricList.height
+                LinearGradient {
+                    anchors.fill: parent
+                    start: Qt.point(0, 0)
+                    end: Qt.point(0, parent.height)
+                    gradient: Gradient {
+                        GradientStop { position: 0.00; color: "transparent" }
+                        GradientStop { position: 0.12; color: "white" }
+                        GradientStop { position: 0.86; color: "white" }
+                        GradientStop { position: 1.00; color: "transparent" }
+                    }
+                }
+            }
+        }
 
         model: playlistmanager ? playlistmanager.m_lyrics : 0
         interactive: false   //是否可以手动滚动
@@ -804,7 +827,7 @@ Rectangle {
             height: 40
             Text {
                 anchors.centerIn: parent
-                text: songComments ? "共 " + songComments.totalCount + " 条评论" : ""
+                text: songComments ? "共 " + BasicConfig.formatCount(songComments.totalCount) + " 条评论" : ""
                 color: "#99FFFFFF"
                 font.pixelSize: AppTheme.fontSizeSmall
                 font.family: AppTheme.fontFamily

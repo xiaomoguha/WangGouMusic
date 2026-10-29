@@ -1,12 +1,16 @@
 #include "dailyrecommend.h"
+#include "SongInfo.h"
 #include "recommendation.h" // secondsToMinutesSeconds
 #include "usermanager.h"
 
+#include <QDate>
+#include <QDateTime>
 #include <QDebug>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonParseError>
+#include <QTime>
 #include <QUrlQuery>
 
 void DailyRecommend::setUserManager(UserManager *um)
@@ -27,6 +31,37 @@ DailyRecommend::DailyRecommend(QObject *parent) : QObject(parent)
                 qWarning() << "[DailyRecommend] fetch timeout";
                 onFailed();
             });
+
+    // 跨天自动刷新：客户端常驻（不重启）时第二天仍会显示前一天那份，
+    // 到点自己重拉，不需要用户点刷新
+    m_refreshTimer.setSingleShot(true);
+    connect(&m_refreshTimer, &QTimer::timeout, this, &DailyRecommend::refreshIfStale);
+}
+
+void DailyRecommend::refreshIfStale()
+{
+    // m_date 是上游给的推荐日期（yyyyMMdd）。空 = 从没拉到过（首次进入页面）。
+    if (m_date == QDate::currentDate().toString(QStringLiteral("yyyyMMdd")))
+        return;
+    fetch();
+}
+
+// 下一次自动检查的时机：
+//  - 手上已经是今天的 → 定到次日本地 0 点过后几秒
+//  - 还不是今天的 → 10 分钟后重试。上游翻页时间不保证在 0 点整（可能晚几分钟），
+//    定死"次日 0 点"会漏掉这种：0 点拉到的还是昨天那份，就要再等一整天
+void DailyRecommend::scheduleNextRefresh()
+{
+    const QString today = QDate::currentDate().toString(QStringLiteral("yyyyMMdd"));
+    if (m_date != today)
+    {
+        m_refreshTimer.start(10 * 60 * 1000);
+        return;
+    }
+
+    const QDateTime nextMidnight = QDate::currentDate().addDays(1).startOfDay();
+    const qint64 ms              = QDateTime::currentDateTime().msecsTo(nextMidnight) + 5000;
+    m_refreshTimer.start(static_cast<int>(qBound<qint64>(1000, ms, 24LL * 3600 * 1000)));
 }
 
 void DailyRecommend::fetch()
@@ -54,6 +89,9 @@ void DailyRecommend::onFailed()
 {
     m_isLoading = false;
     emit isLoadingChanged();
+    // 失败也要排下一次：跨天那次失败（断网/服务端抖动）时 10 分钟后再试，
+    // 避免整晚停在昨天那份
+    scheduleNextRefresh();
 }
 
 void DailyRecommend::onData(const QByteArray &data)
@@ -86,6 +124,7 @@ void DailyRecommend::onData(const QByteArray &data)
         const QString name  = s["songname"].toString();
         if (hash.isEmpty() || name.isEmpty())
             continue;
+        SongInfo::rememberMxidFromJson(s, hash);
 
         // 歌手：singerinfo 数组 → 逗号拼接；兜底用 filename "歌手 - 歌名"
         QString singername;
@@ -122,4 +161,6 @@ void DailyRecommend::onData(const QByteArray &data)
     }
     m_songs = songs;
     emit songsChanged();
+    // 拿到这份之后排下一次：是今天的就等跨天，还是昨天那份就 10 分钟后再看
+    scheduleNextRefresh();
 }

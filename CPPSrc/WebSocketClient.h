@@ -31,7 +31,9 @@ enum ServerAction
     BROADCAST_SONG_LIST,
     BROADCAST_CLIENT_LIST,
     GET_CLIENT_LIST,
-    BROADCAST_SONG_PROGRESS
+    BROADCAST_SONG_PROGRESS,
+    // 批量加歌（「添加到一起听」）：与服务端 enum ctrl 同步，追加在末尾保持既有编号不变
+    ADD_SONGS_TO_PLAYLIST
 };
 
 // 聊天 & 操作日志 action（与服务端 types.h 一致）
@@ -89,6 +91,10 @@ public:
         const QString &duration, const QString &coverurl
     );
     Q_INVOKABLE void removeSongFromTogether(const QString &songhash);
+    /// 批量加歌（歌单「添加到一起听」）：一次消息加一批。
+    /// songs 每项为 {songname, songhash, singername, albumname, duration, coverurl}，
+    /// 服务端一次处理并按房间未播放上限（300 首）决定丢弃，回包带统计文案
+    Q_INVOKABLE void addSongsToTogether(const QVariantList &songs);
     Q_INVOKABLE void playNextTogether();
     Q_INVOKABLE void playTogetherByHash(const QString &songhash);
     Q_INVOKABLE void upSongByHash(const QString &songhash);
@@ -190,9 +196,10 @@ private:
     MessageListModel *m_chatModel   = nullptr;
     MessageListModel *m_actionModel = nullptr;
 
-    // 待确认的添加歌曲操作
+    // 待确认的添加歌曲操作（单曲/批量共用同一个超时计时器）
     bool m_pendingAddSong         = false;
     QTimer *m_addSongTimeoutTimer = nullptr;
+    void ensureAddSongTimeoutTimer();
 
     // 消息发送状态追踪
     int m_msgIdCounter = 0;

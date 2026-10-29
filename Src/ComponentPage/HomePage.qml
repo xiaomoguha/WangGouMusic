@@ -180,11 +180,10 @@ Item {
 
                 Row {
                     spacing: 12
-                    visible: !isTogetherMode
 
-                    // 播放全部
+                    // 播放全部 / 一起听模式下改为「添加到一起听」（把当前 FM 批次加进房间）
                     Rectangle {
-                        width: 100
+                        width: isTogetherMode ? 140 : 100
                         height: 32
                         radius: 16
                         color: fmPlayAllHover.hovered ? "#533483" : "#e94560"
@@ -192,8 +191,10 @@ Item {
 
                         Text {
                             anchors.centerIn: parent
-                            text: (personalFM && personalFM.isLoading && personalFM.songs.length === 0)
-                                  ? "加载中..." : "▶ 播放全部"
+                            text: isTogetherMode
+                                  ? "＋ 添加到一起听"
+                                  : ((personalFM && personalFM.isLoading && personalFM.songs.length === 0)
+                                     ? "加载中..." : "▶ 播放全部")
                             font.pixelSize: AppTheme.fontSizeSmall
                             font.bold: true
                             color: "#ffffff"
@@ -203,7 +204,12 @@ Item {
                         TapHandler {
                             cursorShape: Qt.PointingHandCursor
                             enabled: personalFM && !personalFM.isLoading
-                            onTapped: root.fmPlayAll()
+                            onTapped: {
+                                if (isTogetherMode)
+                                    BasicConfig.togetherAddSongs(websocket, personalFM ? personalFM.songs : [])
+                                else
+                                    root.fmPlayAll()
+                            }
                         }
                     }
                 }

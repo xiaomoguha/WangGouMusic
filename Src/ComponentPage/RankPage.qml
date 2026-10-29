@@ -279,10 +279,9 @@ Item {
 
                         Row {
                             spacing: 12
-                            visible: !isTogetherMode
 
                             Rectangle {
-                                width: 100
+                                width: isTogetherMode ? 140 : 100
                                 height: 32
                                 radius: 16
                                 color: playAllHover.hovered ? "#533483" : "#e94560"
@@ -290,8 +289,10 @@ Item {
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text: (rankList && rankList.isLoading && rankList.songs.length === 0)
-                                          ? "加载中..." : "▶ 播放全部"
+                                    text: isTogetherMode
+                                          ? "＋ 添加到一起听"
+                                          : ((rankList && rankList.isLoading && rankList.songs.length === 0)
+                                             ? "加载中..." : "▶ 播放全部")
                                     font.pixelSize: AppTheme.fontSizeSmall
                                     font.bold: true
                                     color: "#ffffff"
@@ -301,7 +302,12 @@ Item {
                                 TapHandler {
                                     cursorShape: Qt.PointingHandCursor
                                     enabled: rankList && !rankList.isLoading && rankList.songs.length > 0
-                                    onTapped: root.playAll()
+                                    onTapped: {
+                                        if (isTogetherMode)
+                                            BasicConfig.togetherAddSongs(websocket, rankList.songs)
+                                        else
+                                            root.playAll()
+                                    }
                                 }
                             }
                         }

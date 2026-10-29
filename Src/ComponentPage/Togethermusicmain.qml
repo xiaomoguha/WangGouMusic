@@ -76,6 +76,11 @@ Item {
         width: 300
         padding: 24
 
+        // 模态弹窗要锁底层输入，否则点击会穿透到房间页的 TapHandler（遮罩拦不住）
+        onAboutToShow: BasicConfig.pushModalInputLock(leaveConfirmDialog)
+        onClosed: BasicConfig.popModalInputLock(leaveConfirmDialog)
+        Component.onDestruction: BasicConfig.popModalInputLock(leaveConfirmDialog)
+
         background: Rectangle {
             radius: 16
             color: AppTheme.bgOverlay

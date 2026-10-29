@@ -1,4 +1,5 @@
 #include "artistmanager.h"
+#include "SongInfo.h"
 
 #include <QDebug>
 #include <QJsonArray>
@@ -171,6 +172,7 @@ void ArtistManager::onAudiosData(const QByteArray &data)
         song["album_name"] = o["album_name"].toString();
         song["duration"]   = secondsToMinutesSeconds(o["timelength"].toInt() / 1000);
         song["union_cover"] = cover;
+        SongInfo::rememberMxidFromJson(o, song["songhash"].toString());
         newSongs.append(song);
     }
     m_songsModel.appendList(newSongs);
