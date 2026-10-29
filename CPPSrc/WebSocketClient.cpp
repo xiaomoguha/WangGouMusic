@@ -224,6 +224,46 @@ void WebSocketClient::sendJson(const QJsonObject &json)
 
 // ==================== 一起听操作命令 ====================
 
+void WebSocketClient::addSongsToTogether(const QVariantList &songs)
+{
+    if (songs.isEmpty())
+        return;
+
+    QJsonArray arr;
+    for (const QVariant &v : songs)
+    {
+        const QVariantMap m = v.toMap();
+        const QString hash  = m.value("songhash").toString();
+        if (hash.isEmpty())
+            continue;
+        QJsonObject song;
+        song["songname"]   = m.value("songname").toString();
+        song["songhash"]   = hash;
+        song["singername"] = m.value("singername").toString();
+        song["albumname"]  = m.value("albumname").toString();
+        song["duration"]   = m.value("duration").toString();
+        song["coverurl"]   = m.value("coverurl").toString();
+        arr.append(song);
+    }
+    if (arr.isEmpty())
+        return;
+
+    QJsonObject json;
+    json["userid"] = m_userId;
+    json["action"] = ADD_SONGS_TO_PLAYLIST;
+    QJsonObject params;
+    params["songs"] = arr;
+    json["params"]  = params;
+
+    m_pendingAddSong = true;
+    emit serverNotice(QStringLiteral("正在添加 %1 首到一起听...").arg(arr.size()), "loading");
+    sendJson(json);
+
+    // 批量比单曲慢（服务端要逐首查重/落表），超时给宽一点
+    ensureAddSongTimeoutTimer();
+    m_addSongTimeoutTimer->start(20000);
+}
+
 void WebSocketClient::addSongToTogether(
     const QString &songname, const QString &songhash, const QString &singername, const QString &albumname,
     const QString &duration, const QString &coverurl
@@ -245,13 +285,18 @@ void WebSocketClient::addSongToTogether(
     sendJson(json);
 
     // 超时机制：5秒内没收到确认则提示失败
-    if (!m_addSongTimeoutTimer)
-    {
-        m_addSongTimeoutTimer = new QTimer(this);
-        m_addSongTimeoutTimer->setSingleShot(true);
-        connect(m_addSongTimeoutTimer, &QTimer::timeout, this, &WebSocketClient::checkAddSongTimeout);
-    }
+    ensureAddSongTimeoutTimer();
     m_addSongTimeoutTimer->start(5000);
+}
+
+// 单曲/批量共用一个超时计时器（懒创建）
+void WebSocketClient::ensureAddSongTimeoutTimer()
+{
+    if (m_addSongTimeoutTimer)
+        return;
+    m_addSongTimeoutTimer = new QTimer(this);
+    m_addSongTimeoutTimer->setSingleShot(true);
+    connect(m_addSongTimeoutTimer, &QTimer::timeout, this, &WebSocketClient::checkAddSongTimeout);
 }
 
 void WebSocketClient::removeSongFromTogether(const QString &songhash)
@@ -650,6 +695,17 @@ void WebSocketClient::handleServerMessage(const QJsonObject &json)
         {
             mergeRoomActions(json["actions"].toArray());
         }
+        break;
+
+    case ADD_SONGS_TO_PLAYLIST:
+        // 批量加歌回执：服务端把"加了几首 / 丢弃几首 / 重复几首"写进 message，直接提示
+        m_pendingAddSong = false;
+        if (m_addSongTimeoutTimer)
+            m_addSongTimeoutTimer->stop();
+        emit serverNotice(
+            json["message"].toString(),
+            json["status"].toString() == QLatin1String("success") ? QStringLiteral("success") : QStringLiteral("error")
+        );
         break;
 
     default:

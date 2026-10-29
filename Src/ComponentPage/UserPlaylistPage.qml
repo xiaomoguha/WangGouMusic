@@ -726,7 +726,7 @@ Item {
                         spacing: 12
 
                     Rectangle {
-                        width: 100
+                        width: isTogetherMode ? 140 : 100
                         height: 35
                         radius: 17
                         color: playAllHover.hovered ? AppTheme.accentHover : AppTheme.accent
@@ -752,7 +752,7 @@ Item {
                             }
 
                             Text {
-                                text: "播放全部"
+                                text: isTogetherMode ? "添加到一起听" : "播放全部"
                                 color: "white"
                                 font.pixelSize: AppTheme.fontSizeBodyLg
                                 font.family: AppTheme.fontFamily
@@ -765,8 +765,13 @@ Item {
                             cursorShape: Qt.PointingHandCursor
                             onTapped: {
                                 if (!playlistmanager || filteredSongs.length === 0) return
-                                playlistmanager.clearPlaylist()
                                 var songsToPlay = searchKeyword.trim() === "" ? currentSongs : filteredSongs
+                                // 一起听：整单（或当前筛选结果）加进房间
+                                if (isTogetherMode) {
+                                    BasicConfig.togetherAddSongs(websocket, songsToPlay)
+                                    return
+                                }
+                                playlistmanager.clearPlaylist()
                                 for (var i = 0; i < songsToPlay.length; i++) {
                                     var s = songsToPlay[i]
                                     playlistmanager.addSong({

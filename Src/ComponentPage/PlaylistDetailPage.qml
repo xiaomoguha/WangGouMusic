@@ -173,6 +173,7 @@ Item {
     }
 
     property bool _pendingPlayAll: false
+    property bool _pendingTogetherAddAll: false // 一起听：等歌单全量加载完再整单加进房间
     property int currentSongIndex: -1        // 当前播放在列表中的下标，-1 = 不在
     property bool _autoLocated: false        // 是否已自动定位过一次
     property string _lastLoadedGid: ""       // 已拉取过的歌单 gid（可见时兜底拉取去重）
@@ -270,6 +271,7 @@ Item {
             if (recommendation && playlistId !== "") {
                 tracksListView.contentY = 0
                 _pendingPlayAll = false
+                _pendingTogetherAddAll = false
                 _autoLocated = false
                 currentSongIndex = -1
                 // 同 onCompleted：缓存命中直接展示，点刷新才走网络
@@ -294,6 +296,11 @@ Item {
             }
             // 全量加载完成（hasMore=false）
             if (!recommendation.playlistHasMore) {
+                // 一起听：整单加进房间（同样要等全量，否则只加到已加载的那几页）
+                if (_pendingTogetherAddAll) {
+                    _pendingTogetherAddAll = false
+                    BasicConfig.togetherAddSongs(websocket, recommendation.playlistTracksModel)
+                }
                 // 播放全部触发的全量
                 if (_pendingPlayAll) {
                     _pendingPlayAll = false
@@ -437,20 +444,21 @@ Item {
                         font.family: AppTheme.fontFamily
                     }
 
-                    // 播放全部 + 收藏
+                    // 播放全部 + 收藏 / 一起听模式下改为「添加到一起听」
                     Row {
                         spacing: 12
-                        visible: !isTogetherMode
 
                         Rectangle {
-                            width: 100
+                            width: isTogetherMode ? 140 : 100
                             height: 32
                             radius: 16
                             color: playAllHover.hovered ? "#533483" : "#e94560"
 
                             Text {
                                 anchors.centerIn: parent
-                                text: (recommendation && recommendation.playlistIsLoading) ? "加载中..." : "▶ 播放全部"
+                                text: isTogetherMode
+                                      ? "＋ 添加到一起听"
+                                      : ((recommendation && recommendation.playlistIsLoading) ? "加载中..." : "▶ 播放全部")
                                 font.pixelSize: AppTheme.fontSizeSmall
                                 color: "#ffffff"
                                 font.family: AppTheme.fontFamily
@@ -464,6 +472,16 @@ Item {
                                 onTapped: {
                                     if (!recommendation) return
                                     var songs = recommendation.playlistTracksModel
+                                    if (isTogetherMode) {
+                                        // 还没全量加载完：先拉全量，回来再整单加（见 onPlaylistTracksChanged）
+                                        if (recommendation.playlistHasMore) {
+                                            _pendingTogetherAddAll = true
+                                            recommendation.loadAllPlaylistTracks()
+                                            return
+                                        }
+                                        BasicConfig.togetherAddSongs(websocket, songs)
+                                        return
+                                    }
                                     if (recommendation.playlistHasMore) {
                                         _pendingPlayAll = true
                                         recommendation.loadAllPlaylistTracks()

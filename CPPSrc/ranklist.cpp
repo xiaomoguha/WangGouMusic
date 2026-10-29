@@ -1,4 +1,5 @@
 #include "ranklist.h"
+#include "SongInfo.h"
 #include "recommendation.h" // secondsToMinutesSeconds
 
 #include <QDebug>
@@ -175,6 +176,7 @@ void RankList::onSongsData(const QByteArray &data)
                                  : audioInfo["hash_128"].toString();
         if (name.isEmpty() || hash.isEmpty())
             continue;
+        SongInfo::rememberMxidFromJson(s, hash);
 
         QStringList singers;
         const QJsonArray authors = s["authors"].toArray();

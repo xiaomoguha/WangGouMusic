@@ -1,4 +1,5 @@
 #include "albummanager.h"
+#include "SongInfo.h"
 
 #include <QDebug>
 #include <QJsonArray>
@@ -128,6 +129,7 @@ void AlbumManager::onSongsData(const QByteArray &data)
         song["album_name"] = alb["album_name"].toString();
         song["duration"]   = secondsToMinutesSeconds(audio["duration"].toInt());
         song["union_cover"] = cover;
+        SongInfo::rememberMxidFromJson(s, song["songhash"].toString());
         m_songs.append(song);
     }
     emit songsChanged();

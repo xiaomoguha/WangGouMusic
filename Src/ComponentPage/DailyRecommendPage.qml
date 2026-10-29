@@ -98,10 +98,16 @@ Item {
     }
 
     Component.onCompleted: {
-        if (dailyRecommend && dailyRecommend.songs.length === 0)
-            refreshDaily()
-        else
+        if (!dailyRecommend)
+            return
+        if (dailyRecommend.songs.length === 0) {
+            refreshDaily()   // 首次进入：直接拉今天的
+        } else {
+            // 已有数据也可能是"昨天那份"（客户端常驻跨天）：交给 C++ 判日期，
+            // 还是今天的就直接用，跨天了才重新拉
+            dailyRecommend.refreshIfStale()
             requestCoverColor()
+        }
     }
 
     // 播放全部 / 从指定下标播放：把整个每日推荐列表载入播放列表（双击切歌用）
@@ -202,18 +208,19 @@ Item {
                         font.family: AppTheme.fontFamily
                     }
 
-                    // 播放全部
+                    // 播放全部 / 一起听模式下改为「添加到一起听」（把整份列表加进房间）
                     Rectangle {
-                        width: 120
+                        width: isTogetherMode ? 140 : 120
                         height: 34
                         radius: 17
                         color: playAllHover.hovered ? "#533483" : "#e94560"
-                        visible: !isTogetherMode
                         Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
 
                         Text {
                             anchors.centerIn: parent
-                            text: (dailyRecommend && dailyRecommend.isLoading) ? "加载中..." : "▶ 播放全部"
+                            text: isTogetherMode
+                                  ? "＋ 添加到一起听"
+                                  : ((dailyRecommend && dailyRecommend.isLoading) ? "加载中..." : "▶ 播放全部")
                             font.pixelSize: AppTheme.fontSizeSmall
                             font.bold: true
                             color: "#ffffff"
@@ -223,7 +230,12 @@ Item {
                         TapHandler {
                             cursorShape: Qt.PointingHandCursor
                             enabled: dailyRecommend && !dailyRecommend.isLoading
-                            onTapped: root.playAll()
+                            onTapped: {
+                                if (isTogetherMode)
+                                    BasicConfig.togetherAddSongs(websocket, dailyRecommend ? dailyRecommend.songs : [])
+                                else
+                                    root.playAll()
+                            }
                         }
                     }
                 }

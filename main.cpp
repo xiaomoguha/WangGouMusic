@@ -24,6 +24,7 @@
 #endif
 #include "./CPPSrc/CrashHandler.h"
 #include "./CPPSrc/cursortracker.h"
+#include "./CPPSrc/windowstatemanager.h"
 #include "./CPPSrc/ClickThroughHelper.h"
 #include "./CPPSrc/PlaylistCacheStore.h"
 #include "./CPPSrc/dailyrecommend.h"
@@ -179,9 +180,12 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("hostSearch", &hostSearch);
     engine.rootContext()->setContextProperty("complexsearch", &complexsearch);
     engine.rootContext()->setContextProperty("searchHistory", &searchHistory);
-    // 全局指针追踪：窗口级光标光源用（见 CursorLight.qml 的说明）
+    // 全局指针追踪：供 QML 做指针与背景星空的联动（见 StarfieldLayer.qml）
     CursorTracker cursorTracker;
     engine.rootContext()->setContextProperty("cursorTracker", &cursorTracker);
+    // 主窗口位置记忆：QML 启动时读取、拖动后写回（见 main.qml 的 windowPosSaveTimer）
+    WindowStateManager windowState;
+    engine.rootContext()->setContextProperty("windowState", &windowState);
     engine.rootContext()->setContextProperty("playlistmanager", &playlistmanager);
     engine.rootContext()->setContextProperty("playlistColorExtractor", &playlistColorExtractor);
     engine.rootContext()->setContextProperty("recommendation", &recommendation);

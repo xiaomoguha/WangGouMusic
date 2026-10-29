@@ -1,6 +1,7 @@
 #ifndef SONG_INFO_H
 #define SONG_INFO_H
 
+#include <QJsonObject>
 #include <QObject>
 #include <QString>
 
@@ -27,10 +28,22 @@ struct SongInfo
     Q_PROPERTY(QString fileid MEMBER fileid)
     // MV 播放 hash（mvhash）：仅含 MV 的歌曲有值，歌单/搜索数据源填充
     Q_PROPERTY(QString mvhash MEMBER mvhash)
-    // 评论用 album_audio_id：一起听广播由服务器解析下发，评论直连免歌名搜索
+    // 评论用 album_audio_id：一起听广播由服务器解析下发；其余场景见下面的登记表
     Q_PROPERTY(QString mxid MEMBER mxid)
 
 public:
+    /// 从接口返回的歌曲对象里取 album_audio_id（= 评论接口要的 mixsongid）。
+    /// 各接口字段位置不统一（顶层 album_audio_id / 顶层 mixsongid /
+    /// audio_info.album_audio_id / base.album_audio_id），统一在这里兜住，取不到返回空串。
+    static QString mxidFromJson(const QJsonObject &songObj);
+
+    /// 解析并登记 hash→mxid。歌曲列表（搜索/排行/歌单/每日推荐/FM/专辑/歌手…）解析时
+    /// 顺手调一次，之后这首歌播放、拉评论就能直接拿到 id，不必再去搜索或查接口。
+    static void rememberMxidFromJson(const QJsonObject &songObj, const QString &hash);
+
+    /// 取已登记的 mxid（键不分大小写）；没登记过返回空串
+    static QString cachedMxid(const QString &hash);
+
     QString title;
     QString songhash;
     QString url;

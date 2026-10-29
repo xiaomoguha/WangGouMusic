@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(网狗音乐 VERSION 0.7.7 LANGUAGES CXX)
+project(网狗音乐 VERSION 0.8.0 LANGUAGES CXX)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -52,6 +52,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         CPPSrc/CrashHandler.cpp CPPSrc/CrashHandler.h
         CPPSrc/ClickThroughHelper.cpp CPPSrc/ClickThroughHelper.h
         CPPSrc/cursortracker.cpp CPPSrc/cursortracker.h
+        CPPSrc/windowstatemanager.cpp CPPSrc/windowstatemanager.h
         CPPSrc/searchhistorymanager.cpp CPPSrc/searchhistorymanager.h
         CPPSrc/playlistcollection.cpp CPPSrc/playlistcollection.h
         CPPSrc/dailyrecommend.cpp CPPSrc/dailyrecommend.h

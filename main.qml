@@ -16,7 +16,7 @@ ApplicationWindow {
     height: 752
     minimumWidth: 960
     minimumHeight: 680
-    visible: false  // 延迟到 Component.onCompleted 计算居中后再显示，避免 (0,0) 闪烁
+    visible: false  // 延迟到 Component.onCompleted 定位（恢复上次位置或居中）后再显示，避免 (0,0) 闪烁
     title: qsTr("WYYMUSIC")
     color: "transparent"
     // mac 由 QWindowKit (main.cpp) 接管窗口：真原生 traffic lights + 内容铺满标题栏下方（无带）；
@@ -100,10 +100,31 @@ ApplicationWindow {
         }
     }
 
-    // 窗口启动时计算居中位置
+    // 位置落盘：拖动过程中 x/y 每帧都在变，不逐次写配置，停手 600ms 后写一次。
+    // 最大化/全屏下的坐标不是用户意图位置，不记录（还原后仍用拖动前的位置）
+    Timer {
+        id: windowPosSaveTimer
+        interval: 600
+        repeat: false
+        onTriggered: {
+            if (!windowState || root.visibility !== Window.Windowed)
+                return;
+            windowState.savePosition(root.x, root.y);
+        }
+    }
+    onXChanged: windowPosSaveTimer.restart()
+    onYChanged: windowPosSaveTimer.restart()
+
+    // 窗口启动时定位：有上次记录且那块屏幕还在就恢复原位，否则按默认居中。
+    // 恢复必须在 visible=true 之前完成，否则会先居中再跳到记录位置（看得见的闪跳）
     Component.onCompleted: {
-        root.x = (Screen.width - root.width) / 2;
-        root.y = (Screen.height - root.height) / 2;
+        if (windowState && windowState.hasSavedPosition && windowState.isSavedPositionOnScreen(root.width, root.height)) {
+            root.x = windowState.savedX;
+            root.y = windowState.savedY;
+        } else {
+            root.x = (Screen.width - root.width) / 2;
+            root.y = (Screen.height - root.height) / 2;
+        }
         if (Qt.platform.os === "osx") {
             // ApplicationWindow 在 mac 上会按标题栏高度把 contentItem 下移 ~32px（顶部白带根源）。
             // 仅 mac 清零 padding 让内容回到 y=0；其他平台一律不动，保证零影响。
@@ -179,19 +200,6 @@ ApplicationWindow {
             GradientStop { position: 0.88; color: Qt.rgba(1, 1, 1, 0.10) }
             GradientStop { position: 1.00; color: Qt.rgba(1, 1, 1, 0.0) }
         }
-    }
-
-    // ===================== 鼠标光标光源（整窗，含导航栏）=====================
-    // 一枚比指针略大的亮斑 + 环绕微粒；位于最上层，指针事件必达
-    CursorLight {
-        anchors.fill: parent
-        z: 10000
-    }
-
-    // 点击烟花：铺在最上层画粒子，不接收鼠标事件（点击照常透传）
-    Fireworks {
-        anchors.fill: parent
-        z: 10001
     }
 
     MouseArea {

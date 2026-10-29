@@ -1,4 +1,5 @@
 #include "searchcomplex.h"
+#include "SongInfo.h"
 #include "ApiClient.h"
 
 #include <QJsonArray>
@@ -143,6 +144,7 @@ void SearchComplex::parseAndAppend(const QJsonObject &root, bool isAppend)
         m["songhash"]    = v["hash"].toString();
         m["union_cover"] = union_cover;
         m["mvhash"]      = v["mvhash"].toString();
+        SongInfo::rememberMxidFromJson(v.toObject(), m["songhash"].toString());
         return m;
     };
 

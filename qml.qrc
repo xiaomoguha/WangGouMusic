@@ -20,8 +20,6 @@
         <file>Src/BasicConfig/GlassPanel.qml</file>
         <file>Src/BasicConfig/RetryImage.qml</file>
         <file>Src/BasicConfig/StarfieldLayer.qml</file>
-        <file>Src/BasicConfig/Fireworks.qml</file>
-        <file>Src/BasicConfig/CursorLight.qml</file>
         <file>Src/BasicConfig/GlowText.qml</file>
         <file>Src/BasicConfig/HoverCard.qml</file>
         <file>Src/BasicConfig/HoverRow.qml</file>

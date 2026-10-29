@@ -7,6 +7,9 @@ QtObject {
     signal indexChange(int index)
     signal pushSearchSongPage(string pageUrl)
     signal searchKeywordChange
+    // 任意页面发起搜索（如底栏点歌名/歌手名）：由搜索栏自己接单，
+    // 走和回车/热搜完全相同的流程（填框 + 记住历史 + 跳结果页）
+    signal requestSearch(string keyword)
     signal noticeError(string errormessages)
     signal noticeSuccess(string messages)
     signal songAdded(string songname)
@@ -79,9 +82,31 @@ QtObject {
     // Timer 负责累加（挂 uiIdle 门控，失焦即停）。
     property real bgTime: 0
 
-    // 模态弹窗输入锁：弹窗置位/复位，main.qml 据此禁用 windowShell。
-    // 点击会沿 z 序穿透到页面 TapHandler（MouseArea 拦不住），只能禁底层
-    property bool modalInputLock: false
+    // 模态弹窗输入锁：弹窗打开时 push、关闭时 pop，main.qml 据此禁用 windowShell。
+    // 点击会沿 z 序穿透到页面 TapHandler（遮罩 MouseArea 拦不住），只能禁掉底层。
+    //
+    // 为什么按持有者记名而不是一个布尔：弹窗会叠加（用户菜单里再开登录设备列表），
+    // 布尔会被内层弹窗关闭时误复位，外层弹窗随即又变得可穿透。记名后各层各管各的，
+    // 同一个弹窗重复打开只算一次，多余的 pop 也不会把界面误锁死。
+    property var _modalLockHolders: []
+    readonly property bool modalInputLock: _modalLockHolders.length > 0
+
+    function pushModalInputLock(holder) {
+        if (_modalLockHolders.indexOf(holder) !== -1)
+            return
+        var holders = _modalLockHolders.slice()
+        holders.push(holder)
+        _modalLockHolders = holders
+    }
+
+    function popModalInputLock(holder) {
+        var i = _modalLockHolders.indexOf(holder)
+        if (i === -1)
+            return
+        var holders = _modalLockHolders.slice()
+        holders.splice(i, 1)
+        _modalLockHolders = holders
+    }
 
     // 安全地把 "#RRGGBB" 转为 rgba（与播放页一致，防 NaN 崩溃）
     function rgbFromHex(hex, alpha) {
@@ -93,6 +118,61 @@ QtObject {
         if (isNaN(r) || isNaN(g) || isNaN(b))
             return Qt.rgba(1.0, 0.42, 0.42, alpha)
         return Qt.rgba(r / 255, g / 255, b / 255, alpha)
+    }
+
+    // 大数简写：1.2万 / 2547万 / 1.3亿（与歌手页粉丝数同款写法）。
+    // 一万以下原样显示——"1234" 比 "1.2K" 更贴近其他音乐客户端的习惯。
+    // 整数倍省掉".0"：10000 → "1万" 而不是 "1.0万"
+    function formatCount(n) {
+        var v = Number(n)
+        if (!isFinite(v) || v <= 0)
+            return "0"
+        if (v >= 100000000)
+            return trimZero(v / 100000000) + "亿"
+        if (v >= 10000)
+            return trimZero(v / 10000) + "万"
+        return String(Math.round(v))
+    }
+    function trimZero(v) {
+        var s = v.toFixed(1)
+        return s.slice(-2) === ".0" ? s.slice(0, -2) : s
+    }
+
+    // 把各页面的歌曲数据统一成「添加到一起听」要的字段（各列表来源字段名不统一：
+    // songname/title、union_cover/cover 等）。src 支持两种来源：
+    //   数组（QVariantList，如 dailyRecommend.songs）或带 count + get(i) 的模型
+    //   （ArtistListModel / SongListModel 都有 get(i)）
+    function togetherSongs(src) {
+        var out = []
+        if (!src)
+            return out
+        var n = (src.length !== undefined) ? src.length : ((src.count !== undefined) ? src.count : 0)
+        for (var i = 0; i < n; ++i) {
+            var s = (src.length !== undefined) ? src[i] : src.get(i)
+            if (!s)
+                continue
+            var hash = s.songhash || s.hash || ""
+            if (hash === "")
+                continue
+            out.push({
+                "songname": s.songname || s.title || s.name || "",
+                "songhash": hash,
+                "singername": s.singername || s.singer || s.singer_name || "",
+                "albumname": s.album_name || s.albumname || s.album || "",
+                "duration": s.duration || "",
+                "coverurl": s.union_cover || s.cover || s.cover_url || ""
+            })
+        }
+        return out
+    }
+
+    // 一起听加一批歌：ws 由调用方传入（单例不保证能拿到 websocket 上下文属性），
+    // 空列表直接返回，非空才走 ws（服务端按房间上限截断并回报统计）
+    function togetherAddSongs(ws, src) {
+        var songs = togetherSongs(src)
+        if (!ws || songs.length === 0)
+            return
+        ws.addSongsToTogether(songs)
     }
 
     // 把封面主色按 alpha 混入不透明底色，得到该位置的最终不透明色。

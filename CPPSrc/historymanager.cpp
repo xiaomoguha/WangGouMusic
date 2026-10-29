@@ -1,6 +1,7 @@
 #include "historymanager.h"
 #include "ApiClient.h"
 #include "PlaylistCacheStore.h"
+#include "SongInfo.h"
 #include "usermanager.h"
 
 #include <QDateTime>
@@ -186,7 +187,13 @@ void HistoryManager::onPrivilegeData(const QByteArray &data)
             const QString h     = o["hash"].toString().toUpper();
             const QString mxid  = QString::number(o["album_audio_id"].toVariant().toLongLong());
             if (!h.isEmpty() && o["album_audio_id"].toVariant().toLongLong() > 0)
+            {
                 hashToMxid[h] = mxid;
+                // 顺手登记：上报听歌历史本来就要按 hash 查一次 album_audio_id，
+                // 记下来以后拉评论直接用——列表里没登记过的歌（旧缓存恢复的队列等）
+                // 只要播过一次，下次也不用再查了
+                SongInfo::rememberMxidFromJson(o, h);
+            }
         }
     }
 

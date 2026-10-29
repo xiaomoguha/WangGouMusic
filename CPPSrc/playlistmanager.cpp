@@ -205,6 +205,11 @@ SongInfo PlaylistManager::songFromMap(const QVariantMap &map)
     song.album_name  = map.value("album_name").toString();
     song.duration    = map.value("duration").toString();
     song.lyric       = map.value("lyric").toString();
+    // 评论用 album_audio_id：QML 传了就用，没传则查列表解析时登记的缓存
+    // （这样评论不用再为拿 id 去搜索歌名或额外查接口）
+    song.mxid = map.value("mxid", map.value("album_audio_id", map.value("mixsongid"))).toString();
+    if (song.mxid.isEmpty())
+        song.mxid = SongInfo::cachedMxid(song.songhash);
     return song;
 }
 

@@ -215,17 +215,18 @@ Item {
                         font.family: AppTheme.fontFamily
                     }
 
-                    // 播放全部
+                    // 播放全部 / 一起听模式下改为「添加到一起听」（把整张专辑加进房间）
                     Rectangle {
-                        width: 100
+                        width: isTogetherMode ? 140 : 100
                         height: 32
                         radius: 16
                         color: playAllHover.hovered ? "#533483" : "#e94560"
-                        visible: !isTogetherMode
 
                         Text {
                             anchors.centerIn: parent
-                            text: (albumManager && albumManager.isLoading && albumManager.songs.length === 0) ? "加载中..." : "▶ 播放全部"
+                            text: isTogetherMode
+                                  ? "＋ 添加到一起听"
+                                  : ((albumManager && albumManager.isLoading && albumManager.songs.length === 0) ? "加载中..." : "▶ 播放全部")
                             font.pixelSize: AppTheme.fontSizeSmall
                             font.bold: true
                             color: "#ffffff"
@@ -236,6 +237,10 @@ Item {
                             cursorShape: Qt.PointingHandCursor
                             onTapped: {
                                 if (!albumManager || albumManager.songs.length === 0) return
+                                if (isTogetherMode) {
+                                    BasicConfig.togetherAddSongs(websocket, albumManager.songs)
+                                    return
+                                }
                                 playlistmanager.clearPlaylist()
                                 for (var i = 0; i < albumManager.songs.length; i++) {
                                     var s = albumManager.songs[i]

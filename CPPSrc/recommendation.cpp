@@ -1,4 +1,5 @@
 #include "recommendation.h"
+#include "SongInfo.h"
 #include "PlaylistCacheStore.h"
 #include <QFile>
 #include <QJsonDocument>
@@ -163,6 +164,7 @@ void Recommendation::onTopSongsData(const QByteArray &data)
         QString hash      = s["hash"].toString();
         QString songname  = s["songname"].toString();
         QString albumName = s["album_name"].toString();
+        SongInfo::rememberMxidFromJson(s, hash);
 
         // authors 数组拼接歌手名
         QJsonArray authors = s["authors"].toArray();
@@ -470,6 +472,7 @@ void Recommendation::onLazyTracksData(const QByteArray &data)
             item["union_cover"] = cover;
             item["album_name"]  = s["albuminfo"].toObject()["name"].toString();
             item["duration"]    = secondsToMinutesSeconds(durationSec);
+            SongInfo::rememberMxidFromJson(s, item["songhash"].toString());
             result.append(item);
         }
     }

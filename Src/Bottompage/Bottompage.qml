@@ -138,7 +138,7 @@ Rectangle {
             height: parent.height
             spacing: 12
 
-            // 专辑封面（圆角正方形，静态）
+            // 专辑封面（圆角正方形）
             Rectangle {
                 id: albumCoverContainer
                 width: 65
@@ -146,6 +146,13 @@ Rectangle {
                 radius: 14
                 anchors.verticalCenter: parent.verticalCenter
                 clip: true
+                // hover 轻微放大，作为"鼠标已放上"的反馈（点击进播放详情页）
+                scale: coverHover.hovered ? 1.06 : 1.0
+                Behavior on scale { NumberAnimation { duration: AppTheme.animFast; easing.type: Easing.OutCubic } }
+                HoverHandler {
+                    id: coverHover
+                    cursorShape: Qt.PointingHandCursor
+                }
 
                 Image {
                     id: albumCover
@@ -175,38 +182,20 @@ Rectangle {
                     }
                 }
 
-                // 遮罩：播放中常显（动画）；hover 时（无论是否播放）换成向上箭头提示展开播放页
+                // 遮罩：只在播放中显示（播放指示器）
                 Rectangle {
                     anchors.fill: parent
                     radius: 14
                     color: "#40000000"
-                    visible: albumCoverContainer.isCoverPlaying || coverHover.hovered
+                    visible: albumCoverContainer.isCoverPlaying
 
                     NowPlayingIndicator {
                         anchors.centerIn: parent
                         // 最小化/隐藏窗口时 visible=false → 内部动画停（visible 不随最小化变 false，需显式判断）
-                        visible: albumCoverContainer.isCoverPlaying && !coverHover.hovered && root.appActive
+                        visible: albumCoverContainer.isCoverPlaying && root.appActive
                         playing: playlistmanager ? !playlistmanager.isPaused : true
                     }
-
-                    Image {
-                        id: coverUpIcon
-                        anchors.centerIn: parent
-                        source: AppIcon.arrowUp
-                        sourceSize: Qt.size(64, 64)
-                        width: 28
-                        height: 28
-                        fillMode: Image.PreserveAspectFit
-                        mipmap: true
-                        visible: coverHover.hovered
-                        layer.enabled: true
-                        layer.effect: ColorOverlay {
-                            source: coverUpIcon
-                            color: "#FFFFFF"
-                        }
-                    }
                 }
-                HoverHandler { id: coverHover }
                 // 封面在播 = 有歌且未暂停
                 readonly property bool isCoverPlaying: playlistmanager && playlistmanager.currentSonghash !== "" && !playlistmanager.isPaused
             }
@@ -227,6 +216,23 @@ Rectangle {
                     clip: true
                     property real unitWidth: songNameText.implicitWidth + 28
                     property bool overflow: songNameText.implicitWidth > width
+                    // hover：微微放大 + 主题色，提示"可点搜索"；缩放挂在 clip 容器上
+                    // （整块带裁剪结果一起放大，不会把文字边缘裁掉）
+                    readonly property bool hovered: songNameHover.hovered
+                    scale: hovered ? 1.05 : 1.0
+                    transformOrigin: Item.Left
+                    Behavior on scale { NumberAnimation { duration: AppTheme.animFast; easing.type: Easing.OutCubic } }
+                    HoverHandler {
+                        id: songNameHover
+                        cursorShape: Qt.PointingHandCursor
+                    }
+                    TapHandler {
+                        onTapped: {
+                            var kw = playlistmanager ? playlistmanager.currentTitle : ""
+                            if (kw !== "")
+                                BasicConfig.requestSearch(kw)
+                        }
+                    }
                     Row {
                         id: songNameRow
                         spacing: 28
@@ -236,14 +242,15 @@ Rectangle {
                             font.family: AppTheme.fontFamily
                             font.pixelSize: AppTheme.fontSizeBodyLg
                             font.bold: true
-                            color: AppTheme.textSongTitle
+                            color: songNameClip.hovered ? AppTheme.accent : AppTheme.textSongTitle
+                            Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
                         }
                         Text {
                             text: songNameText.text
                             font.family: AppTheme.fontFamily
                             font.pixelSize: AppTheme.fontSizeBodyLg
                             font.bold: true
-                            color: AppTheme.textSongTitle
+                            color: songNameClip.hovered ? AppTheme.accent : AppTheme.textSongTitle
                             visible: songNameClip.overflow
                         }
                         // 33ms Timer 步进滚动（~30fps）：NumberAnimation 按 60Hz 驱动，
@@ -280,6 +287,22 @@ Rectangle {
                     clip: true
                     property real unitWidth: singerNameText.implicitWidth + 28
                     property bool overflow: singerNameText.implicitWidth > width
+                    // hover：微微放大 + 主题色（同歌名），点击按歌手名搜索
+                    readonly property bool hovered: singerNameHover.hovered
+                    scale: hovered ? 1.05 : 1.0
+                    transformOrigin: Item.Left
+                    Behavior on scale { NumberAnimation { duration: AppTheme.animFast; easing.type: Easing.OutCubic } }
+                    HoverHandler {
+                        id: singerNameHover
+                        cursorShape: Qt.PointingHandCursor
+                    }
+                    TapHandler {
+                        onTapped: {
+                            var kw = playlistmanager ? playlistmanager.currentsingername : ""
+                            if (kw !== "")
+                                BasicConfig.requestSearch(kw)
+                        }
+                    }
                     Row {
                         id: singerNameRow
                         spacing: 28
@@ -289,14 +312,15 @@ Rectangle {
                             font.family: AppTheme.fontFamily
                             font.pixelSize: AppTheme.fontSizeSmall
                             font.bold: true
-                            color: AppTheme.textMuted
+                            color: singerNameClip.hovered ? AppTheme.accent : AppTheme.textMuted
+                            Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
                         }
                         Text {
                             text: singerNameText.text
                             font.family: AppTheme.fontFamily
                             font.pixelSize: AppTheme.fontSizeSmall
                             font.bold: true
-                            color: AppTheme.textMuted
+                            color: singerNameClip.hovered ? AppTheme.accent : AppTheme.textMuted
                             visible: singerNameClip.overflow
                         }
                         Timer {
