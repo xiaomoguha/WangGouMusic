@@ -67,5 +67,14 @@
     <file>icons/order.svg</file>
     <file>icons/repeat-one.svg</file>
     <file>icons/shuffle.svg</file>
+    <file>icons/crown.svg</file>
+    <file>icons/dumbbell.svg</file>
+    <file>icons/t-shirt.svg</file>
+    <file>icons/squares-four.svg</file>
+    <file>icons/download-simple.svg</file>
+    <file>icons/dots-three.svg</file>
+    <file>icons/dots-vertical.svg</file>
+    <file>icons/info.svg</file>
+    <file>icons/share.svg</file>
   </qresource>
 </RCC>

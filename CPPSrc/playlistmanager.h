@@ -155,7 +155,7 @@ public:
         const QString &songUrl, const QString &songName, const QString &songHash, const QString &singerName,
         const QString &coverUrl, const QString &albumName, const QString &duration, const QString &mxid = QString()
     );
-    void seekToPercent(double percent);
+    Q_INVOKABLE void seekToPercent(double percent);
     void setPaused(bool paused);
     void setTogetherSeekPercent(double percent);
     double togetherSeekPercent() const;

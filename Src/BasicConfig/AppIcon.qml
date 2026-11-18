@@ -66,4 +66,28 @@ QtObject {
     readonly property string playModeOrder: "qrc:/icons/order.svg"
     readonly property string playModeRepeatOne: "qrc:/icons/repeat-one.svg"
     readonly property string playModeShuffle: "qrc:/icons/shuffle.svg"
+
+    // ===== 移动端补充：既有资源补映射 + 自绘图标 =====
+    readonly property string quotes: "qrc:/icons/quotes.svg"
+    readonly property string chat: "qrc:/icons/chat-circle-text.svg"
+    readonly property string microphone: "qrc:/icons/microphone.svg"
+    readonly property string microphoneStage: "qrc:/icons/microphone-stage.svg"
+    readonly property string musicNote: "qrc:/icons/music-note.svg"
+    readonly property string textAA: "qrc:/icons/text-aa.svg"
+    readonly property string article: "qrc:/icons/article.svg"
+    readonly property string users: "qrc:/icons/users.svg"
+    readonly property string house: "qrc:/icons/house.svg"
+    readonly property string listChecks: "qrc:/icons/list-checks.svg"
+    readonly property string skipBackFill: "qrc:/icons/skip-back-fill.svg"
+    readonly property string skipForwardFill: "qrc:/icons/skip-forward-fill.svg"
+    // 自绘（1024 viewBox 单色，风格与上方一致）
+    readonly property string crown: "qrc:/icons/crown.svg"                  // 皇冠(VIP)
+    readonly property string dumbbell: "qrc:/icons/dumbbell.svg"            // 哑铃(运动)
+    readonly property string tShirt: "qrc:/icons/t-shirt.svg"               // T恤(装扮)
+    readonly property string squaresFour: "qrc:/icons/squares-four.svg"     // 四宫格
+    readonly property string download: "qrc:/icons/download-simple.svg"     // 下载(本地)
+    readonly property string dotsThree: "qrc:/icons/dots-three.svg"         // ⋯
+    readonly property string dotsVertical: "qrc:/icons/dots-vertical.svg"   // ⋮
+    readonly property string info: "qrc:/icons/info.svg"                    // ⓘ
+    readonly property string share: "qrc:/icons/share.svg"                  // 分享
 }

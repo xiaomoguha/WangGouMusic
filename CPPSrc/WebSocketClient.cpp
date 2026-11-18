@@ -384,6 +384,7 @@ void WebSocketClient::sendChatMessage(const QString &message)
 
     QJsonObject json;
     json["userid"] = m_userId;
+    json["userid"] = m_userId;   // 服务端要求消息体顶层带 userid，缺失会被拒收（"userid错误！"）
     json["action"] = SEND_CHAT;
     QJsonObject params;
     params["message"] = message.trimmed();

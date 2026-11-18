@@ -43,3 +43,6 @@ dist/
 
 # 调研用克隆的第三方项目（folia-major 等，不属于本仓库）
 folia-major/
+
+# 本地参考截图（设计对照，不入库）
+wyy/

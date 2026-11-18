@@ -1,6 +1,29 @@
 <RCC>
     <qresource prefix="/">
         <file>main.qml</file>
+
+        <!-- 移动端（Android/iOS 真机 + 桌面 mobile 预览模式） -->
+        <file>main_mobile.qml</file>
+        <file>Src_Mobile/qmldir</file>
+        <file>Src_Mobile/MTheme.qml</file>
+        <file>Src_Mobile/MIcon.qml</file>
+        <file>Src_Mobile/MCover.qml</file>
+        <file>Src_Mobile/MLoading.qml</file>
+        <file>Src_Mobile/MEqBars.qml</file>
+        <file>Src_Mobile/MTogetherButton.qml</file>
+        <file>Src_Mobile/MTabBar.qml</file>
+        <file>Src_Mobile/MiniPlayer.qml</file>
+        <file>Src_Mobile/MPageHeader.qml</file>
+        <file>Src_Mobile/NowPlayingPage.qml</file>
+        <file>Src_Mobile/pages/HomePage.qml</file>
+        <file>Src_Mobile/pages/TogetherPage.qml</file>
+        <file>Src_Mobile/pages/BrowsePage.qml</file>
+        <file>Src_Mobile/pages/MinePage.qml</file>
+        <file>Src_Mobile/pages/SearchPage.qml</file>
+        <file>Src_Mobile/pages/PlaylistDetailPage.qml</file>
+        <file>Src_Mobile/pages/PlayingQueuePage.qml</file>
+        <file>Src_Mobile/pages/RankPage.qml</file>
+        <file>Src_Mobile/pages/DailyRecommendPage.qml</file>
         <file>Src/Leftpage/Leftpage.qml</file>
         <file>Src/Rightpage/Rightpage.qml</file>
         <file>Src/Bottompage/Bottompage.qml</file>

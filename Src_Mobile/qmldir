@@ -1,0 +1,5 @@
+singleton MTheme MTheme.qml
+MIcon MIcon.qml
+MTabBar MTabBar.qml
+MiniPlayer MiniPlayer.qml
+NowPlayingPage NowPlayingPage.qml

@@ -55,6 +55,21 @@
 #include "./CPPSrc/trayhandler.h"
 #include "./CPPSrc/usermanager.h"
 #include <QQmlEngine>
+#include <memory>
+
+// --mobile：桌面端预览移动端 UI（加载 main_mobile.qml，窗口固定手机尺寸）。
+// 预览模式下所有桌面专属子系统（托盘/单实例/桌面歌词/窗口状态/光标追踪/
+// 系统媒体控制/系统圆角）全部不启用，与 Android/iOS 真机行为保持一致，
+// 提前暴露平台差异问题。
+static bool isMobilePreviewArg(int argc, char *argv[])
+{
+    for (int i = 1; i < argc; ++i)
+    {
+        if (QString::fromLocal8Bit(argv[i]).compare(QStringLiteral("--mobile"), Qt::CaseInsensitive) == 0)
+            return true;
+    }
+    return false;
+}
 
 class HttpGetRequesterHelper : public HttpGetRequester
 {
@@ -78,6 +93,22 @@ public:
     }
 };
 
+// --tour 自截帧助手：Window.contentItem 没有 QML engine，QML 侧 grabToImage 会
+// 被 "item has no QML engine" 拒绝；改走 QQuickWindow::grabWindow()——
+// 同步整窗渲染（含窗口底色），与窗口是否离屏/被遮挡无关，专供巡览截图用。
+class TourGrabber : public QObject
+{
+    Q_OBJECT
+public slots:
+    bool grab(QObject *windowObj, const QString &path)
+    {
+        auto *w = qobject_cast<QQuickWindow *>(windowObj);
+        if (!w)
+            return false;
+        return w->grabWindow().save(path);
+    }
+};
+
 int main(int argc, char *argv[])
 {
     // 在 QApplication 之前安装崩溃日志处理器
@@ -96,6 +127,8 @@ int main(int argc, char *argv[])
 
     QApplication app(argc, argv);
 
+    const bool mobileMode = isMobilePreviewArg(argc, argv);
+
     // 缓存目录升级：旧版平铺结构（根目录 .mp3/*.json）迁移到分类目录（songs/128|320|flac、config、lyrics）。
     // 在一切缓存读写之前执行（.cache_v2 标记保证只跑一次）
     PlaylistCacheStore::migrateLegacyCache();
@@ -110,12 +143,17 @@ int main(int argc, char *argv[])
     // 检测上次崩溃日志，如有则弹窗提示
     CrashHandler::checkPreviousCrash();
 
-    // 单实例检测：如果已有实例在运行，激活其主窗口并退出
-    SingleApplication singleApp("WangGouMusic");
-    if (singleApp.isRunning())
+    // 单实例检测：如果已有实例在运行，激活其主窗口并退出。
+    // 移动端预览跳过：系统本身单任务，且避免与桌面版互相顶掉实例
+    std::unique_ptr<SingleApplication> singleApp;
+    if (!mobileMode)
     {
-        singleApp.activateRunningInstance();
-        return 0;
+        singleApp = std::make_unique<SingleApplication>("WangGouMusic");
+        if (singleApp->isRunning())
+        {
+            singleApp->activateRunningInstance();
+            return 0;
+        }
     }
 
     QQuickStyle::setStyle("Fusion");
@@ -132,7 +170,9 @@ int main(int argc, char *argv[])
     // 注册 HttpGetRequester 为可实例化的 QML 类型
     qmlRegisterType<HttpGetRequesterHelper>("NetworkRequest", 1, 0, "HttpGetRequester");
 
-    const QUrl url(QStringLiteral("qrc:/main.qml"));
+    // 入口 QML：桌面 main.qml / 移动端 main_mobile.qml
+    const QUrl url(mobileMode ? QStringLiteral("qrc:/main_mobile.qml")
+                              : QStringLiteral("qrc:/main.qml"));
 
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreated, &app,
@@ -169,7 +209,11 @@ int main(int argc, char *argv[])
     playlistCollection.setUserManager(&userManager);
     historyManager.setUserManager(&userManager);
     WebSocketClient websocket(&playlistmanager, &userManager);
-    NowPlayingMediaController mediaController(&playlistmanager);
+    // 桌面媒体控制集成（Windows SMTC / macOS NowPlaying）。
+    // 移动端后续接 Android MediaSession / iOS MPRemoteCommandCenter
+    std::unique_ptr<NowPlayingMediaController> mediaController;
+    if (!mobileMode)
+        mediaController = std::make_unique<NowPlayingMediaController>(&playlistmanager);
     LyricsConfigManager lyricsConfig;
     AppUpdater appUpdater;
     ProxyManager proxyManager;   // 进程级代理（构造即 apply，须早于 engine.load 与任何网络请求）
@@ -178,14 +222,22 @@ int main(int argc, char *argv[])
     qRegisterMetaType<SongInfo>("SongInfo");
     qRegisterMetaType<LyricLine>("LyricLine");
     engine.rootContext()->setContextProperty("hostSearch", &hostSearch);
+    TourGrabber tourGrabber;   // --tour 巡览自截帧（见类注释）
+    engine.rootContext()->setContextProperty("tourGrabber", &tourGrabber);
     engine.rootContext()->setContextProperty("complexsearch", &complexsearch);
     engine.rootContext()->setContextProperty("searchHistory", &searchHistory);
-    // 全局指针追踪：供 QML 做指针与背景星空的联动（见 StarfieldLayer.qml）
-    CursorTracker cursorTracker;
-    engine.rootContext()->setContextProperty("cursorTracker", &cursorTracker);
+    // 全局指针追踪：供 QML 做指针与背景星空的联动（见 StarfieldLayer.qml）。
+    // 移动端无鼠标，不注册（StarfieldLayer 已用 typeof 探测自动关闭联动）
+    std::unique_ptr<CursorTracker> cursorTracker;
+    if (!mobileMode)
+    {
+        cursorTracker = std::make_unique<CursorTracker>();
+        engine.rootContext()->setContextProperty("cursorTracker", cursorTracker.get());
+    }
     // 主窗口位置记忆：QML 启动时读取、拖动后写回（见 main.qml 的 windowPosSaveTimer）
     WindowStateManager windowState;
-    engine.rootContext()->setContextProperty("windowState", &windowState);
+    if (!mobileMode)
+        engine.rootContext()->setContextProperty("windowState", &windowState);
     engine.rootContext()->setContextProperty("playlistmanager", &playlistmanager);
     engine.rootContext()->setContextProperty("playlistColorExtractor", &playlistColorExtractor);
     engine.rootContext()->setContextProperty("recommendation", &recommendation);
@@ -222,6 +274,8 @@ int main(int argc, char *argv[])
 
     // 加载 DesktopLyrics.qml 独立窗口（跨平台）
     // 延迟到主窗口 QML 加载后再创建，避免 1079 行 DesktopLyrics.qml 的解析阻塞首屏
+    // 移动端无桌面歌词悬浮窗，预览模式跳过
+    if (!mobileMode)
     QTimer::singleShot(
         0, &engine,
         [&engine, &lyricsConfig, &clickThroughHelper]()
@@ -270,7 +324,6 @@ int main(int argc, char *argv[])
             clickThroughHelper.setWindow(desktopLyricsWindow);
         }
     );
-
     // ---------------- 加载 QML ----------------
     engine.load(url);
 
@@ -283,8 +336,8 @@ int main(int argc, char *argv[])
     }
 
     // 把主窗口交给光标追踪（换算窗口局部坐标 / 判断指针是否在窗口内）
-    if (window)
-        cursorTracker.attachWindow(window);
+    if (window && cursorTracker)
+        cursorTracker->attachWindow(window);
 
 #ifdef Q_OS_MAC
     // QWindowKit 接管主窗口：真原生 traffic lights（系统级悬停图案 + 关/最小/缩放动作），
@@ -302,7 +355,7 @@ int main(int argc, char *argv[])
     // Windows 窗口圆角：Win11 优先用 DWM 系统圆角；Win10（无 DWMWA_WINDOW_CORNER_PREFERENCE）
     // 退回 SetWindowRgn 系统区域圆角。两者都在系统层裁角，不依赖 QML 透明链路
     // （渐变激活时面板转透明，部分机器 QML 透明失效会把四角填成背景色）。
-    if (window)
+    if (window && !mobileMode) // 预览窗口固定手机尺寸，无需系统圆角
     {
         auto applyRoundedCorners = [window]() {
             HWND hwnd = (HWND)window->winId();
@@ -339,18 +392,22 @@ int main(int argc, char *argv[])
 #endif
 
     // 让单实例管理器持有主窗口引用
-    singleApp.listen(window);
+    if (singleApp)
+        singleApp->listen(window);
 
-    // ---------------- 托盘图标（跨平台） ----------------
-    QIcon trayIcon(QStringLiteral(":/image/tray_icon_mac.png"));
-    if (trayIcon.isNull())
-        trayIcon = QIcon::fromTheme(QStringLiteral("application-exit"));
+    // ---------------- 托盘图标（跨平台；移动端无托盘概念，预览模式跳过） ----------------
+    if (!mobileMode)
+    {
+        QIcon trayIcon(QStringLiteral(":/image/tray_icon_mac.png"));
+        if (trayIcon.isNull())
+            trayIcon = QIcon::fromTheme(QStringLiteral("application-exit"));
 
-    // 在栈上创建 TrayHandler，确保正确的销毁顺序
-    TrayHandler trayHandler(window, &app, trayIcon, nullptr);
+        // 堆上创建：生命周期到进程结束，与原栈对象等效（QML 持有引用不悬空）
+        auto *trayHandler = new TrayHandler(window, &app, trayIcon, nullptr);
 
-    // 将 trayHandler 暴露给 QML（用于发送系统通知）
-    engine.rootContext()->setContextProperty("trayHandler", &trayHandler);
+        // 将 trayHandler 暴露给 QML（用于发送系统通知）
+        engine.rootContext()->setContextProperty("trayHandler", trayHandler);
+    }
 
     // 退出时保存播放状态
     QObject::connect(

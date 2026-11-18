@@ -16,9 +16,12 @@ Item {
 
     readonly property real t: BasicConfig.bgTime
     // 指针在本面板局部坐标里的位置；离开窗口/失焦时视为不在场
-    readonly property real curX: cursorTracker.pos.x - root.panelLeftX
-    readonly property real curY: cursorTracker.pos.y - root.panelTopY
-    readonly property bool curNear: cursorTracker.active
+    // 移动端(Android/iOS)无 cursorTracker 上下文属性（桌面专属）：typeof 探测后
+    // 回退到屏外坐标，星空指针联动自动关闭；桌面注册了该属性，行为完全不变
+    readonly property bool hasCursorTracker: typeof cursorTracker !== "undefined" && cursorTracker !== null
+    readonly property real curX: root.hasCursorTracker ? cursorTracker.pos.x - root.panelLeftX : -99999
+    readonly property real curY: root.hasCursorTracker ? cursorTracker.pos.y - root.panelTopY : -99999
+    readonly property bool curNear: root.hasCursorTracker && cursorTracker.active
     // 联动半径：指针周围多大范围的星会被点亮、轻轻推开
     property real reactRadius: 140
     // 星点密度：整体偏稀疏（流星才是主角）
