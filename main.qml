@@ -20,7 +20,6 @@ ApplicationWindow {
     title: qsTr("WYYMUSIC")
     color: "transparent"
     // mac 由 QWindowKit (main.cpp) 接管窗口：真原生 traffic lights + 内容铺满标题栏下方（无带）；
-    // 其他平台保持无边框 + 自定义按钮。
     flags: Qt.platform.os === "osx" ? Qt.Window : (Qt.FramelessWindowHint | Qt.Window)
     NoteWindow {
         id: loadingToast
@@ -76,8 +75,6 @@ ApplicationWindow {
     property bool lyricsOpened: false
 
     // 窗口真实可见（非最小化且未隐藏）：常驻动画的统一开关。
-    // QML 的 visible 属性在最小化时仍为 true，若动画只看 visible，
-    // 最小化后仍会驱动渲染循环持续出帧（CPU 降不下来）
     readonly property bool appActive: visible && visibility !== Window.Minimized
 
     // 启动后延迟拉取热搜与推荐数据，让首屏先渲染完
@@ -101,7 +98,6 @@ ApplicationWindow {
     }
 
     // 位置落盘：拖动过程中 x/y 每帧都在变，不逐次写配置，停手 600ms 后写一次。
-    // 最大化/全屏下的坐标不是用户意图位置，不记录（还原后仍用拖动前的位置）
     Timer {
         id: windowPosSaveTimer
         interval: 600
@@ -116,7 +112,6 @@ ApplicationWindow {
     onYChanged: windowPosSaveTimer.restart()
 
     // 窗口启动时定位：有上次记录且那块屏幕还在就恢复原位，否则按默认居中。
-    // 恢复必须在 visible=true 之前完成，否则会先居中再跳到记录位置（看得见的闪跳）
     Component.onCompleted: {
         if (windowState && windowState.hasSavedPosition && windowState.isSavedPositionOnScreen(root.width, root.height)) {
             root.x = windowState.savedX;
@@ -127,7 +122,6 @@ ApplicationWindow {
         }
         if (Qt.platform.os === "osx") {
             // ApplicationWindow 在 mac 上会按标题栏高度把 contentItem 下移 ~32px（顶部白带根源）。
-            // 仅 mac 清零 padding 让内容回到 y=0；其他平台一律不动，保证零影响。
             root.topPadding = 0
             root.bottomPadding = 0
             root.leftPadding = 0
@@ -148,7 +142,6 @@ ApplicationWindow {
         target: userManager
         function onTokenRefreshResult(success) {
             // 仅真过期（C++ 已清空登录态）才弹登录页；
-            // 网络错误会保留登录态（token 可能还有效），不弹窗避免误登出
             if (!success && userManager && !userManager.isLoggedIn) {
                 loginPopup.open()
             }
@@ -235,14 +228,11 @@ ApplicationWindow {
         }
     }
     // 内容容器：直接铺满窗口（窗口投影方案在本机 Qt6.10.1 下渲染不稳定，已移除）。
-    // 播放详情页打开时禁用底层交互：否则点击会沿 z 序穿透到下面页面的 TapHandler
-    // （曾导致点「展开回复」误触底层歌曲卡片，直接切歌）；模态弹窗同理走 modalInputLock
     Item {
         id: windowShell
         anchors.fill: parent
         enabled: !root.lyricsOpened && !BasicConfig.modalInputLock
         // 播放详情页完全展开后整块隐藏：否则三个面板（含当前页全部节点/离屏 layer）
-        // 仍参与每帧渲染（覆盖≠隐藏）；收起滑动过程中保持可见，避免露出空底
         visible: !root.lyricsOpened || lyricsSlideAnim.running
     Leftpage {
         id: leftrect
@@ -257,7 +247,6 @@ ApplicationWindow {
         // 盖住其他角
         Rectangle {
             // 右上角遮挡（在窗口顶，随渐变混入主色保持一致）
-            // z:-1 垫到内容之下：只补圆角接缝，不遮挡按钮 hover 遮罩
             anchors.top: parent.top
             anchors.right: parent.right
             width: 20
@@ -344,7 +333,6 @@ ApplicationWindow {
         }
         Rectangle {
             // 左上角遮挡（在窗口顶，随渐变混入主色保持一致）
-            // z:-1 垫到内容之下：只补圆角接缝，不遮挡后退按钮 hover 遮罩
             anchors.left: parent.left
             anchors.top: parent.top
             width: 20
@@ -410,8 +398,6 @@ ApplicationWindow {
     }
     // 整窗统一渐变：三个面板（Leftpage/Rightpage/Bottompage）各自内嵌 WindowTintGradient
     // 切片，把封面主色按全局纵向位置混入面板底色（纯不透明渐变，内容不糊）。
-    // 有渐变时面板根色转透明让切片露出来；无渐变时面板恢复主题底色。
-    // 窗口高度同步给 BasicConfig，供切片换算「整窗 50% 淡出」的位置。
     Binding {
         target: BasicConfig
         property: "windowHeight"
@@ -424,14 +410,12 @@ ApplicationWindow {
         value: root.width
     }
     // 窗口遮蔽状态（最小化或关闭到托盘）同步给 BasicConfig：一起听聊天通知的判断依据。
-    // 注意 QML 的 visible 在最小化时仍为 true，必须看 visibility
     Binding {
         target: BasicConfig
         property: "windowObscured"
         value: root.visibility === Window.Minimized || root.visibility === Window.Hidden || !root.visible
     }
     // 装饰性动画总闸：被遮蔽或应用失焦（用户切到别的 App）时停掉跑马灯等无限动画。
-    // 注意 root.appActive 只看窗口可见性不看焦点，此处必须看 Qt.application.state
     Binding {
         target: BasicConfig
         property: "uiIdle"
@@ -444,7 +428,6 @@ ApplicationWindow {
         value: BasicConfig.uiIdle
     }
     // 非歌单页时的渐变来源：正在播放（有歌且未暂停）→ 用当前歌曲封面主色。
-    // dominantColor 由 PlaylistManager 内部提取器维护（播放页主题同源）。
     Binding {
         target: BasicConfig
         property: "playingActive"

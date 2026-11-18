@@ -4,8 +4,6 @@ import "../../Src/BasicConfig"
 
 // 歌单详情页（移动版，真实数据）：
 // recommendation.fetchPlaylistTracks(global_collection_id) 拉取歌曲，
-// playlistTracksModel（SongListModel）驱动列表；头部为歌单卡 + 播放全部；
-// 触底自动 fetchMorePlaylistTracks。
 Item
 {
     id: root

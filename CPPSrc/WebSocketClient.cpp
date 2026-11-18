@@ -71,7 +71,6 @@ void WebSocketClient::initializeWebSocket()
     }
 
     // QWebSocket 构造函数首个参数是 origin/protocol，无法直接传 this 作为 parent。
-    // 改为在析构中显式 close + delete（见 ~WebSocketClient）。
     m_webSocket = new QWebSocket();
 
     connect(m_webSocket, &QWebSocket::connected, this, &WebSocketClient::onConnected);
@@ -732,8 +731,6 @@ void WebSocketClient::mergeRoomActions(const QJsonArray &actions)
 {
     // 服务端返回 newest-first,翻转后按时间正序追加。逐条 append + 队尾 30 条
     // 窗口查重,与原 QVariantList 语义一致(含同批内重复条目的去重);actions
-    // 数组通常只有 1 条、入房历史最多百条,逐条行级插入的代价可忽略。
-    // 聊天历史进左栏模型、系统动态进右栏模型
     bool added = false;
     for (int i = actions.size() - 1; i >= 0; --i)
     {
@@ -814,7 +811,6 @@ void WebSocketClient::handleSongInfoBroadcast(const QJsonObject &data, bool allo
         }
 
         // 检测是否为循环重播（进度回到起点）
-        // 只有本地播放进度也接近结尾时才认为是真正的循环，避免服务端进度临时为0导致误重启
         if (isPlaying == 1 && playedPercent < 0.05)
         {
             float localPercent = playmanager->getpercent();
@@ -931,9 +927,6 @@ void WebSocketClient::handleSongListBroadcast(const QJsonObject &json)
     }
     // 合并消息可能同时包含 song_info
     // 只在是当前播放歌曲或客户端尚未播放时才处理，避免别人添加歌曲触发错误切歌
-    // allowSeek=false：内嵌快照的 played_percent 最多滞后 5s（服务器 5s 才累加
-    // 一次），用它判 seek 会"先后跳再前跳"造成可闻卡顿；进度纠偏交给专门的
-    // 进度广播（BROADCAST_SONG_PROGRESS，每拍都是新鲜值）
     if (json.contains("song_info") && json["song_info"].isObject())
     {
         QJsonObject songInfo = json["song_info"].toObject();

@@ -49,7 +49,6 @@ bool PlaylistCollection::findFavorite(QString &listid, QString &gid, const QVari
     const QString gidFav     = QStringLiteral("collection_3_%1_2_0").arg(uid);  // 「我喜欢」系统位
     const QString gidDefault = QStringLiteral("collection_3_%1_1_0").arg(uid);  // 「默认收藏」系统位（老账号）
     // 多级匹配：精确名 → 系统 gid → 包含名 → 默认收藏 gid → 默认收藏名。
-    // 顺序保证用户自建的「我喜欢的XX」不会被排在真「我喜欢」前面。
     for (int pass = 0; pass < 5; ++pass)
     {
         for (const QVariant &v : infos)
@@ -90,7 +89,6 @@ void PlaylistCollection::onUserPlaylistsForRetry(const QVariantMap &data)
     const QVariantList fresh = data.value("data").toMap().value("info").toList();
     // 注意：m_favRetryPending 故意在这一轮保持 true——重试的 addToFavorite 若仍然
     // 找不到「我喜欢」就不会再发起拉取（否则 fetch→信号→addToFavorite→fetch 死循环，
-    // 曾把服务器打出每秒十几个 /user/playlist）。本轮结束才清标志，下次点击可再重试。
     addToFavorite(name, hash, singer, fresh);
     m_favRetryPending = false;
 }

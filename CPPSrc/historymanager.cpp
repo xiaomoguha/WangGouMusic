@@ -105,7 +105,6 @@ void HistoryManager::fetchHistory()
     m_loadingMore = false;
     m_hasMore = false;
     // playhistory 接口顺序乱序（酷狗不保证时间序），需全量拉取后按 ot 倒序排序；
-    // 全量仅存内存（约 1MB），展示按批追加（首屏 100 首，下拉从内存秒加载）
     fetchPlayhistoryPage(QStringLiteral("0"));
 }
 
@@ -144,7 +143,6 @@ void HistoryManager::flushQueue()
     if (m_pending.isEmpty() || m_uploadWorking)
         return;
     // pc 基线缓存未就绪：先拉 playhistory 全量（构建 mxid→pc 缓存）再上传。
-    // pc 是覆盖语义，不先取基线会把云端已有次数清零（如溯流光 38→3 事故）
     if (!m_pcReady)
     {
         fetchHistory();
@@ -191,7 +189,6 @@ void HistoryManager::onPrivilegeData(const QByteArray &data)
                 hashToMxid[h] = mxid;
                 // 顺手登记：上报听歌历史本来就要按 hash 查一次 album_audio_id，
                 // 记下来以后拉评论直接用——列表里没登记过的歌（旧缓存恢复的队列等）
-                // 只要播过一次，下次也不用再查了
                 SongInfo::rememberMxidFromJson(o, h);
             }
         }
@@ -234,8 +231,6 @@ void HistoryManager::doUpload(const QVariantList &songs)
 
     // 批量上传：{songs: [{mxid, time(→ot 播放时间戳), pc, hash]}]
     // 路由是 /playhistory/upload（不是 /user/history/upload —— 那个是查询接口，会静默假成功）。
-    // pc = 云端基线 + 本次新增次数（覆盖语义，先取基线再覆盖，避免清零已有次数）。
-    // 基线推进放在 onUploadDone 成功确认后，失败不推进（下次按云端值重新算增量）
     m_pendingCommit.clear();
     QJsonArray arr;
     for (const QVariant &v : songs)

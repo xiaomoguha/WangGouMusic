@@ -2,7 +2,6 @@ import QtQuick 2.15
 import "../BasicConfig"
 
 // 面板底：纯底色 + 星空层（原来的"封面主色渐变混入"已移除）。
-// 文字始终画在不透明层之上，不用半透明覆盖层压内容（避免 macOS 低分辨率合成糊字）。
 Rectangle {
     id: root
     anchors.fill: parent

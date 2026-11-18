@@ -3,8 +3,6 @@ import "../../Src/BasicConfig"
 import "."
 
 // 当前播放队列：正在播的歌单（PlaylistManager.playlist，SongListModel）。
-// 入口：迷你播放条列表按钮 / 播放页列表按钮 / 我的页「当前播放」行。
-// 点行切歌（playSongbyindex），✕ 从队列移除（removeSong）。
 Item
 {
     id: root

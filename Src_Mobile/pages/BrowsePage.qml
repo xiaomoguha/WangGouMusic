@@ -4,8 +4,6 @@ import "../../Src/BasicConfig"
 
 // 音乐馆 Tab（默认首页）—— 汇聚桌面端发现内容：
 // Banner → 个人FM(personalFM，可刷新) → 每日推荐行(dailyRecommend)
-// → 排行榜列表(rankList，前三首预览) → 云音乐精选横滑(recommendation)
-// → 歌单发现(discoverManager：分类 tag + 单列列表，触底加载更多) → 新歌新碟。
 Item
 {
     id: root

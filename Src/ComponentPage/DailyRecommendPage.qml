@@ -420,9 +420,6 @@ Item {
 
                     HoverHandler { id: songHover }
                     // 整行双击 = 载入整个每日推荐列表并从该曲开始播放（同「我喜欢」歌单页交互）。
-                    // 普通模式单击不动作：此前单击直接播放 + 双击载列表，一次双击会
-                    // 打出「2 次单击播放 + 1 次双击」共 3 次 /song/url 请求
-                    // 一起听模式保留单击 = 把歌曲加入房间
                     TapHandler {
                         cursorShape: Qt.PointingHandCursor
                         acceptedButtons: Qt.LeftButton

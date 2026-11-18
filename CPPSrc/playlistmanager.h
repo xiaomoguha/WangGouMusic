@@ -160,7 +160,6 @@ public:
     void setTogetherSeekPercent(double percent);
     double togetherSeekPercent() const;
     // 一起听：本地暂停/恢复只影响本机，不向服务器发送指令。
-    // 服务器播放广播在 localPaused() 为 true 时不会恢复播放，直到用户手动播放。
     void pauseLocal();
     bool localPaused() const;
     void clearLocalPaused();
@@ -250,7 +249,6 @@ private:
     void updatePlaybackProgress(qint64 position);
     // 逐字进度刷新：本地文件播放 positionChanged 实测仅 ~11Hz（无损缓存）、网络流 ~20Hz，
     // 不足以驱动 60fps 动画——16ms 定时器按真实播放位置重算补足。渲染已优化
-    // （三文本方案每帧仅 2 个几何节点），60Hz 通知无压力；隐藏歌词页 Connections 关闭
     void updateLyricProgress(qint64 position);
     QTimer m_lyricAnimTimer;
     // 歌词动画消费方可见性（QML 上报）：决定 16ms 定时器跑不跑/跑多快
@@ -286,7 +284,6 @@ private:
     int m_lazyTotal             = 0;
     int m_lazyPage              = 0;
     // 与页面侧 detailPageSize(300) 对齐：双击建队后按需补拉的单页大小；
-    // 30/页时几百首的歌单补齐要连发几十个小请求，对风控不友好
     int m_lazyPageSize          = 300;
     QSet<QString> m_lazySeenHashes; // 队列内已有歌曲 hash：补拉跨页重叠时去重
     bool m_lazyFetching         = false;
@@ -296,9 +293,6 @@ private:
     void fetchLyricData(const QString &hash, std::function<void(QString)> callback);
     void fetchLyricContent(const QString &id, const QString &accesskey, std::function<void(QString)> callback);
     // 边下边播共享逻辑：下载 songUrl 到 cacheFilePath，达到阈值后开始播放。
-    // seekPercent > 0 时在 LoadedMedia 后 seek；onStreamStart 在首次开播时调用
-    // （startPlayback 用于 emit currentSongChanged，一起听路径不需要）。
-    // 抽出以消除 startPlayback 与 playTogetherSongFromServer 的重复下载代码。
     void downloadAndStream(
         const QString &songUrl, const QString &songHash, const QString &cacheFilePath, const QString &coverUrlForColor,
         double seekPercent, std::function<void()> onStreamStart
@@ -331,10 +325,9 @@ private:
     // 播放前 MD5 校验失败时刻：同曲 5 分钟冷却，防止个别目录级异常导致反复重下
     QHash<QString, qint64> m_md5FailAtMs;
     // 下载完整性失败连续计数（hash 大写）：同曲最多自动重下 2 次，仍失败则放弃；
-    // 用户重新点播（fetchSongUrl 非 retry 链入口）自动清零
     QHash<QString, int> m_integrityFailCount;
-    /// 播放缓存前的完整性校验：酷狗歌曲 hash 即对应音质文件的 MD5（实测），
-    /// 本地文件算出的 MD5 与之不符 = 损坏。返回 false = 应删除重新下载
+    // 播放缓存前的完整性校验：酷狗歌曲 hash 即对应音质文件的 MD5（实测），
+    // 本地文件算出的 MD5 与之不符 = 损坏。返回 false = 应删除重新下载
     bool verifyCachedFileMd5(const QString &filePath, const QString &songhash);
     // 取歌接口（song/url）返回的期望文件字节数与内容 MD5（酷狗 hash 即该音质文件的 MD5，
     // 已实测验证）：downloadAndStream 进入时消费一次，下载完成时做完整性校验
@@ -357,7 +350,6 @@ private:
     void setClimaxPercent(qreal p);
     // 高潮点本地缓存（hash.toUpper() -> start_time 毫秒，0 = 服务端确认无高潮）：
     // 同一首歌高潮位置不变，重播直接换算不再请求；存原始 ms 而非百分比，
-    // 每次按当前时长换算，兼容流媒体/缓存文件时长差异
     QHash<QString, qint64> m_climaxCache;
     bool m_climaxCacheLoaded = false;
     void loadClimaxCache();

@@ -10,7 +10,6 @@
 
 // ──────────────────────────────────────────────
 // 缓存目录与路径
-// ──────────────────────────────────────────────
 
 QString PlaylistCacheStore::cacheDir()
 {
@@ -43,7 +42,6 @@ void PlaylistCacheStore::ensureCacheDir()
 }
 
 // 旧版平铺结构 → 新版分类目录（songs/128|320|flac、config、lyrics），迁移后删旧文件。
-// .cache_v2 标记文件保证只迁移一次（后续版本不再扫描根目录）。
 void PlaylistCacheStore::migrateLegacyCache()
 {
     ensureCacheDir();
@@ -151,7 +149,6 @@ QString PlaylistCacheStore::normalizeCoverUrl(const QString &url)
 
 // ──────────────────────────────────────────────
 // 播放列表缓存
-// ──────────────────────────────────────────────
 
 bool PlaylistCacheStore::savePlaylist(const QList<SongInfo> &playlist, int currentIndex, float percent, int playMode)
 {
@@ -247,7 +244,6 @@ bool PlaylistCacheStore::loadPlaylist(QList<SongInfo> &outPlaylist, int &outCurr
 
 // ──────────────────────────────────────────────
 // 最近播放缓存
-// ──────────────────────────────────────────────
 
 bool PlaylistCacheStore::saveRecent(const QList<SongInfo> &recent)
 {
@@ -308,7 +304,6 @@ bool PlaylistCacheStore::loadRecent(QList<SongInfo> &outRecent)
 
 // ──────────────────────────────────────────────
 // 歌词缓存
-// ──────────────────────────────────────────────
 
 bool PlaylistCacheStore::saveLyric(const QString &songhash, const QString &lyric)
 {

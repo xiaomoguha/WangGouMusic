@@ -4,9 +4,6 @@ import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
 
 // 分区标题旁的「换一批」圆形刷新按钮。
-// busy=true（请求进行中）时图标持续旋转；点击瞬间也会立即开始转
-// （避免请求慢时才触发动画的空窗），请求结束平滑转完当前圈收尾。
-// 用普通动画 + from/to 绑定当前角度 → 重启时无缝续转，停止时保留当前值，不跳变。
 Item {
     id: root
     signal clicked

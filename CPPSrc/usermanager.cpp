@@ -253,9 +253,6 @@ void UserManager::refreshToken()
         return;
     }
     // 3 天节流：启动时的 token 刷新太频繁容易触发酷狗风控（账号被踢）；
-    // 且酷狗「不到期刷新返回同一个 token」，刷新过密没有收益。参照 MoeKoe 客户端
-    // （完全不主动刷新）与上游社区结论，取 3 天。上次刷新时间持久化在 QSettings；
-    // 未满 3 天直接按成功跳过（登录态原样保留）。
     constexpr qint64 kMinRefreshIntervalMs = 3LL * 24 * 60 * 60 * 1000;
     const qint64 last = m_settings.value("lastTokenRefreshMs").toLongLong();
     const qint64 now  = QDateTime::currentMSecsSinceEpoch();
@@ -299,7 +296,6 @@ void UserManager::refreshToken()
         {
             setIsLoading(false);
             // 网络错误 ≠ token 失效：保留登录态，下次启动/操作再试；
-            // 只有服务器明确返回 status != 1（token 真过期）才清空登录态
             emit tokenRefreshResult(false);
         }
     );
@@ -329,7 +325,6 @@ void UserManager::fetchUserDetail()
         {
             writeCacheFile("user_detail_cache.json", QJsonDocument(root));
             // VIP 状态实时刷新：isVip 只在登录时写一次，登录后权益变化（过期/共享 VIP 掉）
-            // 徽标不会跟着变——详情接口返回的实时状态才是准的
             const QJsonObject data = root.value("data").toObject();
             const bool vip = data.value("is_vip").toInt() == 1 || data.value("vip_type").toInt() > 0;
             if (vip != m_isVip)
@@ -422,7 +417,6 @@ void UserManager::fetchPlaylistDetail(const QString &globalCollectionId, int pag
 }
 
 // 听歌等级/累计听歌时长：查询模式（不带 d_sec/diff_sec）。
-// 标准版协议（v4）下服务端按真实播放统计维护时长，增量上报不记账，所以只做查询展示
 void UserManager::fetchGradeInfo()
 {
     if (!isLoggedIn())
@@ -441,7 +435,6 @@ void UserManager::fetchGradeInfo()
 }
 
 // 登录设备列表（userinfoservice /v2/get_dev）：data.li[] = 正版 App「登录设备管理」的 API 版。
-// 只读查询；t = 登录时间（服务端更新有 ~1 分钟延迟，前端不自动轮询）
 void UserManager::fetchLoginDevices()
 {
     if (!isLoggedIn())
@@ -552,7 +545,6 @@ void UserManager::postForm(
 )
 {
     // 旧接口语义：URL query + JSON body（与原 sendPostRequest 一致）
-    // 20018 被踢的统一拦截在 ApiClient::postJson 内（checkKicked），此处不再重复
     QUrlQuery query;
     for (const auto &p : params)
     {

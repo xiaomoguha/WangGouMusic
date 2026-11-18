@@ -2,9 +2,6 @@ import QtQuick 2.15
 import QtQuick.Effects
 
 // 单色 SVG 图标 + 主题着色。
-// 对应桌面 IconButton 的 ColorOverlay 方案，但这里用 Qt6 原生 MultiEffect
-// （QtQuick.Effects），不依赖 Qt5Compat，Android/iOS 上原生可用。
-// 用法：MIcon { source: AppIcon.playFill; color: AppTheme.accent }
 Item
 {
     id: root

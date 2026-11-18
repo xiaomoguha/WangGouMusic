@@ -7,12 +7,7 @@
 #include <QVariantList>
 #include <QVariantMap>
 
-/**
- * @brief 歌手页数据（/api/artist/detail + audios + albums）。
- *
- * 歌手详情（头像/名字/粉丝/简介/歌曲专辑数）、单曲与专辑均独立分页；
- * 进入歌手页时 detail + 第一页单曲/专辑并行拉取。
- */
+// 歌手页数据（/api/artist/detail + audios + albums）。
 class ArtistManager : public QObject
 {
     Q_OBJECT
@@ -37,13 +32,13 @@ public:
     bool songsLoading() const { return m_loadingSongs; }
     bool albumsLoading() const { return m_loadingAlbums; }
 
-    /// 拉取歌手页全部数据：detail + 单曲/专辑第一页（返回是否发起；加载中拒绝并发）
+    // 拉取歌手页全部数据：detail + 单曲/专辑第一页（返回是否发起；加载中拒绝并发）
     Q_INVOKABLE bool fetchArtist(const QString &id);
-    /// 单曲/专辑各自加载下一页
+    // 单曲/专辑各自加载下一页
     Q_INVOKABLE void fetchMoreSongs();
     Q_INVOKABLE void fetchMoreAlbums();
 
-    /// 按歌手名搜索第一个匹配的歌手（搜索结果页顶部卡片用），结果经 singerFound 发出
+    // 按歌手名搜索第一个匹配的歌手（搜索结果页顶部卡片用），结果经 singerFound 发出
     Q_INVOKABLE void searchSinger(const QString &name);
 
 signals:

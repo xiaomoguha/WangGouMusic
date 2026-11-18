@@ -2,8 +2,7 @@ import QtQuick 2.15
 import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
 
-/// 左侧导航栏矢量图标（Phosphor SVG）。selected=填充变体，未选中=线框。
-/// iconType: discover(精选) | together(一起听) | daily(每日推荐) | rank(排行榜) | playlist(我的歌单) | list(播放列表) | recent(最近播放)
+// 左侧导航栏矢量图标（Phosphor SVG）。selected=填充变体，未选中=线框。
 Item {
     id: root
 

@@ -5,13 +5,7 @@
 #include <QObject>
 #include <QVariantList>
 
-/**
- * @brief 排行榜（/api/rank/list + /api/rank/info + /api/rank/audio）。
- *
- * 三路请求：榜单列表、榜单详情（名称/封面）、榜单歌曲（audio_info 嵌套 hash/时长）。
- * fetchRandomRankSongs() 供首页「热门推荐换一批」：随机挑一个榜单，把歌曲以
- * randomSongsReady 信号交给 UI 侧注入推荐区。
- */
+// 排行榜（/api/rank/list + /api/rank/info + /api/rank/audio）。
 class RankList : public QObject
 {
     Q_OBJECT
@@ -30,11 +24,11 @@ public:
     QString rankCover() const { return m_rankCover; }
     bool isLoading() const { return m_isLoading; }
 
-    /// 拉取榜单列表
+    // 拉取榜单列表
     Q_INVOKABLE void fetchRanks();
-    /// 拉取指定榜单的详情 + 歌曲（详情完成后自动接歌曲请求）
+    // 拉取指定榜单的详情 + 歌曲（详情完成后自动接歌曲请求）
     Q_INVOKABLE void fetchRankSongs(const QString &rankid);
-    /// 随机挑一个榜单并拉取其歌曲；完成后发 randomSongsReady
+    // 随机挑一个榜单并拉取其歌曲；完成后发 randomSongsReady
     Q_INVOKABLE void fetchRandomRankSongs();
 
 signals:

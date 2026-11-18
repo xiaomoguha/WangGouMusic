@@ -8,11 +8,8 @@
 #include <QVariantMap>
 #include <functional>
 
-/**
- * @brief 用户登录 / Token 管理 / 歌单获取
- *
- * 内部已迁移到 ApiClient 单例。Q_INVOKABLE 与信号保持不变。
- */
+// 用户登录 / Token 管理 / 歌单获取
+// 内部已迁移到 ApiClient 单例。Q_INVOKABLE 与信号保持不变。
 class UserManager : public QObject
 {
     Q_OBJECT
@@ -41,9 +38,9 @@ public:
     Q_INVOKABLE void login(const QString &username, const QString &password);
     Q_INVOKABLE void sendCaptcha(const QString &mobile);
     Q_INVOKABLE void loginByPhone(const QString &mobile, const QString &code);
-    /// 二维码登录：获取二维码 key + base64 图片（imgBase64 不含 data: 前缀）
+    // 二维码登录：获取二维码 key + base64 图片（imgBase64 不含 data: 前缀）
     Q_INVOKABLE void fetchQrKey();
-    /// 轮询扫码状态：status 0过期/1等待/2待确认/4授权成功（成功时自动完成登录并发 loginSuccess）
+    // 轮询扫码状态：status 0过期/1等待/2待确认/4授权成功（成功时自动完成登录并发 loginSuccess）
     Q_INVOKABLE void checkQrStatus(const QString &key);
     Q_INVOKABLE void refreshToken();
     Q_INVOKABLE void logout();
@@ -57,7 +54,7 @@ public:
     Q_INVOKABLE void cacheUserDetail(const QVariantMap &data);
     Q_INVOKABLE QVariantMap loadCachedUserDetail();
     Q_INVOKABLE void fetchGradeInfo();  // 听歌等级/累计时长查询（标准版协议下上报不记账，仅查询展示）
-    /// 登录设备列表（= 正版 App 的「账号与设备管理」），只读查询，踢下线暂不做
+    // 登录设备列表（= 正版 App 的「账号与设备管理」），只读查询，踢下线暂不做
     Q_INVOKABLE void fetchLoginDevices();
 
 signals:
@@ -79,7 +76,7 @@ signals:
     void playlistDetailReceived(const QVariantMap &data);
 
 private slots:
-    /// ApiClient 检测到 20018（登录态被吊销）：清登录态并通知 UI 引导重新登录
+    // ApiClient 检测到 20018（登录态被吊销）：清登录态并通知 UI 引导重新登录
     void onTokenKicked();
 
 private:
@@ -94,7 +91,7 @@ private:
     void writeCacheFile(const QString &fileName, const QJsonDocument &doc) const;
     QJsonDocument readCacheFile(const QString &fileName) const;
 
-    /// 内部：POST 一组 form 参数，响应作为 QJsonObject 回调
+    // 内部：POST 一组 form 参数，响应作为 QJsonObject 回调
     void postForm(
         const QString &path, const QList<QPair<QString, QString>> &params, std::function<void(QJsonObject)> onSuccess,
         std::function<void(QString, int)> onError, int timeoutMs = 10000
@@ -108,7 +105,7 @@ private:
     QString m_avatarUrl;
     bool m_isVip     = false;
     bool m_isLoading = false;
-    /// true = 用户主动退出登录（UI 不弹登录窗）；被踢（20018）时为 false，UI 引导重登
+    // true = 用户主动退出登录（UI 不弹登录窗）；被踢（20018）时为 false，UI 引导重登
     bool m_manualLogout = false;
 };
 

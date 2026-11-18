@@ -1,19 +1,11 @@
 // Windows 系统媒体传输控件（SystemMediaTransportControls, SMTC）接入：
 // 任务栏/锁屏媒体控件、键盘媒体键。与 macOS 的 NowPlayingMediaController.mm 同构。
-//
-// 构建要求：MSVC + Windows 10 SDK（10.0.19041+）自带的 C++/WinRT 头（cppwinrt），
-// 链接 runtimeobject.lib（已在 CMakeLists 的 WIN32 块配置）。
-//
-// Q_OS_WIN 由 <QtGlobal>（经任意 Qt 头引入）定义。下面的 #ifdef Q_OS_WIN 必须在包含
-// Qt 头之后才成立——否则 Q_OS_WIN 尚未定义，整份文件被预处理为空，
-// NowPlayingMediaController 的构造/析构符号不会被编译出来，导致 LNK2001。
 #include <QtGlobal>
 
 #ifdef Q_OS_WIN
 
 // C++/WinRT 要求在包含 winrt/base.h 之前定义 NOMINMAX：否则 windows.h 的
 // min/max 宏会污染全局，破坏 winrt 模板里的 std::min/std::max 导致编译失败。
-// 同样需要 WIN32_LEAN_AND_MEAN 减少不必要的 windows.h 子集。
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
@@ -81,9 +73,6 @@ inline TimeSpan secondsToTimeSpan(double sec)
 
 // SMTC 必须在持有窗口的 UI 线程上获取，且需要窗口已存在，因此延迟到首次
 // updateNowPlaying（播放开始后）再初始化。失败被 catch，不影响主程序。
-// 主窗口 HWND：桌面(Win32)程序没有 CoreWindow 视图，必须用 GetForWindow 把 SMTC 绑到 HWND，
-// 否则 GetForCurrentView() 会报"找不到要与此 MediaPlaybackControl 实例关联的相应视图"。
-// 选普通顶层窗口（排除桌面歌词等 Qt::Tool 工具窗口）；窗口尚未就绪时返回 nullptr，下次播放再试。
 HWND findMainWindowHwnd()
 {
     const auto wins = QGuiApplication::topLevelWindows();

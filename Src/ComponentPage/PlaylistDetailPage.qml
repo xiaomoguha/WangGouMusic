@@ -133,10 +133,8 @@ Item {
     property string requestedCoverUrl: ""   // 本次请求的封面 URL：回调核对防串扰
 
     // 把当前颜色同步到窗口级：仅当本页处于显示状态时生效。
-    // 最终生效色由 BasicConfig.playlistCoverColor 集中计算（歌单页优先于播放歌曲）。
     function syncWindowTint() {
         // 隐藏时不操作 BasicConfig：多个详情页同色时隐藏页误关会杀掉显示页的渐变；
-        // 回首页由 Rightpage.hideOverlay 统一关闭。
         if (!root.visible)
             return
         if (root.coverColor !== "") {
@@ -191,8 +189,6 @@ Item {
     }
 
     // 调试探针：Timer 在组件创建时也会启动。
-    // 若 onCompleted 不执行而 Timer 执行 → 组件创建被某绑定抛错中断；
-    // 若两者都不执行 → 页面加载的并非本文件。
     Timer {
         running: true
         interval: 400
@@ -658,7 +654,6 @@ Item {
                             fillMode: Image.PreserveAspectCrop
                             // 列表行小封面不再用 layer+OpacityMask 圆角：每行一个离屏 FBO，
                             // 行数多时每帧批次/纹理绑定成本很高（CPU 大头）；40px 直角视觉差异极小。
-                            // 头部 110px 大封面保留圆角 mask（单实例，成本可忽略）
                         }
 
                         Column {
@@ -719,7 +714,6 @@ Item {
                                 }
 
                                 // MV 播放（仅含 MV 的歌曲显示；点击弹独立视频窗口）
-                                // 注意传 mvhash（MV 专用 hash），不是 songhash——音频 hash 在 /video/url 会 502
                                 IconButton {
                                     visible: !isTogetherMode && model.mvhash !== ""
                                     iconSource: AppIcon.video
@@ -804,7 +798,6 @@ Item {
                     }
 
                     // 专辑名 + 时长：右对齐锚定（不参与 Row 流式布局）。
-                    // 专辑名锚在时长左侧并留 25px 间距，不再紧贴时间。
                     Text {
                         text: model.album_name
                         width: 0.18 * tracksListView.width
@@ -855,7 +848,6 @@ Item {
 
                     // 双击切换播放列表。用 TapHandler 而非 MouseArea：
                     // MouseArea anchors.fill 会 grab press 事件，导致 delegate 内
-                    // 按钮的 TapHandler 收不到点击。TapHandler 之间不互相吞噬。
                     TapHandler {
                         acceptedButtons: Qt.LeftButton
                         enabled: !isTogetherMode

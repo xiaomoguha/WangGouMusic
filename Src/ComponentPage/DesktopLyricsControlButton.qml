@@ -3,8 +3,6 @@ import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
 
 // 桌面歌词控制按钮：按 scaleFactor 缩放的圆形按钮，支持文字(−/+/横/竖)或图标。
-// 取代横版/竖版控制面板里重复的 Rectangle{ Text/Image + HoverHandler + TapHandler } 模板。
-// 仅负责展示与点击；缩放/状态/行为由调用方(DesktopLyrics.qml)通过属性与 clicked() 驱动。
 Item {
     id: root
 

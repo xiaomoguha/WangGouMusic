@@ -48,9 +48,6 @@ PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent
     m_targetVolume = initialVolume;
 
     // 跟随系统默认音频输出设备：运行中新接入蓝牙耳机或切换默认播放设备时，自动把音频路由到新设备。
-    // 否则 QAudioOutput 会一直绑定启动时捕获的旧设备，必须重启应用才切换。
-    // audioOutputsChanged 在「输出设备增删」时触发——新连蓝牙会被识别为新增设备从而触发；
-    // 默认设备未变（相同设备）时由下方判等跳过，避免无谓的 sink 重建造成杂音。
     auto *mediaDevices = new QMediaDevices(this);
     connect(
         mediaDevices, &QMediaDevices::audioOutputsChanged, this,
@@ -108,8 +105,6 @@ PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent
                 emit durationChanged();
                 // 高潮点补请求：恢复播放/流媒体 duration 延迟就绪时，首次 climax 请求
                 // 因 totalMs=0 未算成（m_climaxHash 仍标记该 hash）——就绪后重试一次。
-                // 在途避让：请求还在路上时它返回时 duration 已就绪、能正常算出，
-                // 此时补请求只会造成同 hash 双发（曾出现在日志里的两条连发）
                 if (!m_climaxHash.isEmpty() && m_climaxPercent <= 0 && !m_climaxPending)
                 {
                     const QString h = m_climaxHash;
@@ -130,8 +125,6 @@ PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent
     connect(m_player, &QMediaPlayer::positionChanged, this, &PlaylistManager::updatePlaybackProgress);
     // 逐字进度高频刷新：positionChanged 实测仅 ~11-20Hz（无损缓存更低），
     // 定时器按真实播放位置重算补足——跳跃歌词动画（星星/字压扁）因此 60fps 平滑。
-    // 频率由消费方可见性自适应（recomputeLyricFeed）：播放页或桌面歌词可见均 60Hz /
-    // 都不可见停表。渲染已优化（三文本每帧 2 节点），通知无重绘压力
     m_lyricAnimTimer.setTimerType(Qt::PreciseTimer);
     connect(&m_lyricAnimTimer, &QTimer::timeout, this, [this]() {
         if (m_player->playbackState() == QMediaPlayer::PlayingState)
@@ -144,7 +137,6 @@ PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent
 
 // 歌词逐字动画的自适应刷新频率。消费方（QML 窗口）主动上报可见性：
 // 播放页展开或桌面歌词可见 → 60Hz；都不可见 → 停表。
-// 降低频率/停表时立即补刷一次，避免切换瞬间错过切行。
 void PlaylistManager::recomputeLyricFeed()
 {
     const int hz = (m_playingPageLyricsActive || m_desktopLyricsActive) ? 60 : 0;
@@ -179,7 +171,6 @@ void PlaylistManager::setDesktopLyricsActive(bool active)
 }
 
 // UI 空闲（失焦/被遮蔽，QML Binding 同步）：期间跳过进度条 10fps 发射。
-// 恢复可见时立刻补发一次，避免切回时进度条停在旧值
 void PlaylistManager::setUiIdle(bool idle)
 {
     if (m_uiIdle == idle)
@@ -346,7 +337,6 @@ void PlaylistManager::loadRecentFromCache()
 {
     PlaylistCacheStore::loadRecent(m_recentPlaylist);
     // 缺这两行会导致启动时 QML 的 recentPlaylist 仍为空——直到首次 addToRecent 才同步。
-    // 与 loadPlaylistFromCache 末尾一致：加载后立即同步 model 并发信号，QML 绑定刷新。
     m_recentPlaylistModel->syncFromList(m_recentPlaylist);
     emit recentPlaylistUpdated();
 }
@@ -361,8 +351,6 @@ bool PlaylistManager::verifyCachedFileMd5(const QString &filePath, const QString
     f.close();
     const QString actualHex = QString::fromLatin1(md5.result().toHex());  // 小写
     // 注意：toHex() 输出小写，与 hash 比较必须忽略大小写（曾因大写比对恒失败误删全库缓存）
-    // 会话期望优先：取址响应 hash 即该音质实际下发文件的 MD5（实测全音质成立），
-    // 有期望即可精确判定，320/flac 也不再无条件放行
     const QString sessionMd5 = m_sessionFileMd5.value(filePath);
     bool ok;
     if (!sessionMd5.isEmpty())
@@ -413,8 +401,6 @@ int PlaylistManager::is_have_cache(const SongInfo &song, const int index)
         // 提取专辑封面主色调
         m_colorExtractor->extract(song.union_cover);
         // 重置进度：缓存命中的新歌也从 0 开始（与 startPlayback 一致）。
-        // 上一首自然播完时 m_percent 冻在 ~1.0（updatePlaybackProgress 在 EndOfMedia 跳过更新），
-        // 不重置的话媒体控制栏（currentSongChanged 触发 getpercent）会把本曲显示在末尾。
         m_percent    = 0.0f;
         m_percentstr = "00:00";
         emit percentChanged();
@@ -426,7 +412,6 @@ int PlaylistManager::is_have_cache(const SongInfo &song, const int index)
 
         // 鲁棒性兜底：半截 flac（退出时下载中断）probe 失败后播放器可能静默无响应
         // （无声音、进度条不走，且 errorOccurred 可能延迟甚至不触发）。
-        // 5 秒仍未解析出时长且未开播 -> 判定文件损坏，删除并重新下载（走完整播放管线）
         QTimer::singleShot(
             5000, this,
             [this, cacheFilePath, index, songhash = song.songhash]()
@@ -557,7 +542,6 @@ void PlaylistManager::playSongbyindex(int index)
             {
                 // 立即切歌 + 进入 loading/暂停态：取 URL 期间不显示"播放中"（URL 还没拿到），
                 // 成功后 startPlayback 转 playing；失败由 handleSongUrlFailed 提示并自动跳下一首。
-                // 必须先设 m_currentIndex：否则失败时 handleSongUrlFailed 的 hash 校验对不上旧歌
                 m_currentIndex = index;
                 emit currentIndexChanged(index);
                 emit currentSongChanged();
@@ -645,7 +629,6 @@ void PlaylistManager::playPlaylistFromSource(
     }
     // 首批不一定恰好是 m_lazyPageSize 的整数页（旧缓存只有 30 条、QML 已
     // 滚动加载了多页等）：按已加载完整页数向上取整；不足一页且源还有更多时
-    // 按第 0 页算——补拉从第 1 页开始，append 时按 hash 去重不会重复入队
     const int loaded = songs.size();
     m_lazyPage       = loaded > 0 ? (loaded + m_lazyPageSize - 1) / m_lazyPageSize : 0;
     if (loaded > 0 && loaded < m_lazyPageSize && m_lazyTotal > loaded)
@@ -664,7 +647,6 @@ void PlaylistManager::playPlaylistFromSource(
     playSongbyindex(localIndex);
     // 双击播放不再立即级联拉全量（每次双击都拉一遍剩余页对风控不友好）：
     // 剩余页由 tryLazyLoadMore（播放临近已加载末尾）/ requestMoreSourceTracks
-    // （队列弹窗滚动）/ playNext 到末尾（m_pendingNextAfterLoad）按需单页补拉
 }
 
 void PlaylistManager::tryLazyLoadMore()
@@ -711,7 +693,6 @@ void PlaylistManager::fetchNextSourcePage()
                     m_playlist.append(s);
                 }
                 // 空页（含失败兜底）不推进页号，下次触发重试同一页；
-                // 正常拿到数据才前进，避免跳页漏歌
                 if (!items.isEmpty())
                     m_lazyPage += 1;
                 savePlaylistToCache();
@@ -890,9 +871,6 @@ void PlaylistManager::setQuality(int q)
     for (SongInfo &s : m_togetherplaylist)
         s.url.clear();
     // 当前歌即时换源：走标准播放管线（缓存优先 + 边下边播，与切歌完全同路径）。
-    // 不能直接 setSource 网络流——无损网络流播放走 ffmpeg 后端直连，
-    // 与标准音质的缓存播放路径不一致（实测无损网络流卡顿）。
-    // 续播：记录当前进度，startPlayback 新源就绪后 seek 到该位置（不从 0 重播）
     if (m_currentIndex >= 0 && m_currentIndex < (*m_curplaylist).size())
     {
         m_resumePercentAfterSwitch = m_percent > 0.02f ? m_percent : -1.0f;
@@ -1252,7 +1230,6 @@ void PlaylistManager::downloadAndStream(
 {
     // flac 边下边播：500KB 阈值会在播放中遇到写盘中的截断帧（invalid sync code），
     // 提高阈值到 2MB（flac 帧约 16KB，2MB ≈ 120+ 完整帧），与 mp3 同一播放路径
-    // （"下载完整再播"曾导致本地文件播放卡顿，已弃用）
     const qint64 startThreshold = cacheFilePath.endsWith(QLatin1String(".flac"))
                                       ? 2 * 1024 * 1024
                                       : 500 * 1024; // mp3/320: 500KB 后开始播放
@@ -1346,8 +1323,6 @@ void PlaylistManager::downloadAndStream(
     );
 
     // 下载失败/取消：一律删除半截文件。
-    // 半截 flac 无法被播放器 probe（实测 0 channels、Duration N/A -> 播放无声音进度条不走），
-    // 留着只会污染缓存被下次命中；flac 也无从半截文件续播的机制，保留无意义
     QObject::connect(
         reply, &QNetworkReply::errorOccurred, this,
         [=](QNetworkReply::NetworkError err)
@@ -1380,8 +1355,6 @@ void PlaylistManager::downloadAndStream(
                 return;
 
             // 完整性校验：字节数（快，优先接口 fileSize，兜底 HTTP Content-Length）
-            // + 内容 MD5（强：酷狗 hash 即该音质文件的 MD5，已实测）。
-            // 任一不符即损坏——删除，绝不把坏文件留进缓存
             const qint64 actual = QFileInfo(cacheFilePath).size();
             const qint64 expect = expectBytes > 0 ? expectBytes : m_totalDownloadBytes;
             QString failReason;
@@ -1532,7 +1505,6 @@ void PlaylistManager::startPlayback(const SongInfo &song)
     QString cacheFilePath = PlaylistCacheStore::songCachePath(song.title, song.singername, m_quality);
 
     // 本地缓存命中：直接播放（各音质独立目录，互不影响）。
-    // 播放前 MD5 完整性校验：不符 = 半截/损坏，删除后落到下方下载管线覆盖重下
     bool playLocal = QFile::exists(cacheFilePath);
     if (playLocal && !verifyCachedFileMd5(cacheFilePath, song.songhash))
     {
@@ -1576,7 +1548,6 @@ void PlaylistManager::startPlayback(const SongInfo &song)
     }
 
     // 无缓存：边下边播（下载逻辑与一起听路径共用 downloadAndStream）
-    // onStreamStart 无需再 emit currentSongChanged（已在入口 emit）
     downloadAndStream(song.url, song.songhash, cacheFilePath, song.union_cover, resumePercent, nullptr);
 }
 
@@ -1685,7 +1656,6 @@ void PlaylistManager::restoreLastPlayback()
                     else
                     {
                         // duration 未就绪时 seek 无效（实测 LoadedMedia 时 duration 可能为 0）
-                        // -> 延迟到 durationChanged 后再 seek，否则恢复播放会从头开始
                         auto dconn = std::make_shared<QMetaObject::Connection>();
                         *dconn     = connect(
                             m_player, &QMediaPlayer::durationChanged, this,
@@ -2073,7 +2043,6 @@ void PlaylistManager::handleSongUrlFailed(const QString &hash, const QString &re
     }
     emit songUrlFailed(QStringLiteral("获取播放地址失败，3 秒后自动播放下一首"));
     // 错误回调里同步切歌可能被播放器状态机吞掉：延迟到事件循环再切（同 handlePlayerError）。
-    // 延迟 3 秒与 toast 显示时长一致——让提示先看清，再自动切歌
     QTimer::singleShot(3000, this, [this, hash]()
     {
         // 3 秒内用户手动切了歌/换了队列：这次自动跳歌作废
@@ -2190,9 +2159,6 @@ void PlaylistManager::updatePlaybackProgress(qint64 position)
         m_percent    = static_cast<float>(position) / m_player->duration();
         m_percentstr = formatTime(position);
         // 限频 100ms（10fps）：本地文件播放 positionChanged 可达 80Hz+。
-        // 进度条 10fps 视觉无差（每秒仅走 ~0.1%），拖动由 QML 侧直接 seek 不受影响；
-        // 省掉主窗口（进度条/时长文本/渐变）高频整窗重渲染——它才是歌单页渲染主驱动。
-        // UI 空闲（失焦/被遮蔽）时完全停发：没人看，整窗重绘纯浪费
         const qint64 percentNow = QDateTime::currentMSecsSinceEpoch();
         if (!m_uiIdle && percentNow - m_lastPercentNotifyMs >= 100)
         {
@@ -2282,8 +2248,6 @@ void PlaylistManager::fadeOutVolume(int ms, std::function<void()> onFinished)
 
 // 逐字进度刷新。跳跃歌词动画（星星上抛/字压扁）按 charProgress 计算，
 // 16ms 定时器高频调用保证 60Hz；每次进度变化都 emit currlyricChanged——
-// 桌面歌词渲染已改 ShaderEffect（每帧仅 uniform 更新），无重绘压力；
-// 隐藏歌词页的 Connections 关闭（可见性隔离），重算只发生在可见页
 void PlaylistManager::updateLyricProgress(qint64 position)
 {
     // 歌词偏移按歌生效：切歌/换一起听歌曲时自动归零（同一首歌 seek、修复重播不受影响）
@@ -2299,8 +2263,6 @@ void PlaylistManager::updateLyricProgress(qint64 position)
     }
     // position 值外推：flac 音频帧 4096 采样（≈92ms）导致 position 值 92ms 才前进一次，
     // 阶梯间隙按真实时间外推——跳跃歌词动画（星星/字压扁）因此 60Hz 平滑。
-    // 暂停/停止时不外推（否则暂停期间歌词按真实时间自己走完），
-    // 但基准时刻仍刷新，避免恢复播放瞬间把暂停时长一次性累加进外推
     const qint64 tickNow = QDateTime::currentMSecsSinceEpoch();
     if (position == m_lastRawPosMs)
     {
@@ -2380,7 +2342,6 @@ void PlaylistManager::handlePlayerError(QMediaPlayer::Error error, const QString
     qWarning() << "播放出错:" << errorString << "错误代码:" << error;
 
     // 资源/网络错误：URL 失效或无法访问（一起听服务器链接过期、直链 403/404、旧 url 失效等）。
-    // 报错 + 暂停，不进修复重试（同一个失效链接重试无意义）。
     if (error == QMediaPlayer::ResourceError || error == QMediaPlayer::NetworkError)
     {
         if (m_isBuffering)

@@ -18,8 +18,6 @@ Rectangle {
 
     // ── 逐字歌词进度（可见性隔离）──
     // 本页由 main.qml 的 lyricsPageLoader 加载（active 常驻、y 滑动切换）：
-    // 收起/最小化时 Connections 关闭 → proxy 不变 → 逐字绑定零重算。
-    // 注意不能用 parent.opacity 判断——该 Loader 的 opacity 恒为 1
     property bool _lyricsVisible: root.lyricsOpened && root.appActive
     property int lyricCharIdxProxy: -1
     property real lyricCharProgressProxy: 0.0
@@ -112,7 +110,6 @@ Rectangle {
 
     // 五角星共享纹理：母版 Canvas 只画一次导出 dataURL，主星 + 4 颗拖尾 Image
     // 共用同一 source（QQuickPixmap 缓存复用单张纹理）——替代原先 5 个独立
-    // Canvas（各占一个离屏 FBO + Context2D 光栅机制），动画只驱动便宜的变换
     property string starTexture: ""
     Canvas {
         id: starSourceCanvas
@@ -307,7 +304,6 @@ Rectangle {
                     mipmap: true
                     sourceSize: Qt.size(720, 720)
                     // Rectangle.clip 不裁圆角，圆形封面需 OpacityMask。
-                    // 静态单实例（非 delegate），离屏 FBO 开销可接受。
                     layer.enabled: true
                     layer.textureSize: Qt.size(720, 720)
                     layer.effect: OpacityMask {
@@ -326,7 +322,6 @@ Rectangle {
                         running: true  // 创建即转，保证一定旋转；下面用 pause/resume 控制启停
                     }
                     // pause/resume（而非 stop/start）：保留当前角度，恢复时不跳变（不闪角）；
-                    // 暂停/隐藏/最小化时暂停，避免持续渲染拉高 CPU。
                     function updateRotation() {
                         const active = playlistmanager && !playlistmanager.isPaused
                                        && root.lyricsOpened && root.appActive
@@ -503,8 +498,6 @@ Rectangle {
 
         highlightFollowsCurrentItem: true
         // StrictlyEnforceRange：任何时刻（含首次创建的初始布局）强制当前行落在中间带。
-        // ApplyRange 不在初始布局时归位，是"一进页面当前行不在中间"的根因；
-        // interactive=false 下也用不到 ApplyRange 的自由滚动
         highlightRangeMode: ListView.StrictlyEnforceRange
         preferredHighlightBegin: lyricList.height * 0.4
         preferredHighlightEnd: lyricList.height * 0.6
@@ -545,7 +538,6 @@ Rectangle {
 
                 // 当前行：酷狗跳跃歌词 —— 整行亮（未唱亮白），
                 // 五角星从上方跟进度横向滚过：星压到的当前字被压扁+染已播放色（主色调），
-                // 星滚过后该字 spring 回弹到原大小，颜色保留为主色调。
                 Item {
                     id: currentLineWrap
                     anchors.centerIn: parent
@@ -559,7 +551,6 @@ Rectangle {
                     property int totalChars: lyricspage.lyricCharCountProxy
                     // 星星实际像素位置（相对本行左端）：由当前字 delegate 的 Binding 写入，
                     // = 当前字在 Row 里的 x + 字内进度×字宽。按真实字符宽度跟随，
-                    // 空格/标点等窄字符处不会按字符数比例"闪过"。
                     property real starX: 0
                     // 非当前行时把星星位置重置回行首(0)，避免下次成为当前行时星星从上一行
                     // 残留的行末位置 spring"滚回"左边
@@ -573,7 +564,6 @@ Rectangle {
                         Repeater {
                             // 仅当前行实例化字符行：cacheBuffer 内每行 delegate 都常驻，
                             // 若无条件建模，25+ 行 × 每行一份字符 Repeater = 2000+ item，
-                            // 且全部随 16ms 逐字进度重算绑定。非当前行建空模型，实例数降一个量级
                             model: isCurrentLine && playlistmanager ? playlistmanager.lyricChars : []
                             delegate: Item {
                                 required property int index
@@ -673,7 +663,6 @@ Rectangle {
                         y: -21
                         // 行首/行末淡入淡出按"首/末字的字内进度 charProgress"判断，而非像素比例：
                         // 否则最后一字处于行末、starRatio 一上来就 >0.9，星刚到最后一字就淡出看不见。
-                        // 改成第一字前 15% 淡入、最后一字滚到 85% 后才淡出，中间每一字（含最后）都能被星完整压到。
                         opacity: {
                             if (charIdx < 0) return 0
                             if (charIdx === 0 && charProgress < 0.15)

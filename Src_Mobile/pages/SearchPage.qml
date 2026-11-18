@@ -4,7 +4,6 @@ import "../../Src/BasicConfig"
 
 // 搜索页（移动版，真实功能，仿网易云搜索两页）：
 // 未搜索：猜你喜欢（两列词格，hostSearch）+ 热搜榜卡（rankList 真实榜单 top10）。
-// 已搜索：播放全部 + 紧凑结果行（关键词红色高亮，complexsearch 分页）。
 Item
 {
     id: root

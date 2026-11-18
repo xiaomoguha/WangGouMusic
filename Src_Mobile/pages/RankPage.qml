@@ -4,7 +4,6 @@ import "../../Src/BasicConfig"
 
 // 排行榜页（移动版，真实数据）：
 // rankList.fetchRanks() → 榜单宫格；点击 → fetchRankSongs(rankid) → 榜单歌曲列表。
-// 两级视图：0 = 榜单宫格，1 = 歌曲列表（内部返回）。
 Item
 {
     id: root

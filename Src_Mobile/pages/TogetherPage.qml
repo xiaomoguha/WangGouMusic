@@ -4,8 +4,6 @@ import "../../Src/BasicConfig"
 
 // 一起听页（移动版，真实功能，复用 C++ WebSocketClient）：
 // 未加入：房间列表（服务端 GET /rooms）+ 房间号加入/创建（房间不存在自动创建）。
-// 已加入：房间头(房间号/离开) + 当前播放 + 把当前歌曲加入房间 + 聊天 + 房间动态。
-// 协议与桌面端同一 WebSocketClient，播放同步由 C++ 层自动完成。
 Item
 {
     id: root
@@ -597,7 +595,6 @@ Item
                     anchors.top: parent.top
                     // 注意：内容 Text 的宽度只能引用 chatRow.width，不能引用
                     // chatCol.width / chatBubble.width——否则 implicitWidth ← 子宽度 ←
-                    // 气泡宽度形成绑定环，Qt 判环后整体归零，气泡变成 24px 空壳
                     width: Math.min(chatCol.width + 24, chatRow.width)
                     height: chatCol.height + 14
                     radius: 12

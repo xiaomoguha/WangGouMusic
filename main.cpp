@@ -58,9 +58,6 @@
 #include <memory>
 
 // --mobile：桌面端预览移动端 UI（加载 main_mobile.qml，窗口固定手机尺寸）。
-// 预览模式下所有桌面专属子系统（托盘/单实例/桌面歌词/窗口状态/光标追踪/
-// 系统媒体控制/系统圆角）全部不启用，与 Android/iOS 真机行为保持一致，
-// 提前暴露平台差异问题。
 static bool isMobilePreviewArg(int argc, char *argv[])
 {
     for (int i = 1; i < argc; ++i)
@@ -95,7 +92,6 @@ public:
 
 // --tour 自截帧助手：Window.contentItem 没有 QML engine，QML 侧 grabToImage 会
 // 被 "item has no QML engine" 拒绝；改走 QQuickWindow::grabWindow()——
-// 同步整窗渲染（含窗口底色），与窗口是否离屏/被遮挡无关，专供巡览截图用。
 class TourGrabber : public QObject
 {
     Q_OBJECT
@@ -130,7 +126,6 @@ int main(int argc, char *argv[])
     const bool mobileMode = isMobilePreviewArg(argc, argv);
 
     // 缓存目录升级：旧版平铺结构（根目录 .mp3/*.json）迁移到分类目录（songs/128|320|flac、config、lyrics）。
-    // 在一切缓存读写之前执行（.cache_v2 标记保证只跑一次）
     PlaylistCacheStore::migrateLegacyCache();
 
     // 注册内嵌中文字体 Sarasa Gothic SC（随包打包，跨平台显示一致）
@@ -144,7 +139,6 @@ int main(int argc, char *argv[])
     CrashHandler::checkPreviousCrash();
 
     // 单实例检测：如果已有实例在运行，激活其主窗口并退出。
-    // 移动端预览跳过：系统本身单任务，且避免与桌面版互相顶掉实例
     std::unique_ptr<SingleApplication> singleApp;
     if (!mobileMode)
     {
@@ -210,7 +204,6 @@ int main(int argc, char *argv[])
     historyManager.setUserManager(&userManager);
     WebSocketClient websocket(&playlistmanager, &userManager);
     // 桌面媒体控制集成（Windows SMTC / macOS NowPlaying）。
-    // 移动端后续接 Android MediaSession / iOS MPRemoteCommandCenter
     std::unique_ptr<NowPlayingMediaController> mediaController;
     if (!mobileMode)
         mediaController = std::make_unique<NowPlayingMediaController>(&playlistmanager);
@@ -227,7 +220,6 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("complexsearch", &complexsearch);
     engine.rootContext()->setContextProperty("searchHistory", &searchHistory);
     // 全局指针追踪：供 QML 做指针与背景星空的联动（见 StarfieldLayer.qml）。
-    // 移动端无鼠标，不注册（StarfieldLayer 已用 typeof 探测自动关闭联动）
     std::unique_ptr<CursorTracker> cursorTracker;
     if (!mobileMode)
     {
@@ -258,7 +250,6 @@ int main(int argc, char *argv[])
 
     // 播放上报听歌历史：歌曲自然播完（EndOfMedia）才上报一次；中途切歌/退出不算
     // 单曲循环每圈播完可再报，次数累加；未登录不上报
-    // pc = 云端基线 + 本次会话次数（见 HistoryManager::doUpload）
     QObject::connect(&playlistmanager, &PlaylistManager::playbackFinished, &historyManager, [&]() {
         if (!userManager.isLoggedIn())
             return;
@@ -273,8 +264,6 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("clickThroughHelper", &clickThroughHelper);
 
     // 加载 DesktopLyrics.qml 独立窗口（跨平台）
-    // 延迟到主窗口 QML 加载后再创建，避免 1079 行 DesktopLyrics.qml 的解析阻塞首屏
-    // 移动端无桌面歌词悬浮窗，预览模式跳过
     if (!mobileMode)
     QTimer::singleShot(
         0, &engine,
@@ -353,8 +342,6 @@ int main(int argc, char *argv[])
 
 #ifdef Q_OS_WIN
     // Windows 窗口圆角：Win11 优先用 DWM 系统圆角；Win10（无 DWMWA_WINDOW_CORNER_PREFERENCE）
-    // 退回 SetWindowRgn 系统区域圆角。两者都在系统层裁角，不依赖 QML 透明链路
-    // （渐变激活时面板转透明，部分机器 QML 透明失效会把四角填成背景色）。
     if (window && !mobileMode) // 预览窗口固定手机尺寸，无需系统圆角
     {
         auto applyRoundedCorners = [window]() {

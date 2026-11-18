@@ -6,7 +6,6 @@
 
 // 网络代理管理：进程级设置 QNetworkProxy::setApplicationProxy，
 // 一处生效，所有 QNetworkAccessManager / QWebSocket / QML XMLHttpRequest 自动遵循。
-// mode: 0=不使用代理(强制直连，绕开 clash 等全局代理) / 1=系统代理 / 2=自定义
 class ProxyManager : public QObject
 {
     Q_OBJECT

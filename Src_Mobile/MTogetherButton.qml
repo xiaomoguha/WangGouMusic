@@ -3,12 +3,6 @@ import "."
 import "../Src/BasicConfig"
 
 // 点播到一起听（进房后才显示）：点一下把这首歌加进房间播放列表。
-// 用法：
-//   MTogetherButton {
-//       songname: modelData.songname;  songhash: modelData.songhash
-//       singername: modelData.singername; albumname: modelData.album_name
-//       duration: modelData.duration || ""; coverurl: modelData.union_cover || ""
-//   }
 MIcon
 {
     id: root

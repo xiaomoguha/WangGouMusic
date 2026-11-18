@@ -9,12 +9,7 @@
 
 class UserManager;
 
-/**
- * @brief 歌单收藏 / 管理（收藏歌单、取消收藏、新建歌单、加歌、删歌）
- *
- * 依赖 UserManager 提供登录态（token / userid），接口来自酷狗 cloudlist 服务。
- * 收藏歌单 = 把别人歌单加入自己的歌单列表（type=1）；新建 = type=0。
- */
+// 歌单收藏 / 管理（收藏歌单、取消收藏、新建歌单、加歌、删歌）
 class PlaylistCollection : public QObject
 {
     Q_OBJECT
@@ -43,7 +38,6 @@ public:
     // 新建歌单（type=0），返回新歌单 listid 通过 signal
     Q_INVOKABLE void createPlaylist(const QString &name);
     // 往歌单加歌：songs 每项含 songname/songhash/album_id/mixsongid；
-    // successMsg 为成功提示文案（默认「已添加到歌单」，加「我喜欢」时传专属文案）
     Q_INVOKABLE void addTracks(const QString &listid, const QVariantList &songs, const QString &successMsg = QString());
     // 从歌单删歌：fileids 为数字 id 数组
     Q_INVOKABLE void removeTracks(const QString &listid, const QVariantList &fileids);
@@ -55,9 +49,9 @@ public:
     // 当前 hash 是否已在「我喜欢」（红心是否点亮）
     Q_INVOKABLE bool containsHash(const QString &songhash) const;
 
-    /// gid "collection_3_1439409719_4_0" → 创建者 userid "1439409719"
+    // gid "collection_3_1439409719_4_0" → 创建者 userid "1439409719"
     static Q_INVOKABLE QString createUserIdFromGid(const QString &gid);
-    /// gid "collection_3_1439409719_4_0" → 原 listid "4"
+    // gid "collection_3_1439409719_4_0" → 原 listid "4"
     static Q_INVOKABLE QString createListIdFromGid(const QString &gid);
 
 signals:
@@ -82,11 +76,10 @@ private:
     // 红心 hash 集合本地缓存：启动即显示，网络刷新后台更新
     void loadFavoriteHashesFromCache();
     void saveFavoriteHashesToCache();
-    /// 统一定位「我喜欢」歌单：名字精确 → 系统 gid(_2_0) → 名字包含 →
-    /// 默认收藏 gid(_1_0) → 默认收藏名字。老账号只有「默认收藏」、
-    /// 部分账号列表命名不同，单按名字匹配会误报「未找到」
+    // 统一定位「我喜欢」歌单：名字精确 → 系统 gid(_2_0) → 名字包含 →
+    // 默认收藏 gid(_1_0) → 默认收藏名字。老账号只有「默认收藏」、
     bool findFavorite(QString &listid, QString &gid, const QVariantList &freshPlaylists = {}) const;
-    /// 红心重试：缓存未命中时现场拉一次歌单列表（信号到达时缓存已落盘）再试
+    // 红心重试：缓存未命中时现场拉一次歌单列表（信号到达时缓存已落盘）再试
     void onUserPlaylistsForRetry(const QVariantMap &data);
 
     UserManager *m_userManager = nullptr;

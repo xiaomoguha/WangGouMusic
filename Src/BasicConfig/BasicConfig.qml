@@ -45,8 +45,6 @@ QtObject {
     property bool playingActive: false
 
     // 最终生效色：歌单页激活 → 歌单色；否则播放中 → 播放歌曲色；否则空 = 无渐变。
-    // 所有消费方（WindowTintGradient / 面板根色 / 角遮挡片）只读这个，来源切换自动平滑过渡。
-    // 深色主题下先过 clampCoverColor 亮度钳制，浅色封面不会把整窗渐变染白。
     readonly property string playlistCoverColor: clampCoverColor(playlistPageActive
         ? playlistPageCoverColor
         : (playingActive ? playingCoverColor : ""))
@@ -75,19 +73,12 @@ QtObject {
     property bool windowObscured: false
 
     // 装饰性动画总闸（由 main.qml 同步）：窗口被遮蔽或应用失焦时为 true。
-    // 跑马灯/加载圈/唱片旋转这类无限动画不看用户是否在看就 60fps 空转，
-    // 是后台 CPU 高的主因；此闸只停装饰动画，播放进度/歌词等真实数据不受影响
     property bool uiIdle: false
     // 背景时间基准（秒，单调递增）：星空的明灭/重生节奏用它驱动；main.qml 里的
     // Timer 负责累加（挂 uiIdle 门控，失焦即停）。
     property real bgTime: 0
 
     // 模态弹窗输入锁：弹窗打开时 push、关闭时 pop，main.qml 据此禁用 windowShell。
-    // 点击会沿 z 序穿透到页面 TapHandler（遮罩 MouseArea 拦不住），只能禁掉底层。
-    //
-    // 为什么按持有者记名而不是一个布尔：弹窗会叠加（用户菜单里再开登录设备列表），
-    // 布尔会被内层弹窗关闭时误复位，外层弹窗随即又变得可穿透。记名后各层各管各的，
-    // 同一个弹窗重复打开只算一次，多余的 pop 也不会把界面误锁死。
     property var _modalLockHolders: []
     readonly property bool modalInputLock: _modalLockHolders.length > 0
 
@@ -121,8 +112,6 @@ QtObject {
     }
 
     // 大数简写：1.2万 / 2547万 / 1.3亿（与歌手页粉丝数同款写法）。
-    // 一万以下原样显示——"1234" 比 "1.2K" 更贴近其他音乐客户端的习惯。
-    // 整数倍省掉".0"：10000 → "1万" 而不是 "1.0万"
     function formatCount(n) {
         var v = Number(n)
         if (!isFinite(v) || v <= 0)
@@ -140,8 +129,6 @@ QtObject {
 
     // 把各页面的歌曲数据统一成「添加到一起听」要的字段（各列表来源字段名不统一：
     // songname/title、union_cover/cover 等）。src 支持两种来源：
-    //   数组（QVariantList，如 dailyRecommend.songs）或带 count + get(i) 的模型
-    //   （ArtistListModel / SongListModel 都有 get(i)）
     function togetherSongs(src) {
         var out = []
         if (!src)
@@ -176,8 +163,6 @@ QtObject {
     }
 
     // 把封面主色按 alpha 混入不透明底色，得到该位置的最终不透明色。
-    // 主色为空/非法时原样返回底色（无渐变态）。返回 alpha 恒为 1，
-    // 保证面板底色是纯不透明渐变——内容画在其上不会触发 macOS 半透明压字发糊。
     function mixTint(hex, baseColor, alpha) {
         if (typeof hex !== "string" || hex.length < 7 || hex.charAt(0) !== "#")
             return baseColor
@@ -190,7 +175,6 @@ QtObject {
     }
 
     // 渐变激活时给「浮在渐变上的文字」挑可读色：取顶部 50% 混色（主色×0.5+底色×0.5）
-    // 算亮度，深底 → 白字，浅底 → 深字。无渐变时返回空串，调用方自行回退主题色。
     function contrastText(hex, baseColor) {
         if (typeof hex !== "string" || hex.length < 7 || hex.charAt(0) !== "#")
             return ""

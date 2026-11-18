@@ -6,9 +6,7 @@
 #include <QVariantList>
 #include <QVariantMap>
 
-/**
- * @brief 专辑页数据（/api/album/detail + /api/album/songs 分页）。
- */
+// 专辑页数据（/api/album/detail + /api/album/songs 分页）。
 class AlbumManager : public QObject
 {
     Q_OBJECT
@@ -25,7 +23,7 @@ public:
     bool isLoading() const { return m_isLoading; }
     bool hasMore() const { return m_hasMore; }
 
-    /// 拉取专辑详情 + 歌曲第一页（返回是否发起；加载中拒绝并发）
+    // 拉取专辑详情 + 歌曲第一页（返回是否发起；加载中拒绝并发）
     Q_INVOKABLE bool fetchAlbum(const QString &id);
     Q_INVOKABLE void fetchMoreSongs();
 

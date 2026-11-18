@@ -47,9 +47,7 @@ void DailyRecommend::refreshIfStale()
 }
 
 // 下一次自动检查的时机：
-//  - 手上已经是今天的 → 定到次日本地 0 点过后几秒
-//  - 还不是今天的 → 10 分钟后重试。上游翻页时间不保证在 0 点整（可能晚几分钟），
-//    定死"次日 0 点"会漏掉这种：0 点拉到的还是昨天那份，就要再等一整天
+// - 手上已经是今天的 → 定到次日本地 0 点过后几秒
 void DailyRecommend::scheduleNextRefresh()
 {
     const QString today = QDate::currentDate().toString(QStringLiteral("yyyyMMdd"));

@@ -3,7 +3,6 @@ import QtQuick.Controls 2.15
 import "../BasicConfig"
 
 // 统一弹窗外壳：modal/focus/居中/进出动画/背景/遮罩/底层输入锁一次定义，内容由调用方提供。
-// 取代 NoteWindow / UpdateDialog / LoginPage 里重复的 Popup 外壳样板。
 Popup {
     id: root
     modal: true
@@ -15,7 +14,6 @@ Popup {
     property bool dimBackground: true
     // 打开期间是否锁掉底层页面输入。有遮罩=模态对话框，默认锁：不锁的话点击会穿透到
     // 页面的 TapHandler（遮罩 MouseArea 拦不住），"点弹窗"会顺手播了下面对应的歌。
-    // NoteWindow 的 toast（dimBackground:false）允许继续操作界面，不锁。
     property bool lockInput: dimBackground
     // 背景是否加描边微光（NoteWindow 用）
     property bool accentBorder: false

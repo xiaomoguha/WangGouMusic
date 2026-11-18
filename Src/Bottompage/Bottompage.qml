@@ -44,7 +44,6 @@ Rectangle {
     }
 
     // 整窗统一渐变：本面板切片（面板根色在 main.qml 改为透明时生效）。
-    // 底部栏整段都在淡出线以下，实际渲染为纯底色，但保留切片以维持结构统一。
     PanelBackdrop {
         baseColor: AppTheme.bgBottomBar
         panelTopY: BasicConfig.windowHeight - controlBar.height
@@ -165,7 +164,6 @@ Rectangle {
                     sourceSize.width: 130
                     sourceSize.height: 130
                     // Rectangle.clip 不裁圆角，圆角正方形需 OpacityMask。
-                    // 此处为静态单实例（非 delegate），离屏 FBO 开销可接受。
                     layer.enabled: true
                     layer.effect: OpacityMask {
                         maskSource: Rectangle {
@@ -370,8 +368,6 @@ Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
 
                     // 当前歌是否已在「我喜欢」。
-                    // 引用 favoriteHashes 属性让绑定监听 favoriteHashesChanged：
-                    // 启动恢复播放时 hash 集合后到，不引用的话红心不会自动点亮
                     readonly property bool isFav: playlistmanager
                                                   && playlistCollection
                                                   && playlistmanager.currentSonghash !== ""
@@ -945,7 +941,6 @@ Rectangle {
                                 }
                                 Text {
                                     // 懒加载源歌单时直接显示真实总数（拉取过程中也是准的）；
-                                    // 普通/一起听队列 count 即实际大小，两者数值一致
                                     text: "(" + (playlistmanager && playlistmanager.playlistTotalCount > playlistView.count
                                                  ? playlistmanager.playlistTotalCount : playlistView.count) + ")"
                                     font.pixelSize: AppTheme.fontSizeSmall

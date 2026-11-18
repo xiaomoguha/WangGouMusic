@@ -28,7 +28,6 @@ Item {
 
     // ===================== 个人 FM =====================
     // 原独立 FM 页合并进首页：播放全部进入 FM 模式（播到批末自动续批并追加），
-    // 换一批手动切新批。未播放时仅展示当前批。
     property bool fmPlaying: false
     property bool _autoFetched: false
 

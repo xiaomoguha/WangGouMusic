@@ -2,7 +2,6 @@ import QtQuick 2.15
 import "../BasicConfig"
 
 // 静态毛玻璃面板：半透明填充 + 顶部受光高光 + 极细描边。
-// 与 GlassCard 的区别：不带 hover 动效，用于弹层 / 设置卡片这类常驻表面。
 Rectangle {
     id: root
 

@@ -2,7 +2,6 @@ import QtQuick
 import "."
 
 // 正在播放指示器：三根跳动的声波条（参考 QQ 音乐）。
-// 用法：MEqBars { visible: playing } / MEqBars { barColor: MTheme.accent }
 Item
 {
     id: root

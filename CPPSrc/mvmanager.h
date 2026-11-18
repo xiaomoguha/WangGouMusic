@@ -4,12 +4,7 @@
 #include "HttpGetRequester.h"
 #include <QObject>
 
-/**
- * @brief MV 播放地址获取。
- *
- * GET /video/url?hash=mvhash → data[hash].downurl（mp4，带有效期）。
- * ponytail: 跳过 /video/privilege 预检与 /video/detail 详情，播放器自会 403，需要时再加。
- */
+// MV 播放地址获取。
 class MvManager : public QObject
 {
     Q_OBJECT

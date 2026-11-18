@@ -5,9 +5,6 @@ import QtMultimedia 6.0
 import "../BasicConfig"
 
 // MV 播放窗口（独立窗口，由 main.qml 实例化并设 transientParent）
-// 左：视频区（悬停/暂停时显示控制栏：播放/暂停、进度条、时间）
-// 右：歌曲信息面板（封面/歌名/歌手 + 评论列表，滚动到底自动翻页）
-// 数据流：mvHash 变化 → mvManager.fetchVideoUrl → videoUrlReceived(hash 匹配) → 播放
 Window {
     id: mvWindow
     width: 1120

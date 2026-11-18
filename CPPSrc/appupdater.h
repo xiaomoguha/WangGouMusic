@@ -9,12 +9,8 @@
 class QNetworkAccessManager;
 class QFile;
 
-/**
- * @brief 应用自动更新
- *
- * 检查更新通过 ApiClient 完成；下载与安装保留独立的 QNetworkAccessManager
- * （需要流式传输 + downloadProgress 信号，ApiClient 不支持）。
- */
+// 应用自动更新
+// 检查更新通过 ApiClient 完成；下载与安装保留独立的 QNetworkAccessManager
 class AppUpdater : public QObject
 {
     Q_OBJECT

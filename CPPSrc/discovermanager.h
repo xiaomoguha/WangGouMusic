@@ -5,15 +5,7 @@
 #include <QObject>
 #include <QVariantList>
 
-/**
- * @brief 歌单发现页数据源。
- *
- * 分类标签：GET /playlist/tags（data[] 顶层 parent 一级分类，如场景/语种/风格）。
- * 歌单列表：
- *  - 全部：GET /top/playlist?category_id=&page=&pagesize=30（data.special_list[]，has_next 翻页）
- *  - 分类：GET /playlist/category?keyword={分类名}（服务端转发 mobilecdnbj 歌单搜索，
- *    酷狗无按分类 id 取歌单的可用接口，官方做法即按分类名搜索，data.info[]，has_next 翻页）
- */
+// 歌单发现页数据源。
 class DiscoverManager : public QObject
 {
     Q_OBJECT
@@ -31,9 +23,9 @@ public:
     bool hasMore() const { return m_hasMore; }
 
     Q_INVOKABLE void fetchTags();
-    /// 切换分类：清空已有歌单重新拉第一页（keyword 空 = 全部，非空 = 按分类名搜索）
+    // 切换分类：清空已有歌单重新拉第一页（keyword 空 = 全部，非空 = 按分类名搜索）
     Q_INVOKABLE void fetchPlaylists(const QString &keyword);
-    /// 下拉加载更多：同一分类翻下一页
+    // 下拉加载更多：同一分类翻下一页
     Q_INVOKABLE void fetchMorePlaylists();
 
 signals:

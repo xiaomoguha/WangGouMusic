@@ -110,7 +110,6 @@ QtObject {
 
     // ===== 字体 =====
     // 主字体：Sarasa Gothic SC（更纱黑体），随包打包、在 main.cpp 用 QFontDatabase 注册，
-    // 跨平台显示一致；含完整中文，中英文混排对齐整齐。缺失字形时 Qt 自动回退系统字体。
     readonly property string fontFamily: "Sarasa Gothic SC"
 
     // ===== 字号（px）=====

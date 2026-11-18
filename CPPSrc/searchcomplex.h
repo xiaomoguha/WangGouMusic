@@ -6,16 +6,7 @@
 #include <QString>
 #include <QVariantMap>
 
-/**
- * @brief 复杂搜索（关键词搜索歌曲）
- *
- * 作为 QAbstractListModel 直接供 QML ListView 绑定：
- *  - 新搜索（fetchComplexData）走 beginResetModel → 视图回到顶部（符合新搜索预期）；
- *  - 下拉加载更多（fetchMore）走 beginInsertRows → 增量插入新行，
- *    不重置视图、不弹回顶部、不重建已有 delegate（避免闪烁）。
- *
- * 外部属性 total/page/hasMore/isLoading/count 保持语义不变。
- */
+// 复杂搜索（关键词搜索歌曲）
 class SearchComplex : public QAbstractListModel
 {
     Q_OBJECT

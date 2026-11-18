@@ -67,8 +67,6 @@ Recommendation::Recommendation(QObject *parent)
     connect(&m_lazyRequester, &HttpGetRequester::dataReceived, this, &Recommendation::onLazyTracksData);
 
     // 分页/全量加载失败时必须重置 loading 态，否则 QML「加载更多」按钮会永久失效。
-    // topSongs/topPlaylists 无 loading 态，失败静默即可（数据保留上次结果）。
-    // 精选歌单请求失败/超时：复位 loading 态（否则「换一批」按钮一直转）
     connect(&m_topPlaylistsRequester, &HttpGetRequester::requestFailed, this,
             [this](const QString &) { setPlaylistsLoading(false); });
     connect(&m_topPlaylistsRequester, &HttpGetRequester::requestTimeout, this,
@@ -239,7 +237,6 @@ void Recommendation::onTopPlaylistsData(const QByteArray &data)
     }
 
     // 接口偶发返回空 special_list（仅 OlexpIds 等，status 仍为 1）。
-    // 此时保留上一次的数据，避免刷新把首页歌单清空。
     if (parsed.isEmpty())
     {
         qWarning() << "精选歌单响应为空，保留现有" << m_topPlaylists.size() << "个歌单";
@@ -327,7 +324,6 @@ void Recommendation::onPlaylistTracksData(const QByteArray &data)
 
     // 写穿缓存（与 UserManager.fetchPlaylistDetail 同一文件）：page 1 重置、
     // 后续页按 hash 前缀合并。刷新/滚动/播放全部拉到的数据都实时落盘，
-    // 下次进页面直接用缓存，跨会话也不丢
     {
         const int page = m_playlistPage + 1; // 本次响应对应的页号（下面才递增）
         QJsonObject cacheRoot = doc.object();
@@ -376,7 +372,6 @@ void Recommendation::onPlaylistTracksData(const QByteArray &data)
         m_playlistTracksModel->append(parsePlaylistSong(val.toObject()));
     }
     // 本页加载成功，页码递增（fetchMorePlaylistTracks 据此算下一页；
-    // 缺这行会永远 page=0+1=1，反复请求并 append 第一页）
     m_playlistPage++;
     // 更新分页状态：分页模式下，已加载数 < total 则还有更多
     if (m_playlistHasMore && m_playlistTotal > 0)

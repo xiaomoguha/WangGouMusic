@@ -21,7 +21,6 @@ QHash<int, QByteArray> MessageListModel::roleNames() const
 {
     // 名字必须是 "modelData":QAbstractListModel 的 role 会以名字注入
     // delegate 上下文,这样 QML 里 modelData.type / modelData.status 等
-    // 写法与原 QVariantList 模型完全一致,delegate 无需改动
     return { {ModelDataRole, "modelData"} };
 }
 

@@ -78,11 +78,6 @@ bool LyricParser::parseKRCLyrics(const QString &krcText)
 
         // 死区吸收：KRC 常把拖长音/停顿标成「字 duration 短 + 后续大段空白」，
         // 导致逐字高亮在字唱完后冲到 1.0 卡住不动，直到下一字才跳。
-        // 把每个有声字（duration>0）到下一字之间的空白并入它自己的 duration，
-        // 让高亮连续流过整段拖音（"慢慢走"而非"卡住等"）。一处改，全歌词受益。
-        // 吸收上限 3s：拖音/换气空隙都在秒级；行尾大段空白是间奏/尾奏——
-        // 曾有 KRC 把末行行时长虚标到 200s+，末字窗口被拉到 205s，
-        // 整个尾奏期间字进度爬在 5% 附近到不了回弹点，末字一直压扁不回弹
         constexpr qint64 kMaxAbsorbMs = 3000;
         for (int i = 0; i < rawChars.size(); ++i)
         {
@@ -206,7 +201,6 @@ int LyricParser::getCharIndexAtTime(qint64 positionMs)
     }
 
     // 如果在第一个字开始之前，返回 0（第一个字）
-    // 这确保在角色标记或空白时间段也能正确显示
     if (!line.chars.isEmpty() && relativeTime < line.chars.first().value<LyricChar>().startTime)
     {
         return 0;
@@ -257,7 +251,6 @@ float LyricParser::getCharProgressAtTime(qint64 positionMs)
     }
 
     // 如果有已经过去的字，返回 1.0（该字已完成）
-    // 这与 getCharIndexAtTime 的逻辑一致
     if (lastPassedCharIndex >= 0)
     {
         return 1.0f;

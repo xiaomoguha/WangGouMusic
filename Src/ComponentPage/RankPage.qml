@@ -5,7 +5,6 @@ import "../BasicConfig"
 import "../ToolWindow"
 
 // 排行榜页：榜单列表（GridView）→ 点击进榜单详情（歌曲列表），页内两级切换。
-// 数据源 RankList（/api/rank/list + rank/info + rank/audio）。
 Item {
     id: root
 
@@ -315,11 +314,6 @@ Item {
                 }
 
                 // 榜单歌曲列表:固定可用高度、自身滚动,恢复虚拟化。
-                // 原先 height:contentHeight + interactive:false 嵌在外层
-                // Flickable 里,视口=全部内容,100 首歌的 delegate(约 7000 个
-                // QML 对象)在数据到达那一帧全部同步创建 —— 点进榜单详情整页
-                // 冻住的根因。y 是列表顶部在页面中的位置,高度填满剩余空间,
-                // 外层 Flickable 因此不再有可滚内容
                 ListView {
                     id: songsList
                     width: parent.width
@@ -387,7 +381,6 @@ Item {
 
                             // 圆角矩形裁剪替代 layer+OpacityMask(省掉每行一个
                             // shader/FBO);sourceSize 限制解码尺寸 —— 源图是
-                            // 400×400 变体,不设则 100 张全尺寸解码约 64MB 显存
                             Rectangle {
                                 width: 40
                                 height: 40
@@ -530,7 +523,6 @@ Item {
 
                         HoverHandler { id: songHover }
                         // 整行点击 = 播放该曲（一起听模式 = 加入一起听）；
-                        // 悬停在操作按钮区时不触发，避免与按钮点击重复
                         TapHandler {
                             cursorShape: Qt.PointingHandCursor
                             onTapped: {

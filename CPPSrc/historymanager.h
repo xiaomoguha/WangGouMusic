@@ -9,15 +9,7 @@
 
 class UserManager;
 
-/**
- * @brief 听歌历史同步。
- *
- * 播放上报：播放超过 30 秒后上报（main.cpp 触发），批量解析 mxid 后上传
- * /playhistory/upload。pc 是覆盖语义（会覆盖云端次数），故上传前必须知道云端基线：
- * 拉取 playhistory 全量时构建 mxid→pc 缓存，上报 pc = 基线 + 会话内次数（单曲循环计数）。
- *
- * 历史展示：playhistory 全量（bp 游标分页翻完，与酷狗 APP 听歌历史页一致）。
- */
+// 听歌历史同步。
 class HistoryManager : public QObject
 {
     Q_OBJECT
@@ -30,7 +22,7 @@ class HistoryManager : public QObject
 public:
     explicit HistoryManager(QObject *parent = nullptr);
 
-    /// 注入用户管理器：读取/上传历史都需要 userid+token 鉴权（酷狗接口强制）
+    // 注入用户管理器：读取/上传历史都需要 userid+token 鉴权（酷狗接口强制）
     void setUserManager(UserManager *um);
 
     QVariantList history() const { return m_history; }
@@ -39,11 +31,11 @@ public:
     bool uploadWorking() const { return m_uploadWorking; }
     int total() const { return m_total; }
 
-    /// 播放歌曲时上报（入队，延迟批量处理；未登录忽略）
+    // 播放歌曲时上报（入队，延迟批量处理；未登录忽略）
     Q_INVOKABLE void reportPlayed(const QString &title, const QString &hash);
-    /// 拉取云端听歌历史：首屏第一页 + 后台静默翻页数总数（记游标不存歌）
+    // 拉取云端听歌历史：首屏第一页 + 后台静默翻页数总数（记游标不存歌）
     Q_INVOKABLE void fetchHistory();
-    /// 下拉加载更多：按已记录游标逐页追加（与搜索页一致）
+    // 下拉加载更多：按已记录游标逐页追加（与搜索页一致）
     Q_INVOKABLE void fetchMoreHistory();
 
 signals:

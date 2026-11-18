@@ -5,9 +5,6 @@ import "../Src/BasicConfig"
 
 // 全屏播放页 —— 仿网易云音乐手机版（截图②）：
 // 封面高斯模糊背景；顶部 ∨收起 + 居中歌名/歌手 + 分享；
-// 中部"黑胶唱片 ↔ 全屏滚动歌词"点击切换（网易云双模式）；
-// 音质/收藏/评论动作行 + 进度条两侧时间 + 实心三角五键 + 底部辅助图标行。
-// 歌词：playlistmanager.m_lyrics + lyricsindex（KRC 通道，与桌面同源）。
 Rectangle
 {
     id: root

@@ -24,9 +24,6 @@ ApiClient::ApiClient(QObject *parent) : QObject(parent), m_nam(new QNetworkAcces
 ApiClient::~ApiClient()
 {
     // 中止所有活跃 reply 并清理超时 timer。
-    // 必须先断掉以 this 为 context 的连接再 abort：abort()/QNAM 析构会同步派发
-    // finished/errorOccurred，若不先断开，回调 lambda 会访问早已析构的
-    // HttpGetRequester 等调用方对象 → SIGSEGV（退出时崩溃）
     const auto replies = m_timeoutTimers.keys();
     for (QNetworkReply *reply : replies)
     {
@@ -106,7 +103,6 @@ void ApiClient::setupReply(
                 const int status  = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
                 // 请求被取消（abort：如重新搜索/切页面丢弃旧请求，或超时 abort）：
                 // device 已关闭，readAll 会报 "QIODevice::read: device not open"，且本就无 body，
-                // 直接走 onError，不解析。
                 if (reply->error() == QNetworkReply::OperationCanceledError)
                 {
                     reply->deleteLater();
@@ -116,7 +112,6 @@ void ApiClient::setupReply(
                 }
                 // 服务器业务错误以非 2xx（如 502）+ 可解析 JSON（status/error_code）返回，
                 // body 仍含有效业务信息，按正常响应解析（如 token 过期让 refreshToken 能清登录态）。
-                // 真网络错误（断连/网关 502 的 HTML 页）body 为空或非 JSON，仍走 onError。
                 const QByteArray body = reply->readAll();
                 reply->deleteLater();
                 if (onSuccess && !body.isEmpty())

@@ -58,7 +58,6 @@ Item {
 
     function syncWindowTint() {
         // 隐藏时不操作 BasicConfig：多个详情页同色时隐藏页误关会杀掉显示页的渐变；
-        // 回首页由 Rightpage.hideOverlay 统一关闭。
         if (!searchResultRoot.visible)
             return
         if (searchResultRoot.coverColor !== "") {

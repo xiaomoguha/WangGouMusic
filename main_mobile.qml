@@ -8,15 +8,6 @@ import "./Src_Mobile"
 import "./Src_Mobile/pages"
 
 // 移动端主窗口（Android/iOS 真机 + 桌面 --mobile 预览共用入口）。
-//
-// 结构：
-//   ApplicationWindow
-//   ├─ StackView（4 个 Tab 页；后续详情页在此压栈）
-//   ├─ bottomChrome = MiniPlayer + MTabBar（常驻底部）
-//   └─ NowPlayingPage（全屏播放页，上滑展开/下拉收起，z 最高）
-//
-// 沉浸式：背景色铺满全屏（root.color），内容通过 SafeArea.margins
-// 避让刘海/手势条 —— 安全区数值统一注入 MTheme，页面只读 MTheme.safeTop 等。
 ApplicationWindow
 {
     id: root
@@ -29,7 +20,6 @@ ApplicationWindow
 
     // ===== 沉浸式（状态栏/手势条背景由应用绘制） =====
     // 真机：扩展客户区到系统栏后方（Android 15+ 默认强制 edge-to-edge，旧版本靠此标志）；
-    // 桌面预览：普通窗口保持系统标题栏
     flags: onDevice ? (Qt.Window | Qt.ExpandedClientAreaHint) : Qt.Window
     // 关闭 ApplicationWindow 的自动安全区内缩：由本文件手动统一控制，
     // 这样 TabBar 背景可以铺到手势条下方、NowPlayingPage 背景铺到状态栏下方
@@ -39,7 +29,7 @@ ApplicationWindow
     rightPadding: onDevice ? 0 : undefined
 
     // ===== 全窗不透明底（页面根节点多为透明 Item；此层保证窗口始终有底色，
-    //       也让 tour 自截帧不会出现透明底） =====
+    // 也让 tour 自截帧不会出现透明底） =====
     Rectangle {
         anchors.fill: parent
         color: MTheme.bgPage
@@ -48,8 +38,6 @@ ApplicationWindow
 
     // ===== 安全区探针 + 注入（全工程唯一来源） =====
     // SafeArea 附加属性只能挂在 Item 上（挂 Window 取不到值）。
-    // 探针铺满全窗、内部不做任何布局，因此它报告的就是系统级避让值
-    // （刘海状态栏高度/手势条高度）；桌面预览恒为 0。
     Item {
         id: safeProbe
         anchors.fill: parent
@@ -185,8 +173,6 @@ ApplicationWindow
     {
         root.currentTab = index
         // 切 Tab 时清空详情栈（回该 Tab 根页）。
-        // 注意：pop() 永远不会弹出最初推入的那一页（Qt 设计如此），
-        // 只剩初页时 while+pop 会无限循环挂死 UI，必须用 clear()
         detailStack.clear(StackView.Immediate)
     }
 
@@ -206,7 +192,6 @@ ApplicationWindow
     function tourNext()
     {
         // 先自截上一步执行后的稳定画面（grabWindow 同步整窗渲染，与窗口可见性无关；
-        // 离屏窗口用 PrintWindow 会抓到 DWM 节流后的陈旧表面）
         if (tourStep > 0) {
             var n = tourStep - 1
             console.log("[tour] grab q_" + n + " begin (next step " + tourStep + ")")
@@ -316,7 +301,7 @@ ApplicationWindow
     }
 
     // ===== 详情页底层背景（详情页根节点是透明 Item，须有不透明底衬，
-    //       否则常驻 Tab 页会从下面透出来形成叠影；空栈时隐藏露出 Tab 页） =====
+    // 否则常驻 Tab 页会从下面透出来形成叠影；空栈时隐藏露出 Tab 页） =====
     Rectangle {
         anchors.top: parent.top
         anchors.left: parent.left

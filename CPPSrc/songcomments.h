@@ -5,13 +5,7 @@
 #include <QObject>
 #include <QVariantList>
 
-/**
- * @brief 歌曲评论（/api/comment/music + /api/comment/count）。
- *
- * 评论接口需要 mixsongid（歌名搜索结果的 album_audio_id），播放队列只存 hash，
- * 因此先按歌名搜索、用 hash 精确匹配解析 mixsongid（同歌缓存复用），再拉评论分页。
- * 评论总数按 hash 单独请求，与列表并行。
- */
+// 歌曲评论（/api/comment/music + /api/comment/count）。
 class SongComments : public QObject
 {
     Q_OBJECT
@@ -35,13 +29,12 @@ public:
     QString repliesCommentId() const { return m_repliesCommentId; }
     bool repliesLoading() const { return m_repliesLoading; }
 
-    /// 拉取指定歌曲评论：内部解析 mixsongid → 拉第一页（总数取列表响应里的 count）。
-    /// 返回是否真正发起（正在加载中会拒绝并发请求）
+    // 拉取指定歌曲评论：内部解析 mixsongid → 拉第一页（总数取列表响应里的 count）。
     Q_INVOKABLE bool fetchComments(const QString &title, const QString &hash, const QString &mxid = QString());
-    /// 加载下一页评论（hasMore 时）
+    // 加载下一页评论（hasMore 时）
     Q_INVOKABLE void fetchMore();
-    /// 展开某条评论的回复：audioId=评论里的 special_child_id（歌曲 audio_id），
-    /// commentId=评论 id；mixsongid 用内部已解析值
+    // 展开某条评论的回复：audioId=评论里的 special_child_id（歌曲 audio_id），
+    // commentId=评论 id；mixsongid 用内部已解析值
     Q_INVOKABLE void fetchReplies(const QString &audioId, const QString &commentId);
 
 signals:
@@ -53,9 +46,9 @@ signals:
 
 private slots:
     void onSearchData(const QByteArray &data);
-    /// privilege/lite 按 hash 解析 album_audio_id（本地播放的首选路径，hash 精确不撞版本）
+    // privilege/lite 按 hash 解析 album_audio_id（本地播放的首选路径，hash 精确不撞版本）
     void onLiteData(const QByteArray &data);
-    /// 歌名搜索兜底（lite 拿不到 album_audio_id 时才走）
+    // 歌名搜索兜底（lite 拿不到 album_audio_id 时才走）
     void startNameSearch();
     void onCommentsData(const QByteArray &data);
     void onRepliesData(const QByteArray &data);

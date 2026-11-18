@@ -3,10 +3,6 @@ import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
 
 // 星空背景层：黑底 + 稀疏星点 + 偶尔划过的流星。
-// 星点有自己的"生命"：在一个 30~100 秒的周期里缓慢亮起再暗掉，暗掉时已在别处点起新的一颗
-// （位置由生命周期序号哈希决定，切换发生在亮度≈0 的瞬间，肉眼察觉不到）。
-// 所有随机量都是 index 哈希出的确定值——窗口缩放/面板重排不会让星点乱跳。
-// 时间基准 BasicConfig.bgTime（秒，单调递增，失焦即停）。
 Item {
     id: root
     clip: true
@@ -17,7 +13,6 @@ Item {
     readonly property real t: BasicConfig.bgTime
     // 指针在本面板局部坐标里的位置；离开窗口/失焦时视为不在场
     // 移动端(Android/iOS)无 cursorTracker 上下文属性（桌面专属）：typeof 探测后
-    // 回退到屏外坐标，星空指针联动自动关闭；桌面注册了该属性，行为完全不变
     readonly property bool hasCursorTracker: typeof cursorTracker !== "undefined" && cursorTracker !== null
     readonly property real curX: root.hasCursorTracker ? cursorTracker.pos.x - root.panelLeftX : -99999
     readonly property real curY: root.hasCursorTracker ? cursorTracker.pos.y - root.panelTopY : -99999

@@ -2,7 +2,6 @@ import QtQuick 2.15
 
 // 进度条上的高潮开始小圆点：切歌/打开时触发 playlistmanager.fetchClimax（内部按 hash 去重），
 // 显示读 playlistmanager.climaxPercent。多个 ClimaxDot 实例（底栏 + 播放页）共享，整首歌只请求一次。
-// 用法：放进进度条容器内，设 dotColor 与已播放进度色一致即可
 Rectangle {
     id: root
     width: 8

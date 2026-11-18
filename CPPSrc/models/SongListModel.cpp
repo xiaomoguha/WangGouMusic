@@ -15,7 +15,6 @@ QVariant SongListModel::data(const QModelIndex &index, int role) const
     const SongInfo &song = m_songs.at(index.row());
     // Qt::DisplayRole 返回整行 QVariantMap，供 Repeater 的 required property var
     // modelData 拿到完整行数据（QAbstractListModel 在 Repeater 里 modelData 绑定
-    // DisplayRole；ListView delegate 则用 model.title 等 role 访问，互不影响）。
     if (role == Qt::DisplayRole)
         return get(index.row());
     switch (role)
@@ -97,7 +96,6 @@ void SongListModel::syncFromList(const QList<SongInfo> &songs)
 {
     // 增量对齐：以 songhash 为主键尽量复用已有行，避免全量 reset 让 ListView
     // 销毁重建所有 delegate（一起听列表 delegate 含 ColorOverlay 等重效果，
-    // 全量重建会卡住主线程、阻塞音频渲染 —— 别人加歌时接收方放歌卡一下的根因）。
     int common = 0;
     while (common < m_songs.size() && common < songs.size()
            && m_songs[common].songhash == songs[common].songhash)
@@ -116,8 +114,6 @@ void SongListModel::syncFromList(const QList<SongInfo> &songs)
     }
     // 其他（置顶/删歌/顺序漂移/头部插入）→ 按 songhash 求 LCS 最长公共子序列，
     // 把差异拆成逐段 removeRows/insertRows：存活行的 delegate 原样复用，
-    // 置顶只重建 1 行、删歌只销毁 1 行，彻底替代原先"兜底全量 reset
-    // 销毁重建全部 delegate"（置顶/删歌时依然卡一下的来源）。
     const int n = m_songs.size();
     const int m = songs.size();
     if (n == 0)
@@ -206,7 +202,7 @@ void SongListModel::syncFromList(const QList<SongInfo> &songs)
     }
 
     // 2) 自头向尾插入新增行；存活行只刷新服务器下发的展示字段——
-    //    url/lyric/fileid/mvhash 是本地异步填充的运行时数据，不能被空值覆盖
+    // url/lyric/fileid/mvhash 是本地异步填充的运行时数据，不能被空值覆盖
     for (int j = 0, pos = 0; j < m; ++j)
     {
         if (!keepNew[j])

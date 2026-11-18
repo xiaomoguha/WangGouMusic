@@ -4,8 +4,6 @@ import "../../Src/BasicConfig"
 
 // 我的 Tab —— 仿网易云音乐手机版"我的"页（浅色）：
 // 紫色渐变头图(头像/昵称/VIP徽章/统计) → 半透明快捷按钮行 →
-// 白色圆角面板(音乐/播客/笔记 Tab + 近期/创建/收藏/专辑 + 歌单列表行)。
-// 真实数据：userManager.nickname、playlistCollection.favoriteHashes（红心数）。
 Item
 {
     id: root

@@ -381,8 +381,6 @@ static LONG WINAPI windowsExceptionFilter(EXCEPTION_POINTERS *ep)
 
 // ==================== Qt 消息处理器 ====================
 // 将 qDebug/qInfo/qWarning/qCritical 输出同时写入：
-// 1. 内存环形缓冲（供崩溃报告引用）
-// 2. 本次启动的会话日志文件（超过 10MB 后滚动为 .old，新建续写）
 
 static void qtMessageHandler(QtMsgType type, const QMessageLogContext &ctx, const QString &msg)
 {
@@ -434,7 +432,6 @@ static void qtMessageHandler(QtMsgType type, const QMessageLogContext &ctx, cons
 
 // ==================== 日志目录计算 ====================
 // 复用 PlaylistCacheStore::cacheDir()：避免在此处再 #ifdef Q_OS_WIN 一次，
-// 缓存目录搬迁时只需改一处。
 static QString computeLogDir()
 {
     return PlaylistCacheStore::cacheDir() + QStringLiteral("/logs");
@@ -473,9 +470,6 @@ void CrashHandler::install()
 #ifdef Q_OS_WIN
     // Windows C 运行时默认按系统代码页（GBK）解析文件路径。本项目的日志路径含中文
     // （C:/网狗音乐缓存目录/logs），但代码以 UTF-8 传递，两者不匹配会导致
-    // fopen/_open/rename 等全部失败（返回 nullptr/-1），日志文件无法创建。
-    // 设置 locale 为 UTF-8 后，C 运行时函数即可正确处理 UTF-8 中文路径。
-    // 要求 Windows 10 1803+（2018 年 4 月发布）。
     setlocale(LC_ALL, ".UTF8");
 #endif
 

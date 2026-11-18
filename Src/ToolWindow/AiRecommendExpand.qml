@@ -4,8 +4,6 @@ import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
 
 // AI 推荐内联展开：点歌曲行 ✨ 后在行下方撑开几小行（缩进一格，样式同主行但小一号）
-// 父行把 height 绑定到 (基础行高 + expandedHeight) 即可撑开列表；
-// 每小行带小号操作按钮：立即播放 / 加下一首 / 我喜欢 / 一起听
 Item {
     id: root
     width: parent.width

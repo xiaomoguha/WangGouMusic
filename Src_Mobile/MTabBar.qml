@@ -3,7 +3,6 @@ import "."
 import "../Src/BasicConfig"
 
 // 底部导航栏（网易云浅色风格）：白底 + 顶部发丝线，激活红/未激活灰。
-// 4 个一级 Tab：首页 / 一起听 / 音乐馆 / 我的。
 Rectangle
 {
     id: root
@@ -81,7 +80,6 @@ Rectangle
                     onClicked: {
                         // 只发信号，不直接写 currentIndex——
                         // 命令式赋值会永久破坏外部绑定（currentIndex: root.currentTab），
-                        // 高亮统一由持有方驱动（switchTab 改 currentTab 回流到绑定）
                         if (root.currentIndex !== tabDelegate.index)
                             root.tabSelected(tabDelegate.index)
                     }

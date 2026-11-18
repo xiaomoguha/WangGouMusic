@@ -4,7 +4,6 @@ import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
 
 // 设置页：顶部横向标签页（网易云风格）+ 下方分区滚动。
-// 点标签滚到对应区，滚动也反向高亮标签。网络代理（proxyManager）+ 桌面歌词。
 Rectangle {
     id: settingsPage
     color: "transparent"
@@ -35,7 +34,7 @@ Rectangle {
     }
 
     // 分区标题：只占文字本体尺寸，光晕溢出到父项外
-    //（直接用 GlowText 的话，它给光晕留的 padding 会把列布局撑开、标题也会错位）
+    // （直接用 GlowText 的话，它给光晕留的 padding 会把列布局撑开、标题也会错位）
     component SectionTitle: Item {
         property alias text: secLabel.text
         readonly property real glowPad: 10

@@ -49,7 +49,6 @@ void DiscoverManager::fetchMorePlaylists()
     m_isLoading = true;
     emit isLoadingChanged();
     // 全部：top/playlist（sort=2 与首页推荐 sort=1 区分，避免两页内容重复；session 游标翻页）；
-    // 分类：playlist/category 按分类名搜索（酷狗无按分类 id 取歌单接口）
     const QString url = m_keyword.isEmpty()
                             ? QStringLiteral("%1/top/playlist?pagesize=30&page=%2&sort=2%3")
                                   .arg(kApiRoot)

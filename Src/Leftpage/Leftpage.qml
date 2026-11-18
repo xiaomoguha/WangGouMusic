@@ -59,8 +59,6 @@ Rectangle {
         }
         // 换账号/登录成功：强制拉新账号歌单。refreshUserPlaylists 只在缓存空时才拉，
         // 而歌单缓存(playlists_cache.json)不按账号隔离，换号后会读到旧账号缓存，
-        // 导致侧栏一直显示旧号歌单——这里登录成功无条件重拉，结果回来覆盖缓存。
-        // loginSuccess 只在登录(账密/手机/扫码)成功时发，refreshToken 不发，不会多余触发。
         function onLoginSuccess() {
             userManager.fetchUserPlaylist(1, 30);
         }
@@ -364,7 +362,6 @@ Rectangle {
         }
 
         // 展开后：用户歌单子项列表（点击直接进详情页）。
-        // 歌单较多时列表自身滚动（占满 表头 与 最近播放 之间的空间），导航项保持固定。
         ListView {
             id: playlistList
             width: parent.width

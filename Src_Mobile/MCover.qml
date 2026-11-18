@@ -5,10 +5,6 @@ import "../Src/BasicConfig"
 
 // 圆角/圆形遮罩封面：Qt 的 Rectangle.clip 是矩形裁剪，圆角外的图片角
 // 会露出来——本组件用 MultiEffect 的 alpha 遮罩把图片严格裁进圆角内。
-// 用法：
-//   MCover { width: 46; height: 46; source: modelData.union_cover }              // 圆角 10
-//   MCover { width: 42; height: 42; radius: width / 2; source: ... }             // 圆形
-// 无图时不绘制遮罩（调用方自行叠加兜底图标）。
 Item
 {
     id: root

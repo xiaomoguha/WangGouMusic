@@ -1,7 +1,5 @@
 // 本文件承载两部分内容：
-//   1) SongInfo.h 的 Q_GADGET moc 输出（AUTOMOC 需要同名 cpp 来生成
-//      staticMetaObject，否则链接时 "undefined SongInfo::staticMetaObject"）；
-//   2) hash→album_audio_id 登记表（见 SongInfo.h 的说明）。
+// 1) SongInfo.h 的 Q_GADGET moc 输出（AUTOMOC 需要同名 cpp 来生成
 #include "SongInfo.h"
 
 #include <QHash>

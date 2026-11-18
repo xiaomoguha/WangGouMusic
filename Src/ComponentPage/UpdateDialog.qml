@@ -4,7 +4,6 @@ import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
 
 // 检查更新弹窗：版本徽章 + 逐条更新内容 + 下载进度 + 操作按钮。
-// 全部走 AppTheme token，深浅主题通用。
 ThemedPopup {
     id: updateDialog
 

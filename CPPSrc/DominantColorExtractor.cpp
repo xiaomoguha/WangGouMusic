@@ -27,8 +27,6 @@ QString computeColor(const QImage &image)
     QImage small = image.scaled(50, 50, Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
     // 全图平均会把黑边/白字/暗灰混进主色导致色相失真。
-    // 改为：同时统计全像素与「有彩色像素」（饱和度 ≥50）两套均值，
-    // 有彩色像素占比足够时优先用它——那才是视觉主色区域。
     long totalR = 0, totalG = 0, totalB = 0;
     long vividR = 0, vividG = 0, vividB = 0;
     int pixelCount = 0, vividCount = 0;
@@ -91,7 +89,6 @@ public:
         QNetworkAccessManager nam;
         // 必须设超时：缺省无超时，网络挂起会永久占用线程池线程，任务越积越多
         // 全部卡死（曾导致取色大量 fallback 粉色）。transferTimeout 只覆盖传输
-        // 阶段，连接/DNS 挂起不受管 → 用 QTimer + abort() 强制打断任何阶段。
         QNetworkRequest request{QUrl(m_url)};
         request.setTransferTimeout(6000);
         QNetworkReply *reply = nam.get(request);

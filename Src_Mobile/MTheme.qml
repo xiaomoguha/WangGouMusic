@@ -3,8 +3,6 @@ import QtQuick 2.15
 
 // 移动端设计令牌 —— 浅色主题（最大程度对齐网易云音乐手机版视觉）：
 // 白底 + 品牌红 #EC4141 + 三级灰文字。
-// 注意：移动端配色独立于桌面深色 AppTheme，颜色一律从本单例取；
-// 仅字体族沿用桌面同一中文字体（跨端显示一致）。
 QtObject
 {
     id: theme
@@ -84,7 +82,6 @@ QtObject
 
     // ===== 导航钩子 =====
     // 由 main_mobile.qml 启动时注入（StackView 压栈/弹栈）。
-    // 页面里直接 MTheme.pushPage("SearchPage.qml") / MTheme.pushPage("PlaylistDetailPage.qml", { playlist: xxx })
     property var pushPage: function(url, props) { }
     property var popPage: function() { }
     // 轻提示（由 main_mobile.qml 实现并注入；页面直接 MTheme.toast("已点播《xx》")）

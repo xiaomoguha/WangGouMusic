@@ -55,9 +55,6 @@ class WebSocketClient : public QObject
     Q_PROPERTY(QVariantList roomList READ roomList NOTIFY roomListUpdated)
     // 消息列表改为 QAbstractListModel:行级 insert/dataChanged 增量更新,
     // 替代原 QVariantList 每次全量替换导致 QML ListView 整表销毁重建的卡顿
-    // (别人加歌必产生动态广播)。CONSTANT:指针在构造后不变,QML 绑定只求值一次。
-    // 页面左右分栏:左栏聊天(chatMessages)、右栏系统动态(actionMessages),
-    // 从 C++ 侧按消息类型分流,两栏各自独立增量更新
     Q_PROPERTY(MessageListModel *chatMessages READ chatMessages CONSTANT)
     Q_PROPERTY(MessageListModel *actionMessages READ actionMessages CONSTANT)
 public:
@@ -91,9 +88,7 @@ public:
         const QString &duration, const QString &coverurl
     );
     Q_INVOKABLE void removeSongFromTogether(const QString &songhash);
-    /// 批量加歌（歌单「添加到一起听」）：一次消息加一批。
-    /// songs 每项为 {songname, songhash, singername, albumname, duration, coverurl}，
-    /// 服务端一次处理并按房间未播放上限（300 首）决定丢弃，回包带统计文案
+    // 批量加歌（歌单「添加到一起听」）：一次消息加一批。
     Q_INVOKABLE void addSongsToTogether(const QVariantList &songs);
     Q_INVOKABLE void playNextTogether();
     Q_INVOKABLE void playTogetherByHash(const QString &songhash);
@@ -159,8 +154,6 @@ private:
     void mergeRoomActions(const QJsonArray &actions);
     // allowSeek=false：来自歌单同步消息内嵌 song_info 的调用——服务器的
     // played_percent 只在 5s 定时器里累加，这类快照最多滞后 5s，拿它判 seek
-    // 会先向后跳、下拍新鲜进度再向前跳（加歌"卡一下"的根因），进度同步
-    // 交给专门的进度广播（快照新鲜）
     void handleSongInfoBroadcast(const QJsonObject &data, bool allowSeek = true);
     void handleSongProgressBroadcast(const QJsonObject &data);
     void handleSongListBroadcast(const QJsonObject &json);

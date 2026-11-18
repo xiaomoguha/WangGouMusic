@@ -5,12 +5,7 @@
 #include <QObject>
 #include <QString>
 
-/**
- * @brief 歌曲信息结构（Q_GADGET，可在 QML 中作为值类型访问）
- *
- * 从 playlistmanager.h 提取到独立头，供 SongListModel / PlaylistManager /
- * PlaylistCacheStore 共享，避免循环 include。
- */
+// 歌曲信息结构（Q_GADGET，可在 QML 中作为值类型访问）
 struct SongInfo
 {
     Q_GADGET
@@ -32,16 +27,14 @@ struct SongInfo
     Q_PROPERTY(QString mxid MEMBER mxid)
 
 public:
-    /// 从接口返回的歌曲对象里取 album_audio_id（= 评论接口要的 mixsongid）。
-    /// 各接口字段位置不统一（顶层 album_audio_id / 顶层 mixsongid /
-    /// audio_info.album_audio_id / base.album_audio_id），统一在这里兜住，取不到返回空串。
+    // 从接口返回的歌曲对象里取 album_audio_id（= 评论接口要的 mixsongid）。
     static QString mxidFromJson(const QJsonObject &songObj);
 
-    /// 解析并登记 hash→mxid。歌曲列表（搜索/排行/歌单/每日推荐/FM/专辑/歌手…）解析时
-    /// 顺手调一次，之后这首歌播放、拉评论就能直接拿到 id，不必再去搜索或查接口。
+    // 解析并登记 hash→mxid。歌曲列表（搜索/排行/歌单/每日推荐/FM/专辑/歌手…）解析时
+    // 顺手调一次，之后这首歌播放、拉评论就能直接拿到 id，不必再去搜索或查接口。
     static void rememberMxidFromJson(const QJsonObject &songObj, const QString &hash);
 
-    /// 取已登记的 mxid（键不分大小写）；没登记过返回空串
+    // 取已登记的 mxid（键不分大小写）；没登记过返回空串
     static QString cachedMxid(const QString &hash);
 
     QString title;

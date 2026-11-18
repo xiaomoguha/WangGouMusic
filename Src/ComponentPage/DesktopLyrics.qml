@@ -65,7 +65,6 @@ Window {
     height: desktopLyrics.isVertical ? Math.max(background.height + 20, controlPanelVertical.implicitHeight + 20) : Math.max(background.height + 72 * desktopLyrics.scale + 12, 28 * desktopLyrics.scale + 16 + 8 * desktopLyrics.scale)  // 横排:上下留白随 scale 放大(容下 28*scale 按钮 + 8*scale margin),否则 scale>100% 时按钮顶部被窗口裁掉一截
 
     // 歌词内容变化时保持中心位置不变（横向）/ 顶部位置不变（竖向）
-    // 使用绝对中心点重新计算 x，避免增量补偿的整数截断累积误差（导致窗口逐渐左漂）
     property bool _suppressCentering: true
     property real _anchorCenterX: 0   // 目标中心 X（浮点，不受 width 取整影响）
     property real _anchorCenterY: 0   // 目标中心 Y
@@ -292,7 +291,6 @@ Window {
                     }
                     // 不用 Behavior 平滑：scrollOffset 随逐字进度 60Hz 变化，Behavior 的
                     // SmoothedAnimation 会把步进目标转成 60fps 持续动画，整窗钉在全速渲染；
-                    // 60Hz 直接赋值步进（每步 <1px）视觉连续
 
                     // 底层（隐藏，仅测量整行宽度/高度，供容器宽度与 scrollOffset 使用）
                     Text {
@@ -305,8 +303,6 @@ Window {
 
                     // 横向裁剪层：只裁字、不裁星星
                     // 逐字渲染（原版效果：白色从左刷成红色、整行连续推进）。
-                    // 每帧只重绘当前字（其他字 fillRatio 值不变不重绘）；
-                    // 60fps 帧率由 C++ 16ms 定时器 + position 外推保证
                     Item {
                         anchors.fill: parent
                         clip: true
@@ -400,7 +396,6 @@ Window {
                         height: width
                         // 唱到字下沉压字顶(1)->前段(0->a)减速上抛到最高(0,慢)->后段(a->1)重力加速下落(1,快)
                         // 例外：最后一字末段不下落，保持高位往上淡出
-                        // （charProgress 由 16ms 定时器刷新，60fps 平滑）
                         property real starBob: {
                             if (horizontalLyricContainer.charIndex < 0) return 0
                             var p = horizontalLyricContainer.charProgress
@@ -443,8 +438,6 @@ Window {
                                    + 0.2 * (life * 10) * (life * 10) - height / 2
                                 opacity: Math.max(0, 1 - life) * 0.8 * hStarCursor.opacity
                                 // 50ms 定时步进替代 60Hz 持续动画：拖尾周期 2s，20fps 视觉无差。
-                                // 持续 NumberAnimation 会把整窗钉在全速渲染；与逐字刷新同频步进，
-                                // 避免两个同频源相位交错让渲染器每帧都有活干
                                 Timer {
                                     interval: 50
                                     running: hStarCursor.visible && playlistmanager && !playlistmanager.isPaused
@@ -582,7 +575,6 @@ Window {
                                 property bool isLetterOrNumber: (currentChar >= 'a' && currentChar <= 'z') || (currentChar >= 'A' && currentChar <= 'Z') || (currentChar >= '0' && currentChar <= '9')
                                 // 竖排时 CJK 标点/括号需旋转 90° 才不突兀。按 Unicode 区间判定，
                                 // 覆盖 、。《》「」『』【】〔〕〈〉、全角标点（！？：；（）等）、
-                                // 破折号/省略号/引号（—…""''）等，避免枚举遗漏（原白名单漏了《》等）。
                                 property bool isCJKPunctuation: (code >= 0x3000 && code <= 0x303F)
                                         || (code >= 0xFF01 && code <= 0xFF0F)
                                         || (code >= 0xFF1A && code <= 0xFF20)
@@ -634,7 +626,6 @@ Window {
                                     property bool isLetterOrNumber: (currentChar >= 'a' && currentChar <= 'z') || (currentChar >= 'A' && currentChar <= 'Z') || (currentChar >= '0' && currentChar <= '9')
                                     // 竖排时 CJK 标点/括号需旋转 90° 才不突兀。按 Unicode 区间判定，
                                     // 覆盖 、。《》「」『』【】〔〕〈〉、全角标点（！？：；（）等）、
-                                    // 破折号/省略号/引号（—…""''）等，避免枚举遗漏（原白名单漏了《》等）。
                                     property bool isCJKPunctuation: (code >= 0x3000 && code <= 0x303F)
                                             || (code >= 0xFF01 && code <= 0xFF0F)
                                             || (code >= 0xFF1A && code <= 0xFF20)

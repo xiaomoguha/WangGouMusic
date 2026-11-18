@@ -2,7 +2,6 @@ import QtQuick 2.15
 import "../BasicConfig"
 
 // 列表行 hover 反馈：整行内容右移 6px（OutBack 回弹）+ 背后一条两端淡出的柔光带。
-// 不铺常驻底色，行内原有的文字高亮/播放态逻辑不受影响。
 Rectangle {
     id: root
 

@@ -1,11 +1,6 @@
 import QtQuick 2.15
 
 // 现代「正在播放」指示器：3 根跳动的均衡器竖条。
-// 纯 QML（矢量、任意 DPI 锐利、跟随主题色），替代旧的 isplaying.gif。
-// 可见且正在播放时跳动；不可见或暂停时停止（静止在当前位置），省 CPU 且状态真实。
-// 跳动用 50ms Timer 驱动而非动画：Qt Quick 里任何一处变化都会整窗重渲染，
-// 这个小组件常驻底栏/歌曲行，若用 60Hz 动画会把整窗钉在 60fps（重页面 CPU 翻倍）。
-// 20fps 已足够：跳动周期 340ms+，每周期 7-11 帧视觉连续
 Item {
     id: root
     property color barColor: AppTheme.accentPlaying
@@ -60,7 +55,6 @@ Item {
             anchors.bottom: parent.bottom
             x: index * (root.barWidth + root.barGap)
             // 播放中由 Timer 直赋（Behavior 关掉，否则内部动画又回到 60Hz）；
-            // 仅暂停下落时启用平滑过渡
             Behavior on height {
                 enabled: !root.playing
                 NumberAnimation { duration: 150; easing.type: Easing.OutCubic }

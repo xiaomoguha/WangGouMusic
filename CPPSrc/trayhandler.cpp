@@ -17,11 +17,6 @@ TrayHandler::TrayHandler(QQuickWindow *win, QApplication *app, const QIcon &icon
 #ifdef Q_OS_MAC
     // macOS 26（Tahoe）+：Qt systray 状态项空白渲染，点击/拖动展开菜单时
     // QStatusItemDelegate 对非鼠标事件读 clickCount 抛 NSException 闪退。
-    // 且 QSystemTrayIcon 构造即创建 QPA 托盘对象（qsystemtrayicon_qpa.cpp），
-    // 光"不 show"也躲不开——26+ 上完全不建 QSystemTrayIcon，改用原生
-    // NSStatusItem（见 mactrayitem.mm）。旧版 macOS 保持 QSystemTrayIcon 老路径。
-    // 注意 productVersion() 形如 "27.0"，toInt() 对带小数点的串返回 0，
-    // 必须先 section('.') 取主版本号再比
     const int macosMajor = QSysInfo::productVersion().section('.', 0, 0).toInt();
     qDebug() << "[TrayHandler] macOS 版本:" << QSysInfo::productVersion()
              << "主版本:" << macosMajor << "原生托盘:" << (macosMajor >= 26);
@@ -102,7 +97,6 @@ TrayHandler::~TrayHandler()
     if (m_window)
         m_window->removeEventFilter(this);
     // m_menu 无 Qt parent（QMenu 需 QWidget*），手动释放以避免泄漏。
-    // 子 QAction 以 m_menu 为 parent，会被 Qt 自动连带释放。
     if (m_menu)
     {
         delete m_menu;

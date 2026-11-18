@@ -12,8 +12,6 @@ Item {
 
     // 沉浸遮罩：渐变激活时统一白系半透明——深色渐变用低浓度（12%）、浅色渐变用
     // 高浓度（20% 以上，浅底上隐约可见）——用户要求全程不用黑色系遮罩。
-    // 无渐变时回退主题卡片色（用户选定：浅色无渐变=纯卡色无边框）。
-    // tint 作为函数绑定会在 playlistCoverColor / 主题变化时自动重算。
     readonly property bool gradientDark: BasicConfig.playlistCoverColor !== ""
         && BasicConfig.contrastText(BasicConfig.playlistCoverColor, AppTheme.bgContent) === "#FFFFFF"
     function tint(darkHex, lightHex, fallback) {
@@ -22,8 +20,6 @@ Item {
     }
 
     // 瞬态滚动条:仅滚动时淡入,停止 800ms 后淡出。
-    // visible 绑定 size<1(内容超出视口才可滚动)做硬性门控 —— 不可滚动时
-    // 彻底隐藏、不响应鼠标;透明状态也不靠 hover 触发,避免鼠标扫过就闪现
     component TransientScrollBar: ScrollBar {
         id: sb
         policy: ScrollBar.AsNeeded
@@ -154,7 +150,6 @@ Item {
     property int onlineCount: 0
     // 消息列表是 C++ 的 QAbstractListModel(指针恒定,行级增量更新),
     // 不再是每次整体替换的 JS 数组 —— ListView 不会整表销毁重建 delegate。
-    // 左栏聊天 / 右栏系统动态,从 C++ 侧分流
     property var chatMessages: websocket ? websocket.chatMessages : null
     property var actionMessages: websocket ? websocket.actionMessages : null
     property int chatCount: chatMessages ? chatMessages.count : 0
@@ -1309,7 +1304,6 @@ Item {
 
     // ========== 信号连接 ==========
     // togetherplaylist 现为 QAbstractListModel，列表变化由 model 自身信号驱动，
-    // 不再需要手动 model=null 重置（原置换会丢失滚动位置并触发入场动画）。
 
     Connections {
         target: websocket
@@ -1368,7 +1362,6 @@ Item {
             Qt.callLater(messageListView.positionViewAtEnd)
 
             // 窗口最小化或关闭到托盘时弹系统通知——不论当前在哪个页面；
-            // 窗口看得见（含在别的页面）不打扰，用户正看着 App
             if (BasicConfig.windowObscured && trayHandler) {
                 trayHandler.showMessage(
                     "网狗音乐 - " + (nickname || "未知用户"),

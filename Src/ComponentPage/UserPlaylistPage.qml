@@ -72,7 +72,6 @@ Item {
     // ── 歌曲详情分页 ──
     property int detailPage: 1
     // 300/页与红心歌单(playlistcollection)一致：服务端直接透传给酷狗，无截断；
-    // 30/页时几百首的歌单滚一次要连发几十个小请求（日志里 22 连发），对风控不友好
     property int detailPageSize: 300
     property bool hasMoreSongs: true
     property bool isLoadingDetail: false
@@ -99,7 +98,6 @@ Item {
     }
 
     // ListView 的稳定 model：append() 增长不会重置 contentY（只有整表替换/重绑 model 才会清零）。
-    // delegate 仍直接读 filteredSongs[index]，这里只负责随内容增长提供行数。
     ListModel {
         id: songsModel
     }
@@ -160,7 +158,6 @@ Item {
             filteredSongs = result
         }
         // 同步 ListView 的行数。加载更多走追加（不清空 -> contentY 不变）；
-        // 其余（初次加载 / 搜索 / 清空）走清空重建。
         if (_songsAppending) {
             _songsAppending = false
             var added = filteredSongs.length - songsModel.count
@@ -561,7 +558,6 @@ Item {
                                         _autoLocated = false
                                         viewState = "detail"
                                         // 有缓存直接展示（来自启动红心同步/上次刷新落盘），不再自动拉；
-                                        // 点刷新按钮才走网络；没缓存（首次进入）才拉第 1 页
                                         if (currentSongs.length > 0) {
                                             // 缓存是已加载前缀：续拉从下一页接着
                                             detailPage = Math.ceil(currentSongs.length / detailPageSize)
@@ -929,8 +925,6 @@ Item {
                 }
 
                 // 歌曲列表：直接作为外层 Column 子项，ListView 自身滚动 + 虚拟化。
-                // 去掉原先 Flickable+Column 包裹：Column 管理可滚动 ListView 会干扰其 contentY（滚到底弹回顶部）。
-                // 注意：height 必须是定值（不能绑 contentHeight），否则会随内容增长撑爆布局。
                         ListView {
                             id: songsListView
                             width: parent.width
@@ -964,7 +958,6 @@ Item {
                             }
 
                             // 加载提示作为 ListView 的 footer：随内容滚动，滚到底部可见。
-                            // (重构去掉 Flickable 后这个 Item 曾变成 ListView 的兄弟节点，被挤出页面外。)
                             footer: Component {
                                 Item {
                                     width: songsListView.width
@@ -1062,8 +1055,6 @@ Item {
                                     }
 
                                     // 操作按钮区（固定宽度，悬停时显示按钮）
-                                    // 注意：专辑名/时长已改为右对齐锚定（见 delegate 尾部），
-                                    // 不再参与行内流式布局——按钮紧跟歌名列，整体位置更靠左
                                     Item {
                                         width: isTogetherMode ? 34 : 68
                                         height: 30
@@ -1162,7 +1153,6 @@ Item {
 
                                 // 双击切换播放列表。用 TapHandler 而非 MouseArea：
                                 // MouseArea anchors.fill 会 grab press 事件，导致 delegate 内
-                                // 按钮的 TapHandler 收不到点击。TapHandler 之间不互相吞噬。
                                 TapHandler {
                                     acceptedButtons: Qt.LeftButton
                                     enabled: !isTogetherMode

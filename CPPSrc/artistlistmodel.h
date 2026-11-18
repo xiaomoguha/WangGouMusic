@@ -4,12 +4,7 @@
 #include <QAbstractListModel>
 #include <QVariantList>
 
-/**
- * @brief 歌手页列表模型（单曲/专辑共用）。
- *
- * 用 QAbstractListModel 替代 QVariantList：增量 append 只通知新增行，
- * 下拉加载更多时 ListView 不重置、不弹顶（歌单详情页同款方案）。
- */
+// 歌手页列表模型（单曲/专辑共用）。
 class ArtistListModel : public QAbstractListModel
 {
     Q_OBJECT

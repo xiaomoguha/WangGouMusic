@@ -160,7 +160,6 @@ void PersonalFM::onData(const QByteArray &data)
     m_songs = songs;
 
     // FM 接口无封面：按 album_id 查专辑封面补全（同专辑多首只请求一次）。
-    // 队列全部完成后才发 songsChanged，UI 一次性刷新（避免两次闪烁）。
     QMap<QString, QVariantList> byAlbum;
     for (int i = 0; i < m_songs.size(); ++i)
     {

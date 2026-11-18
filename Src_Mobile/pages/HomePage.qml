@@ -4,7 +4,6 @@ import "../../Src/BasicConfig"
 
 // 首页 Tab —— 布局仿网易云音乐手机版：
 // 顶栏(logo+图标) → 搜索胶囊 → 四宫格圆形入口 → 推荐歌单横滑 → 热门歌曲列表。
-// 数据全部来自网狗现有 C++ 通道（recommendation），视觉风格保留网狗深色+珊瑚红。
 Item
 {
     id: root

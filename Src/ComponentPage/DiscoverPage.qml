@@ -4,7 +4,6 @@ import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
 
 // 歌单发现：酷狗歌单馆（分类标签 + 按分类的歌单列表，下拉翻页）
-// 数据源 DiscoverManager：/playlist/tags 分类树 + /top/playlist?category_id= 歌单列表
 Item {
     id: root
 

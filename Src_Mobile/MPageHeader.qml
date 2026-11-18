@@ -3,7 +3,6 @@ import "."
 import "../Src/BasicConfig"
 
 // 推入页通用头部（网易云浅色风）：返回箭头 + 居中标题。
-// 高度 48，不含安全区（pageStack 已统一避让 safeTop）。
 Item
 {
     id: root

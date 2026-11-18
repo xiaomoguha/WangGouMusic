@@ -7,11 +7,7 @@
 
 class UserManager;
 
-/**
- * @brief 个人 FM（/api/personal/fm）：每批 5 首推荐，传 hash 切下一批。
- *
- * 已登录时传 token/userid 返回个性化推荐（未登录返回通用推荐）。
- */
+// 个人 FM（/api/personal/fm）：每批 5 首推荐，传 hash 切下一批。
 class PersonalFM : public QObject
 {
     Q_OBJECT
@@ -24,9 +20,9 @@ public:
     // 绑定登录态来源（main.cpp 里 userManager 构造后调用）
     void setUserManager(UserManager *um);
 
-    /// 拉取首批（无 hash）
+    // 拉取首批（无 hash）
     Q_INVOKABLE void fetch();
-    /// 基于上一批最后一首 hash 切下一批（旧批替换为新批）
+    // 基于上一批最后一首 hash 切下一批（旧批替换为新批）
     Q_INVOKABLE void fetchNext();
 
     QVariantList songs() const { return m_songs; }
