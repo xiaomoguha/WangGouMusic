@@ -68,6 +68,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         CPPSrc/songcomments.cpp CPPSrc/songcomments.h
         CPPSrc/serveradminmanager.cpp CPPSrc/serveradminmanager.h
         CPPSrc/airecommendmanager.cpp CPPSrc/airecommendmanager.h
+        CPPSrc/stickermanager.cpp CPPSrc/stickermanager.h
         image.qrc
         icons.qrc
         ${FONT_RESOURCES}

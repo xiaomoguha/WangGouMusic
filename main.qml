@@ -77,6 +77,20 @@ ApplicationWindow {
     // 窗口真实可见（非最小化且未隐藏）：常驻动画的统一开关。
     readonly property bool appActive: visible && visibility !== Window.Minimized
 
+    // 窗口拖动/移动中：暂停星空等装饰动画，拖动结束后 180ms 自动恢复
+    property bool windowMoving: false
+    function markWindowMoving() {
+        if (!visible || visibility === Window.Minimized)
+            return
+        windowMoving = true;
+        moveEndTimer.restart();
+    }
+    Timer {
+        id: moveEndTimer
+        interval: 180
+        onTriggered: root.windowMoving = false
+    }
+
     // 启动后延迟拉取热搜与推荐数据，让首屏先渲染完
     Timer {
         id: startupFetchTimer
@@ -108,8 +122,8 @@ ApplicationWindow {
             windowState.savePosition(root.x, root.y);
         }
     }
-    onXChanged: windowPosSaveTimer.restart()
-    onYChanged: windowPosSaveTimer.restart()
+    onXChanged: { windowPosSaveTimer.restart(); root.markWindowMoving(); }
+    onYChanged: { windowPosSaveTimer.restart(); root.markWindowMoving(); }
 
     // 窗口启动时定位：有上次记录且那块屏幕还在就恢复原位，否则按默认居中。
     Component.onCompleted: {
@@ -416,10 +430,11 @@ ApplicationWindow {
         value: root.visibility === Window.Minimized || root.visibility === Window.Hidden || !root.visible
     }
     // 装饰性动画总闸：被遮蔽或应用失焦（用户切到别的 App）时停掉跑马灯等无限动画。
+    // 拖动窗口期间也暂停，减少整窗重绘带来的卡顿。
     Binding {
         target: BasicConfig
         property: "uiIdle"
-        value: BasicConfig.windowObscured || Qt.application.state !== Qt.ApplicationActive
+        value: BasicConfig.windowObscured || Qt.application.state !== Qt.ApplicationActive || root.windowMoving
     }
     // 同一把闸同步给 C++：失焦时停掉进度条 10fps 发射（桌面歌词 60Hz 定时器不受影响）
     Binding {
@@ -427,16 +442,17 @@ ApplicationWindow {
         property: "uiIdle"
         value: BasicConfig.uiIdle
     }
-    // 非歌单页时的渐变来源：正在播放（有歌且未暂停）→ 用当前歌曲封面主色。
+    // 主页不跟随播放歌曲取色：星空背景 + 主题色；取色只在播放详情页内使用
+    // （歌单/专辑等沉浸页仍由 playlistPageActive 单独驱动）
     Binding {
         target: BasicConfig
         property: "playingActive"
-        value: playlistmanager && playlistmanager.currentSonghash !== "" && !playlistmanager.isPaused
+        value: false
     }
     Binding {
         target: BasicConfig
         property: "playingCoverColor"
-        value: playlistmanager ? playlistmanager.dominantColor : ""
+        value: ""
     }
     // 使用 Loader 延迟加载歌词页，减少启动内存
     Loader {

@@ -32,6 +32,7 @@
 #include "./CPPSrc/HttpGetRequester.h"
 #include "./CPPSrc/NowPlayingMediaController.h"
 #include "./CPPSrc/WebSocketClient.h"
+#include "./CPPSrc/stickermanager.h"
 #include "./CPPSrc/appupdater.h"
 #include "./CPPSrc/gethostsearch.h"
 #include "./CPPSrc/lyricsconfigmanager.h"
@@ -203,6 +204,7 @@ int main(int argc, char *argv[])
     playlistCollection.setUserManager(&userManager);
     historyManager.setUserManager(&userManager);
     WebSocketClient websocket(&playlistmanager, &userManager);
+    StickerManager stickers(&userManager);
     // 桌面媒体控制集成（Windows SMTC / macOS NowPlaying）。
     std::unique_ptr<NowPlayingMediaController> mediaController;
     if (!mobileMode)
@@ -234,6 +236,7 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("playlistColorExtractor", &playlistColorExtractor);
     engine.rootContext()->setContextProperty("recommendation", &recommendation);
     engine.rootContext()->setContextProperty("websocket", &websocket);
+    engine.rootContext()->setContextProperty("stickers", &stickers);
     engine.rootContext()->setContextProperty("lyricsConfig", &lyricsConfig);
     engine.rootContext()->setContextProperty("appUpdater", &appUpdater);
     engine.rootContext()->setContextProperty("userManager", &userManager);

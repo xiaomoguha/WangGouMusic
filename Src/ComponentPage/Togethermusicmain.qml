@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Controls
+import QtQuick.Dialogs
 import Qt5Compat.GraphicalEffects
 import "../BasicConfig"
 
@@ -802,6 +803,9 @@ Item {
         anchors.bottom: parent.bottom
         width: parent.width * 0.5
 
+        // 表情面板开关
+        property bool stickerPanelOpen: false
+
         ListView {
             id: messageListView
             anchors.left: parent.left
@@ -855,6 +859,10 @@ Item {
             width: messageListView.width
             // 微信式判断：userid 是自己 → 消息靠右
             property bool isMine: userManager && modelData.userid === userManager.userid
+            // 表情消息格式：[sticker]<id>
+            property bool isSticker: String(modelData.message || "").indexOf("[sticker]") === 0
+            property string stickerId: isSticker ? String(modelData.message).substring(9) : ""
+            property bool stickerAnimated: /\.(gif|webp)$/i.test(stickerId)
             height: bubbleCol.height + 8
 
             property bool isNewMsg: false
@@ -953,6 +961,7 @@ Item {
 
                         Rectangle {
                             id: chatBubbleRect
+                            visible: !messageDelegate.isSticker
                             width: bubbleText.width + 24
                             height: bubbleText.height + 14
                             radius: 10
@@ -973,6 +982,57 @@ Item {
                                 color: messageDelegate.isMine ? AppTheme.textPrimary : AppTheme.textSecondary
                                 wrapMode: Text.Wrap
                                 width: Math.min(implicitWidth, messageListView.width - 120)
+                            }
+                        }
+
+                        // 表情消息：无气泡，原比例显示（动图用 AnimatedImage）
+                        Item {
+                            id: stickerBox
+
+                            visible: messageDelegate.isSticker
+                            width: 120
+                            height: 120
+
+                            readonly property string src: {
+                                var r = stickers ? stickers.revision : 0
+                                return stickers ? stickers.pathFor(messageDelegate.stickerId) : ""
+                            }
+
+                            AnimatedImage {
+                                anchors.fill: parent
+                                visible: messageDelegate.stickerAnimated && stickerBox.src !== ""
+                                source: stickerBox.src
+                                fillMode: Image.PreserveAspectFit
+                                playing: visible
+                            }
+                            Image {
+                                anchors.fill: parent
+                                visible: !messageDelegate.stickerAnimated && stickerBox.src !== ""
+                                source: stickerBox.src
+                                fillMode: Image.PreserveAspectFit
+                                asynchronous: true
+                            }
+                            Rectangle {
+                                anchors.fill: parent
+                                visible: stickerBox.src === ""
+                                radius: 10
+                                color: root.tint("#1EFFFFFF", "#40FFFFFF", AppTheme.bgInput)
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "加载中"
+                                    font.pixelSize: AppTheme.fontSizeXs
+                                    font.family: AppTheme.fontFamily
+                                    color: AppTheme.textDim
+                                }
+                            }
+                            MouseArea {
+                                anchors.fill: parent
+                                acceptedButtons: Qt.RightButton
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    stickerMenu.stickerId = messageDelegate.stickerId
+                                    stickerMenu.popup()
+                                }
                             }
                         }
 
@@ -1095,6 +1155,177 @@ Item {
     }
 
     // ========== 底部输入栏 ==========
+    // 表情消息右键菜单
+    Menu {
+        id: stickerMenu
+
+        property string stickerId: ""
+
+        MenuItem {
+            text: "添加到表情包"
+            onTriggered: stickers.addSticker(stickerMenu.stickerId)
+        }
+        MenuItem {
+            text: "从表情包删除"
+            onTriggered: stickers.removeSticker(stickerMenu.stickerId)
+        }
+    }
+
+    // 点击面板外任意处收起
+    MouseArea {
+        id: stickerPanelCloser
+        anchors.fill: chatPane
+        z: 19
+        visible: chatPane.stickerPanelOpen
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
+        onClicked: chatPane.stickerPanelOpen = false
+    }
+
+    // 表情面板（首格为「+」添加）
+    Rectangle {
+        id: stickerPanel
+
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: inputBar.top
+        anchors.leftMargin: 20
+        anchors.rightMargin: 20
+        anchors.bottomMargin: 8
+        height: chatPane.stickerPanelOpen ? 246 : 0
+        radius: 12
+        z: 20
+        visible: height > 1
+        opacity: chatPane.stickerPanelOpen ? 1 : 0
+        clip: true
+        color: root.tint("#F01E1E24", "#F0FFFFFF", AppTheme.bgCard)
+        border.width: 1
+        border.color: root.tint("#1EFFFFFF", "#28000000", "transparent")
+
+        Behavior on height { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+        Behavior on opacity { NumberAnimation { duration: 140 } }
+
+        GridView {
+            id: stickerGrid
+
+            anchors.fill: parent
+            anchors.margins: 10
+            cellWidth: 62
+            cellHeight: 62
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+
+            model: {
+                var arr = [""]
+                if (stickers) {
+                    var lib = stickers.library
+                    for (var i = 0; i < lib.length; i++)
+                        arr.push(lib[i])
+                }
+                return arr
+            }
+
+            delegate: Item {
+                id: stickerCell
+
+                required property int index
+                required property var modelData
+
+                width: stickerGrid.cellWidth
+                height: stickerGrid.cellHeight
+
+                readonly property bool isAdd: String(modelData) === ""
+                readonly property string src: {
+                    if (isAdd)
+                        return ""
+                    var r = stickers ? stickers.revision : 0
+                    return stickers ? stickers.pathFor(String(modelData)) : ""
+                }
+                readonly property bool animated: /\.(gif|webp)$/i.test(String(modelData))
+
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: 4
+                    radius: 10
+                    visible: stickerCell.isAdd
+                    color: cellMa.containsMouse ? root.tint("#22FFFFFF", "#18000000", AppTheme.bgInput)
+                                                : "transparent"
+                    border.width: 1
+                    border.color: root.tint("#2EFFFFFF", "#33000000", "transparent")
+
+                    Image {
+                        anchors.centerIn: parent
+                        source: AppIcon.plus
+                        width: 22; height: 22
+                        fillMode: Image.PreserveAspectFit
+                        sourceSize: Qt.size(64, 64)
+                        layer.enabled: true
+                        layer.effect: ColorOverlay { color: AppTheme.textSecondary }
+                    }
+                }
+                AnimatedImage {
+                    anchors.fill: parent
+                    anchors.margins: 8
+                    visible: !stickerCell.isAdd && stickerCell.animated && stickerCell.src !== ""
+                    source: stickerCell.src
+                    fillMode: Image.PreserveAspectFit
+                    playing: visible
+                }
+                Image {
+                    anchors.fill: parent
+                    anchors.margins: 8
+                    visible: !stickerCell.isAdd && !stickerCell.animated && stickerCell.src !== ""
+                    source: stickerCell.src
+                    fillMode: Image.PreserveAspectFit
+                    asynchronous: true
+                }
+
+                MouseArea {
+                    id: cellMa
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    onClicked: (mouse) => {
+                        if (stickerCell.isAdd) {
+                            stickerFileDialog.open()
+                            return
+                        }
+                        var id = String(modelData)
+                        if (mouse.button === Qt.RightButton) {
+                            stickerMenu.stickerId = id
+                            stickerMenu.popup()
+                            return
+                        }
+                        if (stickers.pathFor(id) === "")
+                            return
+                        websocket.sendChatMessage("[sticker]" + id)
+                        stickers.markRecent(id)
+                        messageListView._autoScroll = true
+                    }
+                }
+            }
+        }
+    }
+
+    FileDialog {
+        id: stickerFileDialog
+
+        title: "添加表情"
+        nameFilters: ["图片 (*.gif *.webp *.png *.jpg *.jpeg)"]
+        onAccepted: stickers.addFile(selectedFile.toLocalFile())
+    }
+
+    Connections {
+        target: stickers
+
+        function onNotice(message) {
+            BasicConfig.noticeSuccess(message)
+        }
+        function onErrorOccurred(message) {
+            BasicConfig.noticeError(message)
+        }
+    }
+
     Rectangle {
         id: inputBar
         anchors.left: parent.left
@@ -1112,7 +1343,7 @@ Item {
 
             TextField {
                 id: chatInput
-                width: parent.width - sendBtn.width - parent.spacing
+                width: parent.width - sendBtn.width - emojiBtn.width - parent.spacing * 2
                 height: 36
                 placeholderText: "说点什么..."
                 // 有封面主色时按对比度取色，否则用主题文字色
@@ -1141,6 +1372,34 @@ Item {
                         chatInput.text = "";
                         messageListView._autoScroll = true;
                     }
+                }
+            }
+
+            // 表情按钮
+            Rectangle {
+                id: emojiBtn
+                width: 36; height: 36; radius: 18
+                color: emojiHover.containsMouse || chatPane.stickerPanelOpen
+                       ? root.tint("#22FFFFFF", "#18000000", AppTheme.bgInput)
+                       : "transparent"
+
+                Image {
+                    anchors.centerIn: parent
+                    source: AppIcon.smile
+                    width: 20; height: 20
+                    fillMode: Image.PreserveAspectFit
+                    sourceSize: Qt.size(64, 64)
+                    layer.enabled: true
+                    layer.effect: ColorOverlay {
+                        color: chatPane.stickerPanelOpen ? AppTheme.accent : AppTheme.textSecondary
+                    }
+                }
+                MouseArea {
+                    id: emojiHover
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: chatPane.stickerPanelOpen = !chatPane.stickerPanelOpen
                 }
             }
 
@@ -1392,5 +1651,9 @@ Item {
         actionListView._autoScroll = true;
         Qt.callLater(actionListView.positionViewAtEnd);
         Qt.callLater(messageListView.positionViewAtEnd);
+
+        // 表情库：登录后拉取账号索引并补下缺失文件
+        if (stickers && userManager && userManager.isLoggedIn)
+            stickers.refresh();
     }
 }
