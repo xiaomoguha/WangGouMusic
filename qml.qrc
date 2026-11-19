@@ -37,6 +37,7 @@
         <file>Src/BasicConfig/qmldir</file>
         <file>Src/BasicConfig/LocateCurrentButton.qml</file>
         <file>Src/BasicConfig/IconButton.qml</file>
+        <file>Src/BasicConfig/ClimaxPreviewButton.qml</file>
         <file>Src/BasicConfig/ThemedPopup.qml</file>
         <file>Src/BasicConfig/NowPlayingIndicator.qml</file>
         <file>Src/BasicConfig/PanelBackdrop.qml</file>

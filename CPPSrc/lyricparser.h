@@ -56,7 +56,7 @@ public:
     explicit LyricParser(QObject *parent = nullptr);
 
     // 解析KRC逐字歌词
-    bool parseKRCLyrics(const QString &krcText);
+    bool parseKRCLyrics(const QString &krcText, bool notify = true);
 
     // 根据时间获取当前歌词
     QString getLyricAtTime(qint64 positionMs);

@@ -1056,18 +1056,28 @@ Item {
 
                                     // 操作按钮区（固定宽度，悬停时显示按钮）
                                     Item {
-                                        width: isTogetherMode ? 34 : 68
+                                        width: isTogetherMode ? 94 : 128
                                         height: 30
                                         anchors.verticalCenter: parent.verticalCenter
 
                                         Row {
                                             anchors.fill: parent
                                             spacing: 4
-                                            visible: songMouse.hovered && !isPlaying
+                                            visible: songMouse.hovered || climaxPreviewBtn.active
+
+                                            // 高潮试听：文字按钮放在播放/加入一起听左侧
+                                            ClimaxPreviewButton {
+                                                id: climaxPreviewBtn
+                                                songHash: filteredSongs[index] ? filteredSongs[index].hash : ""
+                                                songTitle: filteredSongs[index] ? filteredSongs[index].songname : ""
+                                                songSinger: filteredSongs[index] ? filteredSongs[index].singername : ""
+                                                songCover: filteredSongs[index] ? filteredSongs[index].cover : ""
+                                                rowHovered: songMouse.hovered
+                                            }
 
                                             IconButton {
                                                 id: playBtn
-                                                visible: !isTogetherMode
+                                                visible: !isTogetherMode && !isPlaying
                                                 size: 30; iconSize: 16
                                                 iconSource: AppIcon.playCircle
                                                 iconColor: (playBtn.hovered ? "#4FC3F7" : "#FFFFFF")
@@ -1087,7 +1097,7 @@ Item {
 
                                             IconButton {
                                                 id: addBtn
-                                                visible: !isTogetherMode
+                                                visible: !isTogetherMode && !isPlaying
                                                 size: 30; iconSize: 16
                                                 iconSource: AppIcon.addToList
                                                 iconColor: (addBtn.hovered ? AppTheme.accent : "#FFFFFF")
@@ -1108,7 +1118,7 @@ Item {
 
                                             IconButton {
                                                 id: togetherBtn
-                                                visible: isTogetherMode
+                                                visible: isTogetherMode && !isPlaying
                                                 size: 30; iconSize: 16
                                                 iconSource: AppIcon.addTogether
                                                 iconColor: (togetherBtn.hovered ? AppTheme.accent : "#FFFFFF")

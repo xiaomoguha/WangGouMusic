@@ -15,6 +15,7 @@
 #include <QMediaPlayer>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
+#include <QBuffer>
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
@@ -84,6 +85,8 @@ class PlaylistManager : public QObject
     Q_PROPERTY(int playMode READ playMode NOTIFY playModeChanged)
     Q_PROPERTY(int quality READ quality NOTIFY qualityChanged)  // 0自动/1标准128/2高品320/3无损flac
     Q_PROPERTY(qreal climaxPercent READ climaxPercent NOTIFY climaxPercentChanged)  // 高潮段位置（0~1）
+    Q_PROPERTY(bool climaxPreviewing READ climaxPreviewing NOTIFY climaxPreviewChanged)  // 高潮试听中
+    Q_PROPERTY(QString climaxPreviewHash READ climaxPreviewHash NOTIFY climaxPreviewChanged)  // 正在试听的歌曲 hash
     Q_PROPERTY(qreal volume READ volume NOTIFY volumeChanged)  // 音量 0~1（持久化）
 public:
     explicit PlaylistManager(Recommendation *recommendation, QObject *parent = nullptr);
@@ -118,6 +121,10 @@ public:
     Q_INVOKABLE void requestMoreSourceTracks(); // 弹窗滚动按需加载下一批（不受播放邻近守卫限制）
     Q_INVOKABLE void setposistion(float positionvalue);
     Q_INVOKABLE void fetchClimax(const QString &hash);  // 高潮段：按 hash 去重请求，结果存 climaxPercent
+    Q_INVOKABLE void toggleClimaxPreview(
+        const QString &hash, const QString &title = {}, const QString &singer = {}, const QString &cover = {}
+    );  // 开始/结束该曲高潮试听
+    Q_INVOKABLE void setClimaxPreviewPosition(qreal percent);  // 试听进度拖动（0~1，相对高潮段）
     Q_INVOKABLE void setVolume(qreal v);  // 音量 0~1（持久化；停 fade 动画后立即生效）
 
     int currentIndex() const;
@@ -132,6 +139,8 @@ public:
     QString getpercentstr() const;
     QString durationstr();
     qreal climaxPercent() const { return m_climaxPercent; }
+    bool climaxPreviewing() const { return m_climaxPreviewing; }
+    QString climaxPreviewHash() const { return m_climaxPreviewHash; }
     qreal volume() const { return m_audioOutput ? m_audioOutput->volume() : 0.0; }
     qint64 playerDuration() const;
     SongListModel *playlistModel();
@@ -200,6 +209,8 @@ signals:
     void isBufferingChanged();
     void uiIdleChanged();
     void climaxPercentChanged();
+    void climaxPreviewChanged();
+    void climaxPreviewFailed(const QString &reason);
     void volumeChanged();
     void songUrlFailed(const QString &reason);  // 拿不到播放地址(共享号失效/网络异常)
     void playModeChanged();
@@ -355,6 +366,52 @@ private:
     void loadClimaxCache();
     void saveClimaxCacheEntry(const QString &hash, qint64 startMs);
     static qint64 parseDurationMs(const QString &str);  // "mm:ss"/秒 → 毫秒
+
+    // 高潮试听：独立播放器直接流式播放接口返回的高潮片段（不写本地缓存），
+    // 进入时暂停主播放并保存状态，结束或再次点击时平滑恢复原歌曲与进度。
+    QMediaPlayer *m_climaxPlayer = new QMediaPlayer(this);
+    QAudioOutput *m_climaxOutput = new QAudioOutput(this);
+    QPropertyAnimation *m_climaxVolAnim = nullptr;
+    bool m_climaxPreviewing = false;
+    QString m_climaxPreviewHash;   // 当前试听的歌曲 hash（按钮状态用）
+    QString m_climaxRequestHash;   // 在途请求 hash（迟到响应丢弃）
+    QString m_climaxPreviewTitle;  // 试听歌曲信息（底栏/歌词页临时显示）
+    QString m_climaxPreviewSinger;
+    QString m_climaxPreviewCover;
+    qreal m_climaxPreviewPercent = 0.0;   // 0~1，相对高潮段
+    QString m_climaxPreviewPosStr = "00:00";
+    QString m_climaxPreviewDurationStr = "00:00";
+    QNetworkAccessManager *m_climaxNam = nullptr;  // 高潮片段按字节范围下载
+    QNetworkReply *m_climaxReply = nullptr;
+    QBuffer *m_climaxBuffer = nullptr;  // 内存缓冲：只播高潮段，不写本地文件
+    bool m_climaxBufferMode = false;
+    qint64 m_climaxMediaOffsetMs = 0;  // 媒体位置 0 对应的歌曲时间（缓冲模式 = startMs）
+    qint64 m_climaxStartMs = 0;
+    qint64 m_climaxEndMs = 0;
+    bool m_climaxPlayStarted = false;
+    bool m_climaxFinishing = false;
+    bool m_climaxResumeWasPlaying = false;  // 进入试听前主播放是否在播
+    qint64 m_climaxResumePosition = 0;      // 进入试听前主播放进度
+    void startClimaxPreview(
+        const QString &hash, const QString &title, const QString &singer, const QString &cover
+    );
+    void fetchClimaxPreview(const QString &hash);
+    void finishClimaxPreview(bool restorePlayback, int fadeMs = 250);
+    void cancelClimaxPreview();  // 主播放操作抢占时立即静音收尾，不恢复
+    void updateClimaxPreviewProgress(qint64 positionMs);
+    void loadClimaxPreviewLyric(const QString &hash);
+    void restoreMainLyric();  // 试听结束后恢复主歌歌词
+    qint64 climaxSongPosition() const;  // 试听媒体位置 → 歌曲绝对时间
+    void fetchClimaxAudioRange(
+        const QString &url, qint64 startByte, qint64 endByte, const QString &hash, qint64 startMs
+    );
+    void releaseClimaxBuffer();
+    void fadeClimaxVolume(qreal target, int ms, std::function<void()> onFinished = {});
+    void fadeMainVolumeTo(qreal target, int ms, std::function<void()> onFinished = {});
+    QString m_savedMainLyricRaw;        // 进入试听前主歌歌词原文
+    qint64 m_savedLyricOffsetMs = 0;    // 进入试听前歌词偏移
+    QString m_savedLyricOffsetHash;
+    QString m_mainLyricRaw;             // 一起听等路径的当前主歌歌词原文
 
     // 歌词去重：同 hash 并发请求合并为一次（多调用点/组件触发同一首歌）
     QSet<QString> m_lyricPendingHashes;

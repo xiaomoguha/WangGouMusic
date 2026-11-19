@@ -1257,6 +1257,7 @@ Rectangle {
                         color: "#5A5A6A"
                         width: parent.width * progressBar.dlProgress
                         visible: progressBar.dlProgress < 1.0
+                                 && !(playlistmanager && playlistmanager.climaxPreviewing)
                     }
 
                     // 已播放部分
@@ -1324,9 +1325,11 @@ Rectangle {
 
                         function commitProgress() {
                             var newValue = progressFill.tempWidth / progressBar.width;
-                            if (playlistmanager) {
-                                playlistmanager.setposistion(newValue);
-                            }
+                            if (!playlistmanager) return
+                            if (playlistmanager.climaxPreviewing)
+                                playlistmanager.setClimaxPreviewPosition(newValue)
+                            else
+                                playlistmanager.setposistion(newValue)
                         }
                     }
                 }

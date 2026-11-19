@@ -160,7 +160,8 @@ Page {
                         }
 
                         Column {
-                            width: 0.3 * recentPage.width
+                            // 给悬停操作区（含高潮试听按钮）留出固定宽度的空间
+                            width: 0.24 * recentPage.width
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: 4
 
@@ -187,14 +188,24 @@ Page {
 
                         // 操作按钮区（固定宽度占位，悬停时显示；专辑/时长不再随悬停跳动）
                         Item {
-                            width: isTogetherMode ? 70 : 100
+                            width: isTogetherMode ? 130 : 160
                             height: 30
                             anchors.verticalCenter: parent.verticalCenter
 
                             Row {
                                 anchors.fill: parent
                                 spacing: 4
-                                visible: itemHover.hovered
+                                visible: itemHover.hovered || climaxPreviewBtn.active
+
+                                // 高潮试听：文字按钮放在播放/加入一起听左侧
+                                ClimaxPreviewButton {
+                                    id: climaxPreviewBtn
+                                    songHash: modelData.songhash
+                                    songTitle: modelData.title
+                                    songSinger: modelData.singername
+                                    songCover: modelData.union_cover
+                                    rowHovered: itemHover.hovered
+                                }
 
                                 IconButton {
                                     id: playBtn
@@ -260,7 +271,7 @@ Page {
 
                                 IconButton {
                                     id: togetherBtn
-                                    visible: isTogetherMode
+                                    visible: isTogetherMode && !isPlaying
                                     size: 30
                                     iconSize: 16
                                     iconSource: AppIcon.addTogether

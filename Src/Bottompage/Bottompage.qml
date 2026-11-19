@@ -120,6 +120,7 @@ Rectangle {
         Connections {
             target: playlistmanager
             function onSongUrlFailed(reason) { urlErrorToast.show(reason) }
+            function onClimaxPreviewFailed(reason) { urlErrorToast.show(reason) }
         }
     }
 
@@ -667,7 +668,11 @@ Rectangle {
                         }
                         function commitProgress() {
                             var v = progressFill.tempWidth / progressSlider.width;
-                            if (playlistmanager) playlistmanager.setposistion(v);
+                            if (!playlistmanager) return
+                            if (playlistmanager.climaxPreviewing)
+                                playlistmanager.setClimaxPreviewPosition(v)
+                            else
+                                playlistmanager.setposistion(v);
                         }
                     }
 
@@ -681,6 +686,7 @@ Rectangle {
                         color: "#30FFFFFF"
                         width: parent.width * progressSlider.dlProgress
                         visible: progressSlider.dlProgress < 1.0
+                                 && !(playlistmanager && playlistmanager.climaxPreviewing)
                     }
 
                     // 已播放进度

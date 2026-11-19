@@ -54,9 +54,12 @@ PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent
         [this]()
         {
             const QAudioDevice def = QMediaDevices::defaultAudioOutput();
-            if (def.isNull() || m_audioOutput->device() == def)
+            if (def.isNull())
                 return;
-            m_audioOutput->setDevice(def);
+            if (m_audioOutput->device() != def)
+                m_audioOutput->setDevice(def);
+            if (m_climaxOutput->device() != def)
+                m_climaxOutput->setDevice(def);
         }
     );
 
@@ -66,6 +69,13 @@ PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent
         m_player, &QMediaPlayer::playbackStateChanged, this,
         [this](QMediaPlayer::PlaybackState state)
         {
+            // 高潮试听期间主播放必须保持暂停：兜底拦截缓冲恢复、异步取址完成等路径的自动 play
+            if (state == QMediaPlayer::PlayingState && m_climaxPreviewing)
+            {
+                m_player->pause();
+                m_prevPlaybackState = state;
+                return;
+            }
             if (state == QMediaPlayer::PlayingState && m_prevPlaybackState == QMediaPlayer::StoppedState)
                 fadeInVolume(); // 切歌/首次开播：渐强
             m_prevPlaybackState = state;
@@ -127,12 +137,67 @@ PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent
     // 定时器按真实播放位置重算补足——跳跃歌词动画（星星/字压扁）因此 60fps 平滑。
     m_lyricAnimTimer.setTimerType(Qt::PreciseTimer);
     connect(&m_lyricAnimTimer, &QTimer::timeout, this, [this]() {
-        if (m_player->playbackState() == QMediaPlayer::PlayingState)
+        if (m_climaxPreviewing)
+        {
+            if (m_climaxPlayer->playbackState() == QMediaPlayer::PlayingState)
+                updateLyricProgress(climaxSongPosition());
+        }
+        else if (m_player->playbackState() == QMediaPlayer::PlayingState)
             updateLyricProgress(m_player->position());
     });
     recomputeLyricFeed();
     connect(m_player, &QMediaPlayer::errorOccurred, this, &PlaylistManager::handlePlayerError);
     connect(&m_lyricParser, &LyricParser::parselyricsuc, this, &PlaylistManager::parlyricsuc);
+
+    // 高潮试听播放器：独立音频输出；片段按字节范围下到内存缓冲播放（不写本地文件）
+    m_climaxPlayer->setAudioOutput(m_climaxOutput);
+    m_climaxOutput->setVolume(0.0);
+    m_climaxNam = new QNetworkAccessManager(this);
+    connect(
+        m_climaxPlayer, &QMediaPlayer::mediaStatusChanged, this,
+        [this](QMediaPlayer::MediaStatus status)
+        {
+            if (!m_climaxPreviewing || m_climaxFinishing)
+                return;
+            if (status == QMediaPlayer::EndOfMedia)
+            {
+                finishClimaxPreview(true, 120);
+                return;
+            }
+            if (m_climaxPlayStarted || status != QMediaPlayer::LoadedMedia)
+                return;
+            m_climaxPlayStarted = true;
+            if (!m_climaxBufferMode && m_climaxStartMs > 0)
+                m_climaxPlayer->setPosition(m_climaxStartMs);
+            m_climaxOutput->setVolume(0.0);
+            m_climaxPlayer->play();
+            fadeClimaxVolume(m_targetVolume, 400);
+        }
+    );
+    connect(
+        m_climaxPlayer, &QMediaPlayer::positionChanged, this,
+        [this](qint64 pos)
+        {
+            if (!m_climaxPreviewing || m_climaxFinishing || !m_climaxPlayStarted || m_climaxEndMs <= 0)
+                return;
+            const qint64 songPos = pos + m_climaxMediaOffsetMs;
+            updateClimaxPreviewProgress(songPos);  // 底栏进度/时间跟随试听
+            updateLyricProgress(songPos);          // 歌词跟随试听进度滚动
+            if (songPos >= m_climaxEndMs)
+                finishClimaxPreview(true, 220);
+        }
+    );
+    connect(
+        m_climaxPlayer, &QMediaPlayer::errorOccurred, this,
+        [this](QMediaPlayer::Error, const QString &errorString)
+        {
+            if (!m_climaxPreviewing || m_climaxFinishing)
+                return;
+            m_climaxRequestHash.clear();
+            finishClimaxPreview(true, 120);
+            emit climaxPreviewFailed(QStringLiteral("高潮试听加载失败：") + errorString);
+        }
+    );
 }
 
 // 歌词逐字动画的自适应刷新频率。消费方（QML 窗口）主动上报可见性：
@@ -526,6 +591,7 @@ void PlaylistManager::loadSongPaused(int index)
 
 void PlaylistManager::playSongbyindex(int index)
 {
+    cancelClimaxPreview();
     if (index >= 0 && index < (*m_curplaylist).size())
     {
         // 先判断是否可以用本地缓存播放
@@ -612,6 +678,7 @@ void PlaylistManager::playPlaylistFromSource(
     const QString &sourceId, int totalCount, int startIndexInSource, const QVariantList &firstBatch
 )
 {
+    cancelClimaxPreview();
     if (type != LOCAL)
         return; // 一起听模式不处理
     m_lazySourceId = sourceId;
@@ -713,6 +780,7 @@ void PlaylistManager::fetchNextSourcePage()
 // 根据hash值播放
 void PlaylistManager::playSongbyhasg(const QString &songhash)
 {
+    cancelClimaxPreview();
     for (int index = 0; index < (*m_curplaylist).size(); index++)
     {
         if ((*m_curplaylist)[index].songhash == songhash)
@@ -892,6 +960,13 @@ void PlaylistManager::playPrevious()
 
 void PlaylistManager::playstop()
 {
+    // 试听中按播放/暂停键 = 结束试听并回到原播放状态
+    if (m_climaxPreviewing)
+    {
+        finishClimaxPreview(true);
+        return;
+    }
+    cancelClimaxPreview();
     QMediaPlayer::PlaybackState state = m_player->playbackState();
 
     if (state == QMediaPlayer::PlayingState)
@@ -995,6 +1070,7 @@ void PlaylistManager::doAddSong(const SongInfo &song, bool /*toHead*/, bool /*pl
 
 void PlaylistManager::setposistion(float positionvalue)
 {
+    cancelClimaxPreview();
     qint64 position                   = positionvalue * m_player->duration();
     QMediaPlayer::PlaybackState state = m_player->playbackState();
     if (state == QMediaPlayer::PlayingState)
@@ -1037,6 +1113,8 @@ int PlaylistManager::currentIndex() const
 
 QString PlaylistManager::currentTitle() const
 {
+    if (m_climaxPreviewing && !m_climaxPreviewTitle.isEmpty())
+        return m_climaxPreviewTitle;
     if (m_currentIndex >= 0 && m_currentIndex < (*m_curplaylist).size())
     {
         return (*m_curplaylist)[m_currentIndex].title;
@@ -1046,6 +1124,8 @@ QString PlaylistManager::currentTitle() const
 
 QString PlaylistManager::currentsingername() const
 {
+    if (m_climaxPreviewing && !m_climaxPreviewSinger.isEmpty())
+        return m_climaxPreviewSinger;
     if (m_currentIndex >= 0 && m_currentIndex < (*m_curplaylist).size())
     {
         return (*m_curplaylist)[m_currentIndex].singername;
@@ -1074,11 +1154,16 @@ QString PlaylistManager::currentSongMxid() const
 
 bool PlaylistManager::isPaused() const
 {
+    // 试听中视为播放状态：底栏/播放页显示暂停键，点击即结束试听
+    if (m_climaxPreviewing)
+        return false;
     return m_isPaused;
 }
 
 QString PlaylistManager::union_cover() const
 {
+    if (m_climaxPreviewing && !m_climaxPreviewCover.isEmpty())
+        return m_climaxPreviewCover;
     if (m_currentIndex >= 0 && m_currentIndex < (*m_curplaylist).size())
     {
         return (*m_curplaylist)[m_currentIndex].union_cover;
@@ -1088,11 +1173,15 @@ QString PlaylistManager::union_cover() const
 
 QString PlaylistManager::getpercentstr() const
 {
+    if (m_climaxPreviewing)
+        return m_climaxPreviewPosStr;
     return m_percentstr;
 }
 
 QString PlaylistManager::durationstr()
 {
+    if (m_climaxPreviewing)
+        return m_climaxPreviewDurationStr;
     return m_duration;
 }
 
@@ -1219,6 +1308,8 @@ void PlaylistManager::changeplaylisttype(enum PlaylistType changetype)
 
 float PlaylistManager::getpercent() const
 {
+    if (m_climaxPreviewing)
+        return m_climaxPreviewPercent;
     return m_percent;
 }
 
@@ -1467,6 +1558,8 @@ void PlaylistManager::downloadAndStream(
 
 void PlaylistManager::startPlayback(const SongInfo &song)
 {
+    cancelClimaxPreview();
+    m_mainLyricRaw.clear();  // 主歌切换：清除上一首歌词原文，试听恢复时不串歌
     // 记录到最近播放
     addToRecent(song);
 
@@ -1852,6 +1945,533 @@ qint64 PlaylistManager::parseDurationMs(const QString &str)
     return static_cast<qint64>(str.toDouble() * 1000);
 }
 
+void PlaylistManager::toggleClimaxPreview(
+    const QString &hash, const QString &title, const QString &singer, const QString &cover
+)
+{
+    if (hash.isEmpty())
+        return;
+    // 同一首再点一次 = 结束试听；其他歌 = 切换片段（保留最初的主播放状态）
+    if (m_climaxPreviewing && m_climaxPreviewHash.compare(hash, Qt::CaseInsensitive) == 0)
+    {
+        finishClimaxPreview(true);
+        return;
+    }
+    startClimaxPreview(hash, title, singer, cover);
+}
+
+void PlaylistManager::startClimaxPreview(
+    const QString &hash, const QString &title, const QString &singer, const QString &cover
+)
+{
+    const bool wasPreviewing = m_climaxPreviewing;
+    if (!wasPreviewing)
+    {
+        m_climaxResumeWasPlaying = (m_player->playbackState() == QMediaPlayer::PlayingState);
+        m_climaxResumePosition   = m_player->position();
+        // 保存主歌歌词与偏移，试听结束后原样恢复
+        m_savedMainLyricRaw.clear();
+        if (m_currentIndex >= 0 && m_currentIndex < (*m_curplaylist).size())
+            m_savedMainLyricRaw = (*m_curplaylist)[m_currentIndex].lyric;
+        if (m_savedMainLyricRaw.isEmpty())
+            m_savedMainLyricRaw = m_mainLyricRaw;
+        if (m_savedMainLyricRaw.isEmpty())
+            m_savedMainLyricRaw = loadLyricFromCache(currentSongHash());
+        m_savedLyricOffsetMs   = m_lyricOffsetMs;
+        m_savedLyricOffsetHash = m_lyricOffsetSongHash;
+    }
+
+    m_climaxFinishing      = false;
+    m_climaxRequestHash    = hash;
+    m_climaxPreviewHash    = hash;
+    m_climaxPreviewTitle   = title;
+    m_climaxPreviewSinger  = singer;
+    m_climaxPreviewCover   = cover;
+    m_climaxPreviewing     = true;
+    m_climaxPlayStarted    = false;
+    m_climaxStartMs        = 0;
+    m_climaxEndMs          = 0;
+    m_climaxPreviewPercent = 0.0;
+    m_climaxPreviewPosStr  = "00:00";
+    m_climaxPreviewDurationStr = "00:00";
+    emit currentSongChanged();  // 底栏/播放页临时显示试听歌曲信息
+    emit isPausedChanged();
+    emit percentChanged();
+    emit durationChanged();
+    emit climaxPreviewChanged();
+    loadClimaxPreviewLyric(hash);  // 歌词切到试听歌曲，并跟随试听进度滚动
+
+    auto playNew = [this, hash]()
+    {
+        if (!m_climaxPreviewing || m_climaxRequestHash != hash || m_climaxFinishing)
+            return;
+        fetchClimaxPreview(hash);
+    };
+
+    if (wasPreviewing)
+    {
+        // A 歌高潮切到 B 歌高潮：旧片段快速淡出后再取新片段
+        fadeClimaxVolume(
+            0.0, 160,
+            [this, playNew]()
+            {
+                if (m_climaxFinishing)
+                    return;
+                m_climaxFinishing = true;  // 清空 source 触发的错误不再按试听失败处理
+                releaseClimaxBuffer();
+                m_climaxPlayer->stop();
+                m_climaxPlayer->setSource(QUrl());
+                m_climaxFinishing = false;
+                m_climaxOutput->setVolume(0.0);
+                playNew();
+            }
+        );
+        return;
+    }
+
+    if (m_climaxResumeWasPlaying)
+    {
+        // 主播放先淡出再暂停（保留进度），之后才起高潮片段，避免两路声音叠加
+        fadeOutVolume(
+            280,
+            [this, playNew]()
+            {
+                if (!m_climaxPreviewing || m_climaxFinishing)
+                    return;
+                if (m_player->playbackState() == QMediaPlayer::PlayingState)
+                    m_player->pause();
+                m_isPaused = true;
+                emit isPausedChanged();
+                playNew();
+            }
+        );
+    }
+    else
+    {
+        // 原本就没在播：静音主输出后直接取片段
+        m_audioOutput->setVolume(0.0);
+        playNew();
+    }
+}
+
+void PlaylistManager::updateClimaxPreviewProgress(qint64 positionMs)
+{
+    if (m_climaxEndMs <= m_climaxStartMs)
+        return;
+    const qint64 span      = m_climaxEndMs - m_climaxStartMs;
+    const qint64 rel       = qBound<qint64>(0, positionMs - m_climaxStartMs, span);
+    m_climaxPreviewPercent = qreal(rel) / qreal(span);
+    m_climaxPreviewPosStr  = formatTime(rel);
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (now - m_lastPercentNotifyMs >= 1000 / 24)
+    {
+        m_lastPercentNotifyMs = now;
+        emit percentChanged();
+    }
+}
+
+void PlaylistManager::setClimaxPreviewPosition(qreal percent)
+{
+    if (!m_climaxPreviewing || m_climaxEndMs <= m_climaxStartMs)
+        return;
+    const qint64 span       = m_climaxEndMs - m_climaxStartMs;
+    const qint64 songTarget = m_climaxStartMs + qint64(qBound(0.0, percent, 1.0) * qreal(span));
+    const qint64 mediaTarget = qMax<qint64>(0, songTarget - m_climaxMediaOffsetMs);
+    m_climaxPlayer->setPosition(mediaTarget);
+    updateClimaxPreviewProgress(songTarget);
+}
+
+qint64 PlaylistManager::climaxSongPosition() const
+{
+    return m_climaxPlayer->position() + m_climaxMediaOffsetMs;
+}
+
+void PlaylistManager::fetchClimaxAudioRange(
+    const QString &url, qint64 startByte, qint64 endByte, const QString &hash, qint64 startMs
+)
+{
+    if (m_climaxReply)
+    {
+        m_climaxReply->abort();
+        m_climaxReply->deleteLater();
+        m_climaxReply = nullptr;
+    }
+    if (m_climaxBuffer)
+    {
+        m_climaxPlayer->stop();
+        m_climaxPlayer->setSource(QUrl());
+        m_climaxBuffer->close();
+        m_climaxBuffer->deleteLater();
+        m_climaxBuffer = nullptr;
+    }
+
+    QNetworkRequest request{QUrl(url)};
+    request.setRawHeader("Range", QStringLiteral("bytes=%1-%2").arg(startByte).arg(endByte).toUtf8());
+    QNetworkReply *reply = m_climaxNam->get(request);
+    m_climaxReply        = reply;
+    connect(
+        reply, &QNetworkReply::finished, this,
+        [this, reply, hash, url, startMs]()
+        {
+            if (m_climaxReply != reply)  // 已被新的试听请求/结束操作取代
+            {
+                reply->deleteLater();
+                return;
+            }
+            m_climaxReply = nullptr;
+            reply->deleteLater();
+            if (!m_climaxPreviewing || m_climaxRequestHash != hash || m_climaxFinishing)
+                return;
+            const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+            if (reply->error() != QNetworkReply::NoError || status != 206)
+            {
+                // 极少数 CDN 不支持 Range：回退直接播片段 URL
+                m_climaxBufferMode    = false;
+                m_climaxMediaOffsetMs = 0;
+                m_climaxPlayer->setSource(QUrl(url));
+                return;
+            }
+            QByteArray data = reply->readAll();
+            // 从字节中间开始，向前找 MP3 帧头对齐，避免开头爆音
+            int align     = 0;
+            const int scan = qMin(4096, int(data.size()) - 1);
+            for (int i = 0; i < scan; ++i)
+            {
+                if (quint8(data.at(i)) == 0xFF && (quint8(data.at(i + 1)) & 0xE0) == 0xE0)
+                {
+                    align = i;
+                    break;
+                }
+            }
+            if (align > 0)
+                data.remove(0, align);
+            if (data.size() < 4096)
+            {
+                m_climaxBufferMode    = false;
+                m_climaxMediaOffsetMs = 0;
+                m_climaxPlayer->setSource(QUrl(url));
+                return;
+            }
+            m_climaxBuffer = new QBuffer(this);
+            m_climaxBuffer->setData(data);
+            m_climaxBuffer->open(QIODevice::ReadOnly);
+            m_climaxBufferMode    = true;
+            m_climaxMediaOffsetMs = startMs;
+            // 只播内存中的高潮段，不写本地文件，也不需要网络 seek
+            m_climaxPlayer->setSourceDevice(m_climaxBuffer, QUrl(QStringLiteral("climax.mp3")));
+        }
+    );
+}
+
+void PlaylistManager::releaseClimaxBuffer()
+{
+    if (m_climaxReply)
+    {
+        m_climaxReply->abort();
+        m_climaxReply->deleteLater();
+        m_climaxReply = nullptr;
+    }
+    if (m_climaxBuffer)
+    {
+        m_climaxPlayer->stop();
+        m_climaxPlayer->setSource(QUrl());
+        m_climaxBuffer->close();
+        m_climaxBuffer->deleteLater();
+        m_climaxBuffer     = nullptr;
+        m_climaxBufferMode = false;
+        m_climaxMediaOffsetMs = 0;
+    }
+}
+
+void PlaylistManager::loadClimaxPreviewLyric(const QString &hash)
+{
+    // 先清空并一次性通知，避免旧行/旧字符与新歌词列表混用
+    m_lyricParser.clear();
+    m_lastRawPosMs        = -1;
+    currlyric.clear();
+    m_lyricCharIndex      = -1;
+    m_lyricCharProgress   = 0.0f;
+    m_lyricChars.clear();
+    m_lyricCharCount      = 0;
+    m_lyricOffsetMs       = 0;
+    m_lyricOffsetSongHash = hash;
+    emit parlyricsuc();
+    emit currlyricChanged();
+    fetchLyricData(
+        hash,
+        [this, hash](const QString &lyric)
+        {
+            if (!m_climaxPreviewing || m_climaxPreviewHash.compare(hash, Qt::CaseInsensitive) != 0)
+                return;
+            if (lyric.isEmpty())
+                return;
+            // 不触发中间态信号：解析完成后统一重建行/字符状态再通知 QML
+            m_lyricParser.parseKRCLyrics(lyric, false);
+            m_lastRawPosMs        = -1;
+            currlyric.clear();
+            m_lyricCharIndex      = -1;
+            m_lyricCharProgress   = 0.0f;
+            m_lyricChars.clear();
+            m_lyricCharCount      = 0;
+            m_lyricOffsetSongHash = hash;
+            m_lyricOffsetMs       = 0;
+            updateLyricProgress(climaxSongPosition());
+            emit parlyricsuc();
+            emit currlyricChanged();
+        }
+    );
+}
+
+void PlaylistManager::restoreMainLyric()
+{
+    m_lyricParser.clear();
+    m_lastRawPosMs      = -1;
+    currlyric.clear();
+    m_lyricCharIndex    = -1;
+    m_lyricCharProgress = 0.0f;
+    m_lyricChars.clear();
+    m_lyricCharCount    = 0;
+    emit parlyricsuc();
+    emit currlyricChanged();
+    auto apply = [this](const QString &lyric)
+    {
+        if (lyric.isEmpty())
+            return;
+        m_lyricParser.parseKRCLyrics(lyric, false);
+        m_lastRawPosMs      = -1;
+        currlyric.clear();
+        m_lyricCharIndex    = -1;
+        m_lyricCharProgress = 0.0f;
+        m_lyricChars.clear();
+        m_lyricCharCount    = 0;
+        m_lyricOffsetSongHash = m_savedLyricOffsetHash.isEmpty() ? currentSongHash() : m_savedLyricOffsetHash;
+        m_lyricOffsetMs       = m_savedLyricOffsetMs;
+        updateLyricProgress(m_player->position());
+        emit parlyricsuc();
+        emit currlyricChanged();
+    };
+    if (!m_savedMainLyricRaw.isEmpty())
+    {
+        apply(m_savedMainLyricRaw);
+        return;
+    }
+    if (!m_mainLyricRaw.isEmpty())
+    {
+        apply(m_mainLyricRaw);
+        return;
+    }
+    const QString mainHash = currentSongHash();
+    if (mainHash.isEmpty())
+        return;
+    fetchLyricData(
+        mainHash,
+        [this, mainHash](const QString &lyric)
+        {
+            if (m_climaxPreviewing || currentSongHash() != mainHash)
+                return;
+            if (lyric.isEmpty())
+                return;
+            m_lyricParser.parseKRCLyrics(lyric, false);
+            m_lastRawPosMs      = -1;
+            currlyric.clear();
+            m_lyricCharIndex    = -1;
+            m_lyricCharProgress = 0.0f;
+            m_lyricChars.clear();
+            m_lyricCharCount    = 0;
+            m_lyricOffsetSongHash = m_savedLyricOffsetHash.isEmpty() ? mainHash : m_savedLyricOffsetHash;
+            m_lyricOffsetMs       = m_savedLyricOffsetMs;
+            updateLyricProgress(m_player->position());
+            emit parlyricsuc();
+            emit currlyricChanged();
+        }
+    );
+}
+
+void PlaylistManager::fetchClimaxPreview(const QString &hash)
+{
+    const QString requestHash = hash;
+    ApiClient::instance().get(
+        QString("https://api.special520.com/song/climax/url?hash=%1").arg(hash),
+        [this, requestHash](QByteArray body)
+        {
+            if (!m_climaxPreviewing || m_climaxRequestHash != requestHash || m_climaxFinishing)
+                return;
+            QJsonParseError pe;
+            const QJsonDocument doc = QJsonDocument::fromJson(body, &pe);
+            const QJsonObject o      = doc.object();
+            const QJsonObject data   = o.value("data").toObject();
+            const QString url        = data.value("url").toString();
+            const qint64 startMs     = data.value("start_ms").toVariant().toLongLong();
+            const qint64 endMs       = data.value("end_ms").toVariant().toLongLong();
+            const qint64 startByte   = data.value("start_byte").toVariant().toLongLong();
+            const qint64 endByte     = data.value("end_byte").toVariant().toLongLong();
+            if (pe.error != QJsonParseError::NoError || o.value("status").toInt() != 1 || url.isEmpty() || endMs <= startMs)
+            {
+                m_climaxRequestHash.clear();
+                finishClimaxPreview(true, 120);
+                emit climaxPreviewFailed(QStringLiteral("该歌曲暂无高潮试听"));
+                return;
+            }
+            m_climaxStartMs            = startMs;
+            m_climaxEndMs              = endMs;
+            m_climaxPlayStarted        = false;
+            m_climaxPreviewPercent     = 0.0;
+            m_climaxPreviewPosStr      = "00:00";
+            m_climaxPreviewDurationStr = formatTime(endMs - startMs);
+            emit percentChanged();
+            emit durationChanged();
+            // 优先按字节范围只取高潮段到内存播放；服务端未给区间时回退直接播片段 URL
+            m_climaxBufferMode    = endByte > startByte && (startMs == 0 || startByte > 0);
+            m_climaxMediaOffsetMs = m_climaxBufferMode ? startMs : 0;
+            if (m_climaxBufferMode)
+                fetchClimaxAudioRange(url, startByte, endByte, requestHash, startMs);
+            else
+                m_climaxPlayer->setSource(QUrl(url));
+        },
+        [this, requestHash](QString errorString, int)
+        {
+            if (!m_climaxPreviewing || m_climaxRequestHash != requestHash || m_climaxFinishing)
+                return;
+            m_climaxRequestHash.clear();
+            finishClimaxPreview(true, 120);
+            emit climaxPreviewFailed(QStringLiteral("高潮试听加载失败：") + errorString);
+        },
+        10000
+    );
+}
+
+void PlaylistManager::finishClimaxPreview(bool restorePlayback, int fadeMs)
+{
+    if (!m_climaxPreviewing || m_climaxFinishing)
+        return;
+    m_climaxFinishing   = true;
+    m_climaxRequestHash.clear();
+    m_climaxPlayStarted = false;  // 淡出期间阻止 position/EndOfMedia 重入
+
+    fadeClimaxVolume(
+        0.0, qMax(0, fadeMs),
+        [this, restorePlayback]()
+        {
+            m_climaxPreviewing = false;  // 先落状态：清空 source 的错误信号不再进入试听逻辑
+            releaseClimaxBuffer();
+            m_climaxPlayer->stop();
+            m_climaxPlayer->setSource(QUrl());
+            m_climaxOutput->setVolume(0.0);
+            m_climaxPreviewHash.clear();
+            m_climaxPreviewTitle.clear();
+            m_climaxPreviewSinger.clear();
+            m_climaxPreviewCover.clear();
+            m_climaxPreviewPercent     = 0.0;
+            m_climaxPreviewPosStr      = "00:00";
+            m_climaxPreviewDurationStr = "00:00";
+            m_climaxStartMs            = 0;
+            m_climaxEndMs              = 0;
+            m_climaxFinishing          = false;
+            emit climaxPreviewChanged();
+            emit currentSongChanged();  // 恢复底栏/播放页的主歌信息
+            emit percentChanged();
+            emit durationChanged();
+            restoreMainLyric();         // 恢复主歌歌词与逐字进度
+
+            if (!restorePlayback)
+            {
+                m_audioOutput->setVolume(m_targetVolume);
+                emit isPausedChanged();
+                return;
+            }
+            // 恢复进入试听前的播放状态：原来在播 → 回到原歌曲原进度继续；
+            // 原来暂停/未播 → 保持暂停（只恢复音量，不自动开播）
+            if (m_climaxResumeWasPlaying && m_player->source().isValid())
+            {
+                m_audioOutput->setVolume(0.0);
+                m_player->setPosition(m_climaxResumePosition);
+                m_player->play();
+                m_isPaused = false;
+                emit isPausedChanged();
+                fadeMainVolumeTo(m_targetVolume, 420);
+            }
+            else
+            {
+                m_audioOutput->setVolume(m_targetVolume);
+                m_isPaused = (m_player->playbackState() != QMediaPlayer::PlayingState);
+                emit isPausedChanged();
+            }
+        }
+    );
+}
+
+void PlaylistManager::cancelClimaxPreview()
+{
+    if (!m_climaxPreviewing)
+        return;
+    // 主播放操作抢占：立刻停掉试听，不恢复旧状态（新操作自己会接管播放）
+    m_climaxFinishing   = true;
+    m_climaxRequestHash.clear();
+    m_climaxPlayStarted = false;
+    m_climaxPreviewing  = false;
+    m_climaxPreviewHash.clear();
+    m_climaxPreviewTitle.clear();
+    m_climaxPreviewSinger.clear();
+    m_climaxPreviewCover.clear();
+    m_climaxPreviewPercent     = 0.0;
+    m_climaxPreviewPosStr      = "00:00";
+    m_climaxPreviewDurationStr = "00:00";
+    if (m_climaxVolAnim)
+    {
+        m_climaxVolAnim->stop();
+        m_climaxVolAnim->disconnect(this);
+    }
+    if (m_volAnim)
+    {
+        m_volAnim->stop();
+        m_volAnim->disconnect(this);  // 取消可能还在排队的“淡出后暂停”回调
+    }
+    releaseClimaxBuffer();
+    m_climaxPlayer->stop();
+    m_climaxPlayer->setSource(QUrl());
+    m_climaxOutput->setVolume(0.0);
+    m_climaxStartMs   = 0;
+    m_climaxEndMs     = 0;
+    m_climaxFinishing = false;
+    m_audioOutput->setVolume(m_targetVolume);
+    restoreMainLyric();
+    emit climaxPreviewChanged();
+    emit currentSongChanged();
+    emit percentChanged();
+    emit durationChanged();
+    emit isPausedChanged();
+}
+
+void PlaylistManager::fadeClimaxVolume(qreal target, int ms, std::function<void()> onFinished)
+{
+    if (!m_climaxVolAnim)
+        m_climaxVolAnim = new QPropertyAnimation(m_climaxOutput, "volume", this);
+    m_climaxVolAnim->stop();
+    m_climaxVolAnim->disconnect(this);
+    if (onFinished)
+        connect(m_climaxVolAnim, &QPropertyAnimation::finished, this, [onFinished]() { onFinished(); });
+    m_climaxVolAnim->setStartValue(m_climaxOutput->volume());
+    m_climaxVolAnim->setEndValue(qBound(0.0, target, 1.0));
+    m_climaxVolAnim->setDuration(qMax(0, ms));
+    m_climaxVolAnim->setEasingCurve(QEasingCurve::InOutQuad);
+    m_climaxVolAnim->start();
+}
+
+void PlaylistManager::fadeMainVolumeTo(qreal target, int ms, std::function<void()> onFinished)
+{
+    if (!m_volAnim)
+        m_volAnim = new QPropertyAnimation(m_audioOutput, "volume", this);
+    m_volAnim->stop();
+    m_volAnim->disconnect(this);
+    if (onFinished)
+        connect(m_volAnim, &QPropertyAnimation::finished, this, [onFinished]() { onFinished(); });
+    m_volAnim->setStartValue(m_audioOutput->volume());
+    m_volAnim->setEndValue(qBound(0.0, target, 1.0));
+    m_volAnim->setDuration(qMax(0, ms));
+    m_volAnim->setEasingCurve(QEasingCurve::InOutQuad);
+    m_volAnim->start();
+}
+
 void PlaylistManager::fetchSongUrl(const QString &hash, std::function<void(QString)> callback,
                                    bool keepIntegrityCount)
 {
@@ -2152,15 +2772,19 @@ void PlaylistManager::updatePlaybackProgress(qint64 position)
     // 歌曲播完后 position 会重置到 0，跳过以避免歌词闪回第一句
     if (m_player->mediaStatus() == QMediaPlayer::EndOfMedia)
         return;
+    // 高潮试听期间主歌进度/歌词都不更新，避免覆盖试听中的 UI
+    if (m_climaxPreviewing)
+        return;
     emit playbackPositionChanged(position);
 
     if (m_player->duration() > 0)
     {
         m_percent    = static_cast<float>(position) / m_player->duration();
         m_percentstr = formatTime(position);
-        // 限频 100ms（10fps）：本地文件播放 positionChanged 可达 80Hz+。
-        const qint64 percentNow = QDateTime::currentMSecsSinceEpoch();
-        if (!m_uiIdle && percentNow - m_lastPercentNotifyMs >= 100)
+        // 约 24Hz 刷新进度条/时间：失焦或遮挡时也保持流畅（不再降到 1Hz）
+        const qint64 percentNow     = QDateTime::currentMSecsSinceEpoch();
+        const qint64 notifyInterval = 1000 / 24;
+        if (percentNow - m_lastPercentNotifyMs >= notifyInterval)
         {
             m_lastPercentNotifyMs = percentNow;
             emit percentChanged();
@@ -2192,8 +2816,8 @@ void PlaylistManager::updatePlaybackProgress(qint64 position)
                 qDebug() << "缓冲中: 播放进度" << m_percent << "下载进度" << m_downloadProgress;
             }
         }
-        // 缓冲恢复：下载进度领先播放进度足够多
-        if (m_isBuffering && m_downloadProgress - m_percent > 0.1)
+        // 缓冲恢复：下载进度领先播放进度足够多（高潮试听期间不恢复主播放）
+        if (!m_climaxPreviewing && m_isBuffering && m_downloadProgress - m_percent > 0.1)
         {
             m_isBuffering = false;
             m_player->play();
@@ -2251,7 +2875,9 @@ void PlaylistManager::fadeOutVolume(int ms, std::function<void()> onFinished)
 void PlaylistManager::updateLyricProgress(qint64 position)
 {
     // 歌词偏移按歌生效：切歌/换一起听歌曲时自动归零（同一首歌 seek、修复重播不受影响）
-    const QString songHash = (type == TOGETHER) ? m_currentTogetherSongHash : currentSongHash();
+    const QString songHash = m_climaxPreviewing
+                                 ? m_climaxPreviewHash
+                                 : ((type == TOGETHER) ? m_currentTogetherSongHash : currentSongHash());
     if (songHash != m_lyricOffsetSongHash)
     {
         m_lyricOffsetSongHash = songHash;
@@ -2266,8 +2892,11 @@ void PlaylistManager::updateLyricProgress(qint64 position)
     const qint64 tickNow = QDateTime::currentMSecsSinceEpoch();
     if (position == m_lastRawPosMs)
     {
-        // 值未刷新（阶梯间隙）：仅播放中按真实时间推进
-        if (m_player->playbackState() == QMediaPlayer::PlayingState)
+        // 值未刷新（阶梯间隙）：仅播放中按真实时间推进（试听时用试听播放器状态）
+        const bool playing = m_climaxPreviewing
+                                 ? (m_climaxPlayer->playbackState() == QMediaPlayer::PlayingState)
+                                 : (m_player->playbackState() == QMediaPlayer::PlayingState);
+        if (playing)
             position = m_lastRawPosMs + (tickNow - m_lastRawTickMs);
         else
             m_lastRawTickMs = tickNow;
@@ -2552,12 +3181,15 @@ void PlaylistManager::playTogetherSongFromServer(
     const QString &coverUrl, const QString &albumName, const QString &duration, const QString &mxid
 )
 {
-    // 防重入：同一首歌正在播放或下载中，跳过
+    // 防重入：同一首歌的周期同步不打断高潮试听
     if (m_currentTogetherSongHash == songHash)
     {
-        qDebug() << "一起听 - 跳过重复播放请求:" << songName;
+        qDebug() << "一起听 - 跳过重复播放请求:" << songName
+                 << (m_climaxPreviewing ? "(试听中)" : "");
         return;
     }
+    cancelClimaxPreview();  // 房间切到新歌：结束试听，交给新歌
+    m_mainLyricRaw.clear();
     m_currentTogetherSongHash = songHash;
 
     // 记录到最近播放
@@ -2726,6 +3358,7 @@ void PlaylistManager::playTogetherSongFromServer(
         {
             if (!lyric.isEmpty())
             {
+                m_mainLyricRaw = lyric;
                 m_lyricParser.parseKRCLyrics(lyric);
                 qDebug() << "一起听模式 - 歌词获取成功，长度:" << lyric.length();
             }
@@ -2739,6 +3372,9 @@ void PlaylistManager::playTogetherSongFromServer(
 
 void PlaylistManager::seekToPercent(double percent)
 {
+    // 一起听进度同步不干预本地试听
+    if (m_climaxPreviewing)
+        return;
     if (m_player->duration() > 0)
     {
         qint64 targetPos = static_cast<qint64>(percent * m_player->duration());
@@ -2775,6 +3411,10 @@ void PlaylistManager::clearLocalPaused()
 
 void PlaylistManager::setPaused(bool paused)
 {
+    // 一起听房间的周期播放状态同步不打断本地高潮试听；试听结束后再按保存状态恢复
+    if (m_climaxPreviewing)
+        return;
+    cancelClimaxPreview();
     if (paused && m_player->playbackState() == QMediaPlayer::PlayingState)
     {
         // 一起听：暂停前 1.5s 渐弱，再真正暂停（图标立即切换为暂停）

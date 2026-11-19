@@ -3,7 +3,7 @@
 
 LyricParser::LyricParser(QObject *parent) : QObject(parent) {}
 
-bool LyricParser::parseKRCLyrics(const QString &krcText)
+bool LyricParser::parseKRCLyrics(const QString &krcText, bool notify)
 {
     m_lyrics.clear();
 
@@ -104,7 +104,8 @@ bool LyricParser::parseKRCLyrics(const QString &krcText)
     std::sort(m_lyrics.begin(), m_lyrics.end(), [](const LyricLine &a, const LyricLine &b) { return a.time < b.time; });
 
     qDebug() << "KRC歌词解析完成，共" << m_lyrics.size() << "行";
-    emit parselyricsuc();
+    if (notify)
+        emit parselyricsuc();
     return !m_lyrics.isEmpty();
 }
 

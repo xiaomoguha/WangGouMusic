@@ -8,7 +8,7 @@ Rectangle {
     height: 8
     radius: 4
     color: dotColor
-    visible: playlistmanager && playlistmanager.climaxPercent > 0
+    visible: playlistmanager && playlistmanager.climaxPercent > 0 && !playlistmanager.climaxPreviewing
     anchors.verticalCenter: parent.verticalCenter
     x: playlistmanager ? Math.min(Math.max(parent.width * playlistmanager.climaxPercent - width / 2, 0), parent.width - width)
                        : 0

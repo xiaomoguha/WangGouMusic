@@ -3,6 +3,7 @@ singleton AppTheme AppTheme.qml
 singleton AppIcon AppIcon.qml
 LocateCurrentButton LocateCurrentButton.qml
 IconButton IconButton.qml
+ClimaxPreviewButton ClimaxPreviewButton.qml
 ThemedPopup ThemedPopup.qml
 NowPlayingIndicator NowPlayingIndicator.qml
 PanelBackdrop PanelBackdrop.qml

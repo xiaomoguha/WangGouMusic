@@ -142,22 +142,28 @@ Page {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 12
 
-                Text {
+                // 序号 / 播放指示共用一个槽位：给右侧高潮试听按钮腾出横向空间
+                Item {
                     width: 28
-                    text: (index + 1).toString().padStart(2, "0")
+                    height: 28
                     anchors.verticalCenter: parent.verticalCenter
-                    font.pixelSize: AppTheme.fontSizeBodyLg
-                    color: isPlaying ? AppTheme.accentPlaying : AppTheme.textMuted
-                    font.family: AppTheme.fontFamily
-                    visible: !songItem.isPlaying
-                }
 
-                NowPlayingIndicator {
-                    width: 20
-                    height: 20
-                    visible: songItem.isPlaying
-                    playing: playlistmanager ? !playlistmanager.isPaused : true
-                    anchors.verticalCenter: parent.verticalCenter
+                    Text {
+                        anchors.centerIn: parent
+                        text: (index + 1).toString().padStart(2, "0")
+                        font.pixelSize: AppTheme.fontSizeBodyLg
+                        color: isPlaying ? AppTheme.accentPlaying : AppTheme.textMuted
+                        font.family: AppTheme.fontFamily
+                        visible: !songItem.isPlaying
+                    }
+
+                    NowPlayingIndicator {
+                        anchors.centerIn: parent
+                        width: 20
+                        height: 20
+                        visible: songItem.isPlaying
+                        playing: playlistmanager ? !playlistmanager.isPaused : true
+                    }
                 }
 
                 Rectangle {
@@ -176,7 +182,8 @@ Page {
                 }
 
                 Column {
-                    width: 0.2 * root.width
+                    // 自适应：左边界到操作区之间全部给歌名，避免歌名/操作按钮/专辑互相重叠
+                    width: Math.max(80, actionRow.x - (0.025 * root.width + 28 + 12 + 40 + 12) - 12)
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 3
 
@@ -232,18 +239,32 @@ Page {
 
             // 操作按钮（悬停显示，固定位置，不影响布局）
             Row {
-                visible: songItem.showActions
-                x: 0.33 * root.width
+                id: actionRow
+                visible: songItem.showActions || climaxPreviewBtn.active
+                // 固定槽位紧跟在歌名右侧（12px 间距），整体靠左且不压专辑列
+                x: 0.48 * root.width - width - 8
+                width: 192
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 4
                 z: 1
 
+                // 高潮试听：文字按钮放在播放/加入一起听左侧
+                ClimaxPreviewButton {
+                    id: climaxPreviewBtn
+                    songHash: model.songhash
+                    songTitle: model.songname
+                    songSinger: model.singername
+                    songCover: model.union_cover
+                    rowHovered: itemHover.hovered
+                    compact: true
+                }
+
                 // 播放
                 IconButton {
-                    visible: !isTogetherMode
+                    visible: !isTogetherMode && !isPlaying
                     iconSource: AppIcon.playCircle
-                    size: 30
-                    iconSize: 16
+                    size: 24
+                    iconSize: 14
                     onClicked: {
                         playlistmanager.playNextAndPlay({
                             "songname": model.songname,
@@ -262,8 +283,8 @@ Page {
                     visible: !isTogetherMode && model.mvhash !== ""
                     iconSource: AppIcon.video
                     iconColor: AppTheme.textSecondary
-                    size: 30
-                    iconSize: 16
+                    size: 24
+                    iconSize: 14
                     onClicked: {
                         BasicConfig.requestMvPlay({ mvhash: model.mvhash, title: model.songname,
                                                     singername: model.singername, songhash: model.songhash,
@@ -277,8 +298,8 @@ Page {
                     iconSource: aiExpand.expanded ? AppIcon.caretDown
 
                         : (aiExpand.aiSongs.length > 0 ? AppIcon.caretRight : AppIcon.sparkle)
-                    size: 30
-                    iconSize: 16
+                    size: 24
+                    iconSize: 14
                     onClicked: {
                         aiExpand.toggle(model.songhash, model.songname)
                     }
@@ -286,10 +307,10 @@ Page {
 
                 // 添加到下一首播放（已有则移动到下一首）
                 IconButton {
-                    visible: !isTogetherMode
+                    visible: !isTogetherMode && !isPlaying
                     iconSource: AppIcon.addToList
-                    size: 30
-                    iconSize: 16
+                    size: 24
+                    iconSize: 14
                     onClicked: {
                         playlistmanager.addSongNext({
                             "songname": model.songname,
@@ -308,15 +329,15 @@ Page {
                     id: togetherBtn
                     visible: (websocket && websocket.connected) || isTogetherMode
                     iconSource: AppIcon.addTogether
-                    size: 30
-                    iconSize: 16
+                    size: 24
+                    iconSize: 14
                     iconColor: (togetherBtn.hovered ? AppTheme.accent : AppTheme.iconDefault)
                     onClicked: websocket.addSongToTogether(model.songname, model.songhash, model.singername, model.album_name, model.duration, model.union_cover)
                 }
 
             }
 
-            // 专辑（固定位置）
+            // 专辑（保持原位置，操作按钮区在其左侧）
             Text {
                 x: 0.48 * root.width
                 anchors.verticalCenter: parent.verticalCenter

@@ -468,7 +468,8 @@ Item {
                     }
 
                     Column {
-                        width: 0.3 * songsList.width
+                        // 给悬停操作区（含高潮试听按钮）留出固定宽度的空间
+                        width: 0.24 * songsList.width
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 4
 
@@ -495,7 +496,7 @@ Item {
                     // 操作按钮区（悬停显示；一起听模式只留「加入一起听」）
                     Item {
                         id: actionArea
-                        width: isTogetherMode ? 70 : 138
+                        width: isTogetherMode ? 130 : 198
                         height: 30
                         anchors.verticalCenter: parent.verticalCenter
                         HoverHandler { id: actionHover }
@@ -503,7 +504,17 @@ Item {
                         Row {
                             anchors.fill: parent
                             spacing: 4
-                            visible: songHover.hovered
+                            visible: songHover.hovered || climaxPreviewBtn.active
+
+                            // 高潮试听：文字按钮放在播放/加入一起听左侧
+                            ClimaxPreviewButton {
+                                id: climaxPreviewBtn
+                                songHash: songData.songhash
+                                songTitle: songData.songname
+                                songSinger: songData.singername
+                                songCover: songData.union_cover
+                                rowHovered: songHover.hovered
+                            }
 
                             IconButton {
                                 visible: !isTogetherMode && !isPlaying
@@ -570,7 +581,7 @@ Item {
                             }
 
                             IconButton {
-                                visible: isTogetherMode
+                                visible: isTogetherMode && !isPlaying
                                 iconSource: AppIcon.addTogether
                                 size: 30
                                 iconSize: 16

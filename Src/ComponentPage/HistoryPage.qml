@@ -364,14 +364,24 @@ Item {
 
                 // 操作按钮区（固定宽度占位，悬停时显示；布局同歌单详情页）
                 Item {
-                    width: isTogetherMode ? 70 : 170
+                    width: isTogetherMode ? 130 : 192
                     height: 30
                     anchors.verticalCenter: parent.verticalCenter
 
                     Row {
                         anchors.fill: parent
                         spacing: 4
-                        visible: songHover.hovered
+                        visible: songHover.hovered || climaxPreviewBtn.active
+
+                        // 高潮试听：文字按钮放在播放/加入一起听左侧
+                        ClimaxPreviewButton {
+                            id: climaxPreviewBtn
+                            songHash: model.songhash
+                            songTitle: model.songname
+                            songSinger: model.singername
+                            songCover: model.union_cover
+                            rowHovered: songHover.hovered
+                        }
 
                         IconButton {
                             visible: !isTogetherMode && !isPlaying
