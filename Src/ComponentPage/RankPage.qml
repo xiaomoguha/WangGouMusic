@@ -348,6 +348,7 @@ Item {
                     }
 
                     delegate: HoverRow {
+                        id: songRow
                         hovered: songHover.hovered
                         width: songsList.width
                         height: 60
@@ -423,10 +424,10 @@ Item {
                                 }
                             }
 
-                            // 操作按钮区（固定占位，悬停时显示；一起听模式只留「加入一起听」）
+                            // 行内只保留 试听 + 播放/加入一起听，其余进右键菜单
                             Item {
                                 id: actionArea
-                                width: isTogetherMode ? 94 : 168
+                                width: 90
                                 height: 30
                                 anchors.verticalCenter: parent.verticalCenter
                                 HoverHandler { id: actionHover }
@@ -436,7 +437,6 @@ Item {
                                     spacing: 4
                                     visible: songHover.hovered || climaxPreviewBtn.active
 
-                                    // 高潮试听：文字按钮放在播放/加入一起听左侧
                                     ClimaxPreviewButton {
                                         id: climaxPreviewBtn
                                         songHash: songData.songhash
@@ -464,41 +464,6 @@ Item {
                                         }
                                     }
 
-                                    IconButton {
-                                        visible: !isTogetherMode && !isPlaying
-                                        iconSource: AppIcon.addToList
-                                        size: 30
-                                        iconSize: 16
-                                        onClicked: {
-                                            playlistmanager.addSongNext({
-                                                "songname": songData.songname,
-                                                "songhash": songData.songhash,
-                                                "singername": songData.singername,
-                                                "union_cover": songData.union_cover,
-                                                "album_name": songData.album_name,
-                                                "duration": songData.duration
-                                            })
-                                            BasicConfig.emitSongAdded("已添加到下一首: " + songData.songname)
-                                        }
-                                    }
-
-                                    // 收藏到「我喜欢」
-                                    IconButton {
-                                        visible: !isTogetherMode && !isPlaying
-                                        iconSource: AppIcon.heart
-                                        iconColor: AppTheme.textSecondary
-                                        size: 30
-                                        iconSize: 16
-                                        onClicked: {
-                                            if (!userManager || !userManager.isLoggedIn) {
-                                                BasicConfig.noticeError("请先登录")
-                                                return
-                                            }
-                                            playlistCollection.addToFavorite(songData.songname, songData.songhash, songData.singername)
-                                        }
-                                    }
-
-                                    // 加入一起听
                                     IconButton {
                                         visible: isTogetherMode && !isPlaying
                                         iconSource: AppIcon.addTogether
@@ -556,6 +521,25 @@ Item {
                                     BasicConfig.emitSongAdded("正在播放: " + songData.songname)
                                 }
                             }
+                        }
+
+                        function contextSong() {
+                            return {
+                                "songname": songData.songname,
+                                "songhash": songData.songhash,
+                                "singername": songData.singername,
+                                "union_cover": songData.union_cover,
+                                "album_name": songData.album_name,
+                                "duration": songData.duration,
+                                "mvhash": songData.mvhash || ""
+                            }
+                        }
+
+                        TapHandler {
+                            acceptedButtons: Qt.RightButton
+                            onTapped: BasicConfig.requestSongContextMenu(contextSong(), {
+                                "togetherMode": isTogetherMode
+                            })
                         }
                     }
                 }

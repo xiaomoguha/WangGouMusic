@@ -85,6 +85,43 @@ Item {
     property int currentSongIndex: -1        // 当前播放在 filteredSongs 中的下标，-1 = 不在此列表
     property bool _autoLocated: false        // 进入歌单后是否已自动定位过一次
     property bool _refreshingAll: false      // 手动刷新：全量连拉中（滚动加载让位，避免双请求）
+    property string _pendingDetailGid: ""    // 等待真正加载的歌单 gid
+
+    // 打开歌单详情：先切视图并显示加载动画，下一帧再解析缓存/发请求
+    function scheduleDetailOpen(gid, name, count) {
+        if (!userManager || gid === "")
+            return
+        currentListId = gid
+        currentListName = name || "歌单"
+        currentListCount = count || 0
+        currentSongs = []
+        detailPage = 1
+        hasMoreSongs = true
+        _autoLocated = false
+        isLoadingDetail = true
+        viewState = "detail"
+        _pendingDetailGid = gid
+        detailLoadDelay.restart()
+    }
+
+    function loadDetailAfterSwitch() {
+        var gid = _pendingDetailGid !== "" ? _pendingDetailGid : currentListId
+        if (gid === "" || !userManager)
+            return
+        _pendingDetailGid = ""
+        currentListId = gid
+        // 不在 UI 线程解析 1.5MB 缓存：先显示加载动画，直接走接口
+        isLoadingDetail = true
+        detailPage = 1
+        userManager.fetchPlaylistDetail(gid, 1, detailPageSize)
+    }
+
+    Timer {
+        id: detailLoadDelay
+        interval: 50
+        repeat: false
+        onTriggered: loadDetailAfterSwitch()
+    }
 
     onSearchKeywordChanged: triggerSearch()
     onCurrentSongsChanged: updateFilteredSongs()
@@ -251,6 +288,10 @@ Item {
             hasMorePlaylists = rawList.length >= playlistPageSize
         }
         function onPlaylistDetailReceived(data) {
+            // 快速切换歌单时丢弃旧请求的响应
+            var requestGid = data["_request_gid"] || ""
+            if (requestGid !== "" && requestGid !== currentListId)
+                return
             isLoadingDetail = false
             isLoadingMoreSongs = false
             var detailData = data["data"] || data
@@ -267,6 +308,8 @@ Item {
             var normalized = []
             for (var i = 0; i < songList.length; i++) {
                 var s = songList[i]
+                // 下架占位项（只有 fileid/shield，没有 hash）直接跳过
+                if (!s.hash) continue
                 var singerName = ""
                 if (s.singerinfo && s.singerinfo.length > 0) {
                     var si = s.singerinfo[0]
@@ -519,55 +562,8 @@ Item {
                                 TapHandler {
                                     cursorShape: Qt.PointingHandCursor
                                     onTapped: {
-                                        if (!userManager) return
                                         var gid = playlistData.global_collection_id || ""
-                                        if (gid === "") return
-                                        currentListId = gid
-                                        currentListName = playlistData.name || "歌单"
-                                        currentListCount = playlistData.count || 0
-                                        detailPage = 1
-                                        hasMoreSongs = true
-
-                                        // 先加载缓存
-                                        var cachedDetail = userManager.loadCachedPlaylistDetail(gid)
-                                        var cd = cachedDetail["data"] || cachedDetail
-                                        if (cd) {
-                                            var cachedSongs = []
-                                            if (cd.songs && cd.songs.length > 0) cachedSongs = Array.prototype.slice.call(cd.songs)
-                                            else if (cd.info && cd.info.length > 0) cachedSongs = Array.prototype.slice.call(cd.info)
-                                            if (cachedSongs.length > 0) {
-                                                currentListCount = cd.count || cd.total || cachedSongs.length
-                                                var normalized = []
-                                                for (var j = 0; j < cachedSongs.length; j++) {
-                                                    var s = cachedSongs[j]
-                                                    var sn = ""
-                                                    if (s.singerinfo && s.singerinfo.length > 0) { var si = s.singerinfo[0]; sn = (si && si.name) ? si.name : "" }
-                                                    var cu = (s.cover || "").replace("{size}", "80")
-                                                    normalized.push({
-                                                        "songname": s.songname || (s.name || "").split(" - ").pop() || s.name || "",
-                                                        "singername": sn || (s.name || "").split(" - ")[0] || "",
-                                                        "hash": s.hash || "", "cover": cu, "union_cover": cu,
-                                                        "album_name": (s.albuminfo && s.albuminfo.name) ? s.albuminfo.name : (s.album_name || ""),
-                                                        "duration": s.duration ? (String(s.duration).indexOf(":") >= 0 ? s.duration : fmtDuration(s.duration)) : (s.timelen ? fmtDuration(Math.round(s.timelen / 1000)) : "--:--"),
-                                                    })
-                                                }
-                                                currentSongs = normalized
-                                            }
-                                        }
-
-                                        _autoLocated = false
-                                        viewState = "detail"
-                                        // 有缓存直接展示（来自启动红心同步/上次刷新落盘），不再自动拉；
-                                        if (currentSongs.length > 0) {
-                                            // 缓存是已加载前缀：续拉从下一页接着
-                                            detailPage = Math.ceil(currentSongs.length / detailPageSize)
-                                            hasMoreSongs = currentSongs.length < currentListCount
-                                            isLoadingDetail = false
-                                        } else {
-                                            isLoadingDetail = true
-                                            detailPage = 1
-                                            userManager.fetchPlaylistDetail(gid, 1, detailPageSize)
-                                        }
+                                        scheduleDetailOpen(gid, playlistData.name || "歌单", playlistData.count || 0)
                                     }
                                 }
                             }
@@ -610,6 +606,35 @@ Item {
                     }
                 }
             }
+
+            // 新建歌单（固定在列表页顶部右侧）
+            Rectangle {
+                id: newPlaylistBtn
+                width: 108
+                height: 32
+                radius: 16
+                anchors.top: parent.top
+                anchors.topMargin: 18
+                anchors.right: parent.right
+                anchors.rightMargin: 0.04 * userPlaylistPage.width
+                color: newPlaylistHover.hovered ? AppTheme.accentHover : AppTheme.accent
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "＋ 新建歌单"
+                    color: "white"
+                    font.pixelSize: AppTheme.fontSizeSmall
+                    font.bold: true
+                    font.family: AppTheme.fontFamily
+                }
+
+                HoverHandler { id: newPlaylistHover }
+                TapHandler {
+                    cursorShape: Qt.PointingHandCursor
+                    onTapped: createPlaylistDialog.openDialog()
+                }
+                Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+            }
         }
 
         // ═══════ 歌曲详情视图 ═══════
@@ -635,6 +660,48 @@ Item {
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: 18
                 z: 10
+            }
+
+            // 详情加载动画：先切到详情页，再解析缓存/拉数据
+            Column {
+                anchors.centerIn: parent
+                spacing: 10
+                z: 11
+                visible: isLoadingDetail && currentSongs.length === 0
+
+                Item {
+                    width: 28
+                    height: 28
+                    anchors.horizontalCenter: parent.horizontalCenter
+
+                    Image {
+                        id: detailLoadingIcon
+                        anchors.fill: parent
+                        source: AppIcon.refresh
+                        sourceSize: Qt.size(56, 56)
+                        fillMode: Image.PreserveAspectFit
+                        layer.enabled: true
+                        layer.effect: ColorOverlay {
+                            source: detailLoadingIcon
+                            color: AppTheme.accent
+                        }
+                        NumberAnimation on rotation {
+                            from: 0
+                            to: 360
+                            duration: 900
+                            loops: Animation.Infinite
+                            running: parent.parent.visible && !BasicConfig.uiIdle
+                        }
+                    }
+                }
+
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "正在加载歌单..."
+                    color: AppTheme.textMuted
+                    font.pixelSize: AppTheme.fontSizeSmall
+                    font.family: AppTheme.fontFamily
+                }
             }
 
             Column {
@@ -718,7 +785,7 @@ Item {
                     Row {
                         id: detailActions
                         anchors.left: parent.left
-                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
                         spacing: 12
 
                     Rectangle {
@@ -928,7 +995,7 @@ Item {
                         ListView {
                             id: songsListView
                             width: parent.width
-                            height: parent.height - 60 - detailActions.height - 12
+                            height: parent.height - 60 - detailActionsWrapper.height - 12
                             clip: true
                             interactive: true
                             cacheBuffer: 600
@@ -987,6 +1054,7 @@ Item {
                             }
 
                             delegate: HoverRow {
+                                id: songItemRow
                                 hovered: songMouse.hovered
                                 width: songsListView.width
                                 height: 60
@@ -1054,9 +1122,9 @@ Item {
                                         }
                                     }
 
-                                    // 操作按钮区（固定宽度，悬停时显示按钮）
+                                    // 行内只保留 试听 + 播放/加入一起听，其余进右键菜单
                                     Item {
-                                        width: isTogetherMode ? 94 : 128
+                                        width: 90
                                         height: 30
                                         anchors.verticalCenter: parent.verticalCenter
 
@@ -1092,27 +1160,6 @@ Item {
                                                         "album_name": s.album_name,
                                                         "duration": s.duration
                                                     })
-                                                }
-                                            }
-
-                                            IconButton {
-                                                id: addBtn
-                                                visible: !isTogetherMode && !isPlaying
-                                                size: 30; iconSize: 16
-                                                iconSource: AppIcon.addToList
-                                                iconColor: (addBtn.hovered ? AppTheme.accent : "#FFFFFF")
-                                                onClicked: {
-                                                    if (!playlistmanager) return
-                                                    var s = filteredSongs[index]
-                                                    playlistmanager.addSongNext({
-                                                        "songname": s.songname,
-                                                        "songhash": s.hash,
-                                                        "singername": s.singername,
-                                                        "union_cover": s.cover,
-                                                        "album_name": s.album_name,
-                                                        "duration": s.duration
-                                                    })
-                                                    BasicConfig.emitSongAdded("已添加到下一首: " + s.songname)
                                                 }
                                             }
 
@@ -1191,10 +1238,41 @@ Item {
                                 }
 
                                 HoverHandler { id: songMouse }
+
+                                function contextSong() {
+                                    var s = filteredSongs[index]
+                                    if (!s) return ({})
+                                    return {
+                                        "songname": s.songname,
+                                        "songhash": s.hash,
+                                        "singername": s.singername,
+                                        "union_cover": s.cover,
+                                        "album_name": s.album_name,
+                                        "duration": s.duration,
+                                        "mvhash": s.mvhash || ""
+                                    }
+                                }
+
+                                TapHandler {
+                                    acceptedButtons: Qt.RightButton
+                                    onTapped: BasicConfig.requestSongContextMenu(contextSong(), {
+                                        "togetherMode": isTogetherMode
+                                    })
+                                }
                             }
                         }
                     }
                 }
+    }
+
+    // 新建歌单弹窗
+    CreatePlaylistDialog {
+        id: createPlaylistDialog
+        onCreated: {
+            playlistPage = 1
+            userManager.fetchUserPlaylist(1, playlistPageSize)
+            BasicConfig.noticeSuccess("已创建歌单: " + name)
+        }
     }
 
     // 返回后延迟清理数据

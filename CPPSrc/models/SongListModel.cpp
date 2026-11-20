@@ -90,6 +90,18 @@ QVariant SongListModel::get(int index) const
     return m;
 }
 
+int SongListModel::indexOfHash(const QString &hash) const
+{
+    if (hash.isEmpty())
+        return -1;
+    for (int i = 0; i < m_songs.size(); ++i)
+    {
+        if (m_songs.at(i).songhash == hash)
+            return i;
+    }
+    return -1;
+}
+
 // ── 数据操作 ──
 
 void SongListModel::syncFromList(const QList<SongInfo> &songs)

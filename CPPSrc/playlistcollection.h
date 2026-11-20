@@ -37,10 +37,11 @@ public:
     Q_INVOKABLE void uncollectPlaylist(const QString &listid);
     // 新建歌单（type=0），返回新歌单 listid 通过 signal
     Q_INVOKABLE void createPlaylist(const QString &name);
-    // 往歌单加歌：songs 每项含 songname/songhash/album_id/mixsongid；
-    Q_INVOKABLE void addTracks(const QString &listid, const QVariantList &songs, const QString &successMsg = QString());
-    // 从歌单删歌：fileids 为数字 id 数组
-    Q_INVOKABLE void removeTracks(const QString &listid, const QVariantList &fileids);
+    // 往歌单加歌：songs 每项含 songname/songhash/album_id/mixsongid；type 0=自建 1=收藏
+    Q_INVOKABLE void addTracks(const QString &listid, const QVariantList &songs,
+                               const QString &successMsg = QString(), int type = 0);
+    // 从歌单删歌：fileids 为数字 id 数组；type 0=自建 1=收藏
+    Q_INVOKABLE void removeTracks(const QString &listid, const QVariantList &fileids, int type = 0);
     // 添加到「我喜欢」：从歌单缓存找名字含「我喜欢」的歌单，把歌加进去
     Q_INVOKABLE void addToFavorite(const QString &songname, const QString &songhash, const QString &singername,
                                    const QVariantList &freshPlaylists = {});
@@ -58,6 +59,10 @@ signals:
     void isWorkingChanged();
     // success: 操作是否成功；message: 用户可读结果（成功/失败原因）
     void operationFinished(bool success, const QString &message);
+    // 新建歌单成功：返回新歌单 listid/name（用于创建后自动加歌）
+    void playlistCreated(const QString &listid, const QString &name);
+    // 歌单内歌曲已删除：页面据此立即重拉曲目（服务端 track/all 不做缓存）
+    void tracksRemoved();
     // 「我喜欢」歌曲 hash 集合已更新（红心状态刷新）
     void favoriteHashesChanged();
     // 「我喜欢」歌单 gid 已定位（详情页隐藏红心用）

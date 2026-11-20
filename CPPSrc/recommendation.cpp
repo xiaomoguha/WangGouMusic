@@ -10,11 +10,20 @@
 #include <QDebug>
 #include <QTime>
 #include <QRandomGenerator>
+#include <QRunnable>
+#include <QThreadPool>
 
 namespace
 {
 // 歌单曲目 JSON -> SongInfo（onPlaylistTracksData 网络解析与 loadCachedPlaylistTracks
 // 缓存加载共用，保持两条路径字段映射一致）
+// 服务端会把版权下架歌曲退回成 {fileid, shield:1} 占位项，没有 hash/name，
+// 直接过滤掉，避免列表里出现空白行
+bool isPlaceholderSong(const QJsonObject &s)
+{
+    return s["hash"].toString().isEmpty() && s["name"].toString().isEmpty();
+}
+
 SongInfo parsePlaylistSong(const QJsonObject &s)
 {
     QString hash = s["hash"].toString();
@@ -53,6 +62,58 @@ SongInfo parsePlaylistSong(const QJsonObject &s)
     song.mvhash = s["mvhash"].toString();
     return song;
 }
+
+struct CacheReadResult
+{
+    QList<SongInfo> songs;
+    int rawCount = 0;
+    int total    = 0;
+    bool ok      = false;
+};
+
+// 后台线程执行：读文件 + JSON 解析 + 构造 SongInfo（不碰 model/QObject）
+CacheReadResult readPlaylistCache(const QString &path)
+{
+    CacheReadResult r;
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly))
+        return r;
+    const QByteArray bytes = f.readAll();
+    f.close();
+
+    QJsonParseError error;
+    const QJsonDocument doc = QJsonDocument::fromJson(bytes, &error);
+    if (error.error != QJsonParseError::NoError || !doc.isObject())
+        return r;
+
+    const QJsonObject data = doc.object().value("data").toObject();
+    const QJsonArray songs = data.value("songs").toArray();
+    r.rawCount = songs.size();
+    r.total    = data.value("count").toInt(r.rawCount);
+    r.ok       = true;
+    r.songs.reserve(r.rawCount);
+    for (const QJsonValue &val : songs)
+    {
+        const QJsonObject obj = val.toObject();
+        if (!isPlaceholderSong(obj))
+            r.songs.append(parsePlaylistSong(obj));
+    }
+    return r;
+}
+
+class CacheReadRunnable : public QRunnable
+{
+public:
+    explicit CacheReadRunnable(std::function<void()> fn) : m_fn(std::move(fn)) {}
+    void run() override
+    {
+        if (m_fn)
+            m_fn();
+    }
+
+private:
+    std::function<void()> m_fn;
+};
 } // namespace
 
 Recommendation::Recommendation(QObject *parent)
@@ -258,8 +319,32 @@ QVariantList Recommendation::getTopPlaylistsQml() const
 {
     return m_topPlaylists;
 }
+void Recommendation::beginPlaylistSwitch(const QString &globalCollectionId)
+{
+    if (globalCollectionId.isEmpty())
+        return;
+    // 先取消上一单还没回来的请求/缓存任务（避免旧结果写到新歌单）
+    ++m_cacheLoadToken;
+    m_playlistTracksRequester.cancel();
+    m_currentPlaylistId = globalCollectionId;
+    m_playlistPage      = 0;
+    m_playlistTotal     = 0;
+    m_playlistHasMore   = true;
+    m_fetchAllPages     = false;
+    // 立即清掉旧列表：页面先切过去，列表区域显示加载动画
+    m_playlistTracksModel->clear();
+    if (!m_playlistIsLoading)
+    {
+        m_playlistIsLoading = true;
+        emit playlistIsLoadingChanged();
+    }
+    emit playlistTracksChanged();
+}
+
 void Recommendation::fetchPlaylistTracks(const QString &globalCollectionId)
 {
+    // 走网络时作废还在跑的缓存读取任务，避免旧缓存覆盖新请求
+    ++m_cacheLoadToken;
     m_currentPlaylistId = globalCollectionId;
     m_playlistPage      = 0;
     m_playlistTotal     = 0;
@@ -323,61 +408,83 @@ void Recommendation::onPlaylistTracksData(const QByteArray &data)
         m_playlistTotal = serverCount;
 
     // 写穿缓存（与 UserManager.fetchPlaylistDetail 同一文件）：page 1 重置、
-    // 后续页按 hash 前缀合并。刷新/滚动/播放全部拉到的数据都实时落盘，
+    // 后续页按 hash 前缀合并。写盘/合并放到后台单线程队列，避免大歌单
+    // 滚到底部加载下一页时主线程被 1MB+ JSON 冻住。
     {
         const int page = m_playlistPage + 1; // 本次响应对应的页号（下面才递增）
-        QJsonObject cacheRoot = doc.object();
-        if (page > 1)
-        {
-            QJsonObject data = cacheRoot["data"].toObject();
-            QFile in(PlaylistCacheStore::configPath("playlist_" + m_currentPlaylistId + ".json"));
-            QJsonArray merged;
-            if (in.open(QIODevice::ReadOnly))
+        const QJsonObject cacheRoot = doc.object();
+        const QString gid = m_currentPlaylistId;
+        PlaylistCacheStore::submitPlaylistWrite(
+            [page, cacheRoot, gid]()
             {
-                merged = QJsonDocument::fromJson(in.readAll()).object().value("data").toObject().value("songs").toArray();
-                in.close();
-            }
-            QSet<QString> seen;
-            for (const QJsonValue &v : merged)
-            {
-                const QString h = v.toObject().value("hash").toString();
-                if (!h.isEmpty())
-                    seen.insert(h);
-            }
-            for (const QJsonValue &v : data.value("songs").toArray())
-            {
-                const QString h = v.toObject().value("hash").toString();
-                if (!h.isEmpty() && !seen.contains(h))
+                QJsonObject root = cacheRoot;
+                if (page > 1)
                 {
-                    seen.insert(h);
-                    merged.append(v);
+                    QJsonObject data = root["data"].toObject();
+                    QFile in(PlaylistCacheStore::configPath("playlist_" + gid + ".json"));
+                    QJsonArray merged;
+                    if (in.open(QIODevice::ReadOnly))
+                    {
+                        merged = QJsonDocument::fromJson(in.readAll())
+                                     .object()
+                                     .value("data")
+                                     .toObject()
+                                     .value("songs")
+                                     .toArray();
+                        in.close();
+                    }
+                    QSet<QString> seen;
+                    for (const QJsonValue &v : merged)
+                    {
+                        const QString h = v.toObject().value("hash").toString();
+                        if (!h.isEmpty())
+                            seen.insert(h);
+                    }
+                    for (const QJsonValue &v : data.value("songs").toArray())
+                    {
+                        const QString h = v.toObject().value("hash").toString();
+                        if (!h.isEmpty() && !seen.contains(h))
+                        {
+                            seen.insert(h);
+                            merged.append(v);
+                        }
+                    }
+                    data["songs"]     = merged;
+                    root["data"]      = data;
+                }
+                QFile out(PlaylistCacheStore::configPath("playlist_" + gid + ".json"));
+                if (out.open(QIODevice::WriteOnly))
+                {
+                    out.write(QJsonDocument(root).toJson(QJsonDocument::Compact));
+                    out.close();
                 }
             }
-            data["songs"]     = merged;
-            cacheRoot["data"] = data;
-        }
-        QFile out(PlaylistCacheStore::configPath("playlist_" + m_currentPlaylistId + ".json"));
-        if (out.open(QIODevice::WriteOnly))
-        {
-            out.write(QJsonDocument(cacheRoot).toJson(QJsonDocument::Compact));
-            out.close();
-        }
+        );
     }
 
     // 注意：不清空，追加到已有列表（fetchPlaylistTracks / loadAllPlaylistTracks 已先行 clear）
 
-    for (const QJsonValue &val : songs)
+    // 增量插入 model：整页一次插入，只通知一次新增区间
+    // （逐首 append 会触发多次行插入/布局，大页时卡顿）
     {
-        // 增量插入 model：只通知新增行，ListView 滚动位置不重置（下拉加载不弹顶）
-        m_playlistTracksModel->append(parsePlaylistSong(val.toObject()));
+        QList<SongInfo> parsed;
+        parsed.reserve(songs.size());
+        for (const QJsonValue &val : songs)
+        {
+            const QJsonObject obj = val.toObject();
+            if (!isPlaceholderSong(obj))
+                parsed.append(parsePlaylistSong(obj));
+        }
+        m_playlistTracksModel->appendList(parsed);
     }
     // 本页加载成功，页码递增（fetchMorePlaylistTracks 据此算下一页；
     m_playlistPage++;
-    // 更新分页状态：分页模式下，已加载数 < total 则还有更多
+    // 按原始分页进度判断，而不是模型行数：下架占位项会被过滤，
+    // 用行数算会导致最后一页之后还在无限请求
     if (m_playlistHasMore && m_playlistTotal > 0)
-    {
-        m_playlistHasMore = m_playlistTracksModel->count() < m_playlistTotal;
-    }
+        m_playlistHasMore = m_playlistPage * m_playlistPageSize < m_playlistTotal;
+    if (songs.isEmpty())
+        m_playlistHasMore = false;
     // loadAll 模式下 hasMore 保持 false（已在 loadAllPlaylistTracks 设定）
     m_playlistIsLoading = false;
     emit playlistIsLoadingChanged();
@@ -396,27 +503,77 @@ void Recommendation::onPlaylistTracksData(const QByteArray &data)
 
 bool Recommendation::loadCachedPlaylistTracks(const QString &globalCollectionId)
 {
-    // 进页面缓存优先：命中则直接填充模型（含刷新按钮写穿/启动红心同步落盘的数据），
-    // 页码按已加载数换算，滚动续拉从下一页接着；未命中返回 false 由 QML 走网络
-    QFile f(PlaylistCacheStore::configPath("playlist_" + globalCollectionId + ".json"));
-    if (!f.exists() || !f.open(QIODevice::ReadOnly))
+    // 同一歌单且模型里已有数据：直接复用，免去磁盘解析和整表重建
+    if (globalCollectionId == m_currentPlaylistId && m_playlistTracksModel->count() > 0)
+    {
+        if (m_playlistIsLoading)
+        {
+            m_playlistIsLoading = false;
+            emit playlistIsLoadingChanged();
+        }
+        return true;
+    }
+
+    // 切歌单立即取消上一单还在飞的网络请求，防止旧响应追加到新列表
+    m_playlistTracksRequester.cancel();
+    m_fetchAllPages = false;
+
+    const QString path = PlaylistCacheStore::configPath("playlist_" + globalCollectionId + ".json");
+    if (!QFile::exists(path))
+    {
+        if (m_playlistIsLoading)
+        {
+            m_playlistIsLoading = false;
+            emit playlistIsLoadingChanged();
+        }
         return false;
-    const QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
-    f.close();
-    const QJsonObject data = doc.object().value("data").toObject();
-    const QJsonArray songs = data.value("songs").toArray();
-    if (songs.isEmpty())
-        return false;
+    }
 
     m_currentPlaylistId = globalCollectionId;
-    m_playlistTotal     = data.value("count").toInt(songs.size());
-    m_playlistTracksModel->clear();
-    for (const QJsonValue &val : songs)
-        m_playlistTracksModel->append(parsePlaylistSong(val.toObject()));
-    m_playlistPage    = (songs.size() + m_playlistPageSize - 1) / m_playlistPageSize;
-    m_playlistHasMore = m_playlistTracksModel->count() < m_playlistTotal;
-    emit playlistTracksChanged();
-    qDebug() << "歌单曲目缓存命中，加载" << m_playlistTracksModel->count() << "/" << m_playlistTotal << "首";
+    if (!m_playlistIsLoading)
+    {
+        m_playlistIsLoading = true;
+        emit playlistIsLoadingChanged();
+    }
+
+    // 1.5MB 的 JSON + 构造 SongInfo 在主线程要 400ms+，改到线程池；
+    // 页面先显示新歌单和转圈，结果回主线程后一次性填 model
+    const quint64 token = ++m_cacheLoadToken;
+    QThreadPool::globalInstance()->start(new CacheReadRunnable(
+        [this, globalCollectionId, path, token]()
+        {
+            CacheReadResult result = readPlaylistCache(path);
+            QMetaObject::invokeMethod(
+                this,
+                [this, globalCollectionId, token, result]()
+                {
+                    if (token != m_cacheLoadToken || globalCollectionId != m_currentPlaylistId)
+                        return; // 已切到别的歌单，丢弃过期结果
+                    if (!result.ok || result.songs.isEmpty())
+                    {
+                        // 缓存损坏/空：退回网络
+                        fetchPlaylistTracks(globalCollectionId);
+                        return;
+                    }
+                    m_playlistTotal = result.total > 0 ? result.total : result.songs.size();
+                    m_playlistTracksModel->clear();
+                    m_playlistTracksModel->appendList(result.songs);
+                    m_playlistPage    = (result.rawCount + m_playlistPageSize - 1) / m_playlistPageSize;
+                    // 用原始缓存条数判断分页；下架占位项被过滤，不能拿模型行数算
+                    m_playlistHasMore = result.rawCount < m_playlistTotal;
+                    if (m_playlistIsLoading)
+                    {
+                        m_playlistIsLoading = false;
+                        emit playlistIsLoadingChanged();
+                    }
+                    emit playlistTracksChanged();
+                    qDebug() << "歌单曲目缓存命中，加载" << m_playlistTracksModel->count() << "/"
+                             << m_playlistTotal << "首";
+                },
+                Qt::QueuedConnection
+            );
+        }
+    ));
     return true;
 }
 
@@ -442,7 +599,9 @@ void Recommendation::onLazyTracksData(const QByteArray &data)
         QJsonArray arr = doc.object()["data"].toObject()["songs"].toArray();
         for (const QJsonValue &val : arr)
         {
-            QJsonObject s         = val.toObject();
+            QJsonObject s = val.toObject();
+            if (isPlaceholderSong(s))
+                continue;
             QString name          = s["name"].toString();
             QStringList parts     = name.split(" - ");
             QString songname      = parts.size() > 1 ? parts.mid(1).join(" - ") : name;

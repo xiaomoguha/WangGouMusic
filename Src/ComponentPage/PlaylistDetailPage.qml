@@ -57,8 +57,6 @@ Item {
     property var myPlaylists: []
     // 当前歌单是不是我自己创建的（global_collection_id 命中我的歌单）
     readonly property bool isMyOwnPlaylist: findPlaylistItem("global_collection_id") !== null
-    // 当前歌单是否已收藏（list_create_gid 命中我的歌单 = 我收藏的别人歌单）
-    readonly property bool isCollected: findPlaylistItem("list_create_gid") !== null
     // 当前详情页就是「我喜欢」歌单：红心按钮隐藏（列表里的歌本就都是喜欢的）
     readonly property bool isFavPlaylist: playlistCollection && playlistCollection.favGid !== ""
                                           && String(playlistId) === playlistCollection.favGid
@@ -66,6 +64,11 @@ Item {
     readonly property string myOwnListid: {
         var item = findPlaylistItem("global_collection_id")
         return item ? String(item.listid) : ""
+    }
+    // 我的歌单类型：0=自建 1=收藏
+    readonly property int myOwnListType: {
+        var item = findPlaylistItem("global_collection_id")
+        return item ? Number(item.type || 0) : 0
     }
 
     // 在 myPlaylists 中按字段找匹配当前歌单的项（global_collection_id = 我创建的；list_create_gid = 我收藏的）
@@ -105,26 +108,6 @@ Item {
         if (root.myPlaylists.length === 0)
             userManager.fetchUserPlaylist(1, 30)
         collectPopup.open()
-    }
-
-    // 收藏 / 取消收藏当前歌单
-    function toggleCollect() {
-        if (!userManager.isLoggedIn) {
-            BasicConfig.noticeError("请先登录")
-            return
-        }
-        if (playlistCollection.isWorking) return
-        if (isCollected) {
-            var mine = findPlaylistItem("list_create_gid")
-            playlistCollection.uncollectPlaylist(String(mine.listid))
-        } else {
-            playlistCollection.collectPlaylist(
-                playlistName,
-                playlistCollection.createUserIdFromGid(playlistId),
-                playlistCollection.createListIdFromGid(playlistId),
-                playlistId
-            )
-        }
     }
 
     // 歌单封面主色（hex，暂存用；空 = 未就绪/无封面）。真正驱动渐变的是
@@ -175,45 +158,50 @@ Item {
     property int currentSongIndex: -1        // 当前播放在列表中的下标，-1 = 不在
     property bool _autoLocated: false        // 是否已自动定位过一次
     property string _lastLoadedGid: ""       // 已拉取过的歌单 gid（可见时兜底拉取去重）
+    property string _pendingGid: ""          // 等待真正读缓存/发请求的 gid
     readonly property bool pageActive: parent && parent.visible && opacity > 0
+
+    // 切歌单：先让页面切过去并显示加载动画，再在下一帧读缓存/发请求。
+    // 原先在信号里同步解析 600+ 首的缓存 JSON，会把页面切换卡住。
+    function schedulePlaylistLoad() {
+        if (!pageActive || !recommendation || playlistId === "")
+            return
+        var gid = playlistId
+        if (_lastLoadedGid === gid)
+            return
+        _lastLoadedGid = gid
+        _pendingGid = gid
+        recommendation.beginPlaylistSwitch(gid)
+        requestCoverColor()
+        // 留出一帧以上：页面切过去、转圈动画先跑起来，再解析缓存/发请求
+        playlistLoadDelay.restart()
+    }
+
+    Timer {
+        id: playlistLoadDelay
+        interval: 50
+        repeat: false
+        onTriggered: {
+            var gid = root._pendingGid
+            if (!recommendation || gid === "" || root.playlistId !== gid)
+                return
+            root._pendingGid = ""
+            if (!recommendation.loadCachedPlaylistTracks(gid))
+                recommendation.fetchPlaylistTracks(gid)
+        }
+    }
 
     Component.onCompleted: {
         console.log("[PlaylistDetailPage] onCompleted, playlistId:", playlistId)
         // 缓存优先：有缓存（启动红心同步/上次刷新已落盘）直接展示，
         // 点刷新按钮才重新拉接口；无缓存（首次进入）才拉第 1 页
-        if (recommendation && playlistId !== ""
-                && !recommendation.loadCachedPlaylistTracks(playlistId))
-            recommendation.fetchPlaylistTracks(playlistId)
-        requestCoverColor()
+        schedulePlaylistLoad()
         refreshMyPlaylists()
-    }
-
-    // 调试探针：Timer 在组件创建时也会启动。
-    Timer {
-        running: true
-        interval: 400
-        repeat: false
-        onTriggered: {
-            console.log("[DBG] PlaylistDetailPage timer fired, playlistId:",
-                        root.playlistId,
-                        "model count:", recommendation ? recommendation.playlistTracksModel.count : -1)
-        }
     }
 
     // Loader 池复用实例时 onCompleted 只跑一次；每次页面变为可见且歌单变化时兜底拉取，
     // 避免切歌单时 playlistDetailId 信号错过或实例复用导致列表空白
-    onPageActiveChanged: {
-        if (!pageActive || !recommendation || playlistId === "")
-            return
-        if (root._lastLoadedGid !== playlistId) {
-            root._lastLoadedGid = playlistId
-            console.log("[PlaylistDetailPage] pageActive, fetch gid:", playlistId)
-            // 同 onCompleted：缓存命中不重复拉接口，点刷新才走网络
-            if (!recommendation.loadCachedPlaylistTracks(playlistId))
-                recommendation.fetchPlaylistTracks(playlistId)
-            requestCoverColor()
-        }
-    }
+    onPageActiveChanged: schedulePlaylistLoad()
 
     // 收藏结果提示 + 刷新列表（新增的收藏项出现在我的歌单里）
     Connections {
@@ -239,6 +227,16 @@ Item {
         }
     }
 
+    // 删除歌单内歌曲成功：立即重拉当前歌单曲目，不再显示已删歌曲
+    Connections {
+        target: playlistCollection
+        function onTracksRemoved() {
+            if (!pageActive || !recommendation || playlistId === "")
+                return
+            recommendation.refreshPlaylistTracks(playlistId)
+        }
+    }
+
     // 计算当前播放在当前列表中的下标
     function recomputeCurrentSongIndex() {
         currentSongIndex = -1
@@ -247,9 +245,7 @@ Item {
         if (!csh) return
         var list = recommendation ? recommendation.playlistTracksModel : null
         if (!list) return
-        for (var i = 0; i < list.count; i++) {
-            if (list.get(i).songhash === csh) { currentSongIndex = i; break }
-        }
+        currentSongIndex = list.indexOfHash(csh)
     }
 
     // 当前播放变化时重算下标（驱动浮动按钮显隐），但不自动滚动
@@ -270,10 +266,7 @@ Item {
                 _pendingTogetherAddAll = false
                 _autoLocated = false
                 currentSongIndex = -1
-                // 同 onCompleted：缓存命中直接展示，点刷新才走网络
-                if (!recommendation.loadCachedPlaylistTracks(playlistId))
-                    recommendation.fetchPlaylistTracks(playlistId)
-                requestCoverColor()
+                schedulePlaylistLoad()
             }
         }
     }
@@ -430,8 +423,9 @@ Item {
 
                     Text {
                         text: playlistIntro
+                        visible: playlistIntro !== ""
                         width: parent.width
-                        height: 40
+                        height: visible ? 40 : 0
                         wrapMode: Text.WordWrap
                         elide: Text.ElideRight
                         maximumLineCount: 2
@@ -504,54 +498,11 @@ Item {
                             Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
                         }
 
-                        // 收藏歌单（自己创建的歌单不显示，无收藏意义）
-                        Rectangle {
-                            visible: !root.isMyOwnPlaylist
-                            width: 90
-                            height: 32
-                            radius: 16
-                            color: collectHover.hovered ? (root.isCollected ? "#3a3a3a" : "#533483") : (root.isCollected ? AppTheme.bgNavHover : "#e94560")
-
-                            Row {
-                                anchors.centerIn: parent
-                                spacing: 5
-
-                                Text {
-                                    text: root.isCollected ? "★" : "☆"
-                                    font.pixelSize: AppTheme.fontSizeBodyLg
-                                    color: root.isCollected ? AppTheme.textPrimary : "#ffffff"
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-                                Text {
-                                    text: root.isCollected ? "已收藏" : "收藏歌单"
-                                    font.pixelSize: AppTheme.fontSizeSmall
-                                    color: root.isCollected ? AppTheme.textPrimary : "#ffffff"
-                                    font.family: AppTheme.fontFamily
-                                    font.bold: true
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-                            }
-
-                            HoverHandler { id: collectHover }
-                            TapHandler {
-                                cursorShape: Qt.PointingHandCursor
-                                enabled: !(playlistCollection && playlistCollection.isWorking)
-                                onTapped: root.toggleCollect()
-                            }
-                            Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
-                        }
                     }
                 }
             }
         }
 
-        // 分隔线
-        Rectangle {
-            width: parent.width - 60
-            height: 1
-            color: AppTheme.bgNavHover
-            anchors.horizontalCenter: parent.horizontalCenter
-        }
     }
 
     // 右下角浮动「定位到正在播放」按钮（当前歌不在视口内时出现）
@@ -570,7 +521,7 @@ Item {
         id: tracksListView
         anchors.top: parent.top
         // 头部收起时视口向上"长"进头部让出的空间（整块上移会让底部空出一截），底部始终贴窗口
-        anchors.topMargin: 170 - 112 * root.headerCollapse
+        anchors.topMargin: 154 - 112 * root.headerCollapse
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.right: parent.right
@@ -684,9 +635,9 @@ Item {
                             }
                         }
 
-                        // 操作按钮区（固定宽度占位，悬停时显示；时长始终可见，不再被覆盖）
+                        // 操作按钮区：行内只保留 试听 + 播放/加入一起听，其余进右键菜单
                         Item {
-                            width: isTogetherMode ? 130 : 260
+                            width: 90
                             height: 30
                             anchors.verticalCenter: parent.verticalCenter
 
@@ -695,7 +646,6 @@ Item {
                                 spacing: 4
                                 visible: songHover.hovered || climaxPreviewBtn.active
 
-                                // 高潮试听：文字按钮放在播放/加入一起听左侧
                                 ClimaxPreviewButton {
                                     id: climaxPreviewBtn
                                     songHash: model.songhash
@@ -720,76 +670,6 @@ Item {
                                             "duration": model.duration
                                         })
                                         BasicConfig.emitSongAdded("正在播放: " + model.title)
-                                    }
-                                }
-
-                                // MV 播放（仅含 MV 的歌曲显示；点击弹独立视频窗口）
-                                IconButton {
-                                    visible: !isTogetherMode && model.mvhash !== ""
-                                    iconSource: AppIcon.video
-                                    iconColor: AppTheme.textSecondary
-                                    size: 30
-                                    iconSize: 16
-                                    onClicked: {
-                                        BasicConfig.requestMvPlay({ mvhash: model.mvhash, title: model.title,
-                                                                    singername: model.singername, songhash: model.songhash,
-                                                                    cover: model.union_cover })
-                                    }
-                                }
-
-                                // AI 推荐（点击展开/收回生成的 AI 歌单；有数据时切换为箭头）
-                                IconButton {
-
-                                    iconSource: aiExpand.expanded ? AppIcon.caretDown
-
-                                        : (aiExpand.aiSongs.length > 0 ? AppIcon.caretRight : AppIcon.sparkle)
-                                    size: 30
-                                    iconSize: 16
-                                    onClicked: {
-                                        aiExpand.toggle(model.songhash, model.title)
-                                    }
-                                }
-
-                                IconButton {
-                                    visible: !isTogetherMode && !isPlaying
-                                    iconSource: AppIcon.addToList
-                                    size: 30
-                                    iconSize: 16
-                                    onClicked: {
-                                        playlistmanager.addSongNext({
-                                            "songname": model.title,
-                                            "songhash": model.songhash,
-                                            "singername": model.singername,
-                                            "union_cover": model.union_cover,
-                                            "album_name": model.album_name,
-                                            "duration": model.duration
-                                        })
-                                        BasicConfig.emitSongAdded("已添加到下一首: " + model.title)
-                                    }
-                                }
-
-                                // 收藏到歌单（弹出歌单选择器）；「我喜欢」歌单内不显示
-                                IconButton {
-                                    visible: !isTogetherMode && !isPlaying && !root.isFavPlaylist
-                                    iconSource: AppIcon.heart
-                                    iconColor: AppTheme.textSecondary
-                                    size: 30
-                                    iconSize: 16
-                                    onClicked: root.openCollectDialog(model.title, model.songhash,
-                                                                       model.singername, model.album_name)
-                                }
-
-                                // 从歌单移除（仅自己创建的歌单显示）
-                                IconButton {
-                                    visible: !isTogetherMode && root.isMyOwnPlaylist && !isPlaying
-                                    iconSource: AppIcon.deleteIcon
-                                    iconColor: AppTheme.textSecondary
-                                    size: 30
-                                    iconSize: 16
-                                    onClicked: {
-                                        if (!playlistCollection.isWorking)
-                                            playlistCollection.removeTracks(String(root.myOwnListid),
-                                                                             [String(model.fileid)])
                                     }
                                 }
 
@@ -876,6 +756,35 @@ Item {
                         }
                     }
 
+                    function contextSong() {
+                        return {
+                            "songname": model.title,
+                            "songhash": model.songhash,
+                            "singername": model.singername,
+                            "union_cover": model.union_cover,
+                            "album_name": model.album_name,
+                            "duration": model.duration,
+                            "mvhash": model.mvhash,
+                            "fileid": String(model.fileid || "")
+                        }
+                    }
+
+                    TapHandler {
+                        acceptedButtons: Qt.RightButton
+                        onTapped: BasicConfig.requestSongContextMenu(contextSong(), {
+                            "togetherMode": root.isTogetherMode,
+                            "showAi": true,
+                            "showRemove": root.isMyOwnPlaylist,
+                            "onAi": function() { aiExpand.toggle(model.songhash, model.title) },
+                            "onRemove": function() {
+                                if (!playlistCollection.isWorking)
+                                    playlistCollection.removeTracks(
+                                        String(root.myOwnListid), [String(model.fileid)], root.myOwnListType
+                                    )
+                            }
+                        })
+                    }
+
                     HoverHandler { id: songHover }
                 }
 
@@ -893,21 +802,64 @@ Item {
                     if (recommendation.playlistIsLoading) return "加载中..."
                     var loaded = recommendation.playlistTracksModel ? recommendation.playlistTracksModel.count : 0
                     if (!recommendation.playlistHasMore)
-                        return "共 " + recommendation.playlistTotal + " 首"
+                        return "共 " + loaded + " 首"
                     return "已加载 " + loaded + " / " + recommendation.playlistTotal + " 首"
                 }
             }
         }
     }
 
-    // 空状态：歌单无歌曲时
+    // 加载态：切歌单后先显示页面和转圈，缓存/网络数据随后填入
+    Column {
+        anchors.centerIn: parent
+        spacing: 12
+        visible: recommendation && recommendation.playlistIsLoading
+                 && recommendation.playlistTracksModel.count === 0
+
+        Item {
+            width: 30
+            height: 30
+            anchors.horizontalCenter: parent.horizontalCenter
+
+            Image {
+                id: playlistLoadingIcon
+                anchors.fill: parent
+                source: AppIcon.refresh
+                sourceSize: Qt.size(60, 60)
+                fillMode: Image.PreserveAspectFit
+                layer.enabled: true
+                layer.effect: ColorOverlay {
+                    source: playlistLoadingIcon
+                    color: AppTheme.accent
+                }
+                NumberAnimation on rotation {
+                    from: 0
+                    to: 360
+                    duration: 900
+                    loops: Animation.Infinite
+                    running: parent.parent.visible && !BasicConfig.uiIdle
+                }
+            }
+        }
+
+        Text {
+            anchors.horizontalCenter: parent.horizontalCenter
+            text: "正在加载歌单..."
+            font.pixelSize: AppTheme.fontSizeSmall
+            color: AppTheme.textMuted
+            font.family: AppTheme.fontFamily
+        }
+    }
+
+    // 空状态：歌单真的没有歌曲时（加载中不显示）
     EmptyState {
         anchors.top: parent.top
         anchors.topMargin: 200
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        visible: !recommendation || recommendation.playlistTracksModel.count === 0
+        visible: !recommendation
+                 || (recommendation.playlistTracksModel.count === 0 && !recommendation.playlistIsLoading)
         iconText: "♪"
         title: "歌单暂无歌曲"
         subtitle: "稍后再来看看吧"

@@ -7,6 +7,8 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QStandardPaths>
+#include <QRunnable>
+#include <QThreadPool>
 
 // ──────────────────────────────────────────────
 // 缓存目录与路径
@@ -322,6 +324,35 @@ bool PlaylistCacheStore::saveLyric(const QString &songhash, const QString &lyric
         return true;
     }
     return false;
+}
+
+namespace
+{
+class CacheWriteTask : public QRunnable
+{
+public:
+    explicit CacheWriteTask(std::function<void()> fn) : m_fn(std::move(fn)) {}
+    void run() override
+    {
+        if (m_fn)
+            m_fn();
+    }
+
+private:
+    std::function<void()> m_fn;
+};
+} // namespace
+
+void PlaylistCacheStore::submitPlaylistWrite(const std::function<void()> &task)
+{
+    // 单线程队列：写盘不抢 UI 线程，顺序也与网络分页到达顺序一致
+    static QThreadPool *pool = []()
+    {
+        auto *p = new QThreadPool;
+        p->setMaxThreadCount(1);
+        return p;
+    }();
+    pool->start(new CacheWriteTask(task));
 }
 
 QString PlaylistCacheStore::loadLyric(const QString &songhash)

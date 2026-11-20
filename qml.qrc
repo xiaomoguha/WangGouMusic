@@ -38,6 +38,10 @@
         <file>Src/BasicConfig/LocateCurrentButton.qml</file>
         <file>Src/BasicConfig/IconButton.qml</file>
         <file>Src/BasicConfig/ClimaxPreviewButton.qml</file>
+        <file>Src/BasicConfig/AddToPlaylistPopup.qml</file>
+        <file>Src/BasicConfig/SongContextMenu.qml</file>
+        <file>Src/BasicConfig/ContextMenuItem.qml</file>
+        <file>Src/BasicConfig/CreatePlaylistDialog.qml</file>
         <file>Src/BasicConfig/ThemedPopup.qml</file>
         <file>Src/BasicConfig/NowPlayingIndicator.qml</file>
         <file>Src/BasicConfig/PanelBackdrop.qml</file>

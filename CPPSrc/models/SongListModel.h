@@ -40,6 +40,8 @@ public:
 
     // ── 供 QML JS 迭代（替代直接数组下标访问）──
     Q_INVOKABLE QVariant get(int index) const;
+    // 按 songhash 查行号（QML 里遍历 get(i) 太慢，切歌单/滚动加载时用）
+    Q_INVOKABLE int indexOfHash(const QString &hash) const;
     int count() const
     {
         return m_songs.size();

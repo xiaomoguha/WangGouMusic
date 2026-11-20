@@ -5,6 +5,7 @@
 
 #include <QDateTime>
 #include <QDir>
+#include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -380,37 +381,63 @@ void UserManager::fetchPlaylistDetail(const QString &globalCollectionId, int pag
                 SongInfo::rememberMxidFromJson(song, song.value("hash").toString());
             }
 
-            // 缓存按「已加载前缀」维护：page 1 重置，后续页按 hash 追加去重，
-            // 重启后进页面缓存不缺不重；emit 仍发原始单页，QML 自行追加显示
-            QJsonObject cacheRoot = root;
-            if (page > 1)
-            {
-                QJsonObject data          = cacheRoot["data"].toObject();
-                const QJsonDocument oldDoc = readCacheFile("playlist_" + globalCollectionId + ".json");
-                const QJsonArray oldSongs  = oldDoc.object().value("data").toObject().value("songs").toArray();
-                QSet<QString> seen;
-                for (const QJsonValue &v : oldSongs)
+            // 带上请求的 gid：页面快速切换时，旧响应不能覆盖新歌单
+            root["_request_gid"] = globalCollectionId;
+            emit playlistDetailReceived(root.toVariantMap());
+
+            // 缓存按「已加载前缀」维护：page 1 重置，后续页按 hash 追加去重。
+            // 合并/序列化/写盘放到后台单线程队列，避免滚动加载下一页时卡 UI。
+            const QString gid = globalCollectionId;
+            PlaylistCacheStore::submitPlaylistWrite(
+                [page, gid, root]()
                 {
-                    const QString h = v.toObject().value("hash").toString();
-                    if (!h.isEmpty())
-                        seen.insert(h);
-                }
-                QJsonArray merged   = oldSongs;
-                const QJsonArray songs = data.value("songs").toArray();
-                for (const QJsonValue &v : songs)
-                {
-                    const QString h = v.toObject().value("hash").toString();
-                    if (!h.isEmpty() && !seen.contains(h))
+                    QJsonObject cacheRoot = root;
+                    cacheRoot.remove("_request_gid");
+                    if (page > 1)
                     {
-                        seen.insert(h);
-                        merged.append(v);
+                        QFile in(PlaylistCacheStore::configPath("playlist_" + gid + ".json"));
+                        QJsonArray oldSongs;
+                        if (in.open(QIODevice::ReadOnly))
+                        {
+                            oldSongs = QJsonDocument::fromJson(in.readAll())
+                                           .object()
+                                           .value("data")
+                                           .toObject()
+                                           .value("songs")
+                                           .toArray();
+                            in.close();
+                        }
+                        QSet<QString> seen;
+                        for (const QJsonValue &v : oldSongs)
+                        {
+                            const QString h = v.toObject().value("hash").toString();
+                            if (!h.isEmpty())
+                                seen.insert(h);
+                        }
+                        QJsonObject data       = cacheRoot["data"].toObject();
+                        QJsonArray merged      = oldSongs;
+                        const QJsonArray songs = data.value("songs").toArray();
+                        for (const QJsonValue &v : songs)
+                        {
+                            const QString h = v.toObject().value("hash").toString();
+                            if (!h.isEmpty() && !seen.contains(h))
+                            {
+                                seen.insert(h);
+                                merged.append(v);
+                            }
+                        }
+                        data["songs"]     = merged;
+                        cacheRoot["data"] = data;
+                    }
+                    PlaylistCacheStore::ensureCacheDir();
+                    QFile out(PlaylistCacheStore::configPath("playlist_" + gid + ".json"));
+                    if (out.open(QIODevice::WriteOnly))
+                    {
+                        out.write(QJsonDocument(cacheRoot).toJson(QJsonDocument::Compact));
+                        out.close();
                     }
                 }
-                data["songs"]     = merged;
-                cacheRoot["data"] = data;
-            }
-            writeCacheFile("playlist_" + globalCollectionId + ".json", QJsonDocument(cacheRoot));
-            emit playlistDetailReceived(root.toVariantMap());
+            );
         },
         [](QString, int) {}
     );

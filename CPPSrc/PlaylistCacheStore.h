@@ -6,6 +6,7 @@
 #include <QSet>
 #include <QString>
 #include <QList>
+#include <functional>
 
 // 播放列表/最近播放/歌词的本地缓存读写工具
 // 从 PlaylistManager 拆分而来。本类为纯工具类（全 static），
@@ -24,6 +25,9 @@ public:
     static QString songCachePath(const QString &title, const QString &singer, int quality);
     // config 子目录下指定配置文件的完整路径（history_cache.json 等）
     static QString configPath(const QString &name);
+    // 歌单缓存写盘串行队列（后台单线程）：大歌单合并/序列化不再卡 UI；
+    // 单线程保证 page1→page2→page3 的合并顺序
+    static void submitPlaylistWrite(const std::function<void()> &task);
 
     // ── 播放列表缓存 ─────────────────────────────────────
     // 序列化播放列表 + 播放位置到 playlist_cache.json

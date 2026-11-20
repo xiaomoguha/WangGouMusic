@@ -578,4 +578,28 @@ ApplicationWindow {
             }
         }
     }
+
+    // 全局「添加到歌单」弹窗：歌曲行右键菜单/收藏入口统一调用
+    AddToPlaylistPopup {
+        id: addToPlaylistPopup
+    }
+    Connections {
+        target: BasicConfig
+        function onRequestAddToPlaylist(song) {
+            addToPlaylistPopup.song = song
+            addToPlaylistPopup.open()
+        }
+    }
+
+    // 全局歌曲右键菜单：所有歌曲行共用一套，避免每个 delegate 实例化整套菜单
+    SongContextMenu {
+        id: globalSongContextMenu
+    }
+    Connections {
+        target: BasicConfig
+        function onRequestSongContextMenu(song, options) {
+            globalSongContextMenu.openFor(null, song, 0, 0, options || ({}))
+        }
+    }
+
 }

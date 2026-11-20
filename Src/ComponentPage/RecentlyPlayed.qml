@@ -186,9 +186,9 @@ Page {
                             }
                         }
 
-                        // 操作按钮区（固定宽度占位，悬停时显示；专辑/时长不再随悬停跳动）
+                        // 行内只保留 试听 + 播放/加入一起听，其余进右键菜单
                         Item {
-                            width: isTogetherMode ? 130 : 160
+                            width: 90
                             height: 30
                             anchors.verticalCenter: parent.verticalCenter
 
@@ -197,7 +197,6 @@ Page {
                                 spacing: 4
                                 visible: itemHover.hovered || climaxPreviewBtn.active
 
-                                // 高潮试听：文字按钮放在播放/加入一起听左侧
                                 ClimaxPreviewButton {
                                     id: climaxPreviewBtn
                                     songHash: modelData.songhash
@@ -232,40 +231,6 @@ Page {
                                             "duration": duration
                                         })
                                         BasicConfig.emitSongAdded("正在播放: " + title)
-                                    }
-                                }
-
-                                // AI 推荐（点击展开/收回生成的 AI 歌单；有数据时切换为箭头）
-                                IconButton {
-                                    size: 30
-                                    iconSize: 16
-
-                                    iconSource: aiExpand.expanded ? AppIcon.caretDown
-
-                                        : (aiExpand.aiSongs.length > 0 ? AppIcon.caretRight : AppIcon.sparkle)
-                                    onClicked: {
-                                        aiExpand.toggle(modelData.songhash, modelData.title)
-                                    }
-                                }
-
-                                IconButton {
-                                    id: addBtn
-                                    visible: !isTogetherMode && !isPlaying
-                                    size: 30
-                                    iconSize: 16
-                                    iconSource: AppIcon.addToList
-                                    iconColor: (addBtn.hovered ? AppTheme.accent : "#FFFFFF")
-                                    onClicked: {
-                                        var md = modelData
-                                        playlistmanager.addSongNext({
-                                            "songname": md.title,
-                                            "songhash": md.songhash,
-                                            "singername": md.singername,
-                                            "union_cover": md.union_cover,
-                                            "album_name": md.album_name,
-                                            "duration": md.duration
-                                        })
-                                        BasicConfig.emitSongAdded("已添加到下一首: " + md.title)
                                     }
                                 }
 
@@ -327,6 +292,27 @@ Page {
                     }
 
                     HoverHandler { id: itemHover }
+
+                    function contextSong() {
+                        return {
+                            "songname": modelData.title,
+                            "songhash": modelData.songhash,
+                            "singername": modelData.singername,
+                            "union_cover": modelData.union_cover,
+                            "album_name": modelData.album_name,
+                            "duration": modelData.duration,
+                            "mvhash": modelData.mvhash || ""
+                        }
+                    }
+
+                    TapHandler {
+                        acceptedButtons: Qt.RightButton
+                        onTapped: BasicConfig.requestSongContextMenu(contextSong(), {
+                            "togetherMode": isTogetherMode,
+                            "showAi": true,
+                            "onAi": function() { aiExpand.toggle(modelData.songhash, modelData.title) }
+                        })
+                    }
                 }
             }
         }

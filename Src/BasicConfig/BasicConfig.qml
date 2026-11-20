@@ -14,8 +14,13 @@ QtObject {
     signal noticeSuccess(string messages)
     signal songAdded(string songname)
     signal requestMvPlay(var song)  // {mvhash,title,singername,songhash,cover}：MV 窗口展示信息+拉评论用
+    signal requestAddToPlaylist(var song)  // 全局「添加到歌单」弹窗
+    // 全局歌曲右键菜单：song + { togetherMode, showAi, showRemove, onAi, onRemove }
+    signal requestSongContextMenu(var song, var options)
 
     property string searchKeyword: ""
+    // 当前打开的歌曲右键菜单（同时只允许一个）
+    property var activeContextMenu: null
 
     // 导航回退
     property string previousPageUrl: ""

@@ -4,6 +4,10 @@ singleton AppIcon AppIcon.qml
 LocateCurrentButton LocateCurrentButton.qml
 IconButton IconButton.qml
 ClimaxPreviewButton ClimaxPreviewButton.qml
+AddToPlaylistPopup AddToPlaylistPopup.qml
+SongContextMenu SongContextMenu.qml
+ContextMenuItem ContextMenuItem.qml
+CreatePlaylistDialog CreatePlaylistDialog.qml
 ThemedPopup ThemedPopup.qml
 NowPlayingIndicator NowPlayingIndicator.qml
 PanelBackdrop PanelBackdrop.qml

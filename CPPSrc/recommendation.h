@@ -27,6 +27,9 @@ public:
     // 首页「热门推荐换一批」：外部（RankList.randomSongsReady）把随机榜单歌曲注入推荐区
     Q_INVOKABLE void showRankSongs(const QVariantList &songs);
     Q_INVOKABLE void fetchPlaylistTracks(const QString &globalCollectionId);
+    /// 切换歌单的“立即”阶段：取消旧请求、清空旧列表并进入 loading，
+    /// 让页面先完成切换/绘制，缓存解析和网络请求放到下一帧再跑
+    Q_INVOKABLE void beginPlaylistSwitch(const QString &globalCollectionId);
     Q_INVOKABLE void fetchMorePlaylistTracks();
     Q_INVOKABLE void loadAllPlaylistTracks();
     /// 手动刷新：全量重拉（page 1 起自动连拉到歌单尽头），缓存随每页写穿
@@ -98,6 +101,8 @@ private:
     bool m_playlistIsLoading = false;
     bool m_fetchAllPages     = false; // refreshPlaylistTracks：拉到一页后自动续拉剩余页
     bool m_playlistsLoading  = false;
+    // 缓存异步读取令牌：切歌单后旧任务的结果直接丢弃
+    quint64 m_cacheLoadToken = 0;
     HttpGetRequester m_lazyRequester;
     std::function<void(const QVariantList &)> m_pendingLazyCallback;
 };

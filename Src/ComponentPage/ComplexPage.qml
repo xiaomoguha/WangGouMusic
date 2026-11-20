@@ -182,8 +182,8 @@ Page {
                 }
 
                 Column {
-                    // 自适应：左边界到操作区之间全部给歌名，避免歌名/操作按钮/专辑互相重叠
-                    width: Math.max(80, actionRow.x - (0.025 * root.width + 28 + 12 + 40 + 12) - 12)
+                    // 歌名列固定宽度，操作按钮紧跟其后，整体更靠近歌名
+                    width: 0.2 * root.width
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 3
 
@@ -242,13 +242,12 @@ Page {
                 id: actionRow
                 visible: songItem.showActions || climaxPreviewBtn.active
                 // 固定槽位紧跟在歌名右侧（12px 间距），整体靠左且不压专辑列
-                x: 0.48 * root.width - width - 8
-                width: 192
+                x: 0.025 * root.width + 28 + 12 + 40 + 12 + 0.2 * root.width + 12
+                width: 88
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 4
                 z: 1
 
-                // 高潮试听：文字按钮放在播放/加入一起听左侧
                 ClimaxPreviewButton {
                     id: climaxPreviewBtn
                     songHash: model.songhash
@@ -259,7 +258,6 @@ Page {
                     compact: true
                 }
 
-                // 播放
                 IconButton {
                     visible: !isTogetherMode && !isPlaying
                     iconSource: AppIcon.playCircle
@@ -278,56 +276,9 @@ Page {
                     }
                 }
 
-                // MV 播放（仅含 MV 的歌曲显示；点击弹独立视频窗口）
-                IconButton {
-                    visible: !isTogetherMode && model.mvhash !== ""
-                    iconSource: AppIcon.video
-                    iconColor: AppTheme.textSecondary
-                    size: 24
-                    iconSize: 14
-                    onClicked: {
-                        BasicConfig.requestMvPlay({ mvhash: model.mvhash, title: model.songname,
-                                                    singername: model.singername, songhash: model.songhash,
-                                                    cover: model.union_cover })
-                    }
-                }
-
-                // AI 推荐（点击展开/收回生成的 AI 歌单；有数据时切换为箭头）
-                IconButton {
-
-                    iconSource: aiExpand.expanded ? AppIcon.caretDown
-
-                        : (aiExpand.aiSongs.length > 0 ? AppIcon.caretRight : AppIcon.sparkle)
-                    size: 24
-                    iconSize: 14
-                    onClicked: {
-                        aiExpand.toggle(model.songhash, model.songname)
-                    }
-                }
-
-                // 添加到下一首播放（已有则移动到下一首）
-                IconButton {
-                    visible: !isTogetherMode && !isPlaying
-                    iconSource: AppIcon.addToList
-                    size: 24
-                    iconSize: 14
-                    onClicked: {
-                        playlistmanager.addSongNext({
-                            "songname": model.songname,
-                            "songhash": model.songhash,
-                            "singername": model.singername,
-                            "union_cover": model.union_cover,
-                            "album_name": model.album_name,
-                            "duration": model.duration
-                        });
-                        BasicConfig.emitSongAdded("已添加到下一首: " + model.songname);
-                    }
-                }
-
-                // 一起听
                 IconButton {
                     id: togetherBtn
-                    visible: (websocket && websocket.connected) || isTogetherMode
+                    visible: isTogetherMode && !isPlaying
                     iconSource: AppIcon.addTogether
                     size: 24
                     iconSize: 14
@@ -375,6 +326,27 @@ Page {
                 anchors.right: parent.right
                 anchors.leftMargin: 44
                 anchors.rightMargin: 14
+            }
+
+            function contextSong() {
+                return {
+                    "songname": model.songname,
+                    "songhash": model.songhash,
+                    "singername": model.singername,
+                    "union_cover": model.union_cover,
+                    "album_name": model.album_name,
+                    "duration": model.duration,
+                    "mvhash": model.mvhash || ""
+                }
+            }
+
+            TapHandler {
+                acceptedButtons: Qt.RightButton
+                onTapped: BasicConfig.requestSongContextMenu(contextSong(), {
+                    "togetherMode": isTogetherMode,
+                    "showAi": true,
+                    "onAi": function() { aiExpand.toggle(model.songhash, model.songname) }
+                })
             }
         }
 

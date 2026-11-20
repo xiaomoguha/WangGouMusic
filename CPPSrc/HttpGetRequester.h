@@ -18,6 +18,8 @@ public:
 
     // 发起异步 GET 请求
     Q_INVOKABLE void fetchData(const QString &url);
+    // cancel current request: avoid stale response appending to a newly selected playlist
+    void cancel() { abortCurrent(); }
 
 signals:
     void dataReceived(const QByteArray &data);

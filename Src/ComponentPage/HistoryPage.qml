@@ -362,9 +362,9 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                 }
 
-                // 操作按钮区（固定宽度占位，悬停时显示；布局同歌单详情页）
+                // 行内只保留 试听 + 播放/加入一起听，其余进右键菜单
                 Item {
-                    width: isTogetherMode ? 130 : 192
+                    width: 90
                     height: 30
                     anchors.verticalCenter: parent.verticalCenter
 
@@ -373,7 +373,6 @@ Item {
                         spacing: 4
                         visible: songHover.hovered || climaxPreviewBtn.active
 
-                        // 高潮试听：文字按钮放在播放/加入一起听左侧
                         ClimaxPreviewButton {
                             id: climaxPreviewBtn
                             songHash: model.songhash
@@ -398,48 +397,6 @@ Item {
                                     "duration": model.duration
                                 })
                                 BasicConfig.emitSongAdded("正在播放: " + model.songname)
-                            }
-                        }
-
-                        // AI 推荐（点击展开/收回生成的 AI 歌单；有数据时切换为箭头）
-                        IconButton {
-                            iconSource: aiExpand.expanded ? AppIcon.caretDown
-                                : (aiExpand.aiSongs.length > 0 ? AppIcon.caretRight : AppIcon.sparkle)
-                            size: 30
-                            iconSize: 16
-                            onClicked: aiExpand.toggle(model.songhash, model.songname)
-                        }
-
-                        IconButton {
-                            visible: !isTogetherMode && !isPlaying
-                            iconSource: AppIcon.addToList
-                            size: 30
-                            iconSize: 16
-                            onClicked: {
-                                playlistmanager.addSongNext({
-                                    "songname": model.songname,
-                                    "songhash": model.songhash,
-                                    "singername": model.singername,
-                                    "union_cover": model.union_cover,
-                                    "album_name": model.album_name,
-                                    "duration": model.duration
-                                })
-                                BasicConfig.emitSongAdded("已添加到下一首: " + model.songname)
-                            }
-                        }
-
-                        IconButton {
-                            visible: !isTogetherMode && !isPlaying
-                            iconSource: AppIcon.heart
-                            iconColor: AppTheme.textSecondary
-                            size: 30
-                            iconSize: 16
-                            onClicked: {
-                                if (!userManager || !userManager.isLoggedIn) {
-                                    BasicConfig.noticeError("请先登录")
-                                    return
-                                }
-                                playlistCollection.addToFavorite(model.songname, model.songhash, model.singername)
                             }
                         }
 
@@ -513,6 +470,27 @@ Item {
                         BasicConfig.emitSongAdded("正在播放: " + model.songname)
                     }
                 }
+            }
+
+            function contextSong() {
+                return {
+                    "songname": model.songname,
+                    "songhash": model.songhash,
+                    "singername": model.singername,
+                    "union_cover": model.union_cover,
+                    "album_name": model.album_name,
+                    "duration": model.duration,
+                    "mvhash": model.mvhash || ""
+                }
+            }
+
+            TapHandler {
+                acceptedButtons: Qt.RightButton
+                onTapped: BasicConfig.requestSongContextMenu(contextSong(), {
+                    "togetherMode": isTogetherMode,
+                    "showAi": true,
+                    "onAi": function() { aiExpand.toggle(model.songhash, model.songname) }
+                })
             }
         }
     }

@@ -221,6 +221,12 @@ void PlaylistCollection::createPlaylist(const QString &name)
             const int errCode = root["error_code"].toInt();
             if (status == 1 || errCode == 0)
             {
+                const QJsonObject info = root.value("data").toObject().value("info").toObject();
+                QString newListid = QString::number(info.value("listid").toInt());
+                if (newListid.isEmpty() || newListid == "0")
+                    newListid = QString::number(info.value("list_create_listid").toInt());
+                if (!newListid.isEmpty() && newListid != "0")
+                    emit playlistCreated(newListid, name.trimmed());
                 emit operationFinished(true, "已创建歌单: " + name.trimmed());
             }
             else
@@ -235,7 +241,9 @@ void PlaylistCollection::createPlaylist(const QString &name)
     );
 }
 
-void PlaylistCollection::addTracks(const QString &listid, const QVariantList &songs, const QString &successMsg)
+void PlaylistCollection::addTracks(
+    const QString &listid, const QVariantList &songs, const QString &successMsg, int type
+)
 {
     if (listid.isEmpty() || songs.isEmpty())
     {
@@ -266,8 +274,11 @@ void PlaylistCollection::addTracks(const QString &listid, const QVariantList &so
         return;
     }
     setWorking(true);
+    QList<QPair<QString, QString>> params = {{"listid", listid}, {"data", parts.join(',')}};
+    if (type != 0)
+        params.append({"type", QString::number(type)});
     postForm(
-        "/playlist/tracks/add", {{"listid", listid}, {"data", parts.join(',')}},
+        "/playlist/tracks/add", params,
         [this, successMsg](QJsonObject root)
         { parseResult(root, successMsg.isEmpty() ? QStringLiteral("已添加到歌单") : successMsg); },
         [this](QString err, int) { setWorking(false); emit operationFinished(false, "网络错误: " + err); }
@@ -425,7 +436,7 @@ bool PlaylistCollection::containsHash(const QString &songhash) const
     return m_favoriteHashes.contains(songhash.toUpper());
 }
 
-void PlaylistCollection::removeTracks(const QString &listid, const QVariantList &fileids)
+void PlaylistCollection::removeTracks(const QString &listid, const QVariantList &fileids, int type)
 {
     if (listid.isEmpty() || fileids.isEmpty())
     {
@@ -445,9 +456,18 @@ void PlaylistCollection::removeTracks(const QString &listid, const QVariantList 
         return;
     }
     setWorking(true);
+    QList<QPair<QString, QString>> params = {{"listid", listid}, {"fileids", ids.join(',')}};
+    if (type != 0)
+        params.append({"type", QString::number(type)});
     postForm(
-        "/playlist/tracks/del", {{"listid", listid}, {"fileids", ids.join(',')}},
-        [this](QJsonObject root) { parseResult(root, "已从歌单移除"); },
+        "/playlist/tracks/del", params,
+        [this](QJsonObject root)
+        {
+            const bool ok = root.value("status").toInt() == 1 || root.value("error_code").toInt() == 0;
+            parseResult(root, "已从歌单移除");
+            if (ok)
+                emit tracksRemoved();
+        },
         [this](QString err, int) { setWorking(false); emit operationFinished(false, "网络错误: " + err); }
     );
 }
