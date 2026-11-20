@@ -5,6 +5,7 @@ Item {
     id: root
     property color barColor: AppTheme.accentPlaying
     property bool playing: true   // 播放状态：false 时声波静止
+    property bool active: !BasicConfig.uiIdle  // 动画开关：底栏封面可单独按窗口可见性控制
     property int barWidth: 3
     property int barGap: 3
     readonly property int _barCount: 3
@@ -20,12 +21,13 @@ Item {
     }
     onPlayingChanged: if (!playing) settleStatic()
     onVisibleChanged: if (!visible) settleStatic()
+    onActiveChanged: if (!active) settleStatic()
 
     Timer {
         id: tick
         interval: 50   // ~20fps：再低会有可见顿挫
         repeat: true
-        running: root.visible && root.playing && !BasicConfig.uiIdle
+        running: root.visible && root.playing && root.active
         property real t: 0
         // 与旧动画一致：每根条前半周期 3→H、后半周期 H→3（InOutQuad），
         // 周期不同自然错峰；分段缓动保证周期衔接处连续（不跳变）

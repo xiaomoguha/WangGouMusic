@@ -190,8 +190,9 @@ Rectangle {
 
                     NowPlayingIndicator {
                         anchors.centerIn: parent
-                        // 最小化/隐藏窗口时 visible=false → 内部动画停（visible 不随最小化变 false，需显式判断）
+                        // 只在最小化/隐藏窗口时停，失焦但仍可见时继续动（0.8.0 行为）
                         visible: albumCoverContainer.isCoverPlaying && root.appActive
+                        active: root.appActive
                         playing: playlistmanager ? !playlistmanager.isPaused : true
                     }
                 }
