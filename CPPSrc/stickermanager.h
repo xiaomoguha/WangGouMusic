@@ -34,6 +34,8 @@ public:
     Q_INVOKABLE void refresh();
     /// 添加本地图片/动图（≤2MB），上传后加入账号表情库
     Q_INVOKABLE void addFile(const QString &path);
+    /// 拖放添加：上传成功后直接发送到当前一起听房间
+    Q_INVOKABLE void addFileAndSend(const QString &path);
     /// 把已有表情编号加入我的表情库（右键别人发的表情）
     Q_INVOKABLE void addSticker(const QString &id);
     /// 从我的表情库移除
@@ -50,8 +52,11 @@ signals:
     void busyChanged();
     void errorOccurred(const QString &message);
     void notice(const QString &message);
+    // 上传完成：send=true 表示这是拖放发送，QML 收到后发到房间
+    void fileAdded(const QString &id, bool send);
 
 private:
+    void addFileInternal(const QString &path, bool send);
     QString userid() const;
     QString cacheDir() const;
     QString cachePath(const QString &id) const;

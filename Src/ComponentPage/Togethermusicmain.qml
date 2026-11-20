@@ -1335,6 +1335,81 @@ Item {
         function onErrorOccurred(message) {
             BasicConfig.noticeError(message)
         }
+        function onFileAdded(id, send) {
+            if (!send || !websocket)
+                return
+            websocket.sendChatMessage("[sticker]" + id)
+            stickers.markRecent(id)
+            messageListView._autoScroll = true
+        }
+    }
+
+    // 拖放文件到房间：自动上传并直接发送成表情
+    function stickerLocalPath(u) {
+        var p = String(u)
+        if (p.indexOf("file:///") === 0)
+            p = p.substring(8)
+        else if (p.indexOf("file://") === 0)
+            p = p.substring(7)
+        else if (p.indexOf("file:") === 0)
+            p = p.substring(5)
+        try { p = decodeURIComponent(p) } catch (e) {}
+        return p
+    }
+
+    DropArea {
+        id: stickerDrop
+        anchors.fill: parent
+        z: 300
+        keys: ["text/uri-list"]
+
+        onEntered: (drag) => {
+            if (drag.hasUrls)
+                drag.acceptProposedAction()
+        }
+        onDropped: (drop) => {
+            if (!drop.hasUrls)
+                return
+            var urls = drop.urls
+            for (var i = 0; i < urls.length; i++) {
+                var path = stickerLocalPath(urls[i])
+                if (path !== "")
+                    stickers.addFileAndSend(path)
+            }
+            drop.acceptProposedAction()
+        }
+    }
+
+    Rectangle {
+        id: stickerDropOverlay
+        anchors.fill: parent
+        z: 299
+        enabled: false
+        visible: stickerDrop.containsDrag
+        color: "#66000000"
+        border.width: 2
+        border.color: AppTheme.accent
+
+        Column {
+            anchors.centerIn: parent
+            spacing: 8
+
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: "松开添加并发送表情"
+                color: "white"
+                font.pixelSize: AppTheme.fontSizeTitle
+                font.bold: true
+                font.family: AppTheme.fontFamily
+            }
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: "支持 GIF / WebP / PNG / JPG，不超过 2MB"
+                color: "#D9FFFFFF"
+                font.pixelSize: AppTheme.fontSizeSmall
+                font.family: AppTheme.fontFamily
+            }
+        }
     }
 
     Rectangle {

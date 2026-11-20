@@ -73,7 +73,17 @@ void StickerManager::refresh()
 
 void StickerManager::addFile(const QString &path)
 {
-    qDebug() << "[Sticker] addFile path:" << path << "userid:" << userid();
+    addFileInternal(path, false);
+}
+
+void StickerManager::addFileAndSend(const QString &path)
+{
+    addFileInternal(path, true);
+}
+
+void StickerManager::addFileInternal(const QString &path, bool send)
+{
+    qDebug() << "[Sticker] addFile path:" << path << "userid:" << userid() << "send:" << send;
     if (userid().isEmpty()) {
         emit errorOccurred(QStringLiteral("请先登录再使用表情包"));
         return;
@@ -100,7 +110,7 @@ void StickerManager::addFile(const QString &path)
     req.setRawHeader("X-Userid", userid().toUtf8());
     setBusy(true);
     QNetworkReply *reply = m_nam.post(req, data);
-    connect(reply, &QNetworkReply::finished, this, [this, reply, data]() {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, data, send]() {
         reply->deleteLater();
         setBusy(false);
         if (reply->error() != QNetworkReply::NoError) {
@@ -123,7 +133,8 @@ void StickerManager::addFile(const QString &path)
             emit libraryChanged();
         }
         bump();
-        emit notice(QStringLiteral("已添加表情"));
+        emit notice(send ? QStringLiteral("已发送表情") : QStringLiteral("已添加表情"));
+        emit fileAdded(id, send);
     });
 }
 
