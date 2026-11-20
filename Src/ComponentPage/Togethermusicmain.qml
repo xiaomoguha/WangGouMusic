@@ -1344,40 +1344,13 @@ Item {
         }
     }
 
-    // 拖放文件到房间：自动上传并直接发送成表情
-    function stickerLocalPath(u) {
-        var p = String(u)
-        if (p.indexOf("file:///") === 0)
-            p = p.substring(8)
-        else if (p.indexOf("file://") === 0)
-            p = p.substring(7)
-        else if (p.indexOf("file:") === 0)
-            p = p.substring(5)
-        try { p = decodeURIComponent(p) } catch (e) {}
-        return p
-    }
-
     DropArea {
         id: stickerDrop
         anchors.fill: parent
         z: 300
-        keys: ["text/uri-list"]
-
-        onEntered: (drag) => {
-            if (drag.hasUrls)
-                drag.acceptProposedAction()
-        }
-        onDropped: (drop) => {
-            if (!drop.hasUrls)
-                return
-            var urls = drop.urls
-            for (var i = 0; i < urls.length; i++) {
-                var path = stickerLocalPath(urls[i])
-                if (path !== "")
-                    stickers.addFileAndSend(path)
-            }
-            drop.acceptProposedAction()
-        }
+        // 上传由窗口层 C++ 拖放过滤器处理；这里只负责接受拖放 + 显示提示层
+        onEntered: (drag) => drag.acceptProposedAction()
+        onDropped: (drop) => drop.acceptProposedAction()
     }
 
     Rectangle {

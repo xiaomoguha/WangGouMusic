@@ -7,6 +7,7 @@
 #include <QVariantList>
 
 class UserManager;
+class QMimeData;
 
 /**
  * @brief 一起听表情包管理
@@ -36,6 +37,8 @@ public:
     Q_INVOKABLE void addFile(const QString &path);
     /// 拖放添加：上传成功后直接发送到当前一起听房间
     Q_INVOKABLE void addFileAndSend(const QString &path);
+    /// 窗口层拖放处理：文件路径或图片二进制都能接收
+    void handleDrop(const QMimeData *mime);
     /// 把已有表情编号加入我的表情库（右键别人发的表情）
     Q_INVOKABLE void addSticker(const QString &id);
     /// 从我的表情库移除

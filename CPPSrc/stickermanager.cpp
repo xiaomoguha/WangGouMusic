@@ -7,11 +7,14 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QImage>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QMimeData>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QTemporaryFile>
 #include <QUrl>
 
 namespace
@@ -81,9 +84,73 @@ void StickerManager::addFileAndSend(const QString &path)
     addFileInternal(path, true);
 }
 
+void StickerManager::handleDrop(const QMimeData *mime)
+{
+    if (!mime)
+        return;
+
+    // 1. 标准文件拖放：资源管理器/浏览器等走这里
+    QStringList paths;
+    for (const QUrl &u : mime->urls())
+    {
+        const QString p = u.toLocalFile();
+        if (!p.isEmpty())
+            paths << p;
+    }
+    if (!paths.isEmpty())
+    {
+        for (const QString &p : paths)
+            addFileAndSend(p);
+        return;
+    }
+
+    // 2. 只有图片二进制（部分聊天软件这样拖）：写成临时文件再走上传
+    QDir().mkpath(cacheDir());
+    const QList<QPair<QString, QString>> formats = {
+        {QStringLiteral("image/gif"), QStringLiteral("gif")},
+        {QStringLiteral("image/webp"), QStringLiteral("webp")},
+        {QStringLiteral("image/png"), QStringLiteral("png")},
+        {QStringLiteral("image/jpeg"), QStringLiteral("jpg")},
+    };
+    for (const auto &fmt : formats)
+    {
+        if (!mime->hasFormat(fmt.first))
+            continue;
+        const QByteArray data = mime->data(fmt.first);
+        if (data.isEmpty())
+            continue;
+        QTemporaryFile tmp(cacheDir() + QStringLiteral("/drop_XXXXXX.") + fmt.second);
+        tmp.setAutoRemove(true);
+        if (tmp.open())
+        {
+            tmp.write(data);
+            tmp.flush();
+            tmp.close();
+            addFileAndSend(tmp.fileName());
+        }
+        return;
+    }
+
+    // 3. 最后兜底：QImage
+    if (mime->hasImage())
+    {
+        const QImage img = qvariant_cast<QImage>(mime->imageData());
+        if (!img.isNull())
+        {
+            QTemporaryFile tmp(cacheDir() + QStringLiteral("/drop_XXXXXX.png"));
+            tmp.setAutoRemove(true);
+            if (tmp.open())
+            {
+                tmp.close();
+                if (img.save(tmp.fileName(), "PNG"))
+                    addFileAndSend(tmp.fileName());
+            }
+        }
+    }
+}
+
 void StickerManager::addFileInternal(const QString &path, bool send)
 {
-    qDebug() << "[Sticker] addFile path:" << path << "userid:" << userid() << "send:" << send;
     if (userid().isEmpty()) {
         emit errorOccurred(QStringLiteral("请先登录再使用表情包"));
         return;
@@ -95,7 +162,6 @@ void StickerManager::addFileInternal(const QString &path, bool send)
         return;
     }
     const QByteArray data = f.readAll();
-    qDebug() << "[Sticker] addFile bytes:" << data.size() << "ext:" << extFromMagic(data);
     if (data.size() > kMaxStickerBytes) {
         emit errorOccurred(QStringLiteral("表情不能超过 2MB"));
         return;

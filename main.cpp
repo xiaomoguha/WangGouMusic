@@ -6,6 +6,10 @@
 #include <QQmlComponent>
 #include <QQmlContext>
 #include <QQuickWindow>
+#include <QDragEnterEvent>
+#include <QDragMoveEvent>
+#include <QDropEvent>
+#include <QMimeData>
 #include <QTimer>
 #include <QSettings>
 #include <QScreen>
@@ -104,6 +108,55 @@ public slots:
             return false;
         return w->grabWindow().save(path);
     }
+};
+
+// 窗口层拖放：微信等来源不一定提供 text/uri-list，直接在 C++ 接更可靠
+class StickerDropForwarder : public QObject
+{
+public:
+    explicit StickerDropForwarder(StickerManager *sm, QObject *parent = nullptr)
+        : QObject(parent), m_sm(sm)
+    {
+    }
+
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override
+    {
+        const QEvent::Type type = event->type();
+        if (type == QEvent::DragEnter)
+        {
+            auto *e = static_cast<QDragEnterEvent *>(event);
+            if (isStickerMime(e->mimeData()))
+                e->acceptProposedAction();
+        }
+        else if (type == QEvent::DragMove)
+        {
+            auto *e = static_cast<QDragMoveEvent *>(event);
+            if (isStickerMime(e->mimeData()))
+                e->acceptProposedAction();
+        }
+        else if (type == QEvent::Drop)
+        {
+            auto *e = static_cast<QDropEvent *>(event);
+            if (e->mimeData())
+                m_sm->handleDrop(e->mimeData());
+        }
+        return QObject::eventFilter(watched, event);
+    }
+
+private:
+    static bool isStickerMime(const QMimeData *m)
+    {
+        if (!m)
+            return false;
+        if (!m->urls().isEmpty())
+            return true;
+        return m->hasImage() || m->hasFormat(QStringLiteral("image/gif"))
+               || m->hasFormat(QStringLiteral("image/webp")) || m->hasFormat(QStringLiteral("image/png"))
+               || m->hasFormat(QStringLiteral("image/jpeg"));
+    }
+
+    StickerManager *m_sm = nullptr;
 };
 
 int main(int argc, char *argv[])
@@ -330,6 +383,10 @@ int main(int argc, char *argv[])
     // 把主窗口交给光标追踪（换算窗口局部坐标 / 判断指针是否在窗口内）
     if (window && cursorTracker)
         cursorTracker->attachWindow(window);
+
+    // 文件/图片拖进窗口：交给表情管理器上传（微信拖拽可能不带 uri-list）
+    if (window)
+        window->installEventFilter(new StickerDropForwarder(&stickers, window));
 
 #ifdef Q_OS_MAC
     // QWindowKit 接管主窗口：真原生 traffic lights（系统级悬停图案 + 关/最小/缩放动作），
