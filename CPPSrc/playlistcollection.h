@@ -49,6 +49,8 @@ public:
     Q_INVOKABLE void refreshFavoriteHashes();
     // 当前 hash 是否已在「我喜欢」（红心是否点亮）
     Q_INVOKABLE bool containsHash(const QString &songhash) const;
+    // 歌曲是否已在指定歌单（先查本地歌单缓存，缓存没有则返回 false）
+    Q_INVOKABLE bool playlistCacheContainsHash(const QString &globalCollectionId, const QString &songhash) const;
 
     // gid "collection_3_1439409719_4_0" → 创建者 userid "1439409719"
     static Q_INVOKABLE QString createUserIdFromGid(const QString &gid);
@@ -97,6 +99,7 @@ private:
     bool m_isWorking = false;
     bool m_favRetryPending = false;  // 已发起现场拉取等重试（防循环）
     QString m_favPendingName, m_favPendingHash, m_favPendingSinger;
+    QString m_pendingFavoriteHash; // 本次「收藏到我喜欢」成功后要加入内存集合的 hash
 };
 
 #endif // PLAYLISTCOLLECTION_H

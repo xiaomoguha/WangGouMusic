@@ -142,10 +142,15 @@ Popup {
             iconSource: AppIcon.heart
             onClicked: {
                 menu.close()
-                if (menu.loginOk())
-                    playlistCollection.addToFavorite(
-                        menu.song.songname || "", menu.song.songhash || "", menu.song.singername || ""
-                    )
+                if (!menu.loginOk())
+                    return
+                if (playlistCollection && playlistCollection.containsHash(menu.song.songhash || "")) {
+                    BasicConfig.noticeError("歌曲已在「我喜欢」中")
+                    return
+                }
+                playlistCollection.addToFavorite(
+                    menu.song.songname || "", menu.song.songhash || "", menu.song.singername || ""
+                )
             }
         }
 

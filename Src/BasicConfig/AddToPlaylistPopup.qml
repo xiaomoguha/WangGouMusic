@@ -11,27 +11,54 @@ ThemedPopup {
     property var song: ({})
     property var playlists: []
     property bool pendingAutoAdd: false
+    // 当前歌曲已存在的歌单 gid / 本会话刚加过的 hash -> gid 列表
+    property var containedGids: []
+    property var addedByHash: ({})
+    property string pendingAddGid: ""
+    property string pendingAddHash: ""
+
+    function refreshMembership() {
+        var hash = (root.song && root.song.songhash) ? String(root.song.songhash).toUpperCase() : ""
+        var out = []
+        if (hash !== "" && typeof playlistCollection !== "undefined" && playlistCollection) {
+            var extra = root.addedByHash[hash] || []
+            for (var i = 0; i < playlists.length; i++) {
+                var gid = playlists[i].global_collection_id || ""
+                if (gid === "")
+                    continue
+                if (extra.indexOf(gid) >= 0 || playlistCollection.playlistCacheContainsHash(gid, hash))
+                    out.push(gid)
+            }
+        }
+        containedGids = out
+    }
 
     function refreshPlaylists() {
         var cached = userManager ? userManager.loadCachedPlaylists() : null
         var data = cached ? (cached.data || cached) : null
         playlists = (data && data.info) ? data.info.slice(0) : []
+        refreshMembership()
         if (userManager && userManager.isLoggedIn)
             userManager.fetchUserPlaylist(1, 50)
     }
 
     onOpened: {
         pendingAutoAdd = true
+        pendingAddGid = ""
+        pendingAddHash = ""
         newNameInput.text = ""
         refreshPlaylists()
     }
+    onSongChanged: if (visible) refreshMembership()
 
     Connections {
         target: userManager
         function onUserPlaylistReceived(data) {
             var d = data["data"] || data
-            if (d && d.info)
+            if (d && d.info) {
                 root.playlists = d.info.slice(0)
+                root.refreshMembership()
+            }
         }
     }
 
@@ -43,6 +70,8 @@ ThemedPopup {
             // 从「添加到歌单」入口新建：创建成功后直接把当前歌曲加进去
             if (root.pendingAutoAdd && root.song && root.song.songhash) {
                 root.pendingAutoAdd = false
+                root.pendingAddGid = String(listid)
+                root.pendingAddHash = String(root.song.songhash).toUpperCase()
                 playlistCollection.addTracks(
                     listid, [root.song],
                     "已创建并添加: " + (root.song.songname || name), 0
@@ -51,6 +80,20 @@ ThemedPopup {
             }
         }
         function onOperationFinished(success, message) {
+            // 添加请求可能在弹窗关闭后才返回：成功则记住该歌单，
+            // 本会话内再次打开弹窗时不会允许重复添加
+            if (root.pendingAddGid !== "") {
+                if (success) {
+                    var h = root.pendingAddHash
+                    var g = root.pendingAddGid
+                    var list = (root.addedByHash[h] || []).slice(0)
+                    if (list.indexOf(g) < 0)
+                        list.push(g)
+                    root.addedByHash[h] = list
+                }
+                root.pendingAddGid = ""
+                root.pendingAddHash = ""
+            }
             if (!root.visible)
                 return
             if (success) {
@@ -174,10 +217,13 @@ ThemedPopup {
                 spacing: 2
 
                 delegate: Rectangle {
+                    id: playlistRow
                     width: parent.width
                     height: 42
                     radius: 6
-                    color: itemHover.hovered ? AppTheme.bgNavHover : "transparent"
+                    readonly property bool alreadyIn: root.containedGids.indexOf(
+                        String(modelData.global_collection_id || "")) >= 0
+                    color: (itemHover.hovered && !alreadyIn) ? AppTheme.bgNavHover : "transparent"
 
                     Row {
                         anchors.left: parent.left
@@ -186,6 +232,7 @@ ThemedPopup {
                         anchors.rightMargin: 12
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 10
+                        opacity: playlistRow.alreadyIn ? 0.5 : 1.0
 
                         RetryImage {
                             width: 26
@@ -209,7 +256,7 @@ ThemedPopup {
                         }
                         Text {
                             id: countText
-                            text: modelData.count || 0
+                            text: playlistRow.alreadyIn ? "已在歌单中" : (modelData.count || 0)
                             font.pixelSize: AppTheme.fontSizeCaption
                             color: AppTheme.textMuted
                             anchors.verticalCenter: parent.verticalCenter
@@ -219,10 +266,13 @@ ThemedPopup {
                     HoverHandler { id: itemHover }
                     TapHandler {
                         cursorShape: Qt.PointingHandCursor
-                        enabled: !(playlistCollection && playlistCollection.isWorking)
+                        enabled: !playlistRow.alreadyIn
+                                 && !(playlistCollection && playlistCollection.isWorking)
                         onTapped: {
                             if (!root.song || !root.song.songhash)
                                 return
+                            root.pendingAddGid = String(modelData.global_collection_id || "")
+                            root.pendingAddHash = String(root.song.songhash).toUpperCase()
                             playlistCollection.addTracks(
                                 String(modelData.listid), [root.song],
                                 "已添加到歌单: " + (root.song.songname || ""),

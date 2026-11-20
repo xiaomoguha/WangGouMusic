@@ -73,16 +73,19 @@ void StickerManager::refresh()
 
 void StickerManager::addFile(const QString &path)
 {
+    qDebug() << "[Sticker] addFile path:" << path << "userid:" << userid();
     if (userid().isEmpty()) {
         emit errorOccurred(QStringLiteral("请先登录再使用表情包"));
         return;
     }
     QFile f(path);
     if (!f.open(QIODevice::ReadOnly)) {
+        qDebug() << "[Sticker] addFile open failed:" << f.errorString();
         emit errorOccurred(QStringLiteral("无法读取文件"));
         return;
     }
     const QByteArray data = f.readAll();
+    qDebug() << "[Sticker] addFile bytes:" << data.size() << "ext:" << extFromMagic(data);
     if (data.size() > kMaxStickerBytes) {
         emit errorOccurred(QStringLiteral("表情不能超过 2MB"));
         return;

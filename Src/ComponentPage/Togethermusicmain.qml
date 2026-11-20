@@ -1312,7 +1312,18 @@ Item {
 
         title: "添加表情"
         nameFilters: ["图片 (*.gif *.webp *.png *.jpg *.jpeg)"]
-        onAccepted: stickers.addFile(selectedFile.toLocalFile())
+        onAccepted: {
+            // QML 的 url 没有 toLocalFile()：手动把 file:///C:/... 转成本地路径
+            var path = String(selectedFile)
+            if (path.indexOf("file:///") === 0)
+                path = path.substring(8)
+            else if (path.indexOf("file://") === 0)
+                path = path.substring(7)
+            else if (path.indexOf("file:") === 0)
+                path = path.substring(5)
+            try { path = decodeURIComponent(path) } catch (e) {}
+            stickers.addFile(path)
+        }
     }
 
     Connections {

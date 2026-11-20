@@ -150,8 +150,19 @@ void PlaylistCollection::parseResult(QJsonObject root, const QString &successMsg
     setWorking(false);
     const int status  = root["status"].toInt();
     const int errCode = root["error_code"].toInt();
-    if (status == 1 || errCode == 0)
+    const bool ok = status == 1 || errCode == 0;
+    if (ok)
     {
+        // 收藏成功立即补进红心集合：不用等下一次全量刷新就能拦住重复收藏
+        if (!m_pendingFavoriteHash.isEmpty())
+        {
+            if (!m_favoriteHashes.contains(m_pendingFavoriteHash))
+            {
+                m_favoriteHashes << m_pendingFavoriteHash;
+                saveFavoriteHashesToCache();
+                emit favoriteHashesChanged();
+            }
+        }
         emit operationFinished(true, successMsg);
     }
     else
@@ -163,6 +174,7 @@ void PlaylistCollection::parseResult(QJsonObject root, const QString &successMsg
             msg = QString("操作失败 (错误码: %1)").arg(errCode);
         emit operationFinished(false, msg);
     }
+    m_pendingFavoriteHash.clear();
 }
 
 void PlaylistCollection::collectPlaylist(
@@ -247,6 +259,7 @@ void PlaylistCollection::addTracks(
 {
     if (listid.isEmpty() || songs.isEmpty())
     {
+        m_pendingFavoriteHash.clear();
         emit operationFinished(false, "歌单或歌曲信息不完整");
         return;
     }
@@ -270,6 +283,7 @@ void PlaylistCollection::addTracks(
     }
     if (parts.isEmpty())
     {
+        m_pendingFavoriteHash.clear();
         emit operationFinished(false, "歌曲信息不完整");
         return;
     }
@@ -281,7 +295,12 @@ void PlaylistCollection::addTracks(
         "/playlist/tracks/add", params,
         [this, successMsg](QJsonObject root)
         { parseResult(root, successMsg.isEmpty() ? QStringLiteral("已添加到歌单") : successMsg); },
-        [this](QString err, int) { setWorking(false); emit operationFinished(false, "网络错误: " + err); }
+        [this](QString err, int)
+        {
+            m_pendingFavoriteHash.clear();
+            setWorking(false);
+            emit operationFinished(false, "网络错误: " + err);
+        }
     );
 }
 
@@ -292,6 +311,12 @@ void PlaylistCollection::addToFavorite(
     if (songname.isEmpty() || songhash.isEmpty())
     {
         emit operationFinished(false, "当前歌曲信息不完整");
+        return;
+    }
+    // 已在「我喜欢」：不再重复添加（服务端也会去重，这里提前拦下避免误提示成功）
+    if (containsHash(songhash))
+    {
+        emit operationFinished(false, "歌曲已在「我喜欢」中");
         return;
     }
     // 「我喜欢」定位：多级匹配（名字/系统 gid/默认收藏兜底），见 findFavorite
@@ -322,6 +347,8 @@ void PlaylistCollection::addToFavorite(
     QString display = songname;
     if (display.size() > 18)
         display = display.left(18) + QStringLiteral("…");
+    // 请求是异步的，parseResult 回来时把 hash 补进红心集合
+    m_pendingFavoriteHash = songhash.toUpper();
     addTracks(listid, songs, QStringLiteral("已添加到我喜欢 ♥ ") + display);
 }
 
@@ -434,6 +461,21 @@ void PlaylistCollection::saveFavoriteHashesToCache()
 bool PlaylistCollection::containsHash(const QString &songhash) const
 {
     return m_favoriteHashes.contains(songhash.toUpper());
+}
+
+bool PlaylistCollection::playlistCacheContainsHash(
+    const QString &globalCollectionId, const QString &songhash
+) const
+{
+    if (globalCollectionId.isEmpty() || songhash.isEmpty())
+        return false;
+    QFile f(PlaylistCacheStore::configPath("playlist_" + globalCollectionId + ".json"));
+    if (!f.exists() || !f.open(QIODevice::ReadOnly))
+        return false;
+    const QByteArray data = f.readAll();
+    f.close();
+    // 缓存里 hash 是大写；直接字节查找，避免为了判断重复去解析 1MB+ JSON
+    return data.contains(songhash.toUpper().toLatin1());
 }
 
 void PlaylistCollection::removeTracks(const QString &listid, const QVariantList &fileids, int type)
