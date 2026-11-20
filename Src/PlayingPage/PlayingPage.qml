@@ -323,9 +323,9 @@ Rectangle {
                     }
                     // pause/resume（而非 stop/start）：保留当前角度，恢复时不跳变（不闪角）；
                     function updateRotation() {
+                        // 只在暂停或窗口最小化/隐藏时停；失焦但仍可见时继续旋转
                         const active = playlistmanager && !playlistmanager.isPaused
-                                       && root.lyricsOpened && root.appActive
-                                       && !BasicConfig.uiIdle;
+                                       && root.lyricsOpened && root.appActive;
                         if (active) {
                             if (rotationAnim.paused)
                                 rotationAnim.resume();
@@ -338,10 +338,6 @@ Rectangle {
                     Connections {
                         target: playlistmanager
                         function onIsPausedChanged() { avatarImage.updateRotation(); }
-                    }
-                    Connections {
-                        target: BasicConfig
-                        function onUiIdleChanged() { avatarImage.updateRotation(); }
                     }
                     Connections {
                         target: root
