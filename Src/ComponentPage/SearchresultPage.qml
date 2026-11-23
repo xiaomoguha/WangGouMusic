@@ -810,11 +810,157 @@ Item {
         property var itemData: ({})
         property int itemIndex: 0
         signal activated(var item)
-        height: 58 + aiExpand.expandedHeight
-        radius: 6
+        height: 56 + aiExpand.expandedHeight
+        radius: 8
+        color: "transparent"
         hovered: songRowHover.hovered
 
+        readonly property bool isPlaying: !!(playlistmanager && playlistmanager.currentSonghash === itemData.songhash)
+        readonly property bool isTogether: !!(playlistmanager && playlistmanager.type === 1)
+
         HoverHandler { id: songRowHover }
+
+        // 行内容固定在 56 高，下方让位给 AI 展开
+        Item {
+            width: parent.width
+            height: 56
+
+            // 左侧：序号 / 播放指示 + 封面 + 歌名/歌手
+            Row {
+                x: 0.025 * songRowItem.width
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 12
+
+                Item {
+                    width: 28
+                    height: 28
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: (songRowItem.itemIndex + 1).toString().padStart(2, "0")
+                        font.pixelSize: AppTheme.fontSizeBodyLg
+                        color: songRowItem.isPlaying ? AppTheme.accentPlaying : AppTheme.textMuted
+                        font.family: AppTheme.fontFamily
+                        visible: !songRowItem.isPlaying
+                    }
+
+                    NowPlayingIndicator {
+                        anchors.centerIn: parent
+                        width: 20
+                        height: 20
+                        visible: songRowItem.isPlaying
+                        playing: playlistmanager ? !playlistmanager.isPaused : true
+                    }
+                }
+
+                CoverImage {
+                    width: 40
+                    height: 40
+                    radiusValue: 8
+                    src: songRowItem.itemData.union_cover || ""
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+
+                Column {
+                    width: 0.2 * songRowItem.width
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 3
+
+                    Text {
+                        width: parent.width
+                        text: songRowItem.itemData.songname || ""
+                        elide: Text.ElideRight
+                        font.pixelSize: AppTheme.fontSizeBody
+                        font.bold: true
+                        color: (songRowItem.isPlaying || songRowHover.hovered) ? AppTheme.accentPlaying : AppTheme.textSongTitle
+                        font.family: AppTheme.fontFamily
+                    }
+                    Text {
+                        width: parent.width
+                        text: songRowItem.itemData.singername || ""
+                        elide: Text.ElideRight
+                        font.pixelSize: AppTheme.fontSizeCaption
+                        font.bold: true
+                        color: songRowItem.isPlaying ? AppTheme.accentPlaying : AppTheme.textMuted
+                        font.family: AppTheme.fontFamily
+                    }
+                }
+            }
+
+            // 操作按钮：悬停显示，位置与单曲页一致
+            Row {
+                id: actionRow
+                visible: songRowHover.hovered || climaxPreviewBtn.active
+                x: 0.025 * songRowItem.width + 28 + 12 + 40 + 12 + 0.2 * songRowItem.width + 12
+                width: 88
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 4
+                z: 1
+
+                ClimaxPreviewButton {
+                    id: climaxPreviewBtn
+                    songHash: songRowItem.itemData.songhash || ""
+                    songTitle: songRowItem.itemData.songname || ""
+                    songSinger: songRowItem.itemData.singername || ""
+                    songCover: songRowItem.itemData.union_cover || ""
+                    rowHovered: songRowHover.hovered
+                    compact: true
+                }
+
+                IconButton {
+                    visible: !songRowItem.isTogether && !songRowItem.isPlaying
+                    iconSource: AppIcon.playCircle
+                    size: 24
+                    iconSize: 14
+                    onClicked: songRowItem.activated(songRowItem.itemData)
+                }
+
+                IconButton {
+                    visible: songRowItem.isTogether && !songRowItem.isPlaying
+                    iconSource: AppIcon.addTogether
+                    size: 24
+                    iconSize: 14
+                    iconColor: hovered ? AppTheme.accent : AppTheme.iconDefault
+                    onClicked: songRowItem.activated(songRowItem.itemData)
+                }
+            }
+
+            // 专辑名
+            Text {
+                x: 0.48 * songRowItem.width
+                anchors.verticalCenter: parent.verticalCenter
+                width: 0.28 * songRowItem.width
+                text: songRowItem.itemData.album_name || ""
+                elide: Text.ElideRight
+                font.pixelSize: AppTheme.fontSizeBody
+                font.bold: true
+                color: AppTheme.textMuted
+                font.family: AppTheme.fontFamily
+            }
+
+            // 时长
+            Text {
+                anchors.right: parent.right
+                anchors.rightMargin: 0.04 * songRowItem.width
+                anchors.verticalCenter: parent.verticalCenter
+                text: songRowItem.itemData.duration || "--:--"
+                font.pixelSize: AppTheme.fontSizeBody
+                color: AppTheme.textMuted
+                font.family: AppTheme.fontFamily
+            }
+        }
+
+        // AI 推荐展开
+        AiRecommendExpand {
+            id: aiExpand
+            anchors.top: parent.top
+            anchors.topMargin: 56
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.leftMargin: 44
+            anchors.rightMargin: 14
+        }
 
         function contextSong() {
             return {
@@ -828,99 +974,6 @@ Item {
             }
         }
 
-        Item {
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.leftMargin: 8
-            anchors.rightMargin: 8
-            height: 58
-
-            Text {
-                id: songNum
-                width: 22
-                text: (songRowItem.itemIndex + 1).toString().padStart(2, "0")
-                anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
-                font.pixelSize: AppTheme.fontSizeCaption
-                color: AppTheme.textMuted
-                font.family: AppTheme.fontFamily
-            }
-
-            CoverImage {
-                id: songCover
-                width: 40
-                height: 40
-                circular: false
-                radiusValue: 6
-                src: songRowItem.itemData.union_cover || ""
-                anchors.left: songNum.right
-                anchors.leftMargin: 10
-                anchors.verticalCenter: parent.verticalCenter
-            }
-
-            Text {
-                id: songDur
-                width: 44
-                text: songRowItem.itemData.duration || "--:--"
-                horizontalAlignment: Text.AlignRight
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-                font.pixelSize: AppTheme.fontSizeCaption
-                color: AppTheme.textMuted
-                font.family: AppTheme.fontFamily
-            }
-
-            IconButton {
-                id: songPlayBtn
-                iconSource: AppIcon.playCircle
-                size: 28
-                iconSize: 15
-                iconColor: songPlayBtn.hovered ? "#4FC3F7" : AppTheme.textSecondary
-                anchors.right: songDur.left
-                anchors.rightMargin: 6
-                anchors.verticalCenter: parent.verticalCenter
-                onClicked: songRowItem.activated(songRowItem.itemData)
-            }
-
-            Column {
-                anchors.left: songCover.right
-                anchors.leftMargin: 12
-                anchors.right: songPlayBtn.left
-                anchors.rightMargin: 10
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: 3
-
-                Text {
-                    width: parent.width
-                    text: songRowItem.itemData.songname || ""
-                    elide: Text.ElideRight
-                    font.pixelSize: AppTheme.fontSizeBody
-                    font.bold: true
-                    color: songRowHover.hovered ? AppTheme.accentPlaying : AppTheme.textSongTitle
-                    font.family: AppTheme.fontFamily
-                }
-                Text {
-                    width: parent.width
-                    text: songRowItem.itemData.singername || ""
-                    elide: Text.ElideRight
-                    font.pixelSize: AppTheme.fontSizeCaption
-                    color: AppTheme.textMuted
-                    font.family: AppTheme.fontFamily
-                }
-            }
-        }
-
-        AiRecommendExpand {
-            id: aiExpand
-            anchors.top: parent.top
-            anchors.topMargin: 58
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.leftMargin: 44
-            anchors.rightMargin: 14
-        }
-
         TapHandler {
             cursorShape: Qt.PointingHandCursor
             onTapped: songRowItem.activated(songRowItem.itemData)
@@ -929,13 +982,12 @@ Item {
         TapHandler {
             acceptedButtons: Qt.RightButton
             onTapped: BasicConfig.requestSongContextMenu(songRowItem.contextSong(), {
-                "togetherMode": playlistmanager && playlistmanager.type === 1,
+                "togetherMode": songRowItem.isTogether,
                 "showAi": true,
                 "onAi": function() { aiExpand.toggle(songRowItem.itemData.songhash, songRowItem.itemData.songname) }
             })
         }
     }
-
     component PlaylistRow: HoverRow {
         id: plRowItem
         property var itemData: ({})
