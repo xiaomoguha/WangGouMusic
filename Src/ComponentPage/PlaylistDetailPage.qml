@@ -690,15 +690,14 @@ Item {
                     // 专辑名 + 时长：右对齐锚定（不参与 Row 流式布局）。
                     Text {
                         text: model.album_name
-                        width: 0.18 * tracksListView.width
+                        x: 0.42 * tracksListView.width
+                        width: 0.26 * tracksListView.width
                         horizontalAlignment: Text.AlignLeft
                         elide: Text.ElideRight
                         font.pixelSize: AppTheme.fontSizeBodyLg
                         font.family: AppTheme.fontFamily
                         font.bold: true
                         color: AppTheme.textMuted
-                        anchors.right: rowDuration.left
-                        anchors.rightMargin: 70
                         anchors.verticalCenter: parent.verticalCenter
                     }
 
