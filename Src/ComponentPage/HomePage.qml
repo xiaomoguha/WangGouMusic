@@ -11,6 +11,27 @@ Item {
     width: parent ? parent.width : 0
     height: parent ? parent.height : 0
 
+    // 热门推荐行点击：一起听模式下加入房间，否则立即播放
+    function playRecommendedSong(song) {
+        if (!song) return
+        if (root.isTogetherMode) {
+            if (websocket) {
+                websocket.addSongToTogether(song.songname, song.songhash, song.singername,
+                                            song.album_name, song.duration, song.union_cover)
+            }
+            return
+        }
+        playlistmanager.playNextAndPlay({
+            "songname": song.songname,
+            "songhash": song.songhash,
+            "singername": song.singername,
+            "union_cover": song.union_cover,
+            "album_name": song.album_name,
+            "duration": song.duration
+        })
+        BasicConfig.emitSongAdded("正在播放: " + song.songname)
+    }
+
     // 随机榜单歌曲 → 注入热门推荐区
     Connections {
         target: rankList
@@ -20,84 +41,7 @@ Item {
         }
     }
 
-    Component.onCompleted: {
-        // 首次进首页拉一批 FM（已拉过则不重复请求）
-        if (personalFM && personalFM.songs.length === 0 && !personalFM.isLoading)
-            personalFM.fetch()
-    }
 
-    // ===================== 个人 FM =====================
-    // 原独立 FM 页合并进首页：播放全部进入 FM 模式（播到批末自动续批并追加），
-    property bool fmPlaying: false
-    property bool _autoFetched: false
-
-    // 播放全部（FM 批入队播放；播到批末自动续批）
-    function fmPlayAll() {
-        var songs = personalFM ? personalFM.songs : []
-        if (songs.length === 0) return
-        playlistmanager.clearPlaylist()
-        for (var i = 0; i < songs.length; i++) {
-            var s = songs[i]
-            playlistmanager.addSong({
-                "songname": s.songname,
-                "songhash": s.songhash,
-                "singername": s.singername,
-                "union_cover": s.union_cover,
-                "album_name": s.album_name,
-                "duration": s.duration
-            })
-        }
-        playlistmanager.playSongbyindex(0)
-        root.fmPlaying = true
-        BasicConfig.emitSongAdded("开始播放个人FM")
-    }
-
-    // 切下一批（手动「换一批」或播到批末自动触发）
-    function fmFetchNext() {
-        console.log("[HomePage] fmFetchNext, isLoading:", personalFM ? personalFM.isLoading : "no obj")
-        if (personalFM && !personalFM.isLoading)
-            personalFM.fetchNext()
-    }
-
-    // 播放队列跳到当前批最后一首 → 预取下一批（播完即续）
-    Connections {
-        target: playlistmanager
-        function onCurrentSongChanged() {
-            if (!root.fmPlaying) return
-            var songs = personalFM ? personalFM.songs : []
-            if (songs.length < 2) return
-            var lastHash = songs[songs.length - 1].songhash
-            if (playlistmanager.currentSonghash === lastHash && !root._autoFetched) {
-                root._autoFetched = true
-                root.fmFetchNext()
-            } else if (playlistmanager.currentSonghash !== lastHash) {
-                root._autoFetched = false
-            }
-        }
-    }
-
-    // 新一批到达：FM 模式下追加到播放队列末尾（播完批末自动接上新批）
-    Connections {
-        target: personalFM
-        function onSongsChanged() {
-            if (!root.fmPlaying) return
-            var songs = personalFM.songs
-            for (var i = 0; i < songs.length; i++) {
-                var s = songs[i]
-                playlistmanager.addSong({
-                    "songname": s.songname,
-                    "songhash": s.songhash,
-                    "singername": s.singername,
-                    "union_cover": s.union_cover,
-                    "album_name": s.album_name,
-                    "duration": s.duration
-                })
-            }
-            root._autoFetched = false
-        }
-    }
-
-    // ===================== 滚动容器 =====================
     Flickable {
         id: flickable
         anchors.fill: parent
@@ -151,264 +95,6 @@ Item {
 
             Item { width: 1; height: 5 }
 
-            // ========== 个人 FM ==========
-            Column {
-                width: parent.width - parent.leftPadding - parent.rightPadding
-                spacing: 12
-
-                Row {
-                    spacing: 6
-
-                    GlowText {
-                        text: "✦ 个人FM"
-                        font.pixelSize: AppTheme.fontSizeTitleLg
-                        font.bold: true
-                        color: AppTheme.textPrimary
-                        glowColor: AppTheme.accentGlow
-                        glowRadius: 16
-                    }
-
-                    // 换一批（请求期间图标持续旋转；FM 模式下播放队列自动接上）
-                    SectionRefreshButton {
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.verticalCenterOffset: -3
-                        busy: personalFM && personalFM.isLoading
-                        onClicked: root.fmFetchNext()
-                    }
-                }
-
-                Row {
-                    spacing: 12
-
-                    // 播放全部 / 一起听模式下改为「添加到一起听」（把当前 FM 批次加进房间）
-                    Rectangle {
-                        width: isTogetherMode ? 140 : 100
-                        height: 32
-                        radius: 16
-                        color: fmPlayAllHover.hovered ? "#533483" : "#e94560"
-                        Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: isTogetherMode
-                                  ? "＋ 添加到一起听"
-                                  : ((personalFM && personalFM.isLoading && personalFM.songs.length === 0)
-                                     ? "加载中..." : "▶ 播放全部")
-                            font.pixelSize: AppTheme.fontSizeSmall
-                            font.bold: true
-                            color: "#ffffff"
-                            font.family: AppTheme.fontFamily
-                        }
-                        HoverHandler { id: fmPlayAllHover }
-                        TapHandler {
-                            cursorShape: Qt.PointingHandCursor
-                            enabled: personalFM && !personalFM.isLoading
-                            onTapped: {
-                                if (isTogetherMode)
-                                    BasicConfig.togetherAddSongs(websocket, personalFM ? personalFM.songs : [])
-                                else
-                                    root.fmPlayAll()
-                            }
-                        }
-                    }
-                }
-
-                // 横向歌曲卡片（当前批）
-                ListView {
-                    id: fmList
-                    width: parent.width
-                    // 高度比卡片高 16px 并留 8px 上边距：hover 时卡片要上浮/放大，
-                    // clip 下必须有这个余量，否则动效被裁掉（表现为"没动效"）
-                    height: 196
-                    topMargin: 8
-                    orientation: ListView.Horizontal
-                    spacing: 12
-                    clip: true
-                    model: personalFM ? personalFM.songs : []
-
-                    ScrollBar.horizontal: ScrollBar {
-                        height: 4
-                        anchors.bottom: parent.bottom
-                        policy: ScrollBar.AsNeeded
-                        contentItem: Rectangle {
-                            visible: parent.active
-                            height: 4
-                            radius: 2
-                            color: AppTheme.scrollbarColor
-                        }
-                    }
-
-                    delegate: Item {
-                        width: 130
-                        height: 180
-
-                        readonly property var songData: modelData
-                        readonly property bool isPlaying: playlistmanager && playlistmanager.currentSonghash === songData.songhash
-
-                        // 毛玻璃卡：hover 上浮（整页光圈由页面级 pageLight 提供，卡内不重复打光）
-                        HoverCard {
-                            anchors.fill: parent
-                            hovered: fmCardHover.hovered || isPlaying
-                            radius: AppTheme.radiusMedium
-                        }
-
-                        Column {
-                            anchors.fill: parent
-                            anchors.margins: 8
-                            spacing: 6
-
-                            // FM 接口无封面：用主题渐变占位封面（不同卡片不同色系），
-                            // 中间大号 ♪，hover/播放时压暗 + 动态图
-                            Rectangle {
-                                id: fmCoverCard
-                                width: parent.width
-                                height: width
-                                radius: 10
-                                clip: true
-
-                                // 渐变色板：按卡片序号循环取一对
-                                readonly property var palette: [
-                                    ["#FF6B6B", "#EE5A24"], ["#54A0FF", "#2E86DE"],
-                                    ["#5F27CD", "#341F97"], ["#1DD1A1", "#10AC84"],
-                                    ["#FECA57", "#F39C12"], ["#00D2D3", "#01A3A4"]
-                                ]
-
-                                LinearGradient {
-                                    anchors.fill: parent
-                                    start: Qt.vector2d(0, 0)
-                                    end: Qt.vector2d(parent.width, parent.height)
-                                    gradient: Gradient {
-                                        GradientStop { position: 0.0; color: fmCoverCard.palette[index % 6][0] }
-                                        GradientStop { position: 1.0; color: fmCoverCard.palette[index % 6][1] }
-                                    }
-                                }
-
-                                // 专辑封面（C++ 按 album_id 补全后显示；无图时渐变兜底）
-                                RetryImage {
-                                    anchors.fill: parent
-                                    coverSource: songData.union_cover || ""
-                                    sourceSize.width: 260
-                                    sourceSize.height: 260
-                                    fillMode: Image.PreserveAspectCrop
-                                }
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: "♪"
-                                    font.pixelSize: 52
-                                    color: "#59FFFFFF"
-                                    font.family: AppTheme.fontFamily
-                                    visible: !songData.union_cover
-                                }
-
-                                // 卡片序号角标（像专辑封面编号）
-                                Text {
-                                    anchors.right: parent.right
-                                    anchors.bottom: parent.bottom
-                                    anchors.margins: 8
-                                    text: (index + 1).toString().padStart(2, "0")
-                                    font.pixelSize: AppTheme.fontSizeCaption
-                                    font.bold: true
-                                    color: "#59FFFFFF"
-                                    font.family: AppTheme.fontFamily
-                                }
-
-                                // hover/播放时深色压暗层
-                                Rectangle {
-                                    anchors.fill: parent
-                                    color: "#40000000"
-                                    visible: fmCardHover.hovered || isPlaying
-
-                                    NowPlayingIndicator {
-                                        anchors.centerIn: parent
-                                        visible: isPlaying
-                                        playing: playlistmanager ? !playlistmanager.isPaused : true
-                                    }
-
-                                    Image {
-                                        id: fmPlayIcon
-                                        anchors.centerIn: parent
-                                        // 一起听模式下图标换成「加入一起听」，点击行为已由 TapHandler 区分
-                                        source: isTogetherMode ? AppIcon.addTogether : AppIcon.playCircle
-                                        width: 32
-                                        height: 32
-                                        fillMode: Image.PreserveAspectFit
-                                        visible: !isPlaying && fmCardHover.hovered
-                                        sourceSize: Qt.size(128, 128)
-                                        mipmap: true
-                                        layer.enabled: true
-                                        // 遮罩是深色压暗，播放按钮一律用白色（浅色主题下也清晰）
-                                        layer.effect: ColorOverlay {
-                                            source: fmPlayIcon
-                                            color: "#FFFFFF"
-                                        }
-                                    }
-                                }
-                            }
-
-                            Text {
-                                text: songData.songname
-                                width: parent.width
-                                elide: Text.ElideRight
-                                font.pixelSize: AppTheme.fontSizeSmall
-                                font.bold: true
-                                color: (isPlaying || fmCardHover.hovered) ? AppTheme.accentPlaying : AppTheme.textSongTitle
-                                font.family: AppTheme.fontFamily
-                            }
-
-                            Text {
-                                text: songData.singername
-                                width: parent.width
-                                elide: Text.ElideRight
-                                font.pixelSize: AppTheme.fontSizeCaption
-                                font.bold: true
-                                color: AppTheme.textMuted
-                                font.family: AppTheme.fontFamily
-                            }
-                        }
-
-                        HoverHandler { id: fmCardHover }
-                        TapHandler {
-                            cursorShape: Qt.PointingHandCursor
-                            onTapped: {
-                                if (isTogetherMode) {
-                                    if (websocket) {
-                                        websocket.addSongToTogether(songData.songname, songData.songhash,
-                                            songData.singername, songData.album_name,
-                                            songData.duration, songData.union_cover)
-                                    }
-                                } else {
-                                    playlistmanager.playNextAndPlay({
-                                        "songname": songData.songname,
-                                        "songhash": songData.songhash,
-                                        "singername": songData.singername,
-                                        "union_cover": songData.union_cover,
-                                        "album_name": songData.album_name,
-                                        "duration": songData.duration
-                                    })
-                                    BasicConfig.emitSongAdded("正在播放: " + songData.songname)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // FM 空状态（加载失败时重试）
-                EmptyState {
-                    visible: personalFM && personalFM.songs.length === 0
-                    width: parent.width
-                    height: 160
-                    iconText: "♪"
-                    title: personalFM && personalFM.isLoading ? "正在加载个人FM..." : "个人FM加载失败"
-                    subtitle: personalFM && personalFM.isLoading ? "" : "点击重试"
-                    buttonText: personalFM && personalFM.isLoading ? "" : "重新加载"
-                    onButtonClicked: {
-                        if (personalFM)
-                            personalFM.fetch()
-                    }
-                }
-            }
-
             // ========== 热门推荐 ==========
             Column {
                 width: parent.width - parent.leftPadding - parent.rightPadding
@@ -439,140 +125,22 @@ Item {
                 }
 
                 GridView {
-                    id: songsGrid
+                    id: recommendGrid
                     width: parent.width
                     height: contentHeight
-                    // 按窗口宽度自适应列数：约 150px 一列，3~7 列
-                    readonly property int colCount: Math.max(3, Math.min(7, Math.floor((width + 12) / 150)))
-                    cellWidth: width / colCount
-                    // 横版圆角矩形封面（高 = 宽 × 3/4）+ 下方歌名/歌手文字区
-                    cellHeight: (cellWidth - 22) * 3 / 4 + 62
+                    cellWidth: width / 3
+                    cellHeight: 70
                     interactive: false
                     model: recommendation ? recommendation.topSongsQml : []
 
-                    delegate: Item {
-                        width: songsGrid.cellWidth - 6
-                        height: songsGrid.cellHeight - 6
-
-                        property var songData: modelData
-                        readonly property bool isPlaying: playlistmanager && playlistmanager.currentSonghash === songData.songhash
-
-                        // hover 提起：上浮 + 回弹 + 投影（无面板）
-                        HoverCard {
-                            anchors.fill: parent
-                            hovered: songCardHover.hovered || isPlaying
-                            radius: AppTheme.radiusMedium
-
-                            Column {
-                                anchors.fill: parent
-                                anchors.margins: 8
-                                spacing: 6
-
-                                Rectangle {
-                                    width: parent.width
-                                    // 横版圆角矩形封面（高 = 宽 × 3/4，圆角与 FM 卡片视觉统一）
-                                    height: width * 3 / 4
-                                    radius: 10
-                                    clip: true
-
-                                    RetryImage {
-                                        id: songCoverImage
-                                        anchors.fill: parent
-                                        coverSource: songData.union_cover
-                                        sourceSize.width: 400
-                                        sourceSize.height: 300
-                                        fillMode: Image.PreserveAspectCrop
-                                        // clip 只裁矩形不裁圆角，这里用 OpacityMask 做真正圆角
-                                        layer.enabled: true
-                                        layer.effect: OpacityMask {
-                                            maskSource: Rectangle {
-                                                width: songCoverImage.width
-                                                height: songCoverImage.height
-                                                radius: 10
-                                            }
-                                        }
-                                    }
-
-                                    Rectangle {
-                                        anchors.fill: parent
-                                        color: "#40000000"
-                                        visible: songCardHover.hovered || isPlaying
-                                        radius: 12
-
-                                        NowPlayingIndicator {
-                                            anchors.centerIn: parent
-                                            visible: isPlaying
-                                            playing: playlistmanager ? !playlistmanager.isPaused : true
-                                        }
-
-                                        Image {
-                                            id: cardPlayIcon
-                                            anchors.centerIn: parent
-                                            // 一起听模式下图标换成「加入一起听」，点击行为已由 TapHandler 区分
-                                            source: isTogetherMode ? AppIcon.addTogether : AppIcon.playCircle
-                                            width: 32
-                                            height: 32
-                                            fillMode: Image.PreserveAspectFit
-                                            visible: !isPlaying && songCardHover.hovered
-                                            sourceSize: Qt.size(128, 128)
-                                            mipmap: true
-                                            layer.enabled: true
-                                            // 遮罩是深色压暗，播放按钮一律用白色（浅色主题下也清晰）
-                                            layer.effect: ColorOverlay { source: cardPlayIcon; color: "#FFFFFF" }
-                                        }
-                                    }
-                                }
-
-                                Text {
-                                    text: songData.songname
-                                    width: parent.width
-                                    elide: Text.ElideRight
-                                    font.pixelSize: AppTheme.fontSizeSmall
-                                    font.bold: true
-                                    // hover 歌曲名高亮（网易云风格），播放行保持强调色
-                                    color: (isPlaying || songCardHover.hovered) ? AppTheme.accentPlaying : AppTheme.textSongTitle
-                                    font.family: AppTheme.fontFamily
-                                }
-
-                                Text {
-                                    text: songData.singername
-                                    width: parent.width
-                                    elide: Text.ElideRight
-                                    font.pixelSize: AppTheme.fontSizeCaption
-                                    font.bold: true
-                                    color: AppTheme.textMuted
-                                    font.family: AppTheme.fontFamily
-                                }
-                            }
-
-                            HoverHandler { id: songCardHover }
-
-                            TapHandler {
-                                cursorShape: Qt.PointingHandCursor
-                                onTapped: {
-                                    if (isTogetherMode) {
-                                        if (websocket) {
-                                            websocket.addSongToTogether(songData.songname, songData.songhash,
-                                                songData.singername, songData.album_name,
-                                                songData.duration, songData.union_cover)
-                                        }
-                                    } else {
-                                        playlistmanager.playNextAndPlay({
-                                            "songname": songData.songname,
-                                            "songhash": songData.songhash,
-                                            "singername": songData.singername,
-                                            "union_cover": songData.union_cover,
-                                            "album_name": songData.album_name,
-                                            "duration": songData.duration
-                                        })
-                                        BasicConfig.emitSongAdded("正在播放: " + songData.songname)
-                                    }
-                                }
-                            }
-                        }
+                    delegate: RecommendSongRow {
+                        width: recommendGrid.cellWidth - 10
+                        itemIndex: index
+                        itemData: modelData
+                        togetherMode: root.isTogetherMode
+                        onActivated: root.playRecommendedSong(item)
                     }
                 }
-
                 EmptyState {
                     visible: !recommendation || recommendation.topSongsQml.length === 0
                     width: parent.width
@@ -749,6 +317,191 @@ Item {
             }
 
             Item { width: 1; height: 20 }
+        }
+    }
+
+    // 热门推荐行封面（与搜索页单曲行一致）
+    component CoverImage: Rectangle {
+        id: coverRoot
+        property string src: ""
+        property int radiusValue: 8
+        width: 48
+        height: 48
+        radius: radiusValue
+        clip: true
+        color: AppTheme.bgCard
+
+        RetryImage {
+            id: coverImg
+            anchors.fill: parent
+            coverSource: coverRoot.src
+            sourceSize.width: Math.max(coverRoot.width * 2, 80)
+            sourceSize.height: Math.max(coverRoot.height * 2, 80)
+            fillMode: Image.PreserveAspectCrop
+            visible: status === Image.Ready
+        }
+        Text {
+            anchors.centerIn: parent
+            visible: !coverRoot.src || coverImg.status !== Image.Ready
+            text: "♪"
+            font.pixelSize: Math.max(14, coverRoot.width * 0.35)
+            color: AppTheme.textMuted
+            font.family: AppTheme.fontFamily
+        }
+    }
+
+    // 热门推荐单曲行：布局与搜索页「单曲」页签一致
+    component RecommendSongRow: HoverRow {
+        id: songRowItem
+        property var itemData: ({})
+        property int itemIndex: 0
+        property bool togetherMode: false
+        signal activated(var item)
+
+        height: 66
+        radius: 8
+        color: "transparent"
+        hovered: songRowHover.hovered
+
+        readonly property bool isPlaying: !!(playlistmanager && playlistmanager.currentSonghash === itemData.songhash)
+
+        HoverHandler { id: songRowHover }
+
+        Row {
+            anchors.fill: parent
+            anchors.leftMargin: 8
+            anchors.rightMargin: 8
+            spacing: 9
+
+            Item {
+                width: 22
+                height: 24
+                anchors.verticalCenter: parent.verticalCenter
+
+                Text {
+                    anchors.centerIn: parent
+                    text: (songRowItem.itemIndex + 1).toString().padStart(2, "0")
+                    font.pixelSize: AppTheme.fontSizeSmall
+                    color: songRowItem.isPlaying ? AppTheme.accentPlaying : AppTheme.textMuted
+                    font.family: AppTheme.fontFamily
+                }
+            }
+
+            CoverImage {
+                width: 40
+                height: 40
+                radiusValue: 8
+                src: songRowItem.itemData.union_cover || ""
+                anchors.verticalCenter: parent.verticalCenter
+            }
+
+            Column {
+                width: parent.width - 22 - 40 - 18
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 3
+
+                Text {
+                    width: parent.width
+                    text: songRowItem.itemData.songname || ""
+                    elide: Text.ElideRight
+                    font.pixelSize: AppTheme.fontSizeBody
+                    font.bold: true
+                    color: (songRowItem.isPlaying || songRowHover.hovered) ? AppTheme.accentPlaying : AppTheme.textSongTitle
+                    font.family: AppTheme.fontFamily
+                }
+                Text {
+                    width: parent.width
+                    text: songRowItem.itemData.singername || ""
+                    elide: Text.ElideRight
+                    font.pixelSize: AppTheme.fontSizeCaption
+                    font.bold: true
+                    color: songRowItem.isPlaying ? AppTheme.accentPlaying : AppTheme.textMuted
+                    font.family: AppTheme.fontFamily
+                }
+            }
+        }
+
+        // Overlay actions on hover so three columns keep enough title width.
+        Rectangle {
+            visible: actionRow.visible
+            anchors.right: actionRow.right
+            anchors.rightMargin: -4
+            anchors.verticalCenter: parent.verticalCenter
+            width: actionRow.width + 8
+            height: 30
+            radius: 15
+            color: "#E614141C"
+            z: 1
+        }
+
+        Row {
+            id: actionRow
+            width: 80
+            anchors.right: parent.right
+            anchors.rightMargin: 4
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 4
+            visible: songRowHover.hovered || climaxPreviewBtn.active
+            z: 2
+
+            HoverHandler { id: actionHover }
+
+            ClimaxPreviewButton {
+                id: climaxPreviewBtn
+                songHash: songRowItem.itemData.songhash || ""
+                songTitle: songRowItem.itemData.songname || ""
+                songSinger: songRowItem.itemData.singername || ""
+                songCover: songRowItem.itemData.union_cover || ""
+                rowHovered: songRowHover.hovered
+                compact: true
+            }
+
+            IconButton {
+                visible: !songRowItem.togetherMode
+                iconSource: AppIcon.playCircle
+                size: 24
+                iconSize: 14
+                onClicked: songRowItem.activated(songRowItem.itemData)
+            }
+
+            IconButton {
+                visible: songRowItem.togetherMode
+                iconSource: AppIcon.addTogether
+                size: 24
+                iconSize: 14
+                iconColor: hovered ? AppTheme.accent : AppTheme.iconDefault
+                onClicked: songRowItem.activated(songRowItem.itemData)
+            }
+        }
+
+
+        function contextSong() {
+            return {
+                "songname": itemData.songname || "",
+                "songhash": itemData.songhash || "",
+                "singername": itemData.singername || "",
+                "union_cover": itemData.union_cover || "",
+                "album_name": itemData.album_name || "",
+                "duration": itemData.duration || "",
+                "mvhash": itemData.mvhash || ""
+            }
+        }
+
+        TapHandler {
+            cursorShape: Qt.PointingHandCursor
+            onTapped: {
+                if (actionHover.hovered || climaxPreviewBtn.active)
+                    return
+                songRowItem.activated(songRowItem.itemData)
+            }
+        }
+
+        TapHandler {
+            acceptedButtons: Qt.RightButton
+            onTapped: BasicConfig.requestSongContextMenu(songRowItem.contextSong(), {
+                "togetherMode": songRowItem.togetherMode,
+                "showAi": false
+            })
         }
     }
 }
