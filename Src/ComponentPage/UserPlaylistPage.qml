@@ -1196,6 +1196,7 @@ Item {
                                 // 专辑名：锚定在时长左侧（右对齐列，与时长保持固定间距）
                                 Text {
                                     text: filteredSongs[index] ? filteredSongs[index].album_name : ""
+                                    x: 0.56 * userPlaylistPage.width
                                     width: Math.min(0.2 * userPlaylistPage.width, parent.width - 160)
                                     horizontalAlignment: Text.AlignLeft
                                     elide: Text.ElideRight
@@ -1203,8 +1204,6 @@ Item {
                                     font.family: AppTheme.fontFamily
                                     font.bold: true
                                     color: AppTheme.textMuted
-                                    anchors.right: parent.right
-                                    anchors.rightMargin: 78
                                     anchors.verticalCenter: parent.verticalCenter
                                 }
 
