@@ -37,11 +37,13 @@ Item {
         onTriggered: {
             t += interval
             for (var i = 0; i < root._barCount; i++) {
+                var bar = bars.itemAt(i)
+                if (!bar) continue
                 var half = 340 + i * 110
                 var phase = t % (2 * half)
                 var e = phase < half ? ease(phase / half)
                                      : 1 - ease((phase - half) / half)
-                bars.itemAt(i).height = 3 + (root.height - 3) * e
+                bar.height = 3 + (root.height - 3) * e
             }
         }
     }
@@ -54,7 +56,7 @@ Item {
             width: root.barWidth
             radius: root.barWidth / 2
             color: root.barColor
-            anchors.bottom: parent.bottom
+            anchors.bottom: root.bottom
             x: index * (root.barWidth + root.barGap)
             // 播放中由 Timer 直赋（Behavior 关掉，否则内部动画又回到 60Hz）；
             Behavior on height {
