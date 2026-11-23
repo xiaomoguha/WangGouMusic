@@ -153,15 +153,6 @@ Page {
                         font.pixelSize: AppTheme.fontSizeBodyLg
                         color: isPlaying ? AppTheme.accentPlaying : AppTheme.textMuted
                         font.family: AppTheme.fontFamily
-                        visible: !songItem.isPlaying
-                    }
-
-                    NowPlayingIndicator {
-                        anchors.centerIn: parent
-                        width: 20
-                        height: 20
-                        visible: songItem.isPlaying
-                        playing: playlistmanager ? !playlistmanager.isPaused : true
                     }
                 }
 

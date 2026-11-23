@@ -218,14 +218,19 @@ Item {
 
     function mapLyric(v) {
         var tp = v.trans_param || ({})
+        var cover = coverUrl(tp.union_cover || v.Image, "240")
         return {
+            "songname": v.SongName || "",
             "title": v.SongName || "",
             "singername": v.SingerName || "",
+            "album_name": v.AlbumName || "",
             "lyric": v.Lyric || "",
             "lyricHtml": highlightLyric(v.Lyric || "", keyword),
             "songhash": v.FileHash || "",
-            "cover": coverUrl(tp.union_cover || v.Image, "240"),
-            "duration": fmtDuration(v.TimeLength)
+            "union_cover": cover,
+            "cover": cover,
+            "duration": fmtDuration(v.TimeLength),
+            "mvhash": v.MvHash || ""
         }
     }
 
@@ -291,15 +296,19 @@ Item {
     function playLyric(item) {
         if (!item || !item.songhash || !playlistmanager)
             return
+        if (playlistmanager.type === 1) {
+            BasicConfig.togetherAddSongs(websocket, [item])
+            return
+        }
         playlistmanager.playNextAndPlay({
-            "songname": item.title || "",
+            "songname": item.songname || item.title || "",
             "songhash": item.songhash || "",
             "singername": item.singername || "",
-            "union_cover": item.cover || "",
-            "album_name": "",
+            "union_cover": item.union_cover || item.cover || "",
+            "album_name": item.album_name || "",
             "duration": item.duration || ""
         })
-        BasicConfig.emitSongAdded("正在播放: " + (item.title || ""))
+        BasicConfig.emitSongAdded("正在播放: " + (item.songname || item.title || ""))
     }
 
     // ── 请求 ──
@@ -809,8 +818,11 @@ Item {
         id: songRowItem
         property var itemData: ({})
         property int itemIndex: 0
+        // 歌词搜索结果：下面多一行高亮歌词，且不展开 AI
+        property string lyricHtml: ""
+        property bool showAi: true
         signal activated(var item)
-        height: 56 + aiExpand.expandedHeight
+        height: 56 + (lyricHtml !== "" ? 30 : 0) + (showAi ? aiExpand.expandedHeight : 0)
         radius: 8
         color: "transparent"
         hovered: songRowHover.hovered
@@ -842,15 +854,6 @@ Item {
                         font.pixelSize: AppTheme.fontSizeBodyLg
                         color: songRowItem.isPlaying ? AppTheme.accentPlaying : AppTheme.textMuted
                         font.family: AppTheme.fontFamily
-                        visible: !songRowItem.isPlaying
-                    }
-
-                    NowPlayingIndicator {
-                        anchors.centerIn: parent
-                        width: 20
-                        height: 20
-                        visible: songRowItem.isPlaying
-                        playing: playlistmanager ? !playlistmanager.isPaused : true
                     }
                 }
 
@@ -951,11 +954,29 @@ Item {
             }
         }
 
+        // 歌词匹配行：在歌曲行下方增加高亮歌词
+        Text {
+            visible: songRowItem.lyricHtml !== ""
+            x: 0.025 * songRowItem.width + 28 + 12 + 40 + 12
+            y: 56
+            width: Math.max(0, songRowItem.width - x - 0.04 * songRowItem.width)
+            height: 30
+            text: songRowItem.lyricHtml
+            textFormat: Text.RichText
+            maximumLineCount: 2
+            wrapMode: Text.WordWrap
+            elide: Text.ElideRight
+            font.pixelSize: AppTheme.fontSizeCaption
+            color: AppTheme.textMuted
+            font.family: AppTheme.fontFamily
+        }
+
         // AI 推荐展开
         AiRecommendExpand {
             id: aiExpand
+            visible: songRowItem.showAi
             anchors.top: parent.top
-            anchors.topMargin: 56
+            anchors.topMargin: 56 + (songRowItem.lyricHtml !== "" ? 30 : 0)
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.leftMargin: 44
@@ -983,7 +1004,7 @@ Item {
             acceptedButtons: Qt.RightButton
             onTapped: BasicConfig.requestSongContextMenu(songRowItem.contextSong(), {
                 "togetherMode": songRowItem.isTogether,
-                "showAi": true,
+                "showAi": songRowItem.showAi,
                 "onAi": function() { aiExpand.toggle(songRowItem.itemData.songhash, songRowItem.itemData.songname) }
             })
         }
@@ -1252,89 +1273,6 @@ Item {
         TapHandler {
             cursorShape: Qt.PointingHandCursor
             onTapped: mvRowItem.activated(mvRowItem.itemData)
-        }
-    }
-
-    component LyricRow: HoverRow {
-        id: lyRowItem
-        property var itemData: ({})
-        signal activated(var item)
-        height: 92
-        radius: 6
-        hovered: lyRowHover.hovered
-
-        HoverHandler { id: lyRowHover }
-
-        Item {
-            anchors.fill: parent
-            anchors.leftMargin: 10
-            anchors.rightMargin: 10
-
-            CoverImage {
-                id: lyCover
-                width: 42
-                height: 42
-                radiusValue: 6
-                src: lyRowItem.itemData.cover || ""
-                anchors.left: parent.left
-                anchors.top: parent.top
-                anchors.topMargin: 10
-            }
-            IconButton {
-                id: lyPlay
-                iconSource: AppIcon.playCircle
-                size: 28
-                iconSize: 15
-                iconColor: lyPlay.hovered ? "#4FC3F7" : AppTheme.textSecondary
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-                onClicked: lyRowItem.activated(lyRowItem.itemData)
-            }
-            Column {
-                anchors.left: lyCover.right
-                anchors.leftMargin: 12
-                anchors.right: lyPlay.left
-                anchors.rightMargin: 12
-                anchors.top: parent.top
-                anchors.topMargin: 8
-                spacing: 2
-
-                Row {
-                    width: parent.width
-                    spacing: 8
-                    Text {
-                        text: lyRowItem.itemData.title || ""
-                        elide: Text.ElideRight
-                        font.pixelSize: AppTheme.fontSizeBody
-                        font.bold: true
-                        color: lyRowHover.hovered ? AppTheme.accentPlaying : AppTheme.textPrimary
-                        font.family: AppTheme.fontFamily
-                    }
-                    Text {
-                        text: lyRowItem.itemData.singername || ""
-                        elide: Text.ElideRight
-                        font.pixelSize: AppTheme.fontSizeCaption
-                        color: AppTheme.textMuted
-                        font.family: AppTheme.fontFamily
-                    }
-                }
-                Text {
-                    width: parent.width
-                    text: lyRowItem.itemData.lyricHtml || ""
-                    textFormat: Text.RichText
-                    maximumLineCount: 2
-                    wrapMode: Text.WordWrap
-                    elide: Text.ElideRight
-                    font.pixelSize: AppTheme.fontSizeCaption
-                    color: AppTheme.textMuted
-                    font.family: AppTheme.fontFamily
-                }
-            }
-        }
-
-        TapHandler {
-            cursorShape: Qt.PointingHandCursor
-            onTapped: lyRowItem.activated(lyRowItem.itemData)
         }
     }
 
@@ -1666,14 +1604,13 @@ Item {
                     }
                     Repeater {
                         model: Math.min(3, lyricModel.count)
-                        delegate: Item {
+                        delegate: SongRow {
                             width: overviewColumn.width
-                            height: 92
-                            LyricRow {
-                                anchors.fill: parent
-                                itemData: lyricModel.get(index) || ({})
-                                onActivated: searchResultRoot.playLyric(item)
-                            }
+                            itemData: lyricModel.get(index) || ({})
+                            itemIndex: index
+                            lyricHtml: itemData.lyricHtml || ""
+                            showAi: false
+                            onActivated: searchResultRoot.playLyric(item)
                         }
                     }
                 }
@@ -1896,11 +1833,16 @@ Item {
             delegate: Item {
                 id: lyricDelegate
                 required property var modelData
+                required property int index
                 width: lyricList.width - 60
-                height: 92
-                LyricRow {
-                    anchors.fill: parent
+                height: lyricSong.height
+                SongRow {
+                    id: lyricSong
+                    width: parent.width
                     itemData: lyricDelegate.modelData
+                    itemIndex: lyricDelegate.index
+                    lyricHtml: itemData.lyricHtml || ""
+                    showAi: false
                     onActivated: searchResultRoot.playLyric(item)
                 }
             }
