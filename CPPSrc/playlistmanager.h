@@ -378,6 +378,7 @@ private:
     QPropertyAnimation *m_climaxVolAnim = nullptr;
     bool m_climaxPreviewing = false;
     bool m_fmPeakMode = false;       // 个人FM 30秒模式
+    bool m_fmPeakArmed = false;      // 新歌 LoadedMedia 并 seek 到高潮点后才允许末尾切歌
     bool m_fmPeakAdvancing = false;  // 已到片段末尾，防止重复 playNext
     QString m_climaxPreviewHash;   // 当前试听的歌曲 hash（按钮状态用）
     QString m_climaxRequestHash;   // 在途请求 hash（迟到响应丢弃）

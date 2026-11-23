@@ -1601,6 +1601,8 @@ void PlaylistManager::downloadAndStream(
 void PlaylistManager::startPlayback(const SongInfo &song)
 {
     cancelClimaxPreview();
+    m_fmPeakArmed = false;
+    m_fmPeakAdvancing = false;
     m_mainLyricRaw.clear();  // 主歌切换：清除上一首歌词原文，试听恢复时不串歌
     // 记录到最近播放
     addToRecent(song);
@@ -2831,8 +2833,11 @@ void PlaylistManager::applyFmPeakSeek()
     qint64 end   = 0;
     if (!currentFmPeak(start, end))
         return;
+    // 先 seek 到高潮起点；armed 等收到 start 附近的 positionChanged 再打开，
+    // 避免上一首残留的 position 直接触发自动切歌
     if (m_player->duration() > 0)
         m_player->setPosition(start);
+    m_fmPeakArmed = false;
     m_fmPeakAdvancing = false;
 }
 
@@ -2841,6 +2846,7 @@ void PlaylistManager::setFmPeakMode(bool enabled)
     if (m_fmPeakMode == enabled)
         return;
     m_fmPeakMode      = enabled;
+    m_fmPeakArmed     = false;
     m_fmPeakAdvancing = false;
     if (enabled)
         applyFmPeakSeek();
@@ -2863,10 +2869,22 @@ void PlaylistManager::updatePlaybackProgress(qint64 position)
         qint64 peakEnd   = 0;
         if (currentFmPeak(peakStart, peakEnd))
         {
-            if (position < peakStart)
+            if (!m_fmPeakArmed)
             {
-                m_player->setPosition(peakStart);
-                return;
+                if (position >= peakStart - 120 && position <= peakStart + 1500)
+                {
+                    m_fmPeakArmed = true;
+                }
+                else if (position < peakStart)
+                {
+                    m_player->setPosition(peakStart);
+                    return;
+                }
+                else
+                {
+                    // 上一首/seek 前的残留进度：等待播放器真正落到高潮起点
+                    return;
+                }
             }
             const qint64 span = peakEnd - peakStart;
             const qint64 rel  = qBound<qint64>(0, position - peakStart, span);
@@ -2882,8 +2900,12 @@ void PlaylistManager::updatePlaybackProgress(qint64 position)
             if (position >= peakEnd && !m_fmPeakAdvancing)
             {
                 m_fmPeakAdvancing = true;
-                QTimer::singleShot(0, this, [this]() {
-                    // 30秒模式必须继续 FM 队列，不能被单曲循环卡住
+                m_fmPeakArmed = false;
+                const QString advancedHash = currentSongHash();
+                QTimer::singleShot(0, this, [this, advancedHash]() {
+                    // 切歌回调可能已过期：期间用户又切歌/退出 30秒模式则放弃
+                    if (!m_fmPeakMode || currentSongHash() != advancedHash)
+                        return;
                     if (m_playMode == MODE_SINGLE_LOOP)
                     {
                         const int size = (*m_curplaylist).size();
