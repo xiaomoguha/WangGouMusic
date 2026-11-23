@@ -186,12 +186,43 @@ Item {
         }
     }
 
+    function escapeHtml(text) {
+        return String(text || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+    }
+
+    function highlightLyric(text, kw) {
+        var raw = String(text || "")
+        var needle = String(kw || "")
+        if (needle === "")
+            return escapeHtml(raw)
+
+        var lowerRaw = raw.toLowerCase()
+        var lowerNeedle = needle.toLowerCase()
+        var out = ""
+        var pos = 0
+        var idx = lowerRaw.indexOf(lowerNeedle)
+        while (idx >= 0) {
+            out += escapeHtml(raw.substring(pos, idx))
+            out += "<span style=\"color:#FF6B6B;font-weight:600;\">"
+                    + escapeHtml(raw.substring(idx, idx + needle.length)) + "</span>"
+            pos = idx + needle.length
+            idx = lowerRaw.indexOf(lowerNeedle, pos)
+        }
+        out += escapeHtml(raw.substring(pos))
+        return out
+    }
+
     function mapLyric(v) {
         var tp = v.trans_param || ({})
         return {
             "title": v.SongName || "",
             "singername": v.SingerName || "",
             "lyric": v.Lyric || "",
+            "lyricHtml": highlightLyric(v.Lyric || "", keyword),
             "songhash": v.FileHash || "",
             "cover": coverUrl(tp.union_cover || v.Image, "240"),
             "duration": fmtDuration(v.TimeLength)
@@ -230,6 +261,10 @@ Item {
     function playSong(item) {
         if (!item || !item.songhash || !playlistmanager)
             return
+        if (playlistmanager.type === 1) {
+            BasicConfig.togetherAddSongs(websocket, [item])
+            return
+        }
         playlistmanager.playNextAndPlay({
             "songname": item.songname || "",
             "songhash": item.songhash || "",
@@ -775,16 +810,31 @@ Item {
         property var itemData: ({})
         property int itemIndex: 0
         signal activated(var item)
-        height: 58
+        height: 58 + aiExpand.expandedHeight
         radius: 6
         hovered: songRowHover.hovered
 
         HoverHandler { id: songRowHover }
 
+        function contextSong() {
+            return {
+                "songname": itemData.songname || "",
+                "songhash": itemData.songhash || "",
+                "singername": itemData.singername || "",
+                "union_cover": itemData.union_cover || "",
+                "album_name": itemData.album_name || "",
+                "duration": itemData.duration || "",
+                "mvhash": itemData.mvhash || ""
+            }
+        }
+
         Item {
-            anchors.fill: parent
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
             anchors.leftMargin: 8
             anchors.rightMargin: 8
+            height: 58
 
             Text {
                 id: songNum
@@ -821,11 +871,23 @@ Item {
                 font.family: AppTheme.fontFamily
             }
 
+            IconButton {
+                id: songPlayBtn
+                iconSource: AppIcon.playCircle
+                size: 28
+                iconSize: 15
+                iconColor: songPlayBtn.hovered ? "#4FC3F7" : AppTheme.textSecondary
+                anchors.right: songDur.left
+                anchors.rightMargin: 6
+                anchors.verticalCenter: parent.verticalCenter
+                onClicked: songRowItem.activated(songRowItem.itemData)
+            }
+
             Column {
                 anchors.left: songCover.right
                 anchors.leftMargin: 12
-                anchors.right: songDur.left
-                anchors.rightMargin: 12
+                anchors.right: songPlayBtn.left
+                anchors.rightMargin: 10
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 3
 
@@ -849,9 +911,28 @@ Item {
             }
         }
 
+        AiRecommendExpand {
+            id: aiExpand
+            anchors.top: parent.top
+            anchors.topMargin: 58
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.leftMargin: 44
+            anchors.rightMargin: 14
+        }
+
         TapHandler {
             cursorShape: Qt.PointingHandCursor
             onTapped: songRowItem.activated(songRowItem.itemData)
+        }
+
+        TapHandler {
+            acceptedButtons: Qt.RightButton
+            onTapped: BasicConfig.requestSongContextMenu(songRowItem.contextSong(), {
+                "togetherMode": playlistmanager && playlistmanager.type === 1,
+                "showAi": true,
+                "onAi": function() { aiExpand.toggle(songRowItem.itemData.songhash, songRowItem.itemData.songname) }
+            })
         }
     }
 
@@ -1078,14 +1159,15 @@ Item {
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
             }
-            Text {
+            IconButton {
                 id: mvPlay
-                text: "▶"
+                iconSource: AppIcon.playCircle
+                size: 28
+                iconSize: 15
+                iconColor: mvPlay.hovered ? "#4FC3F7" : AppTheme.textSecondary
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                font.pixelSize: 15
-                color: mvRowHover.hovered ? AppTheme.accentPlaying : AppTheme.accent
-                font.family: AppTheme.fontFamily
+                onClicked: mvRowItem.activated(mvRowItem.itemData)
             }
             Column {
                 anchors.left: mvCover.right
@@ -1146,14 +1228,15 @@ Item {
                 anchors.top: parent.top
                 anchors.topMargin: 10
             }
-            Text {
+            IconButton {
                 id: lyPlay
-                text: "▶"
+                iconSource: AppIcon.playCircle
+                size: 28
+                iconSize: 15
+                iconColor: lyPlay.hovered ? "#4FC3F7" : AppTheme.textSecondary
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                font.pixelSize: 14
-                color: lyRowHover.hovered ? AppTheme.accentPlaying : AppTheme.accent
-                font.family: AppTheme.fontFamily
+                onClicked: lyRowItem.activated(lyRowItem.itemData)
             }
             Column {
                 anchors.left: lyCover.right
@@ -1185,7 +1268,8 @@ Item {
                 }
                 Text {
                     width: parent.width
-                    text: lyRowItem.itemData.lyric || ""
+                    text: lyRowItem.itemData.lyricHtml || ""
+                    textFormat: Text.RichText
                     maximumLineCount: 2
                     wrapMode: Text.WordWrap
                     elide: Text.ElideRight
@@ -1408,15 +1492,11 @@ Item {
                     }
                     Repeater {
                         model: Math.min(5, songPreviewModel.count)
-                        delegate: Item {
+                        delegate: SongRow {
                             width: overviewColumn.width
-                            height: 58
-                            SongRow {
-                                anchors.fill: parent
-                                itemData: songPreviewModel.get(index) || ({})
-                                itemIndex: index
-                                onActivated: searchResultRoot.playSong(item)
-                            }
+                            itemData: songPreviewModel.get(index) || ({})
+                            itemIndex: index
+                            onActivated: searchResultRoot.playSong(item)
                         }
                     }
                 }
