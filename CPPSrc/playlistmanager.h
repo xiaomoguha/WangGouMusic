@@ -361,8 +361,8 @@ private:
     QString m_climaxHash;       // 正在请求的 hash（去重 + 迟到响应核对）
     bool m_climaxPending = false; // 该 hash 的 climax 请求在途：LoadedMedia 补请求避让竞态
     void setClimaxPercent(qreal p);
-    void applyFmPeakSeek();
-    bool currentFmPeak(qint64 &start, qint64 &end) const;
+    // 个人FM 30秒模式：用试听片段引擎播放当前曲的高潮片段（不走主播放器 seek）
+    void startFmPeakPreview(const SongInfo &song);
     // 高潮点本地缓存（hash.toUpper() -> start_time 毫秒，0 = 服务端确认无高潮）：
     // 同一首歌高潮位置不变，重播直接换算不再请求；存原始 ms 而非百分比，
     QHash<QString, qint64> m_climaxCache;
@@ -378,9 +378,7 @@ private:
     QPropertyAnimation *m_climaxVolAnim = nullptr;
     bool m_climaxPreviewing = false;
     bool m_fmPeakMode = false;       // 个人FM 30秒模式
-    bool m_fmPeakArmed = false;      // 新歌 LoadedMedia 并 seek 到高潮点后才允许末尾切歌
-    bool m_fmPeakAdvancing = false;  // 已到片段末尾，防止重复 playNext
-    qint64 m_songStartWallMs = 0;    // 当前歌曲开始播放的系统时间（过滤切歌瞬间的假 EndOfMedia）
+    bool m_fmPeakAdvanceOnFinish = false;  // 片段自然播完后自动接下一首
     QString m_climaxPreviewHash;   // 当前试听的歌曲 hash（按钮状态用）
     QString m_climaxRequestHash;   // 在途请求 hash（迟到响应丢弃）
     QString m_climaxPreviewTitle;  // 试听歌曲信息（底栏/歌词页临时显示）

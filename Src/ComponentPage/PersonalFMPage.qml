@@ -128,13 +128,13 @@ Item {
         }
         var idx = startHash ? root.queueIndexOf(startHash) : 0
         if (idx < 0) idx = 0
-        playlistmanager.playSongbyindex(idx)
         root.fmActive = true
+        root.syncPeakMode()
+        playlistmanager.playSongbyindex(idx)
         root.pendingPlay = false
         root.pendingRefreshPlay = false
         root.pendingStartHash = ""
         root._syncing = false
-        root.syncPeakMode()
         BasicConfig.emitSongAdded("个人FM: " + q[idx].songname)
     }
 
@@ -179,6 +179,14 @@ Item {
         if (idx < 0) return
         if (personalFM.queue.length - idx - 1 <= 2)
             personalFM.requestMore()
+    }
+
+    function seekFMTo(percent) {
+        if (!playlistmanager) return
+        if (playlistmanager.climaxPreviewing)
+            playlistmanager.setClimaxPreviewPosition(percent)
+        else
+            playlistmanager.setposistion(percent)
     }
 
     // 30秒模式：让播放器只走当前歌曲的高潮片段，并自动接下一首
@@ -679,13 +687,13 @@ Item {
                             onReleased: {
                                 if (!dragging) return
                                 if (root.fmActive && playlistmanager)
-                                    playlistmanager.setposistion(tempPercent)
+                                    root.seekFMTo(tempPercent)
                                 dragging = false
                                 tempPercent = -1
                             }
                             onClicked: {
                                 if (!root.fmActive || !playlistmanager) return
-                                playlistmanager.setposistion(pct(mouseX))
+                                root.seekFMTo(pct(mouseX))
                             }
                         }
                     }
@@ -1053,13 +1061,15 @@ Item {
                                     anchors.rightMargin: 4
                                     anchors.verticalCenter: parent.verticalCenter
                                     spacing: 4
-                                    visible: rowHover.hovered || queuePreviewBtn.active
+                                    visible: rowHover.hovered || (queuePreviewBtn.active && queuePreviewBtn.visible)
                                     z: 2
 
                                     HoverHandler { id: queueActionHover }
 
                                     ClimaxPreviewButton {
                                         id: queuePreviewBtn
+                                        // 30秒模式本身就在试听片段，不再显示「结束试听」
+                                        visible: !(root.fmActive && personalFM && personalFM.mode === 2)
                                         songHash: queueRow.songData.songhash || ""
                                         songTitle: queueRow.songData.songname || ""
                                         songSinger: queueRow.songData.singername || ""
@@ -1090,7 +1100,7 @@ Item {
                                 TapHandler {
                                     cursorShape: Qt.PointingHandCursor
                                     onTapped: {
-                                        if (queueActionHover.hovered || queuePreviewBtn.active)
+                                        if (queueActionHover.hovered || (queuePreviewBtn.active && queuePreviewBtn.visible))
                                             return
                                         root.playQueueSong(queueRow.songData)
                                     }
