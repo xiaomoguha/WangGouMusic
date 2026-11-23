@@ -691,12 +691,12 @@ Item {
                     Text {
                         text: model.album_name
                         width: 0.18 * tracksListView.width
-                        horizontalAlignment: Text.AlignRight
+                        horizontalAlignment: Text.AlignLeft
                         elide: Text.ElideRight
                         font.pixelSize: AppTheme.fontSizeBodyLg
                         font.family: AppTheme.fontFamily
                         font.bold: true
-                        color: AppTheme.textPrimary
+                        color: AppTheme.textMuted
                         anchors.right: rowDuration.left
                         anchors.rightMargin: 70
                         anchors.verticalCenter: parent.verticalCenter

@@ -1197,12 +1197,12 @@ Item {
                                 Text {
                                     text: filteredSongs[index] ? filteredSongs[index].album_name : ""
                                     width: Math.min(0.2 * userPlaylistPage.width, parent.width - 160)
-                                    horizontalAlignment: Text.AlignRight
-                                    elide: Text.ElideLeft
+                                    horizontalAlignment: Text.AlignLeft
+                                    elide: Text.ElideRight
                                     font.pixelSize: AppTheme.fontSizeBodyLg
                                     font.family: AppTheme.fontFamily
                                     font.bold: true
-                                    color: AppTheme.textPrimary
+                                    color: AppTheme.textMuted
                                     anchors.right: parent.right
                                     anchors.rightMargin: 78
                                     anchors.verticalCenter: parent.verticalCenter
