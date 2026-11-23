@@ -2,6 +2,7 @@
 #include "SongInfo.h"
 #include "ApiClient.h"
 
+#include <QDateTime>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -65,17 +66,29 @@ void SearchComplex::fetchComplexData(const QString &keyword)
     endResetModel();
     emit countChanged();
 
-    const QString url =
-        QString("https://api.special520.com/search?keywords=%1&page=1&pagesize=%2").arg(keyword).arg(PAGE_SIZE);
+    const QString url = QString("https://api.special520.com/search?type=song&keywords=%1&page=1&pagesize=%2"
+                                "&timestamp=%3")
+                            .arg(keyword)
+                            .arg(PAGE_SIZE)
+                            .arg(QDateTime::currentMSecsSinceEpoch());
+    const int seq = ++m_requestSeq;
 
     m_isLoading = true;
     emit isLoadingChanged();
     emit pageChanged();
 
     ApiClient::instance().getJson(
-        url, [this](QJsonObject root) { parseAndAppend(root, false); },
-        [this](QString err, int code)
+        url,
+        [this, seq](QJsonObject root)
         {
+            if (seq != m_requestSeq)
+                return;
+            parseAndAppend(root, false);
+        },
+        [this, seq](QString err, int code)
+        {
+            if (seq != m_requestSeq)
+                return;
             qWarning() << "[SearchComplex] fetch error:" << err << "code:" << code;
             m_isLoading = false;
             emit isLoadingChanged();
@@ -96,15 +109,26 @@ void SearchComplex::fetchMore()
     emit isLoadingChanged();
     emit pageChanged();
 
-    const QString url = QString("https://api.special520.com/search?keywords=%1&page=%2&pagesize=%3")
+    const QString url = QString("https://api.special520.com/search?type=song&keywords=%1&page=%2&pagesize=%3"
+                                "&timestamp=%4")
                             .arg(m_currentKeyword)
                             .arg(m_page)
-                            .arg(PAGE_SIZE);
+                            .arg(PAGE_SIZE)
+                            .arg(QDateTime::currentMSecsSinceEpoch());
+    const int seq = m_requestSeq;
 
     ApiClient::instance().getJson(
-        url, [this](QJsonObject root) { parseAndAppend(root, true); },
-        [this](QString err, int code)
+        url,
+        [this, seq](QJsonObject root)
         {
+            if (seq != m_requestSeq)
+                return;
+            parseAndAppend(root, true);
+        },
+        [this, seq](QString err, int code)
+        {
+            if (seq != m_requestSeq)
+                return;
             qWarning() << "[SearchComplex] fetchMore error:" << err << "code:" << code;
             m_isLoading = false;
             emit isLoadingChanged();

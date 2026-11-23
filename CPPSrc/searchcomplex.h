@@ -65,6 +65,7 @@ private:
     bool m_isLoading    = false;
     bool m_isAppendMode = false;
     QString m_currentKeyword;
+    int m_requestSeq = 0;   // 新搜索/翻页时丢弃过期响应
     static const int PAGE_SIZE = 20;
 };
 

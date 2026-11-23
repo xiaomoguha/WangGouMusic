@@ -13,7 +13,6 @@ Page {
         target: BasicConfig
         function onSearchKeywordChange() {
             flick.contentY = 0;
-            complexsearch.fetchComplexData(BasicConfig.searchKeyword);
         }
     }
 
