@@ -22,6 +22,8 @@ Item {
     property string pendingSelectListid: ""
 
     property string selectedGid: ""
+    // 收藏歌单的歌曲要用原歌单 gid 拉取，global_collection_id 是收藏副本
+    property string detailGid: ""
     property var selectedPlaylist: ({})
     property var songs: []
     property var filteredSongs: []
@@ -158,6 +160,7 @@ Item {
 
     function clearSelection() {
         selectedGid = ""
+        detailGid = ""
         selectedPlaylist = ({})
         songs = []
         filteredSongs = []
@@ -171,10 +174,13 @@ Item {
     function selectPlaylist(p, force) {
         if (!p) return
         var gid = String(p.global_collection_id || p.list_create_gid || "")
+        var sourceGid = (Number(p.type) === 1 && p.list_create_gid)
+                        ? String(p.list_create_gid) : gid
         selectedPlaylist = p
         if (!force && gid === selectedGid && songs.length > 0)
             return
         selectedGid = gid
+        detailGid = sourceGid
         songs = []
         filteredSongs = []
         songSearch = ""
@@ -185,27 +191,27 @@ Item {
         manageMode = false
         selectedFileids = ({})
         loadingDetail = true
-        if (gid === "") {
+        if (sourceGid === "") {
             loadingDetail = false
             return
         }
-        userManager.fetchPlaylistDetail(gid, 1, 300)
+        userManager.fetchPlaylistDetail(sourceGid, 1, 300)
     }
 
     function loadDetailPage(page) {
-        if (!selectedGid) return
+        if (!detailGid) return
         if (page === 1) {
             detailPage = 1
             loadingDetail = true
         } else {
             loadingMoreSongs = true
         }
-        userManager.fetchPlaylistDetail(selectedGid, page, 300)
+        userManager.fetchPlaylistDetail(detailGid, page, 300)
     }
 
     function applyDetailData(data) {
         var requestGid = data["_request_gid"] || ""
-        if (requestGid !== "" && requestGid !== selectedGid)
+        if (requestGid !== "" && requestGid !== detailGid)
             return
         loadingDetail = false
         loadingMoreSongs = false
@@ -261,7 +267,7 @@ Item {
                 "album_name": s.album_name, "duration": s.duration
             })
         }
-        playlistmanager.playPlaylistFromSource(selectedGid, songCount, Math.max(0, startIndex), batch)
+        playlistmanager.playPlaylistFromSource(detailGid, songCount, Math.max(0, startIndex), batch)
         BasicConfig.emitSongAdded("正在播放歌单: " + (selectedPlaylist.name || ""))
     }
 
