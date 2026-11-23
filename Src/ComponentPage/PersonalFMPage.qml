@@ -43,6 +43,7 @@ Item {
     property string pendingStartHash: ""
     // 刷新 / 切模式后，新队列到达时整体重建播放器
     property bool pendingRefreshPlay: false
+    property bool pendingRefreshNotice: false
     // 批量重建播放列表时屏蔽队列监听，避免误判为外部播放
     property bool _syncing: false
     // 本次会话点过喜欢的 hash
@@ -190,6 +191,7 @@ Item {
     function refreshFM() {
         if (!personalFM) return
         root.pendingRefreshPlay = root.fmActive && !root.togetherMode
+        root.pendingRefreshNotice = true
         personalFM.refreshQueue()
     }
 
@@ -279,6 +281,10 @@ Item {
     Connections {
         target: personalFM
         function onSongsAppended(songs) {
+            if (root.pendingRefreshNotice) {
+                root.pendingRefreshNotice = false
+                BasicConfig.noticeSuccess("已刷新个人FM推荐")
+            }
             if (root.pendingPlay || root.pendingRefreshPlay) {
                 root.beginPlayback(root.pendingStartHash)
                 return
@@ -298,6 +304,7 @@ Item {
         }
         function onErrorOccurred(message) {
             root.pendingRefreshPlay = false
+            root.pendingRefreshNotice = false
             if (message) BasicConfig.noticeError(message)
         }
     }
@@ -905,12 +912,15 @@ Item {
                                 anchors.right: parent.right
                                 anchors.verticalCenter: parent.verticalCenter
                                 busy: personalFM && personalFM.isLoading
+                                enabled: personalFM && !personalFM.isLoading
                                 onClicked: {
                                     if (!personalFM) return
-                                    if (root.togetherMode)
+                                    if (root.togetherMode) {
+                                        root.pendingRefreshNotice = true
                                         personalFM.refreshQueue()
-                                    else
+                                    } else {
                                         root.refreshFM()
+                                    }
                                 }
                             }
                         }

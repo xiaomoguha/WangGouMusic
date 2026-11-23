@@ -119,6 +119,13 @@ void PersonalFM::refreshQueue()
         emit queueModeChanged();
     }
 
+    // 刷新时用旧队列最后一首做种子，向服务端要“下一批”，避免又拿到同一批推荐
+    QString seed;
+    if (!m_queue.isEmpty())
+        seed = m_queue.last().toMap()["songhash"].toString();
+    else
+        seed = lastHash();
+
     m_queue.clear();
     m_fillAttempts = 0;
     emit queueChanged();
@@ -130,7 +137,7 @@ void PersonalFM::refreshQueue()
     }
     else
     {
-        request(QString(), QStringLiteral("play"), true);
+        request(seed, QStringLiteral("play"), true);
     }
 }
 
