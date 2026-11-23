@@ -380,6 +380,7 @@ private:
     bool m_fmPeakMode = false;       // 个人FM 30秒模式
     bool m_fmPeakArmed = false;      // 新歌 LoadedMedia 并 seek 到高潮点后才允许末尾切歌
     bool m_fmPeakAdvancing = false;  // 已到片段末尾，防止重复 playNext
+    qint64 m_songStartWallMs = 0;    // 当前歌曲开始播放的系统时间（过滤切歌瞬间的假 EndOfMedia）
     QString m_climaxPreviewHash;   // 当前试听的歌曲 hash（按钮状态用）
     QString m_climaxRequestHash;   // 在途请求 hash（迟到响应丢弃）
     QString m_climaxPreviewTitle;  // 试听歌曲信息（底栏/歌词页临时显示）

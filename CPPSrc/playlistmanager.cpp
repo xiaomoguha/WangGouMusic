@@ -99,6 +99,13 @@ PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent
         {
             if (status == QMediaPlayer::EndOfMedia)
             {
+                // 30??? seek ??????????? EndOfMedia????????????
+                const qint64 endDur = m_player->duration();
+                const qint64 sinceStart = QDateTime::currentMSecsSinceEpoch() - m_songStartWallMs;
+                if (m_fmPeakMode && (sinceStart < 1500 || (endDur > 0 && m_player->position() + 1500 < endDur)))
+                {
+                    return;
+                }
                 // 歌曲自然播完：供外部听歌上报（中途切歌不算，由 main.cpp 连接）
                 emit playbackFinished();
                 m_isPaused = true;
@@ -114,7 +121,21 @@ PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent
                 m_duration           = formatTime(totalDuration);
                 emit durationChanged();
                 if (m_fmPeakMode)
-                    applyFmPeakSeek();
+                {
+                    // 刚 LoadedMedia 立刻 seek 会被 ffmpeg 后端当成跳到结尾；等播放稳定后再 seek
+                    const QString peakHash = currentSongHash();
+                    QTimer::singleShot(400, this, [this, peakHash]() {
+                        if (!m_fmPeakMode || currentSongHash() != peakHash)
+                            return;
+                        applyFmPeakSeek();
+                        if (m_player->playbackState() != QMediaPlayer::PlayingState)
+                        {
+                            m_player->play();
+                            m_isPaused = false;
+                            emit isPausedChanged();
+                        }
+                    });
+                }
                 // 高潮点补请求：恢复播放/流媒体 duration 延迟就绪时，首次 climax 请求
                 // 因 totalMs=0 未算成（m_climaxHash 仍标记该 hash）——就绪后重试一次。
                 if (!m_climaxHash.isEmpty() && m_climaxPercent <= 0 && !m_climaxPending)
@@ -1603,6 +1624,7 @@ void PlaylistManager::startPlayback(const SongInfo &song)
     cancelClimaxPreview();
     m_fmPeakArmed = false;
     m_fmPeakAdvancing = false;
+    m_songStartWallMs = QDateTime::currentMSecsSinceEpoch();
     m_mainLyricRaw.clear();  // 主歌切换：清除上一首歌词原文，试听恢复时不串歌
     // 记录到最近播放
     addToRecent(song);
