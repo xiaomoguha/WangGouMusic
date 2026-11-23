@@ -914,7 +914,7 @@ Item {
                 }
 
                 IconButton {
-                    visible: !songRowItem.isTogether && !songRowItem.isPlaying
+                    visible: !songRowItem.isTogether
                     iconSource: AppIcon.playCircle
                     size: 24
                     iconSize: 14
@@ -922,7 +922,7 @@ Item {
                 }
 
                 IconButton {
-                    visible: songRowItem.isTogether && !songRowItem.isPlaying
+                    visible: songRowItem.isTogether
                     iconSource: AppIcon.addTogether
                     size: 24
                     iconSize: 14

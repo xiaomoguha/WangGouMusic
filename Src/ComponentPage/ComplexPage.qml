@@ -249,7 +249,7 @@ Page {
                 }
 
                 IconButton {
-                    visible: !isTogetherMode && !isPlaying
+                    visible: !isTogetherMode
                     iconSource: AppIcon.playCircle
                     size: 24
                     iconSize: 14
@@ -268,7 +268,7 @@ Page {
 
                 IconButton {
                     id: togetherBtn
-                    visible: isTogetherMode && !isPlaying
+                    visible: isTogetherMode
                     iconSource: AppIcon.addTogether
                     size: 24
                     iconSize: 14

@@ -457,10 +457,35 @@ int PlaylistManager::is_have_cache(const SongInfo &song, const int index)
         }
         qDebug() << "缓存文件已存在，直接播放:" << cacheFilePath;
 
-        // 播放本地缓存文件
+        // 音质切换续播：缓存的另一音质文件也从当前进度接着放，
+        // 不能直接 play() 从 0 开始
+        const double resumePercent = m_resumePercentAfterSwitch;
+        m_resumePercentAfterSwitch = -1.0f;
+
         m_player->stop();
         m_player->setSource(QUrl::fromLocalFile(cacheFilePath));
-        m_player->play();
+        if (resumePercent > 0 && resumePercent < 1.0)
+        {
+            auto conn = std::make_shared<QMetaObject::Connection>();
+            *conn     = connect(
+                m_player, &QMediaPlayer::mediaStatusChanged, this,
+                [this, resumePercent, conn](QMediaPlayer::MediaStatus status)
+                {
+                    if (status == QMediaPlayer::LoadedMedia)
+                    {
+                        seekToPercent(resumePercent);
+                        m_player->play();
+                        m_isPaused = false;
+                        emit isPausedChanged();
+                        QObject::disconnect(*conn);
+                    }
+                }
+            );
+        }
+        else
+        {
+            m_player->play();
+        }
         m_isPaused     = false;
         m_currentIndex = index;
         // 提取专辑封面主色调
