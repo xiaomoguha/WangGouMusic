@@ -54,6 +54,7 @@
         <file>Src/ComponentPage/DesktopLyricsControlButton.qml</file>
         <file>Src/ComponentPage/ComplexPage.qml</file>
         <file>Src/ComponentPage/DailyRecommendPage.qml</file>
+        <file>Src/ComponentPage/PersonalFMPage.qml</file>
         <file>Src/ComponentPage/RankPage.qml</file>
         <file>Src/ComponentPage/PlaylistDetailPage.qml</file>
         <file>Src/ComponentPage/SearchresultPage.qml</file>

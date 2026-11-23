@@ -143,6 +143,11 @@ Rectangle {
                 pageurl: "qrc:/Src/ComponentPage/DailyRecommendPage.qml"
             },
             {
+                iconType: "fm",
+                text: "个人FM",
+                pageurl: "qrc:/Src/ComponentPage/PersonalFMPage.qml"
+            },
+            {
                 iconType: "rank",
                 text: "排行榜",
                 pageurl: "qrc:/Src/ComponentPage/RankPage.qml"

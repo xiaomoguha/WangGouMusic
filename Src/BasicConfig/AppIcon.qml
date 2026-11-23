@@ -61,6 +61,7 @@ readonly property string smile: "qrc:/icons/smile.svg"
     readonly property string settings: "qrc:/icons/gear.svg"
     readonly property string compass: "qrc:/icons/compass.svg"
     readonly property string musicNotes: "qrc:/icons/music-notes.svg"
+    readonly property string broadcast: "qrc:/icons/broadcast.svg"
     readonly property string video: "qrc:/icons/video-camera.svg"
     readonly property string qrCode: "qrc:/icons/qr-code.svg"
     // 播放模式：顺序 / 单曲循环 / 随机

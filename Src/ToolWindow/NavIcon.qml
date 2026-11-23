@@ -18,6 +18,7 @@ Item {
         "discover": [AppIcon.star, AppIcon.starFill],
         "together": [AppIcon.headphones, AppIcon.headphonesFill],
         "daily": [AppIcon.sparkle, AppIcon.sparkle],
+        "fm": [AppIcon.broadcast, AppIcon.broadcast],
         "rank": [AppIcon.fire, AppIcon.fire],
         "playlist": [AppIcon.heart, AppIcon.heartFill],
         "list": [AppIcon.list, AppIcon.listFill],
