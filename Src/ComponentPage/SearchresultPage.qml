@@ -901,6 +901,8 @@ Item {
                 spacing: 4
                 z: 1
 
+                HoverHandler { id: actionHover }
+
                 ClimaxPreviewButton {
                     id: climaxPreviewBtn
                     songHash: songRowItem.itemData.songhash || ""
@@ -997,7 +999,12 @@ Item {
 
         TapHandler {
             cursorShape: Qt.PointingHandCursor
-            onTapped: songRowItem.activated(songRowItem.itemData)
+            onTapped: {
+                // 点在试听/播放按钮上时不要再触发行点击，否则试听会变成直接播放
+                if (actionHover.hovered || climaxPreviewBtn.active)
+                    return
+                songRowItem.activated(songRowItem.itemData)
+            }
         }
 
         TapHandler {
