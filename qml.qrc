@@ -82,5 +82,6 @@
         <file>Src/ComponentPage/UpdateDialog.qml</file>
         <file>Src/ComponentPage/LoginPage.qml</file>
         <file>Src/ComponentPage/UserPlaylistPage.qml</file>
+        <file>Src/ComponentPage/PlaylistManagerPage.qml</file>
     </qresource>
 </RCC>

@@ -145,7 +145,7 @@ void PlaylistCollection::postForm(
     ApiClient::instance().postJson(url, body, std::move(onSuccess), std::move(onError), timeoutMs);
 }
 
-void PlaylistCollection::parseResult(QJsonObject root, const QString &successMsg)
+bool PlaylistCollection::parseResult(QJsonObject root, const QString &successMsg)
 {
     setWorking(false);
     const int status  = root["status"].toInt();
@@ -175,6 +175,7 @@ void PlaylistCollection::parseResult(QJsonObject root, const QString &successMsg
         emit operationFinished(false, msg);
     }
     m_pendingFavoriteHash.clear();
+    return ok;
 }
 
 void PlaylistCollection::collectPlaylist(
@@ -210,8 +211,61 @@ void PlaylistCollection::uncollectPlaylist(const QString &listid)
     }
     setWorking(true);
     postForm(
-        "/playlist/del", {{"listid", listid}},
-        [this](QJsonObject root) { parseResult(root, "已取消收藏"); },
+        "/playlist/del", {{"listid", listid}, {"type", "1"}},
+        [this](QJsonObject root)
+        {
+            if (parseResult(root, "已取消收藏"))
+                emit playlistDeleted();
+        },
+        [this](QString err, int) { setWorking(false); emit operationFinished(false, "网络错误: " + err); }
+    );
+}
+
+void PlaylistCollection::updatePlaylist(const QString &listid, int type, int totalVer, const QString &name)
+{
+    if (listid.isEmpty() || name.trimmed().isEmpty())
+    {
+        emit operationFinished(false, "歌单名称不能为空");
+        return;
+    }
+    setWorking(true);
+    postForm(
+        "/playlist/update",
+        {
+            {"listid", listid},
+            {"type", QString::number(type)},
+            {"total_ver", QString::number(totalVer)},
+            {"name", name.trimmed()},
+        },
+        [this, name](QJsonObject root)
+        {
+            if (parseResult(root, "已重命名为: " + name.trimmed()))
+                emit playlistUpdated();
+        },
+        [this](QString err, int) { setWorking(false); emit operationFinished(false, "网络错误: " + err); }
+    );
+}
+
+void PlaylistCollection::deletePlaylist(const QString &listid, int type, int totalVer)
+{
+    if (listid.isEmpty())
+    {
+        emit operationFinished(false, "歌单信息不完整");
+        return;
+    }
+    setWorking(true);
+    postForm(
+        "/playlist/del",
+        {
+            {"listid", listid},
+            {"type", QString::number(type)},
+            {"total_ver", QString::number(totalVer)},
+        },
+        [this, type](QJsonObject root)
+        {
+            if (parseResult(root, type == 0 ? "已删除歌单" : "已取消收藏"))
+                emit playlistDeleted();
+        },
         [this](QString err, int) { setWorking(false); emit operationFinished(false, "网络错误: " + err); }
     );
 }
@@ -478,7 +532,7 @@ bool PlaylistCollection::playlistCacheContainsHash(
     return data.contains(songhash.toUpper().toLatin1());
 }
 
-void PlaylistCollection::removeTracks(const QString &listid, const QVariantList &fileids, int type)
+void PlaylistCollection::removeTracks(const QString &listid, const QVariantList &fileids, int type, int listVer)
 {
     if (listid.isEmpty() || fileids.isEmpty())
     {
@@ -498,16 +552,18 @@ void PlaylistCollection::removeTracks(const QString &listid, const QVariantList 
         return;
     }
     setWorking(true);
-    QList<QPair<QString, QString>> params = {{"listid", listid}, {"fileids", ids.join(',')}};
-    if (type != 0)
-        params.append({"type", QString::number(type)});
+    QList<QPair<QString, QString>> params = {
+        {"listid", listid},
+        {"fileids", ids.join(',')},
+        {"type", QString::number(type)},
+    };
+    if (listVer > 0)
+        params.append({"list_ver", QString::number(listVer)});
     postForm(
         "/playlist/tracks/del", params,
         [this](QJsonObject root)
         {
-            const bool ok = root.value("status").toInt() == 1 || root.value("error_code").toInt() == 0;
-            parseResult(root, "已从歌单移除");
-            if (ok)
+            if (parseResult(root, "已从歌单移除"))
                 emit tracksRemoved();
         },
         [this](QString err, int) { setWorking(false); emit operationFinished(false, "网络错误: " + err); }

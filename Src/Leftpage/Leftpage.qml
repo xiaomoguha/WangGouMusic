@@ -364,6 +364,43 @@ Rectangle {
                 }
             }
 
+            // 管理入口：独立点击区域，不触发上方展开/收起
+            Rectangle {
+                id: managePlaylistsBtn
+                width: 40
+                height: 22
+                radius: 11
+                z: 10
+                anchors.right: parent.right
+                anchors.rightMargin: 34
+                anchors.verticalCenter: parent.verticalCenter
+                color: manageHover.hovered ? AppTheme.bgNavHover : "transparent"
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "管理"
+                    font.pixelSize: AppTheme.fontSizeXs
+                    font.family: AppTheme.fontFamily
+                    color: manageHover.hovered ? AppTheme.accent : AppTheme.textMuted
+                }
+
+                HoverHandler { id: manageHover }
+                MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    preventStealing: true
+                    cursorShape: Qt.PointingHandCursor
+                    onPressed: function(mouse) { mouse.accepted = true }
+                    onClicked: {
+                        if (!userManager.isLoggedIn) {
+                            BasicConfig.noticeError("请先登录")
+                            return
+                        }
+                        BasicConfig.pushPage("qrc:/Src/ComponentPage/PlaylistManagerPage.qml")
+                    }
+                }
+            }
+
         }
 
         // 展开后：用户歌单子项列表（点击直接进详情页）。

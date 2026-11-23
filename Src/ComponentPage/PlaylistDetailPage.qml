@@ -778,7 +778,7 @@ Item {
                             "onRemove": function() {
                                 if (!playlistCollection.isWorking)
                                     playlistCollection.removeTracks(
-                                        String(root.myOwnListid), [String(model.fileid)], root.myOwnListType
+                                        String(root.myOwnListid), [String(model.fileid)], root.myOwnListType, 0
                                     )
                             }
                         })

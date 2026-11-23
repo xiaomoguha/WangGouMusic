@@ -35,13 +35,17 @@ public:
     );
     // 取消收藏（type=1 的收藏项用收藏后的 listid 删除）
     Q_INVOKABLE void uncollectPlaylist(const QString &listid);
+    // 重命名 / 修改自建歌单（totalVer 为 /user/playlist 返回的全局版本号）
+    Q_INVOKABLE void updatePlaylist(const QString &listid, int type, int totalVer, const QString &name);
+    // 删除自建歌单 / 取消收藏（type 0=自建，1=收藏）
+    Q_INVOKABLE void deletePlaylist(const QString &listid, int type, int totalVer);
     // 新建歌单（type=0），返回新歌单 listid 通过 signal
     Q_INVOKABLE void createPlaylist(const QString &name);
     // 往歌单加歌：songs 每项含 songname/songhash/album_id/mixsongid；type 0=自建 1=收藏
     Q_INVOKABLE void addTracks(const QString &listid, const QVariantList &songs,
                                const QString &successMsg = QString(), int type = 0);
-    // 从歌单删歌：fileids 为数字 id 数组；type 0=自建 1=收藏
-    Q_INVOKABLE void removeTracks(const QString &listid, const QVariantList &fileids, int type = 0);
+    // 从歌单删歌：fileids 为数字 id 数组；type 0=自建 1=收藏；listVer 为详情返回的 list_ver
+    Q_INVOKABLE void removeTracks(const QString &listid, const QVariantList &fileids, int type = 0, int listVer = 0);
     // 添加到「我喜欢」：从歌单缓存找名字含「我喜欢」的歌单，把歌加进去
     Q_INVOKABLE void addToFavorite(const QString &songname, const QString &songhash, const QString &singername,
                                    const QVariantList &freshPlaylists = {});
@@ -63,6 +67,10 @@ signals:
     void operationFinished(bool success, const QString &message);
     // 新建歌单成功：返回新歌单 listid/name（用于创建后自动加歌）
     void playlistCreated(const QString &listid, const QString &name);
+    // 歌单名称/信息已修改
+    void playlistUpdated();
+    // 自建歌单已删除 / 收藏已取消
+    void playlistDeleted();
     // 歌单内歌曲已删除：页面据此立即重拉曲目（服务端 track/all 不做缓存）
     void tracksRemoved();
     // 「我喜欢」歌曲 hash 集合已更新（红心状态刷新）
@@ -77,7 +85,7 @@ private:
         std::function<void(QString, int)> onError, int timeoutMs = 10000
     );
     // 统一结果回调：status==1 或 error_code==0 视为成功
-    void parseResult(QJsonObject root, const QString &successMsg);
+    bool parseResult(QJsonObject root, const QString &successMsg);
     void onFavoriteHashesData(const QByteArray &data);
     void requestFavPage(int page);
     // 红心 hash 集合本地缓存：启动即显示，网络刷新后台更新
