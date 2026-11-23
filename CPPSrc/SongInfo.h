@@ -23,6 +23,9 @@ struct SongInfo
     Q_PROPERTY(QString fileid MEMBER fileid)
     // MV 播放 hash（mvhash）：仅含 MV 的歌曲有值，歌单/搜索数据源填充
     Q_PROPERTY(QString mvhash MEMBER mvhash)
+    // 个人FM 30秒模式的高潮片段起止（毫秒）
+    Q_PROPERTY(double peakStartMs MEMBER peakStartMs)
+    Q_PROPERTY(double peakEndMs MEMBER peakEndMs)
     // 评论用 album_audio_id：一起听广播由服务器解析下发；其余场景见下面的登记表
     Q_PROPERTY(QString mxid MEMBER mxid)
 
@@ -50,6 +53,8 @@ public:
     QString fileid;
     QString mvhash;
     QString mxid;
+    qint64 peakStartMs = 0;
+    qint64 peakEndMs   = 0;
 };
 
 #endif // SONG_INFO_H

@@ -143,11 +143,13 @@ void PersonalFM::setMode(int mode)
     QSettings().setValue("personal_fm_mode", mode);
     emit modeChanged();
 
-    // 切推荐模式立即换一批；正在请求时等回来后再换，避免打断
-    if (m_isLoading)
+    // 切推荐模式立即换一批；队列模式下整体刷新为 10 首
+    if (m_queueMode)
+        refreshQueue();
+    else if (m_isLoading)
         m_reloadAfterLoad = true;
     else
-        request(QString(), QStringLiteral("play"), m_queueMode);
+        request(QString(), QStringLiteral("play"), false);
 }
 
 void PersonalFM::setPool(int pool)
@@ -159,10 +161,12 @@ void PersonalFM::setPool(int pool)
     QSettings().setValue("personal_fm_pool", pool);
     emit poolChanged();
 
-    if (m_isLoading)
+    if (m_queueMode)
+        refreshQueue();
+    else if (m_isLoading)
         m_reloadAfterLoad = true;
     else
-        request(QString(), QStringLiteral("play"), m_queueMode);
+        request(QString(), QStringLiteral("play"), false);
 }
 
 void PersonalFM::like(const QString &hash)
@@ -324,6 +328,8 @@ QVariantList PersonalFM::parseSongs(const QJsonArray &list) const
         item["songid"] = s["songid"].toVariant().toString();
         item["rec_desc"] = rec["rec_desc"].toString();
         item["similar_desc"] = rec["similar_desc"].toString();
+        item["peak_start_ms"] = s["climax_start_time"].toVariant().toLongLong();
+        item["peak_end_ms"] = s["climax_end_time"].toVariant().toLongLong();
         // FM 接口的 song_list 已带 time_length（秒），缺失时留空，
         // 下一次列表会以 "--:--" 显示；播放器本身仍可按 240s 兜底
         item["duration"] = fmSec > 0

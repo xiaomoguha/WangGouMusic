@@ -41,6 +41,8 @@ Item {
     // 首次启动等待首批数据
     property bool pendingPlay: false
     property string pendingStartHash: ""
+    // 刷新 / 切模式后，新队列到达时整体重建播放器
+    property bool pendingRefreshPlay: false
     // 批量重建播放列表时屏蔽队列监听，避免误判为外部播放
     property bool _syncing: false
     // 本次会话点过喜欢的 hash
@@ -118,7 +120,9 @@ Item {
                 "singername": s.singername,
                 "union_cover": s.union_cover,
                 "album_name": s.album_name,
-                "duration": s.duration
+                "duration": s.duration,
+                "peak_start_ms": s.peak_start_ms || 0,
+                "peak_end_ms": s.peak_end_ms || 0
             })
         }
         var idx = startHash ? root.queueIndexOf(startHash) : 0
@@ -126,8 +130,10 @@ Item {
         playlistmanager.playSongbyindex(idx)
         root.fmActive = true
         root.pendingPlay = false
+        root.pendingRefreshPlay = false
         root.pendingStartHash = ""
         root._syncing = false
+        root.syncPeakMode()
         BasicConfig.emitSongAdded("个人FM: " + q[idx].songname)
     }
 
@@ -137,6 +143,7 @@ Item {
         if (!startHash && root.fmActive && root.queueContains(playlistmanager.currentSonghash))
             return
 
+        root.pendingRefreshPlay = false
         root.pendingStartHash = startHash || ""
         root.pendingPlay = true
 
@@ -158,7 +165,9 @@ Item {
                 "singername": s.singername,
                 "union_cover": s.union_cover,
                 "album_name": s.album_name,
-                "duration": s.duration
+                "duration": s.duration,
+                "peak_start_ms": s.peak_start_ms || 0,
+                "peak_end_ms": s.peak_end_ms || 0
             })
         }
     }
@@ -169,6 +178,31 @@ Item {
         if (idx < 0) return
         if (personalFM.queue.length - idx - 1 <= 2)
             personalFM.requestMore()
+    }
+
+    // 30秒模式：让播放器只走当前歌曲的高潮片段，并自动接下一首
+    function syncPeakMode() {
+        if (!playlistmanager) return
+        playlistmanager.setFmPeakMode(root.fmActive && !root.togetherMode
+                                      && personalFM && personalFM.mode === 2)
+    }
+
+    function refreshFM() {
+        if (!personalFM) return
+        root.pendingRefreshPlay = root.fmActive && !root.togetherMode
+        personalFM.refreshQueue()
+    }
+
+    function changeMode(mode) {
+        if (!personalFM) return
+        root.pendingRefreshPlay = root.fmActive && !root.togetherMode
+        personalFM.setMode(mode)
+    }
+
+    function changePool(pool) {
+        if (!personalFM) return
+        root.pendingRefreshPlay = root.fmActive && !root.togetherMode
+        personalFM.setPool(pool)
     }
 
     function likeCurrent() {
@@ -237,12 +271,15 @@ Item {
             root.fmActive = true
             root.maybePrefetch()
         }
+        root.syncPeakMode()
     }
+
+    onFmActiveChanged: root.syncPeakMode()
 
     Connections {
         target: personalFM
         function onSongsAppended(songs) {
-            if (root.pendingPlay) {
+            if (root.pendingPlay || root.pendingRefreshPlay) {
                 root.beginPlayback(root.pendingStartHash)
                 return
             }
@@ -253,10 +290,14 @@ Item {
             if (personalFM && !personalFM.queueMode)
                 root.fmActive = false
         }
+        function onModeChanged() {
+            root.syncPeakMode()
+        }
         function onNotice(message) {
             if (message) BasicConfig.noticeSuccess(message)
         }
         function onErrorOccurred(message) {
+            root.pendingRefreshPlay = false
             if (message) BasicConfig.noticeError(message)
         }
     }
@@ -788,7 +829,7 @@ Item {
                                     active: personalFM && personalFM.mode === index
                                     onClicked: {
                                         if (personalFM)
-                                            personalFM.setMode(index)
+                                            root.changeMode(index)
                                     }
                                 }
                             }
@@ -812,7 +853,7 @@ Item {
                                     active: personalFM && personalFM.pool === index
                                     onClicked: {
                                         if (personalFM)
-                                            personalFM.setPool(index)
+                                            root.changePool(index)
                                     }
                                 }
                             }
@@ -868,10 +909,8 @@ Item {
                                     if (!personalFM) return
                                     if (root.togetherMode)
                                         personalFM.refreshQueue()
-                                    else if (personalFM.queueMode)
-                                        personalFM.requestMore()
                                     else
-                                        personalFM.fetchNext()
+                                        root.refreshFM()
                                 }
                             }
                         }

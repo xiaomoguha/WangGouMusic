@@ -113,6 +113,8 @@ PlaylistManager::PlaylistManager(Recommendation *recommendation, QObject *parent
                 qint64 totalDuration = m_player->duration();
                 m_duration           = formatTime(totalDuration);
                 emit durationChanged();
+                if (m_fmPeakMode)
+                    applyFmPeakSeek();
                 // 高潮点补请求：恢复播放/流媒体 duration 延迟就绪时，首次 climax 请求
                 // 因 totalMs=0 未算成（m_climaxHash 仍标记该 hash）——就绪后重试一次。
                 if (!m_climaxHash.isEmpty() && m_climaxPercent <= 0 && !m_climaxPending)
@@ -261,6 +263,8 @@ SongInfo PlaylistManager::songFromMap(const QVariantMap &map)
     song.album_name  = map.value("album_name").toString();
     song.duration    = map.value("duration").toString();
     song.lyric       = map.value("lyric").toString();
+    song.peakStartMs = map.value("peak_start_ms").toLongLong();
+    song.peakEndMs   = map.value("peak_end_ms").toLongLong();
     // 评论用 album_audio_id：QML 传了就用，没传则查列表解析时登记的缓存
     // （这样评论不用再为拿 id 去搜索歌名或额外查接口）
     song.mxid = map.value("mxid", map.value("album_audio_id", map.value("mixsongid"))).toString();
@@ -1096,7 +1100,13 @@ void PlaylistManager::doAddSong(const SongInfo &song, bool /*toHead*/, bool /*pl
 void PlaylistManager::setposistion(float positionvalue)
 {
     cancelClimaxPreview();
-    qint64 position                   = positionvalue * m_player->duration();
+    qint64 position = 0;
+    qint64 peakStart = 0;
+    qint64 peakEnd   = 0;
+    if (m_fmPeakMode && currentFmPeak(peakStart, peakEnd))
+        position = peakStart + qint64(qBound(0.0f, positionvalue, 1.0f) * (peakEnd - peakStart));
+    else
+        position = positionvalue * m_player->duration();
     QMediaPlayer::PlaybackState state = m_player->playbackState();
     if (state == QMediaPlayer::PlayingState)
     {
@@ -1205,6 +1215,13 @@ QString PlaylistManager::getpercentstr() const
 
 QString PlaylistManager::durationstr()
 {
+    if (m_fmPeakMode)
+    {
+        qint64 peakStart = 0;
+        qint64 peakEnd   = 0;
+        if (currentFmPeak(peakStart, peakEnd))
+            return formatTime(peakEnd - peakStart);
+    }
     if (m_climaxPreviewing)
         return m_climaxPreviewDurationStr;
     return m_duration;
@@ -2792,6 +2809,43 @@ void PlaylistManager::fetchLyricContent(
     );
 }
 
+bool PlaylistManager::currentFmPeak(qint64 &start, qint64 &end) const
+{
+    if (m_currentIndex < 0 || m_currentIndex >= (*m_curplaylist).size())
+        return false;
+    const SongInfo &song = (*m_curplaylist)[m_currentIndex];
+    if (song.peakEndMs > song.peakStartMs + 1000)
+    {
+        start = song.peakStartMs;
+        end   = song.peakEndMs;
+        return true;
+    }
+    return false;
+}
+
+void PlaylistManager::applyFmPeakSeek()
+{
+    if (!m_fmPeakMode || type != LOCAL || m_climaxPreviewing)
+        return;
+    qint64 start = 0;
+    qint64 end   = 0;
+    if (!currentFmPeak(start, end))
+        return;
+    if (m_player->duration() > 0)
+        m_player->setPosition(start);
+    m_fmPeakAdvancing = false;
+}
+
+void PlaylistManager::setFmPeakMode(bool enabled)
+{
+    if (m_fmPeakMode == enabled)
+        return;
+    m_fmPeakMode      = enabled;
+    m_fmPeakAdvancing = false;
+    if (enabled)
+        applyFmPeakSeek();
+}
+
 void PlaylistManager::updatePlaybackProgress(qint64 position)
 {
     // 歌曲播完后 position 会重置到 0，跳过以避免歌词闪回第一句
@@ -2801,6 +2855,50 @@ void PlaylistManager::updatePlaybackProgress(qint64 position)
     if (m_climaxPreviewing)
         return;
     emit playbackPositionChanged(position);
+
+    // 个人FM「30秒」：进度按高潮片段归一化，播到片段末尾自动下一首
+    if (m_fmPeakMode && type == LOCAL)
+    {
+        qint64 peakStart = 0;
+        qint64 peakEnd   = 0;
+        if (currentFmPeak(peakStart, peakEnd))
+        {
+            if (position < peakStart)
+            {
+                m_player->setPosition(peakStart);
+                return;
+            }
+            const qint64 span = peakEnd - peakStart;
+            const qint64 rel  = qBound<qint64>(0, position - peakStart, span);
+            m_percent    = span > 0 ? static_cast<float>(rel) / span : 0.0f;
+            m_percentstr = formatTime(rel);
+            const qint64 peakNow = QDateTime::currentMSecsSinceEpoch();
+            if (peakNow - m_lastPercentNotifyMs >= 1000 / 24)
+            {
+                m_lastPercentNotifyMs = peakNow;
+                emit percentChanged();
+            }
+            updateLyricProgress(position);
+            if (position >= peakEnd && !m_fmPeakAdvancing)
+            {
+                m_fmPeakAdvancing = true;
+                QTimer::singleShot(0, this, [this]() {
+                    // 30秒模式必须继续 FM 队列，不能被单曲循环卡住
+                    if (m_playMode == MODE_SINGLE_LOOP)
+                    {
+                        const int size = (*m_curplaylist).size();
+                        if (size > 0)
+                            playSongbyindex((m_currentIndex + 1) % size);
+                    }
+                    else
+                    {
+                        playNext();
+                    }
+                });
+            }
+            return;
+        }
+    }
 
     if (m_player->duration() > 0)
     {
@@ -3402,7 +3500,13 @@ void PlaylistManager::seekToPercent(double percent)
         return;
     if (m_player->duration() > 0)
     {
-        qint64 targetPos = static_cast<qint64>(percent * m_player->duration());
+        qint64 targetPos = 0;
+        qint64 peakStart = 0;
+        qint64 peakEnd   = 0;
+        if (m_fmPeakMode && currentFmPeak(peakStart, peakEnd))
+            targetPos = peakStart + static_cast<qint64>(qBound(0.0, percent, 1.0) * (peakEnd - peakStart));
+        else
+            targetPos = static_cast<qint64>(percent * m_player->duration());
         m_player->setPosition(targetPos);
     }
 }
