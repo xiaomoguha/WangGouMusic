@@ -57,7 +57,7 @@ Item {
         if (source.length > 0) {
             if (by.length === 0 || by === "系统推荐" || by === "系统")
                 return "正在播放由「" + source + "」自动推荐的歌曲"
-            return "正在播放 " + by + " 推荐的歌曲"
+            return "正在播放根据「" + by + "」的风格\n自动推荐的歌曲"
         }
         return "正在播放"
     }
@@ -1608,6 +1608,7 @@ Item {
 
                 Row {
                     id: nowStatusRow
+                    height: statusText.implicitHeight
                     anchors.left: parent.left
                     anchors.leftMargin: 102
                     anchors.right: parent.right
@@ -1618,11 +1619,16 @@ Item {
 
                     NowPlayingIndicator {
                         id: nowPlayingIndicator
+                        barWidth: 2
+                        barGap: 2
+                        height: 12
+                        y: (parent.height - height) / 2
                         visible: root.roomSongData.is_playing !== 0
                         playing: root.roomSongData.is_playing !== 0
                     }
 
                     Text {
+                        id: statusText
                         width: parent.width - (nowPlayingIndicator.visible ? nowPlayingIndicator.width + 7 : 0)
                         wrapMode: Text.Wrap
                         maximumLineCount: 2
@@ -1849,7 +1855,7 @@ Item {
                                     if (src.length > 0) {
                                         if (by.length === 0 || by === "系统推荐" || by === "系统")
                                             return (model.singername || "") + "  ·  系统 · " + src
-                                        return (model.singername || "") + "  ·  " + by + " 推荐"
+                                        return (model.singername || "") + "  ·  " + by + " 风格推荐"
                                     }
                                     return (model.singername || "") + (by ? "  ·  " + by + " 点歌" : "")
                                 }
