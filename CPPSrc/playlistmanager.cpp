@@ -3305,6 +3305,7 @@ void PlaylistManager::syncTogetherPlaylistFromServer(const QJsonArray &songs)
         song.added_by_nickname = obj["added_by_nickname"].toString();
         song.added_by_avatar   = obj["added_by_avatar"].toString();
         song.like_count        = obj["like_count"].toInt();
+        song.recommend_source  = obj["recommend_source"].toString();
         const QJsonArray likedArr = obj["liked_by"].toArray();
         for (const QJsonValue &likeVal : likedArr)
             song.liked_by.append(likeVal.toString());

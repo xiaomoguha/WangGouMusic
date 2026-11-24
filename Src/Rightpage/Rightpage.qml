@@ -72,7 +72,7 @@ Rectangle {
             onStatusChanged: {
                 console.log("[Rightpage] loader status:", status, "url:", source)
                 if (status === Loader.Error)
-                    console.log("[Rightpage] loader ERROR:", source, "->", lastError ? lastError.toString() : "unknown")
+                    console.log("[Rightpage] loader ERROR:", source)
             }
         }
     }

@@ -34,7 +34,9 @@ enum ServerAction
     BROADCAST_SONG_PROGRESS,
     // 批量加歌（「添加到一起听」）：与服务端 enum ctrl 同步，追加在末尾保持既有编号不变
     ADD_SONGS_TO_PLAYLIST,
-    LIKE_SONG
+    LIKE_SONG,
+    REQUEST_FM_RECOMMEND,
+    SUBMIT_FM_RECOMMEND
 };
 
 // 聊天 & 操作日志 action（与服务端 types.h 一致）
@@ -93,6 +95,7 @@ public:
     Q_INVOKABLE void removeSongFromTogether(const QString &songhash);
     // 点赞/取消点赞（房间内共享）
     Q_INVOKABLE void likeTogetherSong(const QString &songhash);
+    Q_INVOKABLE void submitFmRecommendation(const QString &requestId, const QVariantList &songs, bool failed);
     // 批量加歌（歌单「添加到一起听」）：一次消息加一批。
     Q_INVOKABLE void addSongsToTogether(const QVariantList &songs);
     Q_INVOKABLE void playNextTogether();
@@ -134,6 +137,8 @@ signals:
     );
     void roomActionsReceived(const QJsonArray &actions);
     void messageConfirmed(int msgId);
+    // 服务器请求本客户端用当前登录账号拉个人 FM（requestId 原样回传）
+    void fmRecommendationRequested(const QString &requestId, int want, int timeoutMs);
 
     // 服务器操作结果通知
     void serverNotice(const QString &message, const QString &mode); // mode: "loading" / "success" / "error"

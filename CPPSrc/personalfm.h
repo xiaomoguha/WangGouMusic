@@ -49,6 +49,8 @@ public:
     Q_INVOKABLE void like(const QString &hash);
     Q_INVOKABLE void dislike(const QString &hash);
     Q_INVOKABLE void banSinger(const QString &hash);
+    // 一起听：收到服务端 216 后，用本账号 token 拉一批个人 FM 候选（不改动 FM 页数据）
+    Q_INVOKABLE void requestRoomRecommendation(const QString &requestId);
 
     QVariantList songs() const { return m_songs; }
     QVariantList queue() const { return m_queue; }
@@ -69,11 +71,16 @@ signals:
     void poolChanged();
     void notice(const QString &message);
     void errorOccurred(const QString &message);
+    // 一起听 FM 推荐：成功回传候选（最多 5 首），失败让服务器立刻换人
+    void roomRecommendationReady(const QString &requestId, const QVariantList &songs);
+    void roomRecommendationFailed(const QString &requestId);
 
 private slots:
     void onData(const QByteArray &data);
     void onCoverData(const QByteArray &data);
     void onFeedbackData(const QByteArray &data);
+    void onRoomData(const QByteArray &data);
+    void onRoomFailed();
 
 private:
     void onFailed();
@@ -94,6 +101,10 @@ private:
     HttpGetRequester m_requester;
     HttpGetRequester m_feedbackRequester;
     HttpGetRequester m_coverRequester;
+    // 一起听推荐专用：独立请求/超时，不占用也不修改 FM 页的 songs/queue
+    HttpGetRequester m_roomRequester{2500};
+    QString m_roomRequestId;
+    bool m_roomRequestActive = false;
     QVariantList m_songs;
     QVariantList m_queue;
     // 封面补全任务元素：{albumId, hashes}

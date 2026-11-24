@@ -47,6 +47,8 @@ QVariant SongListModel::data(const QModelIndex &index, int role) const
         return song.like_count;
     case LikedByRole:
         return song.liked_by;
+    case RecommendSourceRole:
+        return song.recommend_source;
     }
     return {};
 }
@@ -70,6 +72,7 @@ QHash<int, QByteArray> SongListModel::roleNames() const
         {MvHashRole, "mvhash"},
         {LikeCountRole, "like_count"},
         {LikedByRole, "liked_by"},
+        {RecommendSourceRole, "recommend_source"},
     };
 }
 
@@ -95,6 +98,7 @@ QVariant SongListModel::get(int index) const
     m["mvhash"]            = s.mvhash;
     m["like_count"]        = s.like_count;
     m["liked_by"]          = s.liked_by;
+    m["recommend_source"]  = s.recommend_source;
     return m;
 }
 

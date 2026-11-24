@@ -49,6 +49,18 @@ Item {
         var arr = s.liked_by || []
         return arr.indexOf(userManager.userid) >= 0
     }
+    readonly property string nowPlayingStatus: {
+        if (!roomSongData || roomSongData.is_playing === 0) return "已暂停"
+        var q = currentQueueSong
+        var source = q ? (q.recommend_source || "") : ""
+        var by = q ? (q.added_by_nickname || "") : ""
+        if (source.length > 0) {
+            if (by.length === 0 || by === "系统推荐" || by === "系统")
+                return "正在播放由「" + source + "」自动推荐的歌曲"
+            return "正在播放 " + by + " 推荐的歌曲"
+        }
+        return "正在播放"
+    }
 
     // ==================== 通用小组件 ====================
 
@@ -153,10 +165,79 @@ Item {
 
         HoverHandler { id: iconHover }
         TapHandler { cursorShape: Qt.PointingHandCursor; onTapped: iconBtn.clicked() }
-        ToolTip.visible: iconHover.hovered && iconBtn.tooltip !== ""
-        ToolTip.text: iconBtn.tooltip
-        ToolTip.delay: 500
+        ToolTip {
+            id: iconTip
+            visible: iconHover.hovered && iconBtn.tooltip !== ""
+            text: iconBtn.tooltip
+            padding: 8
+            x: Math.round((iconBtn.width - width) / 2)
+            y: -height - 6
+            z: 100
+            background: Rectangle {
+                radius: 10
+                color: AppTheme.bgOverlay
+                border.color: AppTheme.dialogBorder
+                border.width: 1
+            }
+            contentItem: Text {
+                text: iconBtn.tooltip
+                color: AppTheme.textSecondary
+                font.pixelSize: AppTheme.fontSizeSmall
+                font.family: AppTheme.fontFamily
+            }
+        }
         Behavior on color { ColorAnimation { duration: AppTheme.animFast } }
+    }
+
+    // 表情右键菜单项：与全局歌曲右键菜单（ContextMenuItem）保持同一套视觉
+    component StickerMenuItem: MenuItem {
+        id: stickerMenuItem
+        property string iconSource: ""
+        property bool danger: false
+
+        height: 34
+
+        background: Rectangle {
+            radius: 6
+            color: stickerMenuItem.hovered
+                   ? (stickerMenuItem.danger ? "#33FF6B6B" : AppTheme.bgNavHover)
+                   : "transparent"
+        }
+
+        contentItem: Item {
+            implicitHeight: 34
+
+            Row {
+                anchors.left: parent.left
+                anchors.leftMargin: 10
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 9
+
+                Image {
+                    width: 14
+                    height: 14
+                    source: stickerMenuItem.iconSource
+                    sourceSize: Qt.size(56, 56)
+                    fillMode: Image.PreserveAspectFit
+                    smooth: true
+                    layer.enabled: true
+                    layer.effect: ColorOverlay {
+                        color: stickerMenuItem.danger
+                               ? AppTheme.errorColor
+                               : (stickerMenuItem.hovered ? AppTheme.textPrimary : AppTheme.textSecondary)
+                    }
+                }
+
+                Text {
+                    text: stickerMenuItem.text
+                    color: stickerMenuItem.danger
+                           ? AppTheme.errorColor
+                           : (stickerMenuItem.hovered ? AppTheme.textPrimary : AppTheme.textSecondary)
+                    font.pixelSize: AppTheme.fontSizeSmall
+                    font.family: AppTheme.fontFamily
+                }
+            }
+        }
     }
 
     // ==================== 工具函数 ====================
@@ -1189,10 +1270,12 @@ Item {
                 z: 35
 
                 Row {
-                    anchors.fill: parent
+                    anchors.left: parent.left
+                    anchors.right: parent.right
                     anchors.leftMargin: 12
                     anchors.rightMargin: 12
                     anchors.verticalCenter: parent.verticalCenter
+                    height: 36
                     spacing: 8
 
                     TextField {
@@ -1447,6 +1530,7 @@ Item {
                     spacing: 12
 
                     Rectangle {
+                        id: nowCover
                         width: 76; height: 76
                         radius: 11
                         anchors.verticalCenter: parent.verticalCenter
@@ -1485,43 +1569,16 @@ Item {
                             font.family: AppTheme.fontFamily
                             color: AppTheme.textMuted
                         }
-
-                        Row {
-                            spacing: 7
-
-                            NowPlayingIndicator {
-                                anchors.verticalCenter: parent.verticalCenter
-                                visible: root.roomSongData.is_playing !== 0
-                                playing: root.roomSongData.is_playing !== 0
-                            }
-
-                            Text {
-                                text: root.roomSongData.is_playing === 0 ? "已暂停" : "同步播放中"
-                                font.pixelSize: AppTheme.fontSizeCaption
-                                font.family: AppTheme.fontFamily
-                                color: root.roomSongData.is_playing === 0 ? AppTheme.textDim : AppTheme.accent
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-
-                            Text {
-                                visible: mainPane.width >= 360
-                                text: "· " + (playlistmanager ? playlistmanager.togetherplaylist.count : 0) + " 首在队列"
-                                font.pixelSize: AppTheme.fontSizeCaption
-                                font.family: AppTheme.fontFamily
-                                color: AppTheme.textDim
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-                        }
                     }
 
-                    Row {
+                    Column {
                         id: rightButtons
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 6
 
                         Row {
                             spacing: 2
-                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.horizontalCenter: parent.horizontalCenter
 
                             IconButton {
                                 diameter: 28
@@ -1546,6 +1603,34 @@ Item {
                             primary: true
                             onClicked: requestDialog.open()
                         }
+                    }
+                }
+
+                Row {
+                    id: nowStatusRow
+                    anchors.left: parent.left
+                    anchors.leftMargin: 102
+                    anchors.right: parent.right
+                    anchors.rightMargin: 14
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 8
+                    spacing: 7
+
+                    NowPlayingIndicator {
+                        id: nowPlayingIndicator
+                        visible: root.roomSongData.is_playing !== 0
+                        playing: root.roomSongData.is_playing !== 0
+                    }
+
+                    Text {
+                        width: parent.width - (nowPlayingIndicator.visible ? nowPlayingIndicator.width + 7 : 0)
+                        wrapMode: Text.Wrap
+                        maximumLineCount: 2
+                        elide: Text.ElideRight
+                        text: root.nowPlayingStatus
+                        font.pixelSize: AppTheme.fontSizeXs
+                        font.family: AppTheme.fontFamily
+                        color: root.roomSongData.is_playing === 0 ? AppTheme.textDim : AppTheme.accent
                     }
                 }
 
@@ -1758,7 +1843,16 @@ Item {
 
                             Text {
                                 width: parent.width
-                                text: (model.singername || "") + (model.added_by_nickname ? "  ·  " + model.added_by_nickname + " 点歌" : "")
+                                text: {
+                                    var by = model.added_by_nickname || ""
+                                    var src = model.recommend_source || ""
+                                    if (src.length > 0) {
+                                        if (by.length === 0 || by === "系统推荐" || by === "系统")
+                                            return (model.singername || "") + "  ·  系统 · " + src
+                                        return (model.singername || "") + "  ·  " + by + " 推荐"
+                                    }
+                                    return (model.singername || "") + (by ? "  ·  " + by + " 点歌" : "")
+                                }
                                 elide: Text.ElideRight
                                 font.pixelSize: AppTheme.fontSizeCaption
                                 font.family: AppTheme.fontFamily
@@ -1930,7 +2024,7 @@ Item {
                     id: requestInput
                     width: parent.width - searchButton.width - parent.spacing
                     height: 38
-                    placeholderText: "搜索歌名、歌手或专辑"
+                    placeholderText: "搜索歌曲、歌手"
                     color: AppTheme.textPrimary
                     palette.placeholderText: AppTheme.textPlaceholder
                     font.pixelSize: AppTheme.fontSizeBody
@@ -2079,14 +2173,32 @@ Item {
     Menu {
         id: stickerMenu
         property string stickerId: ""
+        width: 180
+        padding: 6
 
-        MenuItem {
+        StickerMenuItem {
             text: "添加到表情包"
+            iconSource: AppIcon.plus
             onTriggered: stickers.addSticker(stickerMenu.stickerId)
         }
-        MenuItem {
+        StickerMenuItem {
             text: "从表情包删除"
+            iconSource: AppIcon.deleteIcon
+            danger: true
             onTriggered: stickers.removeSticker(stickerMenu.stickerId)
+        }
+
+        background: Rectangle {
+            radius: 10
+            color: AppTheme.bgOverlay
+            border.color: AppTheme.dialogBorder
+            border.width: 1
+        }
+        enter: Transition {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 120; easing.type: Easing.OutCubic }
+        }
+        exit: Transition {
+            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: 80 }
         }
     }
 

@@ -188,6 +188,9 @@ void WebSocketClient::setUrl(const QString &roomid, const QString &userid)
     url.setPath(WEB_SOCKET_SERVICE_PATH);
 
     QUrlQuery query;
+    // fm_ready 放最前面：lws 在长 query/中文昵称后解析末尾参数不稳定
+    if (usermanager && usermanager->isLoggedIn())
+        query.addQueryItem("fm_ready", "1");
     query.addQueryItem("userid", userid);
     query.addQueryItem("roomid", roomid);
     query.addQueryItem("nickname", nickname);
@@ -322,6 +325,40 @@ void WebSocketClient::likeTogetherSong(const QString &songhash)
     QJsonObject params;
     params["songhash"] = songhash;
     json["params"]     = params;
+    sendJson(json);
+}
+
+void WebSocketClient::submitFmRecommendation(const QString &requestId, const QVariantList &songs, bool failed)
+{
+    if (requestId.isEmpty())
+        return;
+    QJsonObject json;
+    json["userid"] = m_userId;
+    json["action"] = SUBMIT_FM_RECOMMEND;
+    QJsonObject params;
+    params["request_id"] = requestId;
+    params["failed"]     = failed;
+    QJsonArray arr;
+    const int limit = qMin(songs.size(), 5);
+    for (int i = 0; i < limit; ++i)
+    {
+        const QVariantMap m = songs.at(i).toMap();
+        const QString hash  = m.value("songhash").toString();
+        const QString name  = m.value("songname").toString();
+        if (hash.isEmpty() || name.isEmpty())
+            continue;
+        QJsonObject s;
+        s["songname"]   = name;
+        s["songhash"]   = hash;
+        s["singername"] = m.value("singername").toString();
+        s["album_name"] = m.value("album_name").toString();
+        s["duration"]   = m.value("duration").toString();
+        s["cover_url"]  = m.value("union_cover").toString();
+        s["mxid"]       = m.value("mxid").toString();
+        arr.append(s);
+    }
+    params["songs"] = arr;
+    json["params"]  = params;
     sendJson(json);
 }
 
@@ -743,6 +780,17 @@ void WebSocketClient::handleServerMessage(const QJsonObject &json)
             json["status"].toString() == QLatin1String("success") ? QStringLiteral("success") : QStringLiteral("error")
         );
         break;
+
+    case REQUEST_FM_RECOMMEND:
+    {
+        const QString requestId = json["request_id"].toString();
+        if (requestId.isEmpty())
+            break;
+        const int want      = qBound(1, json["want"].toInt(5), 5);
+        const int timeoutMs = qBound(500, json["timeout_ms"].toInt(3000), 10000);
+        emit fmRecommendationRequested(requestId, want, timeoutMs);
+        break;
+    }
 
     default:
         // error 响应处理

@@ -258,6 +258,17 @@ int main(int argc, char *argv[])
     playlistCollection.setUserManager(&userManager);
     historyManager.setUserManager(&userManager);
     WebSocketClient websocket(&playlistmanager, &userManager);
+    // 一起听 FM 推荐：服务器只发 request_id，客户端用自己的 token 拉 FM 后回传
+    QObject::connect(&websocket, &WebSocketClient::fmRecommendationRequested,
+                     &personalFM, &PersonalFM::requestRoomRecommendation);
+    QObject::connect(&personalFM, &PersonalFM::roomRecommendationReady, &websocket,
+                     [&websocket](const QString &requestId, const QVariantList &songs) {
+                         websocket.submitFmRecommendation(requestId, songs, false);
+                     });
+    QObject::connect(&personalFM, &PersonalFM::roomRecommendationFailed, &websocket,
+                     [&websocket](const QString &requestId) {
+                         websocket.submitFmRecommendation(requestId, {}, true);
+                     });
     StickerManager stickers(&userManager);
     // 桌面媒体控制集成（Windows SMTC / macOS NowPlaying）。
     std::unique_ptr<NowPlayingMediaController> mediaController;

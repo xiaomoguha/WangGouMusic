@@ -32,6 +32,7 @@ public:
         MvHashRole,
         LikeCountRole,
         LikedByRole,
+        RecommendSourceRole,
     };
     Q_ENUM(Roles)
 

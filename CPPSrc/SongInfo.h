@@ -32,6 +32,7 @@ struct SongInfo
     // 一起听房间内共享点赞：like_count 总数，liked_by 点赞用户 id 列表
     Q_PROPERTY(int like_count MEMBER like_count)
     Q_PROPERTY(QStringList liked_by MEMBER liked_by)
+    Q_PROPERTY(QString recommend_source MEMBER recommend_source)
 
 public:
     // 从接口返回的歌曲对象里取 album_audio_id（= 评论接口要的 mixsongid）。
@@ -59,6 +60,7 @@ public:
     QString mxid;
     int like_count = 0;
     QStringList liked_by;
+    QString recommend_source;
     qint64 peakStartMs = 0;
     qint64 peakEndMs   = 0;
 };

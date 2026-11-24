@@ -39,6 +39,9 @@ PersonalFM::PersonalFM(QObject *parent) : QObject(parent)
     connect(&m_coverRequester, &HttpGetRequester::dataReceived, this, &PersonalFM::onCoverData);
     connect(&m_coverRequester, &HttpGetRequester::requestFailed, this, &PersonalFM::onCoverFailed);
     connect(&m_coverRequester, &HttpGetRequester::requestTimeout, this, [this]() { onCoverFailed(QString()); });
+    connect(&m_roomRequester, &HttpGetRequester::dataReceived, this, &PersonalFM::onRoomData);
+    connect(&m_roomRequester, &HttpGetRequester::requestFailed, this, &PersonalFM::onRoomFailed);
+    connect(&m_roomRequester, &HttpGetRequester::requestTimeout, this, &PersonalFM::onRoomFailed);
 }
 
 void PersonalFM::fetch()
@@ -259,6 +262,76 @@ void PersonalFM::requestFeedback(const QString &hash, const QString &action)
     m_feedbackRequester.fetchData(url);
 }
 
+void PersonalFM::requestRoomRecommendation(const QString &requestId)
+{
+    if (requestId.isEmpty())
+        return;
+    if (!m_userManager || !m_userManager->isLoggedIn() || m_userManager->token().isEmpty())
+    {
+        emit roomRecommendationFailed(requestId);
+        return;
+    }
+    if (m_roomRequestActive)
+    {
+        m_roomRequester.cancel();
+        m_roomRequestActive = false;
+        if (!m_roomRequestId.isEmpty())
+            emit roomRecommendationFailed(m_roomRequestId);
+    }
+    m_roomRequestId     = requestId;
+    m_roomRequestActive = true;
+
+    QUrlQuery query;
+    query.addQueryItem("userid", m_userManager->userid());
+    query.addQueryItem("token", m_userManager->token());
+    query.addQueryItem("action", "play");
+    query.addQueryItem("mode", "normal");
+    query.addQueryItem("song_pool_id", QString::number(m_pool));
+    m_roomRequester.fetchData("https://api.special520.com/personal/fm?" + query.toString());
+}
+
+void PersonalFM::onRoomData(const QByteArray &data)
+{
+    if (!m_roomRequestActive)
+        return;
+    const QString requestId = m_roomRequestId;
+    m_roomRequestActive     = false;
+    m_roomRequestId.clear();
+
+    QJsonParseError perr;
+    const QJsonDocument doc = QJsonDocument::fromJson(data, &perr);
+    if (perr.error != QJsonParseError::NoError)
+    {
+        emit roomRecommendationFailed(requestId);
+        return;
+    }
+    const QJsonObject root = doc.object();
+    if (root["status"].toInt() != 1)
+    {
+        emit roomRecommendationFailed(requestId);
+        return;
+    }
+    QVariantList songs = parseSongs(root["data"].toObject()["song_list"].toArray());
+    if (songs.isEmpty())
+    {
+        emit roomRecommendationFailed(requestId);
+        return;
+    }
+    if (songs.size() > 5)
+        songs = songs.mid(0, 5);
+    emit roomRecommendationReady(requestId, songs);
+}
+
+void PersonalFM::onRoomFailed()
+{
+    if (!m_roomRequestActive)
+        return;
+    const QString requestId = m_roomRequestId;
+    m_roomRequestActive     = false;
+    m_roomRequestId.clear();
+    emit roomRecommendationFailed(requestId);
+}
+
 void PersonalFM::onFailed()
 {
     m_isLoading = false;
@@ -328,6 +401,7 @@ QVariantList PersonalFM::parseSongs(const QJsonArray &list) const
         QVariantMap item;
         item["songname"] = name;
         item["songhash"] = hash;
+        item["mxid"] = SongInfo::cachedMxid(hash);
         item["singername"] = singername;
         item["union_cover"] = cover;
         item["album_name"] = s["album_name"].toString();
