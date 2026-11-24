@@ -12,8 +12,9 @@ WebSocketClient::WebSocketClient(PlaylistManager *playManager, UserManager *user
       m_serverUrl("wss://" WEB_SOCKET_WS_HOST WEB_SOCKET_SERVICE_PATH), m_connectionState(Disconnected), m_heartbeatTimer(nullptr),
       m_heartbeatTimeoutTimer(nullptr), m_heartbeatInterval(30)
 {
-    m_chatModel   = new MessageListModel(this);
-    m_actionModel = new MessageListModel(this);
+    m_chatModel     = new MessageListModel(this);
+    m_actionModel   = new MessageListModel(this);
+    m_timelineModel = new MessageListModel(this);
     initializeWebSocket();
     // 一起听：本地手动恢复播放（播放键/媒体键）→ 清掉本地暂停标记，
     // 从房间最新进度续上；暂停期间错过的切歌在此补播
@@ -139,6 +140,7 @@ void WebSocketClient::disconnectFromServer()
     // 清空消息
     m_chatModel->clearAll();
     m_actionModel->clearAll();
+    m_timelineModel->clearAll();
 
     // 退出一起听模式：暂停当前歌曲，恢复本地播放列表（暂停状态）
     if (playmanager)
@@ -372,7 +374,8 @@ void WebSocketClient::sendChatMessage(const QString &message)
     msg["_local"]    = true;
     msg["status"]    = "sending";
     msg["_msgId"]    = msgId;
-    m_chatModel->appendMessage(msg);   // 行级追加:ListView 只新建队尾一条 delegate
+    m_chatModel->appendMessage(msg);
+    m_timelineModel->appendMessage(msg);   // 行级追加:ListView 只新建队尾一条 delegate
 
     // 超时计时器：10秒未确认则标记为失败
     QTimer *timer = new QTimer(this);
@@ -402,6 +405,13 @@ void WebSocketClient::markMessageFailed(int msgId)
         m["status"] = "failed";
         m_chatModel->updateMessage(idx, m);   // 行级 dataChanged,不重建列表
     }
+    const int tlIdx = m_timelineModel->findByMsgId(msgId, QStringLiteral("sending"));
+    if (tlIdx >= 0)
+    {
+        QVariantMap tm = m_timelineModel->get(tlIdx);
+        tm["status"] = "failed";
+        m_timelineModel->updateMessage(tlIdx, tm);
+    }
     m_pendingMsgTimers.remove(msgId);
 }
 
@@ -418,6 +428,13 @@ void WebSocketClient::retryMessage(int msgId)
     // 恢复为发送中状态
     m["status"] = "sending";
     m_chatModel->updateMessage(idx, m);   // 行级 dataChanged,不重建列表
+    const int tlIdx = m_timelineModel->findByMsgId(msgId, QStringLiteral("failed"));
+    if (tlIdx >= 0)
+    {
+        QVariantMap tm = m_timelineModel->get(tlIdx);
+        tm["status"] = "sending";
+        m_timelineModel->updateMessage(tlIdx, tm);
+    }
 
     // 重新启动超时计时器
     QTimer *timer = new QTimer(this);
@@ -492,6 +509,7 @@ void WebSocketClient::onDisconnected()
     // 清空消息
     m_chatModel->clearAll();
     m_actionModel->clearAll();
+    m_timelineModel->clearAll();
 
     // 清理待确认消息的超时计时器
     for (auto it = m_pendingMsgTimers.begin(); it != m_pendingMsgTimers.end(); ++it)
@@ -660,6 +678,9 @@ void WebSocketClient::handleServerMessage(const QJsonObject &json)
                 updated["time"]     = chatTime;
                 // 行级 dataChanged:只刷新这一条,既无整表重建的卡顿也无闪烁
                 m_chatModel->updateMessage(echoIdx, updated);
+                const int tlIdx = m_timelineModel->findByMsgId(msgId);
+                if (tlIdx >= 0)
+                    m_timelineModel->updateMessage(tlIdx, updated);
 
                 // 取消超时计时器
                 if (m_pendingMsgTimers.contains(msgId))
@@ -682,6 +703,7 @@ void WebSocketClient::handleServerMessage(const QJsonObject &json)
                 msg["message"]   = chatMsg;
                 msg["time"]      = chatTime;
                 m_chatModel->appendMessage(msg);
+                m_timelineModel->appendMessage(msg);
             }
 
             emit chatMessageReceived(
@@ -731,7 +753,8 @@ void WebSocketClient::mergeRoomActions(const QJsonArray &actions)
 {
     // 服务端返回 newest-first,翻转后按时间正序追加。逐条 append + 队尾 30 条
     // 窗口查重,与原 QVariantList 语义一致(含同批内重复条目的去重);actions
-    bool added = false;
+    bool added         = false;
+    bool timelineAdded = false;
     for (int i = actions.size() - 1; i >= 0; --i)
     {
         QVariantMap act = actions[i].toObject().toVariantMap();
@@ -748,6 +771,12 @@ void WebSocketClient::mergeRoomActions(const QJsonArray &actions)
             act["type"] = "action";
             target      = m_actionModel;
         }
+        // 合并时间线始终保留一份（聊天 + 动态），用于一起听页单列展示
+        if (!m_timelineModel->containsAction(act.value("time"), act.value("userid"), act.value("message")))
+        {
+            m_timelineModel->appendMessage(act);
+            timelineAdded = true;
+        }
         if (target->containsAction(act.value("time"), act.value("userid"), act.value("message")))
             continue;
         target->appendMessage(act);
@@ -759,6 +788,8 @@ void WebSocketClient::mergeRoomActions(const QJsonArray &actions)
         m_chatModel->truncate(200);
         m_actionModel->truncate(200);
     }
+    if (timelineAdded)
+        m_timelineModel->truncate(200);
     emit roomActionsReceived(actions);
 }
 
@@ -950,7 +981,6 @@ void WebSocketClient::handleClientListBroadcast(const QJsonObject &json)
 {
     emit clientListUpdated(json);
 }
-
 // ==================== JSON 工具 ====================
 
 QJsonObject WebSocketClient::parseJson(const QString &jsonString)
@@ -1013,4 +1043,9 @@ MessageListModel *WebSocketClient::chatMessages() const
 MessageListModel *WebSocketClient::actionMessages() const
 {
     return m_actionModel;
+}
+
+MessageListModel *WebSocketClient::timelineMessages() const
+{
+    return m_timelineModel;
 }

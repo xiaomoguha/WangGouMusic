@@ -57,6 +57,8 @@ class WebSocketClient : public QObject
     // 替代原 QVariantList 每次全量替换导致 QML ListView 整表销毁重建的卡顿
     Q_PROPERTY(MessageListModel *chatMessages READ chatMessages CONSTANT)
     Q_PROPERTY(MessageListModel *actionMessages READ actionMessages CONSTANT)
+    // 聊天 + 房间动态按时间合并后的单一时间线（一起听页三栏布局使用）
+    Q_PROPERTY(MessageListModel *timelineMessages READ timelineMessages CONSTANT)
 public:
     explicit WebSocketClient(PlaylistManager *playmanager, UserManager *usermanager, QObject *parent = nullptr);
     ~WebSocketClient() override;
@@ -99,6 +101,7 @@ public:
     QVariantList roomList() const;
     MessageListModel *chatMessages() const;
     MessageListModel *actionMessages() const;
+    MessageListModel *timelineMessages() const;
 
     // 聊天
     Q_INVOKABLE void sendChatMessage(const QString &message);
@@ -186,8 +189,9 @@ private:
     QVariantList m_roomList;
 
     // 消息存储（切换页面不丢失）:行级增量 C++ 模型,聊天/系统动态各一份
-    MessageListModel *m_chatModel   = nullptr;
-    MessageListModel *m_actionModel = nullptr;
+    MessageListModel *m_chatModel     = nullptr;
+    MessageListModel *m_actionModel   = nullptr;
+    MessageListModel *m_timelineModel = nullptr;
 
     // 待确认的添加歌曲操作（单曲/批量共用同一个超时计时器）
     bool m_pendingAddSong         = false;

@@ -3327,7 +3327,6 @@ void PlaylistManager::syncTogetherPlaylistFromServer(const QJsonArray &songs)
     m_togetherplaylistModel->syncFromList(m_togetherplaylist);
     emit togetherplaylistUpdated();
 }
-
 void PlaylistManager::playTogetherSongFromServer(
     const QString &songUrl, const QString &songName, const QString &songHash, const QString &singerName,
     const QString &coverUrl, const QString &albumName, const QString &duration, const QString &mxid

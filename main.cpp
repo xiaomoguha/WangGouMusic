@@ -235,6 +235,7 @@ int main(int argc, char *argv[])
     // ---------------- 后端对象（必须在加载 QML 之前创建） ----------------
     GetHostSearch hostSearch;
     SearchComplex complexsearch;
+    SearchComplex togetherSearch;   // 一起听「点歌」独立搜索，避免和搜索页共用状态
     SearchHistoryManager searchHistory;
     Recommendation recommendation;
     PlaylistManager playlistmanager(&recommendation);
@@ -273,6 +274,7 @@ int main(int argc, char *argv[])
     TourGrabber tourGrabber;   // --tour 巡览自截帧（见类注释）
     engine.rootContext()->setContextProperty("tourGrabber", &tourGrabber);
     engine.rootContext()->setContextProperty("complexsearch", &complexsearch);
+    engine.rootContext()->setContextProperty("togetherSearch", &togetherSearch);
     engine.rootContext()->setContextProperty("searchHistory", &searchHistory);
     // 全局指针追踪：供 QML 做指针与背景星空的联动（见 StarfieldLayer.qml）。
     std::unique_ptr<CursorTracker> cursorTracker;
