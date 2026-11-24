@@ -43,6 +43,10 @@ QVariant SongListModel::data(const QModelIndex &index, int role) const
         return song.fileid;
     case MvHashRole:
         return song.mvhash;
+    case LikeCountRole:
+        return song.like_count;
+    case LikedByRole:
+        return song.liked_by;
     }
     return {};
 }
@@ -64,6 +68,8 @@ QHash<int, QByteArray> SongListModel::roleNames() const
         {AddedByAvatarRole, "added_by_avatar"},
         {FileIdRole, "fileid"},
         {MvHashRole, "mvhash"},
+        {LikeCountRole, "like_count"},
+        {LikedByRole, "liked_by"},
     };
 }
 
@@ -87,6 +93,8 @@ QVariant SongListModel::get(int index) const
     m["added_by_avatar"]   = s.added_by_avatar;
     m["fileid"]            = s.fileid;
     m["mvhash"]            = s.mvhash;
+    m["like_count"]        = s.like_count;
+    m["liked_by"]          = s.liked_by;
     return m;
 }
 
@@ -115,14 +123,34 @@ void SongListModel::syncFromList(const QList<SongInfo> &songs)
     // 旧列表是新列表的前缀：末尾追加了若干首（=别人加歌），或完全相同（切歌/进度广播）
     if (common == m_songs.size() && songs.size() >= m_songs.size())
     {
-        if (songs.size() > m_songs.size())
+        const int oldCount = m_songs.size();
+        if (songs.size() > oldCount)
         {
             QList<SongInfo> tail;
-            for (int i = m_songs.size(); i < songs.size(); ++i)
+            for (int i = oldCount; i < songs.size(); ++i)
                 tail.append(songs[i]);
             appendList(tail);   // 增量插入：ListView 只新建尾部 delegate，其余复用
         }
-        return;                 // 含"完全相同" → no-op，不触发任何重建
+        // 点赞只改 like_count/liked_by：不能直接 no-op，否则队列和 nowCard 不刷新
+        bool likesChanged = false;
+        for (int i = 0; i < oldCount; ++i)
+        {
+            if (m_songs[i].like_count != songs[i].like_count
+                || m_songs[i].liked_by != songs[i].liked_by)
+            {
+                m_songs[i].like_count = songs[i].like_count;
+                m_songs[i].liked_by   = songs[i].liked_by;
+                const QModelIndex idx = createIndex(i, 0);
+                emit dataChanged(idx, idx, {LikeCountRole, LikedByRole});
+                likesChanged = true;
+            }
+        }
+        if (likesChanged)
+        {
+            ++m_likeRevision;
+            emit likeRevisionChanged();
+        }
+        return;
     }
     // 其他（置顶/删歌/顺序漂移/头部插入）→ 按 songhash 求 LCS 最长公共子序列，
     // 把差异拆成逐段 removeRows/insertRows：存活行的 delegate 原样复用，
@@ -215,6 +243,7 @@ void SongListModel::syncFromList(const QList<SongInfo> &songs)
 
     // 2) 自头向尾插入新增行；存活行只刷新服务器下发的展示字段——
     // url/lyric/fileid/mvhash 是本地异步填充的运行时数据，不能被空值覆盖
+    bool likesChanged = false;
     for (int j = 0, pos = 0; j < m; ++j)
     {
         if (!keepNew[j])
@@ -229,8 +258,10 @@ void SongListModel::syncFromList(const QList<SongInfo> &songs)
         const SongInfo &in = songs[j];
         if (cur.title != in.title || cur.singername != in.singername || cur.album_name != in.album_name
             || cur.duration != in.duration || cur.union_cover != in.union_cover
-            || cur.added_by_nickname != in.added_by_nickname || cur.added_by_avatar != in.added_by_avatar)
+            || cur.added_by_nickname != in.added_by_nickname || cur.added_by_avatar != in.added_by_avatar
+            || cur.like_count != in.like_count || cur.liked_by != in.liked_by)
         {
+            const bool likeFieldsChanged = (cur.like_count != in.like_count || cur.liked_by != in.liked_by);
             const QString url = cur.url, lyric = cur.lyric, fileid = cur.fileid, mvhash = cur.mvhash;
             cur          = in;
             cur.url      = url;
@@ -239,8 +270,15 @@ void SongListModel::syncFromList(const QList<SongInfo> &songs)
             cur.mvhash   = mvhash;
             const QModelIndex idx = createIndex(pos, 0);
             emit dataChanged(idx, idx);   // 行级刷新,不销毁 delegate
+            if (likeFieldsChanged)
+                likesChanged = true;
         }
         ++pos;
+    }
+    if (likesChanged)
+    {
+        ++m_likeRevision;
+        emit likeRevisionChanged();
     }
     emit countChanged();
 }
@@ -297,8 +335,15 @@ bool SongListModel::replaceAt(int index, const SongInfo &song)
 {
     if (index < 0 || index >= m_songs.size())
         return false;
+    const bool likesChanged = (m_songs[index].like_count != song.like_count
+                               || m_songs[index].liked_by != song.liked_by);
     m_songs[index]  = song;
     QModelIndex idx = createIndex(index, 0);
     emit dataChanged(idx, idx);
+    if (likesChanged)
+    {
+        ++m_likeRevision;
+        emit likeRevisionChanged();
+    }
     return true;
 }

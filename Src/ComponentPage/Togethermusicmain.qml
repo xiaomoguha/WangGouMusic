@@ -32,6 +32,24 @@ Item {
     property bool firstLoad: true
     property string requestKeyword: ""
 
+    // 一起听点赞：likeRevision 作为依赖，让 nowCard 通过 get(hash) 读取的点赞刷新
+    readonly property int likeRevision: playlistmanager && playlistmanager.togetherplaylist
+                                        ? playlistmanager.togetherplaylist.likeRevision : 0
+    readonly property var currentQueueSong: {
+        likeRevision
+        var pl = playlistmanager ? playlistmanager.togetherplaylist : null
+        if (!pl || !roomSongData.songhash) return null
+        var idx = pl.indexOfHash(roomSongData.songhash)
+        return idx >= 0 ? pl.get(idx) : null
+    }
+    readonly property int currentLikeCount: currentQueueSong ? (currentQueueSong.like_count || 0) : 0
+    readonly property bool currentLiked: {
+        var s = currentQueueSong
+        if (!s || !userManager) return false
+        var arr = s.liked_by || []
+        return arr.indexOf(userManager.userid) >= 0
+    }
+
     // ==================== 通用小组件 ====================
 
     component TransientScrollBar: ScrollBar {
@@ -1425,11 +1443,11 @@ Item {
                     anchors.right: parent.right
                     anchors.top: parent.top
                     anchors.bottom: parent.bottom
-                    anchors.margins: 18
-                    spacing: 16
+                    anchors.margins: 14
+                    spacing: 12
 
                     Rectangle {
-                        width: 82; height: 82
+                        width: 76; height: 76
                         radius: 11
                         anchors.verticalCenter: parent.verticalCenter
 
@@ -1439,13 +1457,13 @@ Item {
                             fillMode: Image.PreserveAspectCrop
                             layer.enabled: true
                             layer.effect: OpacityMask {
-                                maskSource: Rectangle { width: 82; height: 82; radius: 11 }
+                                maskSource: Rectangle { width: 76; height: 76; radius: 11 }
                             }
                         }
                     }
 
                     Column {
-                        width: parent.width - 82 - 16 - rightButtons.width - 16
+                        width: parent.width - 76 - 12 - rightButtons.width - 12
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 7
 
@@ -1453,7 +1471,7 @@ Item {
                             width: parent.width
                             elide: Text.ElideRight
                             text: root.roomSongData.songname || ""
-                            font.pixelSize: AppTheme.fontSizeHeadline
+                            font.pixelSize: AppTheme.fontSizeTitleLg
                             font.family: AppTheme.fontFamily
                             font.weight: Font.Bold
                             color: AppTheme.textSongTitle
@@ -1499,7 +1517,29 @@ Item {
                     Row {
                         id: rightButtons
                         anchors.verticalCenter: parent.verticalCenter
-                        spacing: 8
+                        spacing: 6
+
+                        Row {
+                            spacing: 2
+                            anchors.verticalCenter: parent.verticalCenter
+
+                            IconButton {
+                                diameter: 28
+                                iconSource: root.currentLiked ? AppIcon.heartFill : AppIcon.heart
+                                iconColor: root.currentLiked ? AppTheme.accent : AppTheme.textMuted
+                                tooltip: root.currentLiked ? "取消点赞" : "点赞"
+                                onClicked: websocket.likeTogetherSong(root.roomSongData.songhash)
+                            }
+
+                            Text {
+                                visible: root.currentLikeCount > 0
+                                text: root.currentLikeCount
+                                font.pixelSize: AppTheme.fontSizeCaption
+                                font.family: AppTheme.fontFamily
+                                color: root.currentLiked ? AppTheme.accent : AppTheme.textMuted
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                        }
 
                         PillButton {
                             label: "点歌"
@@ -1617,6 +1657,14 @@ Item {
 
                     readonly property bool isCurrent: root.roomSongData.songhash === model.songhash
                     readonly property bool narrow: queueList.width < 420
+                    readonly property bool liked: {
+                        if (!userManager) return false
+                        var arr = model.liked_by
+                        if (!arr) return false
+                        for (var i = 0; i < arr.length; ++i)
+                            if (arr[i] === userManager.userid) return true
+                        return false
+                    }
 
                     Row {
                         anchors.left: parent.left
@@ -1692,7 +1740,8 @@ Item {
                         }
 
                         Column {
-                            width: parent.width - (queueRow.narrow ? 178 : 218)
+                            width: parent.width - 22 - 38 - queueLikeRow.width - queueActions.width
+                                   - (queueDuration.visible ? queueDuration.width + 10 : 0) - 40
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: 2
 
@@ -1718,6 +1767,30 @@ Item {
                         }
 
                         Row {
+                            id: queueLikeRow
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 2
+
+                            IconButton {
+                                diameter: 22
+                                iconSource: queueRow.liked ? AppIcon.heartFill : AppIcon.heart
+                                iconColor: queueRow.liked ? AppTheme.accent : AppTheme.textDim
+                                tooltip: queueRow.liked ? "取消点赞" : "点赞"
+                                onClicked: websocket.likeTogetherSong(model.songhash)
+                            }
+
+                            Text {
+                                visible: (model.like_count || 0) > 0
+                                text: model.like_count
+                                font.pixelSize: AppTheme.fontSizeCaption
+                                font.family: AppTheme.fontFamily
+                                color: queueRow.liked ? AppTheme.accent : AppTheme.textDim
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                        }
+
+                        Row {
+                            id: queueActions
                             opacity: queueHover.hovered ? 1 : 0
                             enabled: queueHover.hovered
                             anchors.verticalCenter: parent.verticalCenter
@@ -1747,6 +1820,7 @@ Item {
                         }
 
                         Text {
+                            id: queueDuration
                             anchors.verticalCenter: parent.verticalCenter
                             visible: !queueRow.narrow
                             text: model.duration || "--:--"

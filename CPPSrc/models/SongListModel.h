@@ -13,6 +13,8 @@ class SongListModel : public QAbstractListModel
     Q_OBJECT
     // QML 可直接绑定的行数属性（QAbstractItemModel 无内建 count 属性）
     Q_PROPERTY(int count READ count NOTIFY countChanged)
+    // 点赞变化计数：nowCard 通过 get(hash) 读取点赞时需要这个依赖才能刷新
+    Q_PROPERTY(int likeRevision READ likeRevision NOTIFY likeRevisionChanged)
 public:
     enum Roles
     {
@@ -28,6 +30,8 @@ public:
         AddedByAvatarRole,
         FileIdRole,
         MvHashRole,
+        LikeCountRole,
+        LikedByRole,
     };
     Q_ENUM(Roles)
 
@@ -46,6 +50,10 @@ public:
     {
         return m_songs.size();
     }
+    int likeRevision() const
+    {
+        return m_likeRevision;
+    }
 
     // ── 数据操作（C++ 端调用，触发正确的 model 信号）──
     // 用外部 QList 替换全部数据（保留原 list 的引用语义给 PlaylistManager）
@@ -60,6 +68,7 @@ public:
 
 signals:
     void countChanged();
+    void likeRevisionChanged();
 
     // 取底层 list 的只读引用（PlaylistManager 内部用）
 public:
@@ -75,6 +84,7 @@ public:
 
 private:
     QList<SongInfo> m_songs;
+    int m_likeRevision = 0;
 };
 
 #endif // SONG_LIST_MODEL_H

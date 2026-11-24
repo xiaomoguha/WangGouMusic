@@ -4,6 +4,7 @@
 #include <QJsonObject>
 #include <QObject>
 #include <QString>
+#include <QStringList>
 
 // 歌曲信息结构（Q_GADGET，可在 QML 中作为值类型访问）
 struct SongInfo
@@ -28,6 +29,9 @@ struct SongInfo
     Q_PROPERTY(double peakEndMs MEMBER peakEndMs)
     // 评论用 album_audio_id：一起听广播由服务器解析下发；其余场景见下面的登记表
     Q_PROPERTY(QString mxid MEMBER mxid)
+    // 一起听房间内共享点赞：like_count 总数，liked_by 点赞用户 id 列表
+    Q_PROPERTY(int like_count MEMBER like_count)
+    Q_PROPERTY(QStringList liked_by MEMBER liked_by)
 
 public:
     // 从接口返回的歌曲对象里取 album_audio_id（= 评论接口要的 mixsongid）。
@@ -53,6 +57,8 @@ public:
     QString fileid;
     QString mvhash;
     QString mxid;
+    int like_count = 0;
+    QStringList liked_by;
     qint64 peakStartMs = 0;
     qint64 peakEndMs   = 0;
 };

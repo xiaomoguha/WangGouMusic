@@ -3304,6 +3304,10 @@ void PlaylistManager::syncTogetherPlaylistFromServer(const QJsonArray &songs)
         song.mxid              = obj["mxid"].toString();
         song.added_by_nickname = obj["added_by_nickname"].toString();
         song.added_by_avatar   = obj["added_by_avatar"].toString();
+        song.like_count        = obj["like_count"].toInt();
+        const QJsonArray likedArr = obj["liked_by"].toArray();
+        for (const QJsonValue &likeVal : likedArr)
+            song.liked_by.append(likeVal.toString());
         m_togetherplaylist.append(song);
     }
 

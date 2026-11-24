@@ -171,6 +171,7 @@ void WebSocketClient::setUrl(const QString &roomid, const QString &userid)
 {
     Roomid   = roomid;
     m_userId = userid;
+    emit roomidChanged();
 
     // 从 UserManager 获取昵称和头像
     QString nickname;
@@ -305,6 +306,19 @@ void WebSocketClient::removeSongFromTogether(const QString &songhash)
     QJsonObject json;
     json["userid"] = m_userId;
     json["action"] = REMOVE_SONG_FROM_PLAYLIST;
+    QJsonObject params;
+    params["songhash"] = songhash;
+    json["params"]     = params;
+    sendJson(json);
+}
+
+void WebSocketClient::likeTogetherSong(const QString &songhash)
+{
+    if (songhash.isEmpty())
+        return;
+    QJsonObject json;
+    json["userid"] = m_userId;
+    json["action"] = LIKE_SONG;
     QJsonObject params;
     params["songhash"] = songhash;
     json["params"]     = params;
