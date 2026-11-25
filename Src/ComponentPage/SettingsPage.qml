@@ -863,7 +863,7 @@ Rectangle {
                                 Behavior on border.color { ColorAnimation { duration: AppTheme.animFast } }
                             }
                             onEditingFinished: {
-                                serverAdmin.setAdminKey(text)
+                                serverAdmin.adminKey = text
                                 serverMsgOk("管理密钥已保存")
                             }
                         }
