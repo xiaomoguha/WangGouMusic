@@ -340,8 +340,9 @@ private:
     // 下载完整性失败连续计数（hash 大写）：同曲最多自动重下 2 次，仍失败则放弃；
     QHash<QString, int> m_integrityFailCount;
     // 播放缓存前的完整性校验：酷狗歌曲 hash 即对应音质文件的 MD5（实测），
-    // 本地文件算出的 MD5 与之不符 = 损坏。返回 false = 应删除重新下载
-    bool verifyCachedFileMd5(const QString &filePath, const QString &songhash);
+    // 本地文件算出的 MD5 与之不符 = 损坏。返回 false = 应删除重新下载。
+    // hashOnly=true：不按当前音质放行，只认会话 MD5 或歌曲 hash（一起听固定播 128 文件用）
+    bool verifyCachedFileMd5(const QString &filePath, const QString &songhash, bool hashOnly = false);
     // 取歌接口（song/url）返回的期望文件字节数与内容 MD5（酷狗 hash 即该音质文件的 MD5，
     // 已实测验证）：downloadAndStream 进入时消费一次，下载完成时做完整性校验
     qint64 m_pendingFileSize = 0;

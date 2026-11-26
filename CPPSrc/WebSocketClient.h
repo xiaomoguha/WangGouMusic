@@ -169,6 +169,12 @@ private:
     void handleSongProgressBroadcast(const QJsonObject &data);
     void handleSongListBroadcast(const QJsonObject &json);
     void handleClientListBroadcast(const QJsonObject &json);
+    // 向服务器请求房间当前歌曲信息（GET_CUR_SONG_INFO）。triggerHash 用于节流：
+    // 同一个 hash 1 秒内只请求一次，避免异常包触发请求风暴
+    void requestCurrentSongInfo(const QString &triggerHash);
+    // 一起听进度纠偏：与房间进度偏差超过 3 秒才 seek。durationMs 为房间歌曲的真实时长
+    // （<= 0 时退回本地播放器时长）；本地音频比房间歌曲短时不纠偏（见实现注释）
+    void seekTogetherIfDrifted(double playedPercent, qint64 durationMs, bool verbose);
 
     // JSON 工具方法
     QJsonObject parseJson(const QString &jsonString);
@@ -182,6 +188,17 @@ private:
 
     // 当前一起听播放的歌曲 hash，用于判断是否切歌
     QString m_currentTogetherSongHash;
+    // 房间当前歌曲的真实时长（毫秒，服务器下发的 duration）：进度纠偏按它换算偏差秒数，
+    // 不依赖本地播放器时长（本地缓存可能是时长不符的片段）
+    qint64 m_currentTogetherDurationMs = 0;
+    // 本地音频比房间歌曲短的歌曲 hash：只打一次日志
+    QString m_shortAudioSongHash;
+    // 当前歌曲信息请求节流：同一 hash 上次请求的时刻
+    QString m_curSongReqHash;
+    qint64 m_curSongReqAtMs = 0;
+    // 最近一次同步队列列表时，房间当前歌的 hash（列表与这首歌的房间状态一致）：
+    // 之后若靠 200/213 才发现切歌，据此判断要不要补拉一次列表
+    QString m_lastPlaylistSyncSongHash;
     // 一起听：本地暂停期间服务器切歌时暂存的新歌信息，手动播放后再补切
     QJsonObject m_deferredTogetherSong;
 

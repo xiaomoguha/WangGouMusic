@@ -7,6 +7,20 @@
 #define WEB_SOCKET_HTTP_HOST "music.special520.com"
 #define WEB_SOCKET_SERVICE_PATH "/ws"
 
+// 歌曲时长字符串转毫秒："mm:ss"、"hh:mm:ss" 或纯秒数；无法解析返回 0
+static qint64 parseDurationToMs(const QString &duration)
+{
+    if (duration.contains(QLatin1Char(':')))
+    {
+        qint64 secs             = 0;
+        const QStringList parts = duration.split(QLatin1Char(':'));
+        for (const QString &part : parts)
+            secs = secs * 60 + part.toInt();
+        return secs * 1000;
+    }
+    return static_cast<qint64>(duration.toDouble() * 1000);
+}
+
 WebSocketClient::WebSocketClient(PlaylistManager *playManager, UserManager *userManager, QObject *parent)
     : QObject{parent}, playmanager(playManager), usermanager(userManager), m_webSocket(nullptr),
       m_serverUrl("wss://" WEB_SOCKET_WS_HOST WEB_SOCKET_SERVICE_PATH), m_connectionState(Disconnected), m_heartbeatTimer(nullptr),
@@ -508,6 +522,7 @@ void WebSocketClient::onConnected()
 {
     m_connectionState = Connected;
     m_currentTogetherSongHash.clear();
+    m_currentTogetherDurationMs = 0;
     m_lastMessageTime.start();
 
     emit connectionStateChanged(m_connectionState);
@@ -874,7 +889,12 @@ void WebSocketClient::handleSongInfoBroadcast(const QJsonObject &data, bool allo
     if (songHash != m_currentTogetherSongHash)
     {
         // 切歌：加载新歌曲
-        m_currentTogetherSongHash = songHash;
+        m_currentTogetherSongHash   = songHash;
+        m_currentTogetherDurationMs = parseDurationToMs(duration); // 房间歌曲真实时长，进度纠偏用
+        // 走到这里说明是靠 200/213 得知切歌的（没收到带列表的合并包）：
+        // 本地队列里还留着已经播完的上一首，补拉一次列表，不用等用户手动点刷新
+        if (m_lastPlaylistSyncSongHash != songHash)
+            requestPlaylist();
         if (playmanager->localPaused())
         {
             // 本地暂停中：不自动切歌播放，记住进度与新歌信息，手动播放时再续上
@@ -930,31 +950,62 @@ void WebSocketClient::handleSongInfoBroadcast(const QJsonObject &data, bool allo
             playmanager->setTogetherSeekPercent(playedPercent);
             playmanager->setPaused(false);
             // 进度偏差超过 3 秒才 seek，避免频繁跳动
-            float localPercent = playmanager->getpercent();
-            qint64 durationMs  = 0;
-            // duration 格式可能是 "mm:ss" 或秒数字符串
-            if (duration.contains(":"))
+            if (m_currentTogetherDurationMs > 0 && allowSeek)
             {
-                QStringList parts = duration.split(":");
-                if (parts.size() == 2)
-                {
-                    durationMs = (parts[0].toInt() * 60 + parts[1].toInt()) * 1000;
-                }
-            }
-            else
-            {
-                durationMs = static_cast<qint64>(duration.toDouble() * 1000);
-            }
-            if (durationMs > 0 && allowSeek)
-            {
-                double diff = qAbs(localPercent - playedPercent) * durationMs / 1000.0;
-                if (diff > 3.0)
-                {
-                    playmanager->seekToPercent(playedPercent);
-                }
+                seekTogetherIfDrifted(playedPercent, m_currentTogetherDurationMs, false);
             }
         }
     }
+}
+
+void WebSocketClient::requestCurrentSongInfo(const QString &triggerHash)
+{
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (triggerHash == m_curSongReqHash && now - m_curSongReqAtMs < 1000)
+        return;
+    m_curSongReqHash   = triggerHash;
+    m_curSongReqAtMs   = now;
+    QJsonObject req;
+    req["action"] = GET_CUR_SONG_INFO;
+    req["userid"] = m_userId;
+    sendJson(req);
+}
+
+void WebSocketClient::seekTogetherIfDrifted(double playedPercent, qint64 durationMs, bool verbose)
+{
+    const float  localPercent   = playmanager->getpercent();
+    const qint64 playerDuration = playmanager->playerDuration();
+    if (playerDuration <= 0)
+        return;
+
+    // 本地音频明显短于房间歌曲（例如缓存/下载到的是 90 秒试听片段）：两边的百分比不在同一条
+    // 时间轴上，按百分比纠偏只会每一拍都把进度往回拖（表现为"进度一直倒退、永远播不完"）。
+    // 这时不纠偏，让它播完等房间切歌。
+    if (durationMs > playerDuration + 3000)
+    {
+        // 边下边播尚未下完时，播放器可能只报出已下载部分的时长，等下完再判断
+        if (playmanager->downloadProgress() < 1.0)
+            return;
+        if (m_shortAudioSongHash != m_currentTogetherSongHash)
+        {
+            m_shortAudioSongHash = m_currentTogetherSongHash;
+            qWarning() << "[Together] 本地音频比房间歌曲短，跳过进度纠偏: 本地时长ms" << playerDuration
+                       << "房间时长ms" << durationMs;
+        }
+        return;
+    }
+
+    const qint64 refMs   = durationMs > 0 ? durationMs : playerDuration;
+    const double diffSec = qAbs(static_cast<double>(localPercent) - playedPercent) * refMs / 1000.0;
+    if (diffSec <= 3.0)
+        return;
+    if (verbose)
+    {
+        // 纠偏诊断：反复倒退/跳动时凭这行定位是 duration 不符、进度停滞还是服务器漂移
+        qDebug() << "[Together] 进度纠偏: 本地" << localPercent << "服务器" << playedPercent << "时长ms" << playerDuration
+                 << "偏差s" << diffSec << "seek到" << static_cast<qint64>(playedPercent * playerDuration);
+    }
+    playmanager->seekToPercent(playedPercent);
 }
 
 void WebSocketClient::handleSongProgressBroadcast(const QJsonObject &data)
@@ -969,10 +1020,7 @@ void WebSocketClient::handleSongProgressBroadcast(const QJsonObject &data)
     if (songHash != m_currentTogetherSongHash)
     {
         // hash 不一致说明切歌了，主动请求完整歌曲信息
-        QJsonObject req;
-        req["action"] = GET_CUR_SONG_INFO;
-        req["userid"] = m_userId;
-        sendJson(req);
+        requestCurrentSongInfo(songHash);
         return;
     }
 
@@ -992,38 +1040,43 @@ void WebSocketClient::handleSongProgressBroadcast(const QJsonObject &data)
         {
             return;
         }
-        playmanager->setPaused(false);
-        float localPercent = playmanager->getpercent();
-        // 用秒数判断偏差，超过 3 秒才 seek，避免网络延迟导致频繁跳动
-        qint64 playerDuration = playmanager->playerDuration();
-        if (localPercent > 0 && playerDuration > 0)
+        // 本地音频比房间歌曲短（如试听片段）且已经播完：停在结尾等房间切歌，不反复重播
+        const qint64 playerDuration = playmanager->playerDuration();
+        if (playerDuration > 0 && m_currentTogetherDurationMs > playerDuration + 3000
+            && playmanager->downloadProgress() >= 1.0 && playmanager->getpercent() >= 0.98f)
         {
-            double diffSec = qAbs(localPercent - playedPercent) * playerDuration / 1000.0;
-            if (diffSec > 3.0)
-            {
-                // 纠偏诊断：反复倒退/跳动时凭这行定位是 duration 不符、进度停滞还是服务器漂移
-                qDebug() << "[Together] 进度纠偏: 本地" << localPercent << "服务器" << playedPercent
-                         << "时长ms" << playerDuration << "偏差s" << diffSec
-                         << "seek到" << static_cast<qint64>(playedPercent * playerDuration);
-                playmanager->seekToPercent(playedPercent);
-            }
+            return;
+        }
+        playmanager->setPaused(false);
+        // 用秒数判断偏差，超过 3 秒才 seek，避免网络延迟导致频繁跳动
+        if (playmanager->getpercent() > 0)
+        {
+            seekTogetherIfDrifted(playedPercent, m_currentTogetherDurationMs, true);
         }
     }
 }
 
 void WebSocketClient::handleSongListBroadcast(const QJsonObject &json)
 {
+    const QJsonObject songInfo = json.value("song_info").toObject();
+    const QString     infoHash = songInfo["songhash"].toString();
+    // 合并包里的歌和本地正在播的不一致：房间已经切歌（下一首/点歌即播/删掉当前歌等）。
+    // 不直接照它切（可能是乱序迟到的旧包），而是向服务器要一次当前歌曲信息，
+    // 免得等到下一拍进度广播（最长 5 秒）才发现切歌——按「下一首」的人自己也要干等。
+    // 先发请求再同步列表：切歌不该排在列表同步后面。
+    if (!infoHash.isEmpty() && !m_currentTogetherSongHash.isEmpty() && infoHash != m_currentTogetherSongHash)
+        requestCurrentSongInfo(infoHash);
     if (json.contains("playlist") && json["playlist"].isArray())
     {
         QJsonArray playlist = json["playlist"].toArray();
         playmanager->syncTogetherPlaylistFromServer(playlist);
+        if (!infoHash.isEmpty())
+            m_lastPlaylistSyncSongHash = infoHash;
     }
     // 合并消息可能同时包含 song_info
     // 只在是当前播放歌曲或客户端尚未播放时才处理，避免别人添加歌曲触发错误切歌
-    if (json.contains("song_info") && json["song_info"].isObject())
+    if (json.contains("song_info") && !songInfo.isEmpty())
     {
-        QJsonObject songInfo = json["song_info"].toObject();
-        QString infoHash     = songInfo["songhash"].toString();
         if (m_currentTogetherSongHash.isEmpty() || infoHash == m_currentTogetherSongHash)
         {
             handleSongInfoBroadcast(songInfo, false);

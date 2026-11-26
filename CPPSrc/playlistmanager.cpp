@@ -433,7 +433,7 @@ void PlaylistManager::loadRecentFromCache()
     emit recentPlaylistUpdated();
 }
 
-bool PlaylistManager::verifyCachedFileMd5(const QString &filePath, const QString &songhash)
+bool PlaylistManager::verifyCachedFileMd5(const QString &filePath, const QString &songhash, bool hashOnly)
 {
     QCryptographicHash md5(QCryptographicHash::Md5);
     QFile f(filePath);
@@ -447,7 +447,7 @@ bool PlaylistManager::verifyCachedFileMd5(const QString &filePath, const QString
     bool ok;
     if (!sessionMd5.isEmpty())
         ok = sessionMd5.compare(actualHex, Qt::CaseInsensitive) == 0;
-    else if (m_quality >= 2)
+    else if (m_quality >= 2 && !hashOnly)
         // 高音质转码文件 MD5 与歌单 hash 不同源且无会话期望：无法比对，放行
         // （这些文件由下载完成时的字节数+MD5 校验把关）
         ok = true;
@@ -3409,11 +3409,16 @@ void PlaylistManager::playTogetherSongFromServer(
     if (QFile::exists(cacheFilePath))
     {
         QFileInfo cacheInfo(cacheFilePath);
-        if (cacheInfo.size() > 10240) // 至少 10KB 才认为是有效缓存
+        // 与本地播放一致做完整性校验：曾出现缓存里是时长不符的片段（90 秒），比房间歌曲短，
+        // 进度纠偏每 5 秒被拖回一次。一起听固定播 128 文件（MD5 = 歌曲 hash），只认 hash
+        if (cacheInfo.size() > 10240 // 至少 10KB 才认为是有效缓存
+            && verifyCachedFileMd5(cacheFilePath, songHash, true))
+        {
             useCache = true;
+        }
         else
         {
-            qDebug() << "一起听 - 缓存文件过小，删除并重新下载:" << cacheFilePath << "大小:" << cacheInfo.size();
+            qWarning() << "一起听 - 缓存无效，删除并重新下载:" << cacheFilePath << "大小:" << cacheInfo.size();
             QFile::remove(cacheFilePath);
         }
     }
