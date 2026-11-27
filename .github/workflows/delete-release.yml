@@ -23,4 +23,12 @@ jobs:
           target="${TAG#cleanup-}"
           echo "要删除的 Release：$target"
           gh release delete "$target" --yes --repo "$GITHUB_REPOSITORY"
-          echo "已删除：$target"
+          echo "已删除 Release：$target"
+          # Release 删掉后，顺手把对应的标签也删掉（标签不存在就跳过）
+          remote="https://github.com/${GITHUB_REPOSITORY}.git"
+          if git ls-remote --exit-code --tags "$remote" "refs/tags/$target" >/dev/null 2>&1; then
+            git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ":refs/tags/$target"
+            echo "已删除标签：$target"
+          else
+            echo "标签 $target 已经不存在，跳过"
+          fi
