@@ -6,7 +6,8 @@
     步骤：
       1. 导入 Visual Studio 的编译环境（vcvars64），windeployqt 靠它找 Windows SDK；
       2. 把 exe 复制到部署目录，用 windeployqt 收集 Qt DLL、QML 模块和插件；
-      3. 补上 MSVC 运行库 DLL（windeployqt 不会拷，缺了它们没装过 VC++ 运行库的电脑会打不开）；
+      3. 补上 MSVC 运行库 DLL（windeployqt 在 Release 下只带 vc_redist.x64.exe，不带这几个 DLL；
+          缺了它们，没装过 VC++ 运行库的电脑会打不开）；
       4. 用 Inno Setup 7 编译 packaging/windows/installer.iss，输出 WangGouMusic_<版本>_setup.exe。
 
 .EXAMPLE
@@ -69,6 +70,15 @@ $Exe = (Resolve-Path -LiteralPath $Exe).Path
 $QtBin = (Resolve-Path -LiteralPath $QtBin).Path
 $WinDeployQt = Join-Path $QtBin 'windeployqt.exe'
 if (-not (Test-Path -LiteralPath $WinDeployQt)) { throw "在 $QtBin 里找不到 windeployqt.exe" }
+# windeployqt 会按名字调用 Qt bin 目录里的这几个小工具；Qt 装得不全时它只会报一句
+# “Process failed to start: The system cannot find the file specified.”，所以先检查一遍，缺了直接说清楚
+# （lconvert.exe 在 qttools 归档里，qtpaths.exe 在 qtbase，qmlimportscanner.exe 在 qtdeclarative；
+#   用 aqtinstall 装 Qt 时这几个归档都要带上）
+foreach ($tool in 'qtpaths.exe', 'qmlimportscanner.exe', 'lconvert.exe') {
+    if (-not (Test-Path -LiteralPath (Join-Path $QtBin $tool))) {
+        throw "Qt 不完整：$QtBin 里没有 $tool。请用 Qt 安装器补装对应的组件，或用 aqtinstall 装齐 qttools 等归档"
+    }
+}
 if (-not $OutDir) { $OutDir = Join-Path $RepoRoot 'dist' }
 New-Item -ItemType Directory -Path $OutDir -Force | Out-Null
 $OutDir = (Resolve-Path -LiteralPath $OutDir).Path.TrimEnd('\')
@@ -85,7 +95,7 @@ $StagedExe = Join-Path $Stage (Split-Path $Exe -Leaf)
 Write-Host "部署 Qt 依赖到 $Stage ..."
 Invoke-Native $WinDeployQt @('--release', '--qmldir', $RepoRoot, '--dir', $Stage, $StagedExe)
 
-# 3. MSVC 运行库（和已发布的安装包保持同一组文件）
+# 3. MSVC 运行库（和已发布的安装包保持同一组文件；vc_redist.x64.exe 由 windeployqt 自己带进来）
 $RuntimeNames = @(
     'concrt140', 'msvcp140', 'msvcp140_1', 'msvcp140_2', 'msvcp140_atomic_wait',
     'msvcp140_codecvt_ids', 'vccorlib140', 'vcruntime140', 'vcruntime140_1', 'vcruntime140_threads'

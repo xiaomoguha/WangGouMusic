@@ -102,7 +102,8 @@ jobs:
           pip install "aqtinstall @ git+https://github.com/miurahr/aqtinstall.git@${AQT_COMMIT}" 2>&1 | tee logs/aqt-install-tool.log
           common=(qtbase qtdeclarative qtsvg qtshadertools qtmultimedia qtwebsockets qt5compat qttranslations)
           case "$PLATFORM" in
-            windows) arch=win64_msvc2022_64; archives=("${common[@]}" opengl32sw d3dcompiler_47) ;;
+            # qttools 不能省：windeployqt 合并翻译文件时要调用里面的 lconvert.exe
+            windows) arch=win64_msvc2022_64; archives=("${common[@]}" opengl32sw d3dcompiler_47 qttools) ;;
             mac) arch=clang_64; archives=("${common[@]}") ;;
           esac
           python -m aqt install-qt "$PLATFORM" desktop "$QT_VERSION" "$arch" -O "$RUNNER_TEMP/Qt" \
@@ -197,6 +198,15 @@ jobs:
           $exe = (Get-ChildItem -LiteralPath build\Release -Filter *.exe | Select-Object -First 1).FullName
           $iscc = Join-Path $env:RUNNER_TEMP 'InnoSetup7\ISCC.exe'
           & ./packaging/windows/pack.ps1 -Exe $exe -QtBin "$env:QT_DIR/bin" -Version $env:VERSION -OutDir dist -Iscc $iscc *>&1 | Tee-Object -FilePath logs\pack.log
+          # 部署目录（一千多个文件）只用来做安装包，不进制品；留一份清单方便核对
+          $stage = Join-Path (Resolve-Path -LiteralPath dist).Path 'stage'
+          $files = Get-ChildItem -LiteralPath $stage -Recurse -File
+          Get-ChildItem -LiteralPath $stage | Select-Object Name, Length | Format-Table -AutoSize |
+              Out-String -Width 200 | Set-Content -LiteralPath logs\stage-listing.log -Encoding utf8
+          "文件总数：$($files.Count)" | Add-Content -LiteralPath logs\stage-listing.log -Encoding utf8
+          Move-Item -LiteralPath $stage -Destination (Join-Path $env:RUNNER_TEMP 'stage')
+          Get-ChildItem -LiteralPath dist | Select-Object Name, Length | Format-Table -AutoSize |
+              Out-String -Width 200 | Tee-Object -FilePath logs\dist-listing.log
 
       - name: Package (macOS)
         if: matrix.platform == 'mac'
@@ -215,35 +225,80 @@ jobs:
           ln -s /Applications dmg-root/Applications
           hdiutil create -volname WangGouMusic -srcfolder dmg-root -ov -format UDZO \
             "dist/WangGouMusic_${VERSION}_macOS.dmg" 2>&1 | tee logs/dmg.log
-          ls -la dist
+          (cd dist && shasum -a 256 "WangGouMusic_${VERSION}_macOS.dmg" > "WangGouMusic_${VERSION}_macOS.dmg.sha256")
+          ls -la dist | tee logs/dist-listing.log
+
+      - name: Inspect bundle (macOS)
+        if: matrix.platform == 'mac'
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="$(ls -d build/*.app | head -n1)"
+          plist="$PWD/$app/Contents/Info.plist"
+          bin="$(find "$app/Contents/MacOS" -maxdepth 1 -type f | head -n1)"
+          {
+            echo "版本：$(defaults read "$plist" CFBundleShortVersionString 2>&1)"
+            echo "构建号：$(defaults read "$plist" CFBundleVersion 2>&1)"
+            echo "Bundle ID：$(defaults read "$plist" CFBundleIdentifier 2>&1)"
+            echo "最低系统：$(defaults read "$plist" LSMinimumSystemVersion 2>&1)"
+            echo "主程序：$bin"
+            echo "主程序架构：$(lipo -archs "$bin" 2>&1)"
+            for fw in "$app"/Contents/Frameworks/*.framework; do
+              name="$(basename "$fw" .framework)"
+              echo "框架 $name：$(lipo -archs "$fw/$name" 2>&1)"
+            done
+            echo "占用空间：$(du -sh "$app" | cut -f1)"
+          } > logs/bundle-info.log 2>&1
+          codesign -dv --verbose=4 "$app" > logs/codesign-info.log 2>&1 || true
+          find "$app/Contents" -maxdepth 4 -not -path "$app/Contents/Resources/qml/*/*/*" | sort > logs/bundle-tree.log || true
+          cat logs/bundle-info.log
 
       - name: Smoke test (macOS)
         if: matrix.platform == 'mac'
         shell: bash
         run: |
+          # 这一步只收集信息，不影响构建结果
+          set +e
+          set -u
           app="$(ls -d build/*.app | head -n1)"
-          log_dir="$HOME/Downloads/网狗音乐缓存目录/logs"
-          before="$(ls "$log_dir"/session_*.log 2>/dev/null | sort | tail -n1 || true)"
-          if ! open "$app"; then echo "open 失败" | tee -a "$GITHUB_STEP_SUMMARY"; fi
-          sleep 15
-          if pgrep -f "$app/Contents/MacOS/" >/dev/null; then
-            echo "冒烟测试：进程存活（启动 15 秒后仍在运行）"
-          else
-            echo "冒烟测试：进程已退出，需要查日志"
-          fi | tee -a "$GITHUB_STEP_SUMMARY"
-          latest="$(ls -t "$log_dir"/session_*.log 2>/dev/null | head -n1 || true)"
-          if [ -n "$latest" ] && [ "$latest" != "$before" ]; then
-            { echo "日志文件：$latest"; grep -m3 -E 'Version:|OS:' "$latest" || true; } | tee -a "$GITHUB_STEP_SUMMARY"
-          else
-            echo "没有看到新的日志文件（CI 环境可能没有 Downloads 目录的访问权限）" | tee -a "$GITHUB_STEP_SUMMARY"
-          fi
-          pkill -f "$app/Contents/MacOS/" || true
+          bin="$(find "$app/Contents/MacOS" -maxdepth 1 -type f | head -n1)"
+          # 直接运行包里的可执行文件并接住它的输出，这样启动阶段的报错都能看到
+          "$bin" < /dev/null > logs/smoke-stdout.log 2> logs/smoke-stderr.log &
+          pid=$!
+          # 进程退出后还没被回收时 kill -0 仍然成功，所以再看一眼状态里有没有 Z（僵尸）
+          alive() {
+            kill -0 "$pid" 2>/dev/null && [ "$(ps -o stat= -p "$pid" 2>/dev/null | tr -d ' ')" != "Z" ]
+          }
+          for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+            sleep 1
+            alive || break
+          done
+          {
+            if alive; then
+              echo "进程存活：是（启动 15 秒后仍在运行）"
+              kill "$pid" 2>/dev/null
+            else
+              code=0; wait "$pid" || code=$?
+              echo "进程存活：否（启动后提前退出，退出码 $code）"
+            fi
+            version_line="$(grep -m1 -E 'Version:' logs/smoke-stderr.log)"
+            echo "版本行：${version_line:-没有找到}"
+            echo "stderr 行数：$(wc -l < logs/smoke-stderr.log | tr -d ' ')"
+            echo "QML 报错行数：$(grep -cE 'TypeError|ReferenceError|is not defined|Cannot assign|Cannot anchor|is not a type' logs/smoke-stderr.log)"
+            echo "应用日志目录：$(ls -d "$HOME/Downloads/网狗音乐缓存目录/logs" 2>/dev/null || echo '没有生成（CI 里可能没有权限写 ~/Downloads）')"
+          } > logs/smoke.log
+          cat logs/smoke.log
+          cat logs/smoke.log >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload packages
         uses: actions/upload-artifact@v7
         with:
           name: packages-${{ matrix.platform }}
-          path: dist/*
+          # 只传安装包、DMG 和校验文件，不传目录
+          path: |
+            dist/*.exe
+            dist/*.dmg
+            dist/*.sha256
           if-no-files-found: error
 
       - name: Upload logs
@@ -311,7 +366,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           for dir in logs/*/; do
             [ -d "$dir" ] || continue
-            platform="${dir#logs/}"; platform="${platform%/}"
+            platform="${dir#logs/}"; platform="${platform%/}"; platform="${platform#logs-}"
             worktree="$(mktemp -d)"
             git worktree add --detach "$worktree" HEAD
             (
