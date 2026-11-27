@@ -322,8 +322,11 @@ jobs:
     permissions:
       contents: write
     steps:
+      # 只取安装包和 DMG。不加 pattern 会把构建日志也一起下到这里，gh 就会试着把日志当附件上传
+      # （空文件会让上传报 HTTP 400: Bad Content-Length）
       - uses: actions/download-artifact@v8
         with:
+          pattern: packages-*
           path: dist
           merge-multiple: true
 
@@ -345,7 +348,11 @@ jobs:
           else
             args+=(--target "$GITHUB_SHA")
           fi
-          gh release create "$TAG" dist/* "${args[@]}" 2>&1 | tee logs/release.log
+          assets=(dist/*.exe dist/*.dmg dist/*.sha256)
+          for f in "${assets[@]}"; do
+            if [ ! -s "$f" ]; then echo "::error::要上传的文件不存在或者是空的：$f"; exit 1; fi
+          done
+          gh release create "$TAG" "${assets[@]}" "${args[@]}" 2>&1 | tee logs/release.log
 
       # gh 的报错只出现在这个 job 自己的日志里（要登录才看得到），所以也留一份到日志分支
       - name: Upload logs
