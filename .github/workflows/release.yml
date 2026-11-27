@@ -228,8 +228,12 @@ jobs:
           (cd dist && shasum -a 256 "WangGouMusic_${VERSION}_macOS.dmg" > "WangGouMusic_${VERSION}_macOS.dmg.sha256")
           ls -la dist | tee logs/dist-listing.log
 
+      # 注意：macOS 自带的 bash 3.2 会把紧跟在变量名后面的全角标点也算进变量名
+      # （$name： 会去找一个叫 “name：” 的变量），所以变量后面挨着中文时一律写成 ${name}
       - name: Inspect bundle (macOS)
         if: matrix.platform == 'mac'
+        # 这一步只收集信息，出错了也不该挡住发布
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -241,11 +245,11 @@ jobs:
             echo "构建号：$(defaults read "$plist" CFBundleVersion 2>&1)"
             echo "Bundle ID：$(defaults read "$plist" CFBundleIdentifier 2>&1)"
             echo "最低系统：$(defaults read "$plist" LSMinimumSystemVersion 2>&1)"
-            echo "主程序：$bin"
+            echo "主程序：${bin}"
             echo "主程序架构：$(lipo -archs "$bin" 2>&1)"
             for fw in "$app"/Contents/Frameworks/*.framework; do
               name="$(basename "$fw" .framework)"
-              echo "框架 $name：$(lipo -archs "$fw/$name" 2>&1)"
+              echo "框架 ${name}：$(lipo -archs "$fw/$name" 2>&1)"
             done
             echo "占用空间：$(du -sh "$app" | cut -f1)"
           } > logs/bundle-info.log 2>&1
@@ -255,6 +259,8 @@ jobs:
 
       - name: Smoke test (macOS)
         if: matrix.platform == 'mac'
+        # 同上：只看应用能不能启动起来，结果不影响构建
+        continue-on-error: true
         shell: bash
         run: |
           # 这一步只收集信息，不影响构建结果
@@ -279,7 +285,7 @@ jobs:
               kill "$pid" 2>/dev/null
             else
               code=0; wait "$pid" || code=$?
-              echo "进程存活：否（启动后提前退出，退出码 $code）"
+              echo "进程存活：否（启动后提前退出，退出码 ${code}）"
             fi
             version_line="$(grep -m1 -E 'Version:' logs/smoke-stderr.log)"
             echo "版本行：${version_line:-没有找到}"
@@ -374,7 +380,7 @@ jobs:
               git checkout --quiet --orphan "ci-logs-$platform"
               git rm -rqf .
               cp -r "$GITHUB_WORKSPACE/$dir/." .
-              echo "来源：$REF_NAME，run $RUN_ID" > SOURCE.txt
+              echo "来源：${REF_NAME}，run ${RUN_ID}" > SOURCE.txt
               git add -A
               git commit -qm "CI logs for $REF_NAME (run $RUN_ID)"
               git push --force origin "HEAD:refs/heads/ci-logs/$platform"
