@@ -265,6 +265,8 @@ git tag v0.8.5 && git push origin v0.8.5
 
 - 打标签前先把 `CMakeLists.txt` 第 2 行 `project(... VERSION x.y.z ...)` 改成新版本号
 - `vX.Y.Z` 是正式版；带后缀的 `vX.Y.Z-ci.1` 只发成预发布（Pre-release），用来试构建
+- 发布说明优先读仓库里的 `release-notes/<版本>.md`（没有就由 GitHub 自动生成），正式发版前写一份
+- 构建失败时日志会推到 `ci-logs/<平台>` 分支；预发布每次都会推，方便排查
 - 应用内的更新检查走自己的服务器（`/app/checkupdate`），和 GitHub Releases 互不相干，要分别发布
 - Mac 包没有 Apple 开发者证书，也没做公证，第一次打开要在「系统设置 → 隐私与安全性」里点「仍要打开」
 

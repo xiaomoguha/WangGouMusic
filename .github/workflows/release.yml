@@ -322,6 +322,11 @@ jobs:
     permissions:
       contents: write
     steps:
+      # 检出仓库是为了读 release-notes/<版本>.md 当发布说明；不要让它改写远程
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
       # 只取安装包和 DMG。不加 pattern 会把构建日志也一起下到这里，gh 就会试着把日志当附件上传
       # （空文件会让上传报 HTTP 400: Bad Content-Length）
       - uses: actions/download-artifact@v8
@@ -340,8 +345,13 @@ jobs:
           set -euo pipefail
           mkdir -p logs
           ls -la dist | tee logs/dist-listing.log
-          # 这个 job 没有 checkout，目录里没有 git 仓库，所以要显式告诉 gh 发到哪个仓库
-          args=(--title "网狗音乐 v${VERSION}" --generate-notes --repo "$GITHUB_REPOSITORY")
+          # 发布说明优先用仓库里的 release-notes/<版本>.md；没有就让 GitHub 自动生成
+          notes_file="release-notes/${VERSION}.md"
+          if [ -f "$notes_file" ]; then
+            args=(--title "网狗音乐 v${VERSION}" --notes-file "$notes_file" --repo "$GITHUB_REPOSITORY")
+          else
+            args=(--title "网狗音乐 v${VERSION}" --generate-notes --repo "$GITHUB_REPOSITORY")
+          fi
           if [ "$PRERELEASE" = "true" ]; then args+=(--prerelease); fi
           if git ls-remote --exit-code --tags "https://github.com/${GITHUB_REPOSITORY}.git" "refs/tags/$TAG" >/dev/null 2>&1; then
             args+=(--verify-tag)
@@ -365,9 +375,9 @@ jobs:
 
   logs:
     name: Publish build logs
-    # 试用标签（带 -ci. 后缀）跑完后，把两个平台的构建日志推到 ci-logs/<平台> 分支。
+    # 试用标签（带 -ci. 后缀）每次都推日志；正式标签只在失败时推，方便排查又不在成功时留垃圾分支。
     # 公开仓库的日志下载接口要登录才能用，这样没有 GitHub 令牌的人也能直接看日志。
-    if: always() && contains(github.ref_name, '-ci.')
+    if: always() && (failure() || contains(github.ref_name, '-ci.'))
     needs: [prepare, build, release]
     runs-on: ubuntu-latest
     permissions:
