@@ -1,0 +1,328 @@
+name: Build & Release
+
+# 推送 v 开头的标签（例如 v0.8.5），或者在 Actions 页面点 "Run workflow" 时：
+#   1. 校验标签里的版本号和 CMakeLists.txt 一致
+#   2. Windows：编译 → windeployqt → Inno Setup 安装包
+#      macOS：编译 QWindowKit → 编译 → macdeployqt → DMG
+#   3. 发布到 GitHub Releases
+# 标签带 -ci.N / -manual.N 后缀的只发成预发布（Pre-release），用来试构建，不打扰正式版。
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  QT_VERSION: '6.12.0'
+  # aqtinstall 3.3.0（PyPI 上的最新版）还不认识 Windows 版 Qt 6.11+ 的新仓库结构，
+  # 所以固定到已修复的上游提交；等 3.3.1 发布后可以改回 pip 版本号
+  AQT_COMMIT: 4c759852b1108cc801d8e24979136b895b5155d4
+  # QWindowKit（只有 macOS 用）固定到的上游提交
+  QWK_COMMIT: 062d99aba7e2d6cb851451f0fff9c799a1739db2
+  INNO_URL: https://github.com/jrsoftware/issrc/releases/download/is-7_1_1/innosetup-7.1.1-x64.exe
+  INNO_SHA256: 8a5a6711c3766a6e5fb74f280ba0e3551e719ce94538d901fdbd1f8f9920b3f0
+
+jobs:
+  prepare:
+    name: Check version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      tag: ${{ steps.meta.outputs.tag }}
+      prerelease: ${{ steps.meta.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Resolve version
+        id: meta
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          cmake_ver="$(python3 -c "import re; print(re.search(r'^project\(\S+ VERSION (\d+\.\d+\.\d+) ', open('CMakeLists.txt', encoding='utf-8').read(), re.M).group(1))")"
+          prerelease=false
+          if [ "$REF_TYPE" = "tag" ]; then
+            tag="$REF_NAME"
+            pattern='^v([0-9]+\.[0-9]+\.[0-9]+)(-ci\.[0-9]+)?$'
+            if [[ ! "$tag" =~ $pattern ]]; then
+              echo "::error::标签名 $tag 不符合 vX.Y.Z 或 vX.Y.Z-ci.N 的格式"
+              exit 1
+            fi
+            version="${BASH_REMATCH[1]}"
+            if [ -n "${BASH_REMATCH[2]}" ]; then prerelease=true; fi
+            if [ "$version" != "$cmake_ver" ]; then
+              echo "::error::标签 $tag 的版本号和 CMakeLists.txt 里的 $cmake_ver 不一致，请先改 CMakeLists.txt"
+              exit 1
+            fi
+          else
+            version="$cmake_ver"
+            tag="v${version}-manual.${RUN_NUMBER}"
+            prerelease=true
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+          echo "version=$version tag=$tag prerelease=$prerelease"
+
+  build:
+    name: Build (${{ matrix.platform }})
+    needs: prepare
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            platform: windows
+          - os: macos-latest
+            platform: mac
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install Qt ${{ env.QT_VERSION }}
+        shell: bash
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          set -euo pipefail
+          mkdir -p logs
+          pip install "aqtinstall @ git+https://github.com/miurahr/aqtinstall.git@${AQT_COMMIT}" 2>&1 | tee logs/aqt-install-tool.log
+          common=(qtbase qtdeclarative qtsvg qtshadertools qtmultimedia qtwebsockets qt5compat qttranslations)
+          case "$PLATFORM" in
+            windows) arch=win64_msvc2022_64; archives=("${common[@]}" opengl32sw d3dcompiler_47) ;;
+            mac) arch=clang_64; archives=("${common[@]}") ;;
+          esac
+          python -m aqt install-qt "$PLATFORM" desktop "$QT_VERSION" "$arch" -O "$RUNNER_TEMP/Qt" \
+            -m qtmultimedia qtwebsockets qt5compat qtshadertools --archives "${archives[@]}" 2>&1 | tee logs/aqt-install-qt.log
+
+      - name: Locate Qt
+        shell: bash
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          set -euo pipefail
+          case "$PLATFORM" in
+            windows)
+              echo "QT_DIR=$(cygpath -m "$RUNNER_TEMP")/Qt/$QT_VERSION/msvc2022_64" >> "$GITHUB_ENV" ;;
+            mac)
+              qt_dir="$RUNNER_TEMP/Qt/$QT_VERSION/macos"
+              echo "QT_DIR=$qt_dir" >> "$GITHUB_ENV"
+              # 最低 macOS 版本跟 Qt 官方包保持一致，免得编出来的包只能在新系统上跑
+              target="$(grep -rhoE 'QMAKE_MACOSX_DEPLOYMENT_TARGET[[:space:]]*=[[:space:]]*[0-9.]+' "$qt_dir/mkspecs" | head -n1 | grep -oE '[0-9.]+' || true)"
+              echo "MACOSX_DEPLOYMENT_TARGET=${target:-13.0}" >> "$GITHUB_ENV"
+              echo "macOS 最低版本：${target:-13.0（没在 Qt 里查到，用默认值）}"
+              ;;
+          esac
+
+      - name: Build QWindowKit
+        if: matrix.platform == 'mac'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --quiet https://github.com/stdware/qwindowkit.git "$RUNNER_TEMP/qwindowkit"
+          git -C "$RUNNER_TEMP/qwindowkit" checkout --quiet "$QWK_COMMIT"
+          cmake -S "$RUNNER_TEMP/qwindowkit" -B "$RUNNER_TEMP/qwindowkit-build" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$QT_DIR" \
+            -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOSX_DEPLOYMENT_TARGET" \
+            -DCMAKE_INSTALL_PREFIX="$RUNNER_TEMP/qwindowkit-install" \
+            -DQWINDOWKIT_BUILD_STATIC=ON \
+            -DQWINDOWKIT_BUILD_WIDGETS=OFF \
+            -DQWINDOWKIT_BUILD_QUICK=ON \
+            -DQWINDOWKIT_BUILD_EXAMPLES=OFF \
+            -DQWINDOWKIT_BUILD_TESTS=OFF \
+            2>&1 | tee logs/qwindowkit-configure.log
+          cmake --build "$RUNNER_TEMP/qwindowkit-build" --config Release -j 4 2>&1 | tee logs/qwindowkit-build.log
+          cmake --install "$RUNNER_TEMP/qwindowkit-build" --config Release 2>&1 | tee logs/qwindowkit-install.log
+          echo "QWindowKit_DIR=$RUNNER_TEMP/qwindowkit-install/lib/cmake/QWindowKit" >> "$GITHUB_ENV"
+
+      - name: Configure and build (Windows)
+        if: matrix.platform == 'windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 "-DCMAKE_PREFIX_PATH=$QT_DIR" 2>&1 | tee logs/configure.log
+          cmake --build build --config Release --target WangGouMusic -- -m 2>&1 | tee logs/build.log
+
+      - name: Configure and build (macOS)
+        if: matrix.platform == 'mac'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$QT_DIR" \
+            -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOSX_DEPLOYMENT_TARGET" \
+            -DQWindowKit_DIR="$QWindowKit_DIR" \
+            2>&1 | tee logs/configure.log
+          cmake --build build --config Release --target WangGouMusic -j 4 2>&1 | tee logs/build.log
+
+      - name: Install Inno Setup 7
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = Join-Path $env:RUNNER_TEMP 'innosetup.exe'
+          Invoke-WebRequest -Uri $env:INNO_URL -OutFile $exe
+          $hash = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash
+          if ($hash -ne $env:INNO_SHA256) { throw "Inno Setup 安装包校验失败：$hash" }
+          $dir = Join-Path $env:RUNNER_TEMP 'InnoSetup7'
+          $process = Start-Process -FilePath $exe -Wait -PassThru -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/DIR=`"$dir`""
+          if ($process.ExitCode -ne 0) { throw "Inno Setup 安装失败，退出码 $($process.ExitCode)" }
+          if (-not (Test-Path -LiteralPath (Join-Path $dir 'ISCC.exe'))) { throw "没有找到 ISCC.exe" }
+
+      - name: Package (Windows)
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Path logs -Force | Out-Null
+          $exe = (Get-ChildItem -LiteralPath build\Release -Filter *.exe | Select-Object -First 1).FullName
+          $iscc = Join-Path $env:RUNNER_TEMP 'InnoSetup7\ISCC.exe'
+          & ./packaging/windows/pack.ps1 -Exe $exe -QtBin "$env:QT_DIR/bin" -Version $env:VERSION -OutDir dist -Iscc $iscc *>&1 | Tee-Object -FilePath logs\pack.log
+
+      - name: Package (macOS)
+        if: matrix.platform == 'mac'
+        shell: bash
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          app="$(ls -d build/*.app | head -n1)"
+          "$QT_DIR/bin/macdeployqt" "$app" -qmldir=. -always-overwrite 2>&1 | tee logs/macdeployqt.log
+          # 没有 Apple 开发者证书，先做 ad-hoc 签名：架构不一致或没签名的包在新系统上会被直接拒绝启动
+          codesign --force --deep --sign - "$app" 2>&1 | tee logs/codesign.log
+          codesign --verify --deep --strict "$app" 2>&1 | tee logs/codesign-verify.log || echo "::warning::签名校验没通过，见 logs/codesign-verify.log"
+          mkdir -p dist dmg-root
+          cp -R "$app" dmg-root/
+          ln -s /Applications dmg-root/Applications
+          hdiutil create -volname WangGouMusic -srcfolder dmg-root -ov -format UDZO \
+            "dist/WangGouMusic_${VERSION}_macOS.dmg" 2>&1 | tee logs/dmg.log
+          ls -la dist
+
+      - name: Smoke test (macOS)
+        if: matrix.platform == 'mac'
+        shell: bash
+        run: |
+          app="$(ls -d build/*.app | head -n1)"
+          log_dir="$HOME/Downloads/网狗音乐缓存目录/logs"
+          before="$(ls "$log_dir"/session_*.log 2>/dev/null | sort | tail -n1 || true)"
+          if ! open "$app"; then echo "open 失败" | tee -a "$GITHUB_STEP_SUMMARY"; fi
+          sleep 15
+          if pgrep -f "$app/Contents/MacOS/" >/dev/null; then
+            echo "冒烟测试：进程存活（启动 15 秒后仍在运行）"
+          else
+            echo "冒烟测试：进程已退出，需要查日志"
+          fi | tee -a "$GITHUB_STEP_SUMMARY"
+          latest="$(ls -t "$log_dir"/session_*.log 2>/dev/null | head -n1 || true)"
+          if [ -n "$latest" ] && [ "$latest" != "$before" ]; then
+            { echo "日志文件：$latest"; grep -m3 -E 'Version:|OS:' "$latest" || true; } | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "没有看到新的日志文件（CI 环境可能没有 Downloads 目录的访问权限）" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+          pkill -f "$app/Contents/MacOS/" || true
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: packages-${{ matrix.platform }}
+          path: dist/*
+          if-no-files-found: error
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: logs-${{ matrix.platform }}
+          path: logs
+          if-no-files-found: ignore
+
+  release:
+    name: Publish to GitHub Releases
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+          PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          ls -la dist
+          args=(--title "网狗音乐 v${VERSION}" --generate-notes)
+          if [ "$PRERELEASE" = "true" ]; then args+=(--prerelease); fi
+          if git ls-remote --exit-code --tags "https://github.com/${GITHUB_REPOSITORY}.git" "refs/tags/$TAG" >/dev/null 2>&1; then
+            args+=(--verify-tag)
+          else
+            args+=(--target "$GITHUB_SHA")
+          fi
+          gh release create "$TAG" dist/* "${args[@]}"
+
+  logs:
+    name: Publish build logs
+    # 试用标签（带 -ci. 后缀）跑完后，把两个平台的构建日志推到 ci-logs/<平台> 分支。
+    # 公开仓库的日志下载接口要登录才能用，这样没有 GitHub 令牌的人也能直接看日志。
+    if: always() && contains(github.ref_name, '-ci.')
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: logs-*
+          path: logs
+
+      - name: Push logs
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for dir in logs/*/; do
+            [ -d "$dir" ] || continue
+            platform="${dir#logs/}"; platform="${platform%/}"
+            worktree="$(mktemp -d)"
+            git worktree add --detach "$worktree" HEAD
+            (
+              cd "$worktree"
+              git checkout --quiet --orphan "ci-logs-$platform"
+              git rm -rqf .
+              cp -r "$GITHUB_WORKSPACE/$dir/." .
+              echo "来源：$REF_NAME，run $RUN_ID" > SOURCE.txt
+              git add -A
+              git commit -qm "CI logs for $REF_NAME (run $RUN_ID)"
+              git push --force origin "HEAD:refs/heads/ci-logs/$platform"
+            )
+            git worktree remove --force "$worktree"
+          done
