@@ -1,0 +1,26 @@
+name: Delete release (maintenance)
+
+# 维护用：推一个 cleanup-<标签名> 的标签，就会删掉 GitHub 上对应的 Release（以及它的附件）。
+# 例：git tag cleanup-v0.8.4-ci.5 && git push origin cleanup-v0.8.4-ci.5
+on:
+  push:
+    tags: ['cleanup-*']
+
+permissions:
+  contents: write
+
+jobs:
+  delete:
+    name: Delete release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          target="${TAG#cleanup-}"
+          echo "要删除的 Release：$target"
+          gh release delete "$target" --yes --repo "$GITHUB_REPOSITORY"
+          echo "已删除：$target"
