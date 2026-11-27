@@ -118,6 +118,8 @@ WangGouMusic/
 ├── app.rc                      # Windows 应用资源（图标等）
 ├── fonts.qrc / icons.qrc / image.qrc   # 字体 / SVG 图标 / 图片资源
 ├── qml.qrc                     # QML 资源清单
+├── .github/workflows/          # GitHub Actions：打标签后自动构建并发布
+├── packaging/windows/          # Windows 打包脚本和 Inno Setup 脚本
 │
 ├── CPPSrc/                     # C++ 后端
 │   ├── ApiClient.*             # HTTP API 请求单例
@@ -182,7 +184,7 @@ WangGouMusic/
 ### 环境要求
 
 - **Qt** 6.x（需要 Core, Quick, Multimedia, WebSockets, Widgets, QuickControls2, Core5Compat, Network, QuickDialogs2, Svg 模块）
-- **macOS 额外依赖** — [QWindowKit](https://github.com/std-microblock/QWindowKit) 以及 Qt 私有模块头文件（Qt6CorePrivate / Qt6GuiPrivate / Qt6QuickPrivate）
+- **macOS 额外依赖** — [QWindowKit](https://github.com/stdware/qwindowkit) 以及 Qt 私有模块头文件（Qt6CorePrivate / Qt6GuiPrivate / Qt6QuickPrivate）
 - **CMake** ≥ 3.16、**C++17** 编译器（MSVC / Clang / GCC）
 
 > `CMakeLists.txt` 里 `find_package(QWindowKit ... PATHS ...)` 写的是作者本机的安装路径，换机器构建前请改成自己的 QWindowKit 安装路径，或提前设置 `QWindowKit_DIR`。
@@ -214,7 +216,19 @@ cmake --build build --config Release --target WangGouMusic
 build\Release\网狗音乐.exe
 ```
 
-> **注意**：Windows 运行时需要将 Qt 的 bin 目录加入 PATH，或使用 `windeployqt` 部署依赖；发布安装包时可再用 Inno Setup 等工具打包。Debug 构建会附带控制台窗口方便看日志。
+> **注意**：Windows 运行时需要将 Qt 的 bin 目录加入 PATH，或使用 `windeployqt` 部署依赖。Debug 构建会附带控制台窗口方便看日志。
+
+### 打 Windows 安装包
+
+需要 Visual Studio 2022 的 C++ 生成工具和 [Inno Setup 7](https://jrsoftware.org/isinfo.php)：
+
+```powershell
+packaging\windows\pack.ps1 -Exe build\Release\网狗音乐.exe -QtBin D:\Qt\6.12.0\msvc2022_64\bin -Version 0.8.4
+```
+
+脚本会先导入 VS 环境，再用 `windeployqt` 把 Qt 依赖收集到 `dist\stage`，补上 MSVC 运行库 DLL，最后用 `packaging/windows/installer.iss` 编出 `dist\WangGouMusic_<版本>_setup.exe`（附 `.sha256`）。`-Iscc` 用来指定 `ISCC.exe` 的位置，`-OutDir` 用来改输出目录。
+
+安装包的文件名不要改：应用内更新检查（`/app/checkupdate`）是按 `WangGouMusic_<版本>_setup.exe` 去拼下载地址的。
 
 ### Linux
 
@@ -231,6 +245,28 @@ cmake --build build --parallel
 ```
 
 该模式加载 `main_mobile.qml`，窗口固定为手机尺寸，并跳过单实例、托盘、桌面歌词等桌面专属功能。
+
+### 自动构建（GitHub Actions）
+
+`.github/workflows/release.yml` 会在 GitHub 的服务器上同时编出 Windows 安装包和 macOS 的 DMG，手边没有 Mac 也能出 Mac 版。
+
+触发方式有两种：
+
+```bash
+# 推一个 v 开头的标签
+git tag v0.8.5 && git push origin v0.8.5
+```
+
+或者在仓库的 Actions 页面选 **Build & Release → Run workflow**。
+
+流程：先校验标签里的版本号和 `CMakeLists.txt` 一致（对不上直接失败），然后两个平台各自编译、打包，最后发布到 GitHub Releases，附件是安装包、DMG 和各自的 `.sha256`。
+
+几条约定：
+
+- 打标签前先把 `CMakeLists.txt` 第 2 行 `project(... VERSION x.y.z ...)` 改成新版本号
+- `vX.Y.Z` 是正式版；带后缀的 `vX.Y.Z-ci.1` 只发成预发布（Pre-release），用来试构建
+- 应用内的更新检查走自己的服务器（`/app/checkupdate`），和 GitHub Releases 互不相干，要分别发布
+- Mac 包没有 Apple 开发者证书，也没做公证，第一次打开要在「系统设置 → 隐私与安全性」里点「仍要打开」
 
 ## ⚙️ 配置说明
 
